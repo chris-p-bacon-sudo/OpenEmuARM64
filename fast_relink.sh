@@ -1,7 +1,11 @@
 #!/bin/bash
+# NOTE: This script was created during the original ARM64 port and contains
+# hardcoded paths from the original developer's machine. It is kept for
+# historical reference only and is not intended to be run directly.
+# Set PROJECT_DIR to your local checkout path before using.
 set -e
 
-PROJECT_DIR="/Users/barriesanders/.gemini/antigravity/scratch/OpenEmu_Port"
+PROJECT_DIR="${PROJECT_DIR:-$(pwd)}"
 VICE_DIR="$PROJECT_DIR/vice-3.10"
 CORE_DIR="$PROJECT_DIR/VICE-Core"
 BUILD_DIR="$PROJECT_DIR/Build/OpenEmu.app/Contents/PlugIns/Cores"
@@ -146,7 +150,7 @@ clang -bundle -o "$BUILD_DIR/VICE.oecoreplugin/Contents/MacOS/VICE" \
     -I"$VICE_DIR/src/joyport" \
     -I"$VICE_DIR/src/hvsc" \
     -I"$PROJECT_DIR/OpenEmu/SystemPlugins/Commodore 64" \
-    -I"/Users/barriesanders/.gemini/antigravity/scratch/OpenEmu_Port/OpenEmu-SDK" \
+    -I"$PROJECT_DIR/OpenEmu-SDK" \
     -I"$VICE_DIR/src/c64/cart" \
     -I"$VICE_DIR/src/rs232drv" \
     -I"$VICE_DIR/src/core" \

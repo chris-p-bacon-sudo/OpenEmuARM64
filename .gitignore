@@ -29,3 +29,19 @@ build_*.log
 *.tar.gz
 Releases/
 OpenEmu/OEGoogleDriveSecrets.swift
+
+# AI agent session files
+.claude/
+
+# Misc build artifacts committed to root
+hang_sample.txt
+dlopen_result.txt
+link_error.log
+broker_build.log
+kit_build.log
+retail_build.log
+vice_build.log
+*.zip
+
+# Compiled test binaries
+test_dlopen

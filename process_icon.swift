@@ -2,7 +2,9 @@ import Cocoa
 import QuartzCore
 
 func processFinalIcon() {
-    let userImagePath = "/Users/barriesanders/.gemini/antigravity/brain/999e1540-95b2-4135-8047-485122022aa2/uploaded_media_1769503099588.jpg"
+    let userImagePath = CommandLine.arguments.count > 1
+        ? CommandLine.arguments[1]
+        : "icon_source.png"
     let rootURL = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
     let assetURL = rootURL.appendingPathComponent("OpenEmu/Graphics.xcassets/OpenEmu.appiconset")
     let iconsetURL = rootURL.appendingPathComponent("OpenEmu/OpenEmu.iconset")

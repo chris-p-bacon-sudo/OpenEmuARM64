@@ -25,28 +25,8 @@
  */
 
 #import "OEC64SystemController.h"
-#import <dlfcn.h>
 
 @implementation OEC64SystemController
-
-+ (void)load {
-    NSLog(@"[C64] System Controller LOADED (dlopen success)");
-    FILE *f = fopen("/tmp/c64_system_load.txt", "w");
-    if (f) {
-        fprintf(f, "C64 System Plugin +load at %ld\n", time(NULL));
-        
-        // Try to manually load the Core Plugin to see if process allows it
-        const char *corePath = "/Users/barriesanders/Library/Application Support/OpenEmuARM64/Cores/VICE.oecoreplugin/Contents/MacOS/VICE";
-        void *handle = dlopen(corePath, RTLD_NOW);
-        if (handle) {
-            fprintf(f, "SUCCESS: Manually dlopened VICE core at %s\n", corePath);
-        } else {
-            fprintf(f, "FAILURE: Could not dlopen VICE core: %s\n", dlerror());
-        }
-        
-        fclose(f);
-    }
-}
 
 - (OEFileSupport)canHandleFile:(OEFile *)file {
     return OEFileSupportYes;

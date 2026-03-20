@@ -1,7 +1,15 @@
 #!/bin/bash
+# NOTE: This script was created during the original ARM64 port and contained
+# hardcoded paths from the original developer's machine. Set ICON_SOURCE to
+# your source PNG (1024x1024 recommended) before running.
 
-ICON_SOURCE="/Users/barriesanders/.gemini/antigravity/brain/999e1540-95b2-4135-8047-485122022aa2/icon_preview_512.png"
-ICONSET_PATH="/Users/barriesanders/.gemini/antigravity/scratch/OpenEmu_Port/OpenEmu/Graphics.xcassets/OpenEmu.appiconset"
+ICON_SOURCE="${ICON_SOURCE:-}"
+ICONSET_PATH="${ICONSET_PATH:-$(dirname "$0")/OpenEmu/Graphics.xcassets/OpenEmu.appiconset}"
+
+if [ -z "$ICON_SOURCE" ]; then
+    echo "Error: Set ICON_SOURCE to your icon PNG path before running."
+    exit 1
+fi
 
 echo "Generating icons from $ICON_SOURCE..."
 
