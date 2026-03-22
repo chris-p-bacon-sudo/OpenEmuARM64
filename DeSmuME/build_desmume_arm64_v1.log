@@ -1,8 +1,0 @@
-Command line invocation:
-    /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild -project "src/cocoa/DeSmuME (Latest).xcodeproj" -scheme DeSmuME -arch arm64 build
-
-Build settings from command line:
-    ARCHS = arm64
-
-2026-01-27 20:04:08.305 xcodebuild[95055:1333041] Writing error result bundle to /var/folders/7k/6q2x2pxs55d2s99t76j3jmn40000gn/T/ResultBundle_2026-27-01_20-04-0008.xcresult
-xcodebuild: error: The project named "DeSmuME (Latest)" does not contain a scheme named "DeSmuME". The "-list" option can be used to find the names of the schemes in the project.
