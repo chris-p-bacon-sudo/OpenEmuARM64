@@ -97,6 +97,188 @@
       "scale" : "2x",
       "size" : "512x512",
       "filename" : "icon-1024-p3.png"
+    },
+    {
+      "appearances" : [
+        {
+          "appearance" : "luminosity",
+          "value" : "dark"
+        }
+      ],
+      "scale" : "1x",
+      "filename" : "icon-16-srgb-dark.png",
+      "idiom" : "mac",
+      "size" : "16x16",
+      "display-gamut" : "sRGB"
+    },
+    {
+      "appearances" : [
+        {
+          "appearance" : "luminosity",
+          "value" : "dark"
+        }
+      ],
+      "idiom" : "mac",
+      "scale" : "1x",
+      "size" : "16x16",
+      "filename" : "icon-16-p3-dark.png",
+      "display-gamut" : "display-P3"
+    },
+    {
+      "appearances" : [
+        {
+          "appearance" : "luminosity",
+          "value" : "dark"
+        }
+      ],
+      "idiom" : "mac",
+      "display-gamut" : "sRGB",
+      "filename" : "icon-32-srgb-dark.png",
+      "scale" : "2x",
+      "size" : "16x16"
+    },
+    {
+      "appearances" : [
+        {
+          "appearance" : "luminosity",
+          "value" : "dark"
+        }
+      ],
+      "display-gamut" : "display-P3",
+      "scale" : "2x",
+      "idiom" : "mac",
+      "size" : "16x16",
+      "filename" : "icon-32-p3-dark.png"
+    },
+    {
+      "appearances" : [
+        {
+          "appearance" : "luminosity",
+          "value" : "dark"
+        }
+      ],
+      "scale" : "2x",
+      "display-gamut" : "sRGB",
+      "size" : "32x32",
+      "filename" : "icon-64-srgb-dark.png",
+      "idiom" : "mac"
+    },
+    {
+      "appearances" : [
+        {
+          "appearance" : "luminosity",
+          "value" : "dark"
+        }
+      ],
+      "size" : "32x32",
+      "display-gamut" : "display-P3",
+      "scale" : "2x",
+      "filename" : "icon-64-p3-dark.png",
+      "idiom" : "mac"
+    },
+    {
+      "appearances" : [
+        {
+          "appearance" : "luminosity",
+          "value" : "dark"
+        }
+      ],
+      "idiom" : "mac",
+      "scale" : "1x",
+      "display-gamut" : "sRGB",
+      "filename" : "icon-128-srgb-dark.png",
+      "size" : "128x128"
+    },
+    {
+      "appearances" : [
+        {
+          "appearance" : "luminosity",
+          "value" : "dark"
+        }
+      ],
+      "filename" : "icon-128-p3-dark.png",
+      "idiom" : "mac",
+      "scale" : "1x",
+      "size" : "128x128",
+      "display-gamut" : "display-P3"
+    },
+    {
+      "appearances" : [
+        {
+          "appearance" : "luminosity",
+          "value" : "dark"
+        }
+      ],
+      "size" : "128x128",
+      "display-gamut" : "sRGB",
+      "scale" : "2x",
+      "idiom" : "mac",
+      "filename" : "icon-256-srgb-dark.png"
+    },
+    {
+      "appearances" : [
+        {
+          "appearance" : "luminosity",
+          "value" : "dark"
+        }
+      ],
+      "filename" : "icon-256-p3-dark.png",
+      "scale" : "2x",
+      "size" : "128x128",
+      "display-gamut" : "display-P3",
+      "idiom" : "mac"
+    },
+    {
+      "appearances" : [
+        {
+          "appearance" : "luminosity",
+          "value" : "dark"
+        }
+      ],
+      "scale" : "1x",
+      "size" : "512x512",
+      "idiom" : "mac",
+      "display-gamut" : "sRGB",
+      "filename" : "icon-512-srgb-dark.png"
+    },
+    {
+      "appearances" : [
+        {
+          "appearance" : "luminosity",
+          "value" : "dark"
+        }
+      ],
+      "filename" : "icon-512-p3-dark.png",
+      "scale" : "1x",
+      "idiom" : "mac",
+      "size" : "512x512",
+      "display-gamut" : "display-P3"
+    },
+    {
+      "appearances" : [
+        {
+          "appearance" : "luminosity",
+          "value" : "dark"
+        }
+      ],
+      "scale" : "2x",
+      "filename" : "icon-1024-srgb-dark.png",
+      "display-gamut" : "sRGB",
+      "idiom" : "mac",
+      "size" : "512x512"
+    },
+    {
+      "appearances" : [
+        {
+          "appearance" : "luminosity",
+          "value" : "dark"
+        }
+      ],
+      "idiom" : "mac",
+      "display-gamut" : "display-P3",
+      "scale" : "2x",
+      "size" : "512x512",
+      "filename" : "icon-1024-p3-dark.png"
     }
   ],
   "info" : {
