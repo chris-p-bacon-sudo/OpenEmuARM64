@@ -48,6 +48,7 @@ Get the latest build from the **[Releases](https://github.com/chris-p-bacon-sudo
 | Pokémon Mini | [PokeMini](https://github.com/pokerazor/pokemini) | Working |
 | Sega 32X | [picodrive](https://github.com/notaz/picodrive) | Working |
 | Sega CD / Mega CD | [Genesis Plus GX](https://github.com/ekeeke/Genesis-Plus-GX) | Working |
+| Sega Dreamcast | [Flycast](https://github.com/flyinghead/flycast) | Working — needs BIOS (dc_boot.bin, dc_flash.bin) |
 | Sega Genesis / Mega Drive | [Genesis Plus GX](https://github.com/ekeeke/Genesis-Plus-GX) | Working |
 | Sega Master System | [Genesis Plus GX](https://github.com/ekeeke/Genesis-Plus-GX) | Working |
 | Sega Saturn | [Mednafen](https://mednafen.github.io) | Working |

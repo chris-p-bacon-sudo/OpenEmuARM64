@@ -19,4 +19,7 @@
    <FileRef
       location = "group:Stella/Stella.xcodeproj">
    </FileRef>
+   <FileRef
+      location = "group:Flycast/Flycast.xcodeproj">
+   </FileRef>
 </Workspace>

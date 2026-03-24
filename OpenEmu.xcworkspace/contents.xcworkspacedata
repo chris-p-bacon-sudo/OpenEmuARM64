@@ -38,6 +38,9 @@
       location = "group:FCEU/FCEU.xcodeproj">
    </FileRef>
    <FileRef
+      location = "group:Flycast/Flycast.xcodeproj">
+   </FileRef>
+   <FileRef
       location = "group:Gambatte/Gambatte.xcodeproj">
    </FileRef>
    <FileRef

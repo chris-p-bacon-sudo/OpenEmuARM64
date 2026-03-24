@@ -1,0 +1,61 @@
+[submodule "core/deps/SDL"]
+	path = core/deps/SDL
+	url = https://github.com/libsdl-org/SDL.git
+[submodule "core/deps/libchdr"]
+	path = core/deps/libchdr
+	url = https://github.com/flyinghead/libchdr.git
+	ignore = dirty
+[submodule "core/deps/luabridge"]
+	path = core/deps/luabridge
+	url = https://github.com/vinniefalco/LuaBridge.git
+[submodule "core/deps/breakpad"]
+	path = core/deps/breakpad
+	url = https://github.com/flyinghead/mingw-breakpad
+[submodule "core/deps/Vulkan-Headers"]
+	path = core/deps/Vulkan-Headers
+	url = https://github.com/KhronosGroup/Vulkan-Headers.git
+[submodule "core/deps/VulkanMemoryAllocator"]
+	path = core/deps/VulkanMemoryAllocator
+	url = https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git
+[submodule "core/deps/glslang"]
+	path = core/deps/glslang
+	url = https://github.com/KhronosGroup/glslang.git
+[submodule "core/deps/oboe"]
+	path = core/deps/oboe
+	url = https://github.com/google/oboe.git
+[submodule "core/deps/Syphon"]
+	path = core/deps/Syphon
+	url = https://github.com/vkedwardli/Syphon-Framework.git
+[submodule "core/deps/Spout"]
+	path = core/deps/Spout
+	url = https://github.com/vkedwardli/Spout2.git
+[submodule "core/deps/discord-rpc"]
+	path = core/deps/discord-rpc
+	url = https://github.com/harmonytf/discord-rpc
+[submodule "core/deps/libadrenotools"]
+	path = core/deps/libadrenotools
+	url = https://github.com/bylaws/libadrenotools
+[submodule "core/deps/rcheevos"]
+	path = core/deps/rcheevos
+	url = https://github.com/RetroAchievements/rcheevos.git
+[submodule "core/deps/googletest"]
+	path = core/deps/googletest
+	url = https://github.com/google/googletest.git
+[submodule "core/deps/asio"]
+	path = core/deps/asio
+	url = https://github.com/flyinghead/asio.git
+[submodule "core/deps/xbyak"]
+	path = core/deps/xbyak
+	url = https://github.com/herumi/xbyak.git
+[submodule "core/deps/libjuice"]
+	path = core/deps/libjuice
+	url = https://github.com/paullouisageneau/libjuice.git
+[submodule "core/deps/websocketpp"]
+	path = core/deps/websocketpp
+	url = https://github.com/zaphoyd/websocketpp.git
+[submodule "core/deps/DreamPicoPort-API"]
+	path = core/deps/DreamPicoPort-API
+	url = https://github.com/OrangeFox86/DreamPicoPort-API.git
+[submodule "core/deps/tinygettext"]
+	path = core/deps/tinygettext
+	url = https://github.com/flyinghead/tinygettext

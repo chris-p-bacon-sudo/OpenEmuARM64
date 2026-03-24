@@ -126,7 +126,11 @@ static JaguarGameCore *current;
 
 - (const void *)getVideoBufferWithHint:(void *)hint
 {
-    return buffer = (uint32_t *)(hint ?: buffer);
+    if (hint && hint != buffer) {
+        buffer = (uint32_t *)hint;
+        JaguarSetScreenBuffer(buffer);
+    }
+    return buffer;
 }
 
 - (GLenum)pixelFormat

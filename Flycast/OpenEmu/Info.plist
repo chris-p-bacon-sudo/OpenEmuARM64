@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>CFBundleExecutable</key>
+	<string>${EXECUTABLE_NAME}</string>
+	<key>CFBundleIconFile</key>
+	<string></string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>${PRODUCT_NAME}</string>
+	<key>CFBundlePackageType</key>
+	<string>BNDL</string>
+	<key>CFBundleSignature</key>
+	<string>????</string>
+	<key>CFBundleVersion</key>
+	<string>2.3</string>
+	<key>NSPrincipalClass</key>
+	<string>OEGameCoreController</string>
+	<key>OEGameCoreClass</key>
+	<string>FlycastGameCore</string>
+	<key>OEGameCoreOptions</key>
+	<dict>
+		<key>openemu.system.dc</key>
+		<dict>
+			<key>OEGameCoreHasGlitches</key>
+			<false/>
+			<key>OEGameCoreRequiresFiles</key>
+			<true/>
+			<key>OERequiredFiles</key>
+			<array>
+				<dict>
+					<key>Description</key>
+					<string>Dreamcast BIOS</string>
+					<key>MD5</key>
+					<string>e10c53c2f8b90bab96ead2d368858623</string>
+					<key>Name</key>
+					<string>dc_boot.bin</string>
+					<key>Size</key>
+					<integer>2097152</integer>
+				</dict>
+				<dict>
+					<key>Description</key>
+					<string>Dreamcast Flash ROM</string>
+					<key>MD5</key>
+					<string>0a93f7940c455905bea6e392dfde92a4</string>
+					<key>Name</key>
+					<string>dc_flash.bin</string>
+					<key>Size</key>
+					<integer>131072</integer>
+				</dict>
+			</array>
+		</dict>
+	</dict>
+	<key>OEGameCorePlayerCount</key>
+	<string>4</string>
+	<key>OEProjectURL</key>
+	<string>https://github.com/flyinghead/flycast</string>
+	<key>OESystemIdentifiers</key>
+	<array>
+		<string>openemu.system.dc</string>
+	</array>
+</dict>
+</plist>

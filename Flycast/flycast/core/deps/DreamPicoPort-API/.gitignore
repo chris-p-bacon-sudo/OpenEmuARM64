@@ -1,0 +1,7 @@
+build/
+install/
+
+# Conan junk
+conanbuild*
+conanrun*
+deactivate_conan*

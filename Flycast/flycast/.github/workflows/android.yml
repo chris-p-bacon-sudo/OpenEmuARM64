@@ -1,0 +1,109 @@
+name: Android
+
+on:
+  push:
+    branches-ignore:
+      - 'l10n_**'
+  pull_request:
+
+jobs:
+  build:
+    name: Android
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Set up build environment
+        run: |
+          sudo apt-get update
+          sudo apt-get -y install ccache cmake libcurl4-openssl-dev ninja-build
+
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - uses: actions/setup-java@v5
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'gradle'
+
+      - uses: actions/cache@v5
+        with:
+          path: ~/.ccache
+          key: android-ccache-${{ github.sha }}
+          restore-keys: android-ccache-
+            
+      - name: Disable release signing
+        run: sed -i 's/signingConfigs.getByName("release")/signingConfigs.getByName("debug")/g' shell/android-studio/flycast/build.gradle.kts
+        if: github.repository != 'flyinghead/flycast' || github.event_name != 'push'
+
+      - name: Bump version code
+        uses: chkfung/android-version-actions@v1.2.2
+        with:
+          gradlePath: shell/android-studio/flycast/build.gradle.kts
+          versionCode: ${{ github.run_number }}
+
+      - name: Gradle
+        working-directory: shell/android-studio
+        run: ./gradlew assembleRelease bundleRelease --parallel
+        env:
+          SENTRY_UPLOAD_URL: ${{ secrets.SENTRY_UPLOAD_URL }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: flycast-release.apk
+          path: shell/android-studio/flycast/build/outputs/apk/release/flycast-release.apk
+
+      - name: Build dump_syms
+        working-directory: core/deps/breakpad
+        run: |
+          ./configure --prefix=$PWD
+          make -j2
+          make install
+
+      - name: Extract symbols
+        run: |
+          DUMP_SYMS=./core/deps/breakpad/bin/dump_syms
+          SO_DIR=shell/android-studio/flycast/build/intermediates/merged_native_libs/release/mergeReleaseNativeLibs/out/lib
+          for arch in arm64-v8a armeabi-v7a x86 x86_64 ; do
+            $DUMP_SYMS $SO_DIR/$arch/libflycast.so > libflycast.so.sym
+            BUILD_ID=`head -1 libflycast.so.sym | awk '{ print $4 }'`
+            mkdir -p symbols/libflycast.so/$BUILD_ID
+            mv libflycast.so.sym symbols/libflycast.so/$BUILD_ID
+          done
+
+      - name: Setup Rclone
+        uses: AnimMouse/setup-rclone@v1
+        with:
+          rclone_config: ${{ secrets.RCLONE_CONFIG }}
+
+      - name: Upload to S3
+        run: |
+          cp shell/android-studio/flycast/build/outputs/bundle/release/*.aab shell/android-studio/flycast/build/outputs/apk/release/
+          rclone copy shell/android-studio/flycast/build/outputs/apk/release scaleway:flycast-builds/android/${GITHUB_REF#refs/}-$GITHUB_SHA --exclude '*.json'
+        if: github.repository == 'flyinghead/flycast' && github.event_name == 'push'
+
+      - name: Setup Sentry CLI
+        uses: mathieu-bour/setup-sentry-cli@v2
+        env:
+          SENTRY_TOKEN: ${{ secrets.SENTRY_TOKEN }}
+        with:
+          url: https://sentry.io
+          token: ${{ env.SENTRY_TOKEN }}
+          organization: flycast
+          project: minidump
+          version: 2.21.2
+        if: ${{ env.SENTRY_TOKEN != '' }}
+      
+      - name: Upload symbols to Sentry
+        run: |
+          VERSION=$(git describe --tags --always)
+          sentry-cli releases new "$VERSION"
+          sentry-cli releases set-commits "$VERSION" --auto
+          sentry-cli debug-files upload symbols
+        shell: bash
+        env:
+          SENTRY_TOKEN: ${{ secrets.SENTRY_TOKEN }}
+        if: ${{ env.SENTRY_TOKEN != '' && github.event_name == 'push' }}

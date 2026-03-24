@@ -1,0 +1,58 @@
+name: Build
+
+on: [push, pull_request]
+
+jobs:
+  build:
+
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+        include:
+        - os: windows-latest
+          build: 'discord-rpc-win.zip'
+        - os: ubuntu-latest
+          build: 'discord-rpc-linux.zip'
+        - os: macos-latest
+          build: 'discord-rpc-osx.zip'
+    timeout-minutes: 30
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - if: matrix.os == 'windows-latest'
+      name: setup-msbuild
+      uses: microsoft/setup-msbuild@v2
+
+    - name: Setup cmake
+      uses: jwlawson/actions-setup-cmake@v2
+
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+
+    - name: Install click
+      run: pip install click
+
+    - name: Build
+      run: python build.py
+
+    - if: matrix.os == 'windows-latest'
+      name: Unzip
+      run: Expand-Archive -Path builds/${{ matrix.build }} -DestinationPath artifacts
+
+    - if: matrix.os != 'windows-latest'
+      name: Unzip
+      run: unzip builds/${{ matrix.build }} -d artifacts
+
+    - name: Upload ${{ matrix.os }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: discord-rpc-${{ matrix.os }}
+        path: artifacts
