@@ -1,5 +1,119 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  OpenEmuARM64 core list
+  ======================
+  Points to the original OpenEmu-Update appcast URLs for cores that are
+  confirmed universal binaries (x86_64 + arm64).
+
+  Cores marked [x86 only] are excluded until ARM64 builds are available.
+  See: https://github.com/bazley82/OpenEmuARM64/issues (medium-term tracking issue)
+
+  ARM64 status verified: 2026-03-20
+    universal (arm64 + x86_64): Nestopia, mGBA, Gambatte, Genesis Plus, Snes9x, FCEU, ProSystem
+    x86 only — excluded:        BSNES, DeSmuME, Mednafen, Stella, Atari800, O2EM,
+                                 Picodrive, Mupen64Plus, Bliss, VecXGL, CrabEmu
+-->
 <cores>
-    <!-- Placeholder core list pointing to official or custom bundles could go here -->
-    <!-- For now, empty list is better than 404 to avoid crashes/errors -->
+
+  <!-- ✅ universal binary -->
+  <core
+    id="org.openemu.nestopia"
+    name="Nestopia"
+    appcastURL="https://raw.github.com/OpenEmu/OpenEmu-Update/master/nestopia_appcast.xml">
+    <description>Nintendo/Famicom emulator</description>
+    <systems>
+      <system id="openemu.system.fds">Famicom Disk System</system>
+      <system id="openemu.system.nes">Nintendo (NES)</system>
+    </systems>
+  </core>
+
+  <!-- ✅ universal binary -->
+  <core
+    id="org.openemu.mgba"
+    name="mGBA"
+    appcastURL="https://raw.github.com/OpenEmu/OpenEmu-Update/master/mgba_appcast.xml">
+    <description>Game Boy Advance emulator</description>
+    <systems>
+      <system id="openemu.system.gba">Game Boy Advance</system>
+    </systems>
+  </core>
+
+  <!-- ✅ universal binary -->
+  <core
+    id="org.openemu.gambatte"
+    name="Gambatte"
+    appcastURL="https://raw.github.com/OpenEmu/OpenEmu-Update/master/gambatte_appcast.xml">
+    <description>Game Boy / Game Boy Color emulator</description>
+    <systems>
+      <system id="openemu.system.gb">Game Boy</system>
+    </systems>
+  </core>
+
+  <!-- ✅ universal binary -->
+  <core
+    id="org.openemu.genesisplus"
+    name="Genesis Plus"
+    appcastURL="https://raw.github.com/OpenEmu/OpenEmu-Update/master/genesisplus_appcast.xml">
+    <description>Genesis Plus GX emulator</description>
+    <systems>
+      <system id="openemu.system.sg">Sega Genesis/Mega Drive</system>
+      <system id="openemu.system.scd">Sega CD/Mega CD</system>
+      <system id="openemu.system.sg1000">SG-1000</system>
+      <system id="openemu.system.sms">Sega Master System</system>
+      <system id="openemu.system.gg">Game Gear</system>
+    </systems>
+  </core>
+
+  <!-- ✅ universal binary -->
+  <core
+    id="org.openemu.snes9x"
+    name="Snes9X"
+    appcastURL="https://raw.github.com/OpenEmu/OpenEmu-Update/master/snes9x_appcast.xml">
+    <description>Super Nintendo emulator</description>
+    <systems>
+      <system id="openemu.system.snes">Super Nintendo (SNES)</system>
+    </systems>
+  </core>
+
+  <!-- ✅ universal binary -->
+  <core
+    id="org.openemu.fceu"
+    name="FCEU"
+    appcastURL="https://raw.github.com/OpenEmu/OpenEmu-Update/master/fceu_appcast.xml">
+    <description>Nintendo/Famicom emulator (alternate)</description>
+    <systems>
+      <system id="openemu.system.nes">Nintendo (NES)</system>
+    </systems>
+  </core>
+
+  <!-- ✅ universal binary -->
+  <core
+    id="org.openemu.prosystem"
+    name="ProSystem"
+    appcastURL="https://raw.github.com/OpenEmu/OpenEmu-Update/master/prosystem_appcast.xml">
+    <description>Atari 7800 emulator</description>
+    <systems>
+      <system id="openemu.system.7800">Atari 7800</system>
+    </systems>
+  </core>
+
+  <!--
+    The following cores are x86_64 only in the official OpenEmu releases.
+    They require ARM64 builds to be hosted before they can be re-enabled here.
+    Tracking issue: https://github.com/bazley82/OpenEmuARM64/issues
+
+    Excluded cores:
+      BSNES        — Super Nintendo (accuracy)
+      DeSmuME      — Nintendo DS
+      Mednafen     — PSX, Saturn, Lynx, WonderSwan, PC Engine, Neo Geo Pocket
+      Stella       — Atari 2600
+      Atari800     — Atari 5200
+      O2EM         — Odyssey2/Videopac
+      Picodrive    — Sega 32X
+      Mupen64Plus  — Nintendo 64
+      Bliss        — Intellivision
+      VecXGL       — Vectrex
+      CrabEmu      — ColecoVision / Sega Master System
+  -->
+
 </cores>
