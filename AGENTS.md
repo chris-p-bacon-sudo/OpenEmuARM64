@@ -25,8 +25,8 @@ The goal is to honor the original OpenEmu spirit — a beautifully designed, fir
 
 ## Ground Rules
 
-1. **Never commit directly to `main`.** `main` is the stable release branch. All work goes through feature branches → `staging` → `main`.
-2. **`staging` is the default development branch.** Branch from `staging`, open PRs against `staging`.
+1. **Never commit directly to `main`.** All work goes through feature branches → PRs → `main`.
+2. **Branch from `main`, open PRs against `main`.** There is no staging branch.
 3. **Build before committing.** Run an `xcodebuild` check on any Swift/ObjC changes before staging a commit.
 4. **Don't rewrite files wholesale.** This is a large, complex Xcode project. Make surgical changes. Rewriting `.pbxproj` or large ObjC files without understanding them will break the build.
 5. **Respect the flattened architecture.** Submodule directories (`Nestopia/`, `BSNES/`, etc.) are regular directories — do not attempt to re-initialize them as git submodules.
@@ -107,20 +107,55 @@ A clean build is the definition of "passing." Run this before every commit touch
 
 ---
 
-## PR Guidelines
+## Branch and PR Rules
 
-- **Target branch:** `staging` on `chris-p-bacon-sudo/OpenEmu-Silicon`
+These rules exist because AI-assisted sessions have previously created orphaned branches, duplicate issues, and commits without PRs. Follow them exactly.
+
+**Branches:**
+
+| Rule | Why |
+|------|-----|
+| Always branch from `main` | Prevents tangled history |
+| One branch = one concern | Keeps PRs focused and reviewable |
+| Never reuse a merged branch | New commits on a merged branch have no PR — invisible |
+| Branch name must match content | If scope changes, start a new branch |
+| Delete local branch after merge | `git branch -d` immediately after syncing main |
+
+**PRs:**
+
+- **Target branch:** `main` on `chris-p-bacon-sudo/OpenEmu-Silicon`
+- **Push and open a PR in the same step — never push without immediately opening a PR**
 - **PR title format:** `fix: description` / `feat: description` / `chore: description`
-- **Use the PR template** — `.github/PULL_REQUEST_TEMPLATE.md` auto-populates when you open a PR on GitHub. Fill every section; don't delete the checklist.
-- Each PR should address one issue or one logical change — don't bundle unrelated fixes
-- For core-specific fixes, note which systems are affected and whether you tested with a ROM
-- Reference the issue with `Fixes #N` (auto-closes on merge) or `Related to #N` (soft link)
+- **Use the PR template** — `.github/PULL_REQUEST_TEMPLATE.md` auto-populates. Fill every section.
+- Each PR addresses one issue or one logical change — no bundled unrelated fixes
+- Reference the issue with `Fixes #N` in the commit body (auto-closes on merge) or `Related to #N` (soft link)
+- For core-specific fixes, note which systems are affected
 
 ---
 
 ## Issue Tracker
 
-The issue tracker at `chris-p-bacon-sudo/OpenEmu-Silicon` is the primary place for bug reports, feature requests, and community feedback. It is not a mirror of an upstream tracker — this is the project's own issue log.
+The issue tracker at `chris-p-bacon-sudo/OpenEmu-Silicon` is the primary place for bug reports, feature requests, core integration work, and release checklists.
+
+**Issue templates** — always use the appropriate template:
+
+| Template | Use when |
+|----------|----------|
+| `bug_report` | Runtime crash, wrong behavior |
+| `feature_request` | New core, new capability |
+| `core_integration` | Core fails to build, missing from workspace, needs ARM64 porting |
+| `checklist` | Release milestone tracking — one open checklist per milestone max |
+
+**Issue hygiene rules (non-negotiable):**
+
+1. **Search before opening.** Run `gh issue list --repo chris-p-bacon-sudo/OpenEmu-Silicon --state open` first. If the problem is already tracked, comment — don't open a duplicate.
+2. **No type prefixes in titles.** Never write `note:`, `fix:`, `feat:`, `bug:` in the issue title. Labels carry the type. The title describes the problem.
+   - Good: `PokeMini — OpenEmuBase header missing in standalone build`
+   - Bad: `note: PokeMini — needs workspace integration`
+3. **One issue per concern.** Same root cause + same fix = one issue covering both.
+4. **Close resolved issues immediately.** The moment a fix is committed, run: `gh issue close #N --repo chris-p-bacon-sudo/OpenEmu-Silicon --comment "Resolved in <sha>."` Do not leave issues open for a later cleanup pass.
+5. **Close superseded issues immediately.** If you open a more comprehensive issue that replaces an older one, close the old one in the same session.
+6. **Only one checklist per milestone.** If one is already open, update it.
 
 ---
 
@@ -163,8 +198,8 @@ The main app is **BSD 2-Clause**. Emulator cores are mostly **GPL v2**. Key rule
 open OpenEmu-metal.xcworkspace
 
 # --- Start of every new piece of work ---
-git checkout staging
-git fetch origin && git merge origin/staging
+git checkout main
+git fetch origin && git merge origin/main
 
 # Create a feature branch
 git checkout -b fix/your-description
@@ -178,7 +213,7 @@ xcodebuild -workspace OpenEmu-metal.xcworkspace -scheme OpenEmu \
 git add -p
 git commit -m "fix: description (assisted by Claude Code)"
 
-# Push and open PR against staging
+# Push and open a PR — always in the same step, never one without the other
 git push -u origin fix/your-description
-# Then open a PR on GitHub targeting staging
+gh pr create --repo chris-p-bacon-sudo/OpenEmu-Silicon --base main --title "fix: your-description" --body "..."
 ```
