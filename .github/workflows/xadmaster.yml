@@ -27,7 +27,7 @@ jobs:
         working-directory: ${{github.workspace}}/build/DerivedData/Build/Products/Release/
         run: zip -y -r XADMaster.zip XADMaster.framework UniversalDetector.framework
       - name: Upload artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: XADMaster.zip
           path: ${{github.workspace}}/build/DerivedData/Build/Products/Release/XADMaster.zip
