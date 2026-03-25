@@ -179,6 +179,7 @@ __weak FlycastGameCore *_current;
 {
     if (!_isInitialized) {
         try {
+            gui_init();
             theGLContext.init();
             emu.loadGame(_romPath.fileSystemRepresentation);
             config::ThreadedRendering.override(false);
