@@ -27,22 +27,8 @@ updates:
       - dependency-name: "ZIPFoundation"
         versions: ["*"]
 
-  # ── npm (SPIRV-Tools dev tooling — CONTEXT REQUIRED) ─────────────────────
-  # The yarn.lock at this path contains 2019-era packages (rollup 1.x,
-  # serve 11.x, mocha 6.x, acorn 7.x) that generate the 17 Dependabot alerts.
-  #
-  # IMPORTANT: These are dev-only dependencies of SPIRV-Tools, a 3rd-party
-  # shader compiler tool nested inside the OpenEmu-Shaders submodule. They
-  # are NEVER executed at runtime and are NOT included in the app binary.
-  # The risk to end-users is zero.
-  #
-  # Dependabot PRs for this path would update a yarn.lock inside a submodule,
-  # which requires a separate submodule commit — not a simple PR merge.
-  # Tracking updates here anyway so alerts are visible and can be dismissed
-  # or resolved by advancing the OpenEmu-Shaders submodule pointer.
-  - package-ecosystem: "npm"
-    directory: "/OpenEmu-Shaders/3rdparty/SPIRV/3rdparty/SPIRV-Tools/tools/sva"
-    schedule:
-      interval: "monthly"
-    commit-message:
-      prefix: "deps(spirv-tools)"
+  # npm (SPIRV-Tools) is intentionally excluded.
+  # OpenEmu-Shaders/3rdparty/SPIRV/3rdparty/SPIRV-Tools/tools/sva contains
+  # a 2019-era yarn.lock for dev-only shader validator tooling. These packages
+  # are never executed at runtime and are not shipped in the app binary.
+  # All Dependabot alerts for this path have been dismissed as 'not_used'.
