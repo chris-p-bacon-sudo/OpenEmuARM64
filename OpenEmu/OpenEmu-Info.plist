@@ -152,13 +152,13 @@
 	<string>~/Library/Application Support/OpenEmu/Cores/</string>
 
 	<key>OECoreListURL</key>
-	<string>https://raw.githubusercontent.com/chris-p-bacon-sudo/OpenEmu-Silicon/staging/oecores.xml</string>
+	<string>https://raw.githubusercontent.com/chris-p-bacon-sudo/OpenEmu-Silicon/master/oecores.xml</string>
 	<key>OELongBuildVersion</key>
 	<string></string>
 	<key>SUEnableAutomaticChecks</key>
 	<true/>
 	<key>SUFeedURL</key>
-	<string>https://raw.githubusercontent.com/chris-p-bacon-sudo/OpenEmu-Silicon/staging/appcast.xml</string>
+	<string>https://raw.githubusercontent.com/chris-p-bacon-sudo/OpenEmu-Silicon/master/appcast.xml</string>
 	<key>SUPublicEDKey</key>
 	<string>lI9DtKt5iDVR48ifKaP94mrFrHwYn75bfQLr+0alpRY=</string>
 	<key>UTExportedTypeDeclarations</key>
