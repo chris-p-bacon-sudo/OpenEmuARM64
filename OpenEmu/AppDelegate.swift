@@ -438,6 +438,14 @@ class AppDelegate: NSObject {
     }
     
     fileprivate func setUpHIDSupport() {
+        #if DEBUG
+        // Suppress the Input Monitoring alert in debug builds so it doesn't
+        // re-trigger after every rebuild or TCC reset during development.
+        // Grant the permission once via System Settings → Privacy & Security →
+        // Input Monitoring; this key prevents the nag alert from firing again.
+        UserDefaults.standard.set(true, forKey: "pleaseDoNotAnnoyMeWithThePermissionsAlertEveryTimeIRunThisAppFromXcode")
+        #endif
+
         // Set up OEBindingsController.
         _ = OEBindingsController.self
         let dm = OEDeviceManager.shared
