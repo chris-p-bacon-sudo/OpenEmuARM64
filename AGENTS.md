@@ -191,6 +191,67 @@ The main app is **BSD 2-Clause**. Emulator cores are mostly **GPL v2**. Key rule
 
 ---
 
+## Testing PRs Locally Before Merging
+
+Before merging any PR, check it out locally, build, and verify the behaviors described in the PR's test plan.
+
+**When reviewing a PR, always provide:**
+1. The exact `gh pr checkout` command for that PR number
+2. Any PR-specific setup (e.g. BIOS files needed, permissions to revoke first)
+3. The specific behaviors to verify from the PR's test plan
+
+### Check out a PR branch
+
+```bash
+# gh looks up the branch name automatically
+gh pr checkout <PR_NUMBER> --repo chris-p-bacon-sudo/OpenEmu-Silicon
+
+# Example
+gh pr checkout 54 --repo chris-p-bacon-sudo/OpenEmu-Silicon
+```
+
+### Build
+
+```bash
+xcodebuild \
+  -workspace OpenEmu-metal.xcworkspace \
+  -scheme OpenEmu \
+  -configuration Debug \
+  -destination 'platform=macOS,arch=arm64' \
+  build 2>&1 | tail -30
+```
+
+### Launch the built app
+
+```bash
+open ~/Library/Developer/Xcode/DerivedData/OpenEmu-*/Build/Products/Debug/OpenEmu.app
+```
+
+Or launch from Spotlight — after a Debug build the app is registered and findable by name.
+
+### Test multiple PRs in isolation (worktrees)
+
+```bash
+# Create an isolated copy of the repo on a PR branch
+git worktree add ../openemu-pr54 fix/flycast-input-crash
+
+# Build and run from that directory
+cd ../openemu-pr54
+xcodebuild -workspace OpenEmu-metal.xcworkspace -scheme OpenEmu \
+  -configuration Debug -destination 'platform=macOS,arch=arm64' build
+
+# Clean up when done
+git worktree remove ../openemu-pr54
+```
+
+### Return to main
+
+```bash
+git checkout main
+```
+
+---
+
 ## Quick Reference
 
 ```bash
