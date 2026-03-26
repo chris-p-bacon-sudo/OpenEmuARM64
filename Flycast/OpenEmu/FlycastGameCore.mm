@@ -178,7 +178,8 @@ __weak FlycastGameCore *_current;
 - (void)executeFrame
 {
     if (!_isInitialized) {
-        @try {
+        try {
+            gui_init();
             theGLContext.init();
             emu.loadGame(_romPath.fileSystemRepresentation);
             config::ThreadedRendering.override(false);
@@ -186,14 +187,17 @@ __weak FlycastGameCore *_current;
             emu.start();
             gui_setState(GuiState::Closed);
             _isInitialized = YES;
-        } @catch (NSException *e) {
-            NSLog(@"[Flycast] Error loading game: %@", e.reason);
+        } catch (const std::exception &e) {
+            NSLog(@"[Flycast] Error loading game: %s", e.what());
+            return;
+        } catch (...) {
+            NSLog(@"[Flycast] Unknown error loading game");
             return;
         }
     }
 
-    [self.renderDelegate presentDoubleBufferedFBO];
     emu.render();
+    [self.renderDelegate presentDoubleBufferedFBO];
 }
 
 #pragma mark - Video
@@ -285,12 +289,12 @@ __weak FlycastGameCore *_current;
     if (p > 3) return;
 
     switch (button) {
-        case OEDCAnalogUp:    joyy[p] = (s8)(value * -128); break;
-        case OEDCAnalogDown:  joyy[p] = (s8)(value *  127); break;
-        case OEDCAnalogLeft:  joyx[p] = (s8)(value * -128); break;
-        case OEDCAnalogRight: joyx[p] = (s8)(value *  127); break;
-        case OEDCAnalogL:     lt[p]   = (u8)(value * 255);  break;
-        case OEDCAnalogR:     rt[p]   = (u8)(value * 255);  break;
+        case OEDCAnalogUp:    joyy[p] = (s16)(value * -32768); break;
+        case OEDCAnalogDown:  joyy[p] = (s16)(value *  32767); break;
+        case OEDCAnalogLeft:  joyx[p] = (s16)(value * -32768); break;
+        case OEDCAnalogRight: joyx[p] = (s16)(value *  32767); break;
+        case OEDCAnalogL:     lt[p]   = (u16)(value * 65535);  break;
+        case OEDCAnalogR:     rt[p]   = (u16)(value * 65535);  break;
         default: break;
     }
 }

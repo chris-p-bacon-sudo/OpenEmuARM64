@@ -255,23 +255,31 @@ void gui_initFonts()
 	const float fontSize = uiScaled(17.f);
 	size_t dataSize;
 	std::unique_ptr<u8[]> data = resource::load("fonts/Roboto-Medium.ttf", dataSize);
-	verify(data != nullptr);
-	ImFont *regularFont = io.Fonts->AddFontFromMemoryTTF(data.release(), dataSize, fontSize, nullptr, ranges);
+	ImFont *regularFont;
+	if (data != nullptr) {
+		regularFont = io.Fonts->AddFontFromMemoryTTF(data.release(), dataSize, fontSize, nullptr, ranges);
+	} else {
+		// Resources not available (Xcode/OpenEmu build) — use ImGui default font
+		regularFont = io.Fonts->AddFontDefault();
+		largeFont = regularFont;
+	}
     ImFontConfig fontConfig;
     fontConfig.MergeMode = true;
     fontConfig.DstFont = regularFont;
 	// Font Awesome symbols (added to default font)
 	data = resource::load("fonts/" FONT_ICON_FILE_NAME_FAS, dataSize);
-	verify(data != nullptr);
-    fontConfig.FontNo = 0;
-	static ImWchar faRanges[] = { ICON_MIN_FA, ICON_MAX_FA, 0 };
-	io.Fonts->AddFontFromMemoryTTF(data.release(), dataSize, fontSize, &fontConfig, faRanges);
+	if (data != nullptr) {
+		fontConfig.FontNo = 0;
+		static ImWchar faRanges[] = { ICON_MIN_FA, ICON_MAX_FA, 0 };
+		io.Fonts->AddFontFromMemoryTTF(data.release(), dataSize, fontSize, &fontConfig, faRanges);
+	}
 
-	// Large font
-    const float largeFontSize = uiScaled(21.f);
+	// Large font — skip if we already fell back to default above
+	const float largeFontSize = uiScaled(21.f);
 	data = resource::load("fonts/Roboto-Regular.ttf", dataSize);
-	verify(data != nullptr);
-	largeFont = io.Fonts->AddFontFromMemoryTTF(data.release(), dataSize, largeFontSize, nullptr, ranges);
+	if (data != nullptr) {
+		largeFont = io.Fonts->AddFontFromMemoryTTF(data.release(), dataSize, largeFontSize, nullptr, ranges);
+	}
 	ImFontConfig largeFontConfig;
 	largeFontConfig.MergeMode = true;
 	largeFontConfig.DstFont = largeFont;
