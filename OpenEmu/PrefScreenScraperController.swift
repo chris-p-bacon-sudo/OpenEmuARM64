@@ -64,7 +64,7 @@ final class PrefScreenScraperController: NSViewController {
         view.addSubview(headerLabel)
 
         // Description
-        descLabel.stringValue = "Enter your screenscraper.fr credentials to fetch cover art and game metadata. Anonymous use works without an account but is heavily rate-limited. Registration is free."
+        descLabel.stringValue = "Cover art fetches automatically using the built-in developer credentials. Add your own screenscraper.fr account to increase your personal rate limit. Registration is free."
         descLabel.font = .systemFont(ofSize: 12)
         descLabel.textColor = .secondaryLabelColor
         descLabel.translatesAutoresizingMaskIntoConstraints = false

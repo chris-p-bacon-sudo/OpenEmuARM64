@@ -46,10 +46,7 @@ final class GameInfoHelper {
             let url = gameInfo["URL"] as? URL
 
             guard let database = database else {
-                // OpenVGDB unavailable — still try ScreenScraper if credentials are configured
-                let ssUsername = UserDefaults.standard.string(forKey: "ScreenScraperUsername") ?? ""
-                let ssPassword = ScreenScraperCredentials.storedPassword() ?? ""
-                guard !ssUsername.isEmpty && !ssPassword.isEmpty else { return [:] }
+                // OpenVGDB unavailable — still try ScreenScraper (dev credentials handle auth)
                 let romName = url.map { ($0.lastPathComponent as NSString).deletingPathExtension }
                 var fallback: [String: Any] = [:]
                 if let ss = ScreenScraperClient.shared.fetchGameInfo(md5: md5, romName: romName, systemIdentifier: systemIdentifier) {
