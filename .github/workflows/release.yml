@@ -88,9 +88,38 @@ jobs:
           echo "Found app at: $APP_PATH"
           cp -R "$APP_PATH" "$RUNNER_TEMP/OpenEmu.app"
 
-          # Verify signing before submitting — catches issues early
-          codesign --verify --deep --strict "$RUNNER_TEMP/OpenEmu.app"
-          echo "Code signing verified OK"
+      # ── Re-sign Sparkle helpers with Developer ID ────────────────────────────
+      # Xcode re-signs the main app but leaves Sparkle's pre-signed nested helpers
+      # (Updater.app, Autoupdate, XPC services) with their original Apple Development
+      # signature. Notarization requires all binaries to have Developer ID + secure
+      # timestamp. Sign inside-out so outer signatures aren't invalidated.
+      - name: Re-sign Sparkle helpers for notarization
+        run: |
+          APP="$RUNNER_TEMP/OpenEmu.app"
+          IDENTITY="Developer ID Application"
+          SPARKLE="$APP/Contents/Frameworks/Sparkle.framework/Versions/B"
+
+          for item in \
+            "$SPARKLE/XPCServices/Downloader.xpc/Contents/MacOS/Downloader" \
+            "$SPARKLE/XPCServices/Installer.xpc/Contents/MacOS/Installer" \
+            "$SPARKLE/XPCServices/Downloader.xpc" \
+            "$SPARKLE/XPCServices/Installer.xpc" \
+            "$SPARKLE/Autoupdate" \
+            "$SPARKLE/Updater.app/Contents/MacOS/Updater" \
+            "$SPARKLE/Updater.app" \
+            "$SPARKLE/Sparkle" \
+            "$APP/Contents/Frameworks/Sparkle.framework"; do
+            if [ -e "$item" ]; then
+              codesign --force --sign "$IDENTITY" --options runtime --timestamp "$item"
+            fi
+          done
+
+          # Re-sign the main app to incorporate the updated framework signatures
+          codesign --force --sign "$IDENTITY" --options runtime --timestamp "$APP"
+
+          # Final verification before submitting
+          codesign --verify --deep --strict "$APP"
+          echo "Re-signing complete"
 
       # ── Notarize .app first, then wrap in DMG ─────────────────────────────────
       # Per community advice: notarize and staple the .app before creating the DMG.
