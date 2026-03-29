@@ -9,7 +9,7 @@ on:
 jobs:
   build:
     name: Build OpenEmu
-    runs-on: macos-26
+    runs-on: macos-latest
 
     steps:
       - name: Checkout

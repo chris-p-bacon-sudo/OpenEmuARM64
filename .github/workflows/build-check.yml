@@ -12,7 +12,7 @@ on:
 jobs:
   build:
     name: Build (arm64)
-    runs-on: macos-26
+    runs-on: macos-latest
 
     steps:
       - name: Checkout repository

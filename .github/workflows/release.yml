@@ -15,7 +15,7 @@ on:
 jobs:
   release:
     name: Build, Sign, Notarize, DMG
-    runs-on: macos-26
+    runs-on: macos-latest
 
     steps:
       - name: Checkout
