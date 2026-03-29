@@ -42,6 +42,10 @@ jobs:
           languages: ${{ matrix.language }}
           build-mode: manual
 
+      - name: Generate credentials stubs
+        run: |
+          cp OpenEmu/ScreenScraperDevCredentials.template.swift OpenEmu/ScreenScraperDevCredentials.swift
+
       - name: Build
         run: |
           xcodebuild -workspace "OpenEmu-metal.xcworkspace" \
