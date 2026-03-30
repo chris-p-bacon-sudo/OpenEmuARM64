@@ -46,3 +46,14 @@ vice_build.log
 
 # Compiled test binaries
 test_dlopen
+
+# Claude Code local config
+.claude/settings.json
+
+# PPSSPP third-party ext libraries (not committed — large C++ dependencies)
+PPSSPP/PPSSPP-Core/ppsspp/ext/SPIRV-Cross/
+PPSSPP/PPSSPP-Core/ppsspp/ext/armips/
+PPSSPP/PPSSPP-Core/ppsspp/ext/glslang/
+PPSSPP/PPSSPP-Core/ppsspp/ext/miniupnp/
+PPSSPP/PPSSPP-Core/ppsspp/ext/rapidjson/
+PPSSPP/PPSSPP-Core/ppsspp/ext/zstd/
