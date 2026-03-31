@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>OEControllerImageKey</key>
+	<string>controller_wii</string>
+	<key>OEControllerImageMaskKey</key>
+	<string>controller_wii_mask</string>
+	<key>OEControllerKeyPositionKey</key>
+	<dict>
+		<key>OEWiiClassicButtonUp</key>
+		<string>{0, 0}</string>
+		<key>OEWiiClassicButtonDown</key>
+		<string>{0, 0}</string>
+		<key>OEWiiClassicButtonLeft</key>
+		<string>{0, 0}</string>
+		<key>OEWiiClassicButtonRight</key>
+		<string>{0, 0}</string>
+		<key>OEWiiClassicAnalogUp</key>
+		<string>{0, 0}</string>
+		<key>OEWiiClassicAnalogDown</key>
+		<string>{0, 0}</string>
+		<key>OEWiiClassicAnalogLeft</key>
+		<string>{0, 0}</string>
+		<key>OEWiiClassicAnalogRight</key>
+		<string>{0, 0}</string>
+		<key>OEWiiClassicAnalogCUp</key>
+		<string>{0, 0}</string>
+		<key>OEWiiClassicAnalogCDown</key>
+		<string>{0, 0}</string>
+		<key>OEWiiClassicAnalogCLeft</key>
+		<string>{0, 0}</string>
+		<key>OEWiiClassicAnalogCRight</key>
+		<string>{0, 0}</string>
+		<key>OEWiiClassicButtonA</key>
+		<string>{0, 0}</string>
+		<key>OEWiiClassicButtonB</key>
+		<string>{0, 0}</string>
+		<key>OEWiiClassicButtonX</key>
+		<string>{0, 0}</string>
+		<key>OEWiiClassicButtonY</key>
+		<string>{0, 0}</string>
+		<key>OEWiiClassicButtonL</key>
+		<string>{0, 0}</string>
+		<key>OEWiiClassicButtonR</key>
+		<string>{0, 0}</string>
+		<key>OEWiiClassicButtonZr</key>
+		<string>{0, 0}</string>
+		<key>OEWiiClassicButtonZl</key>
+		<string>{0, 0}</string>
+		<key>OEWiiClassicButtonStart</key>
+		<string>{0, 0}</string>
+	</dict>
+</dict>
+</plist>

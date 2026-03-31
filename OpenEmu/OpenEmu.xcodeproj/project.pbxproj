@@ -626,6 +626,13 @@
 		94CEB28B17A84A8F005A2107 /* Controller-Preferences.plist in Resources */ = {isa = PBXBuildFile; fileRef = 94CEB28517A84A8F005A2107 /* Controller-Preferences.plist */; };
 		94CEB28D17A84A8F005A2107 /* Keyboard-Mappings.plist in Resources */ = {isa = PBXBuildFile; fileRef = 94CEB28717A84A8F005A2107 /* Keyboard-Mappings.plist */; };
 		94CEB28E17A85A72005A2107 /* OpenEmuSystem.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C6D120C417112E1300E868A8 /* OpenEmuSystem.framework */; };
+		0E026D7220704B74B7A5E66C /* Wii.oesystemplugin in Copy System Plugins to App Plugins */ = {isa = PBXBuildFile; fileRef = AC6CB8F335B64A48AE857C59 /* Wii.oesystemplugin */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		1E4B7FC710DE4156A46DAB79 /* OEWiiSystemController.m in Sources */ = {isa = PBXBuildFile; fileRef = 60C6AA00A0A44B609186B94D /* OEWiiSystemController.m */; };
+		6DAB96D7C11047B4AA72206A /* Controller-Mappings.plist in Resources */ = {isa = PBXBuildFile; fileRef = 68416A57049F48B997026285 /* Controller-Mappings.plist */; };
+		86FC923CD58043BBBEC5F717 /* Controller-Preferences.plist in Resources */ = {isa = PBXBuildFile; fileRef = BD51C12166464EADB02A6758 /* Controller-Preferences.plist */; };
+		9ACAEF142DD44E2AACFFB26F /* OEWiiSystemResponder.m in Sources */ = {isa = PBXBuildFile; fileRef = 4C5E668B27CE43FF88AE57AF /* OEWiiSystemResponder.m */; };
+		E0D3D5AF068C48148780583F /* Keyboard-Mappings.plist in Resources */ = {isa = PBXBuildFile; fileRef = C6534A32E31642F3805D9A90 /* Keyboard-Mappings.plist */; };
+		EF78E5264D33437A93870DF2 /* OpenEmuSystem.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C6D120C417112E1300E868A8 /* OpenEmuSystem.framework */; };
 		94CEB29C17A8D507005A2107 /* Sega 32X.oesystemplugin in Copy System Plugins to App Plugins */ = {isa = PBXBuildFile; fileRef = 946B9462178289BA00A212AC /* Sega 32X.oesystemplugin */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		94D7E8DC15073DB000FBDD85 /* Controller-Preferences.plist in Resources */ = {isa = PBXBuildFile; fileRef = 94D7E8D815073DB000FBDD85 /* Controller-Preferences.plist */; };
 		94D7E8E415073E3900FBDD85 /* OENDSSystemResponder.m in Sources */ = {isa = PBXBuildFile; fileRef = 94D7E8E115073E3800FBDD85 /* OENDSSystemResponder.m */; };
@@ -1196,6 +1203,7 @@
 			dstSubfolderSpec = 13;
 			files = (
 				87F077B423B68D02001FFC9B /* GameCube.oesystemplugin in Copy System Plugins to App Plugins */,
+				0E026D7220704B74B7A5E66C /* Wii.oesystemplugin in Copy System Plugins to App Plugins */,
 				873A36421FE233E00004D81D /* Saturn.oesystemplugin in Copy System Plugins to App Plugins */,
 				DEAAB8E598494A97A260F43C84A6B563 /* Dreamcast.oesystemplugin in Copy System Plugins to App Plugins */,
 				87BD9E331C2A679B006722DF /* WonderSwan.oesystemplugin in Copy System Plugins to App Plugins */,
@@ -1963,6 +1971,16 @@
 		94BE9E67171689C900AB08E6 /* Keyboard-Mappings.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "Keyboard-Mappings.plist"; sourceTree = "<group>"; };
 		94C59FBE1921CCBD0096BCC2 /* OEN64SystemController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = OEN64SystemController.swift; sourceTree = "<group>"; };
 		94CEB26D17A84809005A2107 /* GameCube.oesystemplugin */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = GameCube.oesystemplugin; sourceTree = BUILT_PRODUCTS_DIR; };
+		AC6CB8F335B64A48AE857C59 /* Wii.oesystemplugin */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = Wii.oesystemplugin; sourceTree = BUILT_PRODUCTS_DIR; };
+		89A4F213D38948F389303F60 /* Wii-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Wii-Info.plist"; sourceTree = "<group>"; };
+		669734CE138046AC84F66296 /* OEWiiSystemController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OEWiiSystemController.h; sourceTree = "<group>"; };
+		60C6AA00A0A44B609186B94D /* OEWiiSystemController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = OEWiiSystemController.m; sourceTree = "<group>"; };
+		99574CB1B5EE4AE89B192EBD /* OEWiiSystemResponder.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OEWiiSystemResponder.h; sourceTree = "<group>"; };
+		4C5E668B27CE43FF88AE57AF /* OEWiiSystemResponder.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = OEWiiSystemResponder.m; sourceTree = "<group>"; };
+		5C5F9C05070A447796EC6D4D /* OEWiiSystemResponderClient.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OEWiiSystemResponderClient.h; sourceTree = "<group>"; };
+		68416A57049F48B997026285 /* Controller-Mappings.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "Controller-Mappings.plist"; sourceTree = "<group>"; };
+		BD51C12166464EADB02A6758 /* Controller-Preferences.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "Controller-Preferences.plist"; sourceTree = "<group>"; };
+		C6534A32E31642F3805D9A90 /* Keyboard-Mappings.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "Keyboard-Mappings.plist"; sourceTree = "<group>"; };
 		94CEB27117A84809005A2107 /* GameCube-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GameCube-Info.plist"; sourceTree = "<group>"; };
 		94CEB27C17A84A75005A2107 /* OEGCSystemController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = OEGCSystemController.swift; sourceTree = "<group>"; };
 		94CEB27D17A84A75005A2107 /* OEGCSystemResponder.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OEGCSystemResponder.h; sourceTree = "<group>"; };
@@ -2435,6 +2453,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		F827AF064E844826844FF84C /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				EF78E5264D33437A93870DF2 /* OpenEmuSystem.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		94D7E8C615073BA000FBDD85 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -2758,6 +2784,7 @@
 				9405538417A34C6B009B505D /* PC Engine CD.oesystemplugin */,
 				941F5A0117A785AD0005D7EA /* Atari 7800.oesystemplugin */,
 				94CEB26D17A84809005A2107 /* GameCube.oesystemplugin */,
+				AC6CB8F335B64A48AE857C59 /* Wii.oesystemplugin */,
 				FEB6625B187B791800D14713 /* MSX.oesystemplugin */,
 				94404755199D4DF0002D805E /* Odyssey2.oesystemplugin */,
 				277CBA4519DE54200059A2C1 /* Intellivision.oesystemplugin */,
@@ -4100,6 +4127,30 @@
 			name = "Supporting Files";
 			sourceTree = "<group>";
 		};
+		A394B929EA9543B58DFCD285 /* Wii */ = {
+			isa = PBXGroup;
+			children = (
+				669734CE138046AC84F66296 /* OEWiiSystemController.h */,
+				60C6AA00A0A44B609186B94D /* OEWiiSystemController.m */,
+				99574CB1B5EE4AE89B192EBD /* OEWiiSystemResponder.h */,
+				4C5E668B27CE43FF88AE57AF /* OEWiiSystemResponder.m */,
+				5C5F9C05070A447796EC6D4D /* OEWiiSystemResponderClient.h */,
+				8A329FAAF0AF42DD81D8DB5B /* Supporting Files */,
+			);
+			path = Wii;
+			sourceTree = "<group>";
+		};
+		8A329FAAF0AF42DD81D8DB5B /* Supporting Files */ = {
+			isa = PBXGroup;
+			children = (
+				89A4F213D38948F389303F60 /* Wii-Info.plist */,
+				C6534A32E31642F3805D9A90 /* Keyboard-Mappings.plist */,
+				68416A57049F48B997026285 /* Controller-Mappings.plist */,
+				BD51C12166464EADB02A6758 /* Controller-Preferences.plist */,
+			);
+			name = "Supporting Files";
+			sourceTree = "<group>";
+		};
 		94D7E8CB15073BA000FBDD85 /* NDS */ = {
 			isa = PBXGroup;
 			children = (
@@ -4263,6 +4314,7 @@
 				C6B947B11364ECA700A425F0 /* GameBoy */,
 				C646574A13771F12002A4F70 /* GameBoy Advance */,
 				94CEB26F17A84809005A2107 /* GameCube */,
+				A394B929EA9543B58DFCD285 /* Wii */,
 				822775521489471A00B19E27 /* GameGear */,
 				C6B947E81365080B00A425F0 /* Genesis */,
 				277CBA2E19DE52640059A2C1 /* Intellivision */,
@@ -5193,6 +5245,23 @@
 			productReference = 94CEB26D17A84809005A2107 /* GameCube.oesystemplugin */;
 			productType = "com.apple.product-type.bundle";
 		};
+		A6DC94DA282E416C8477FBF4 /* Wii */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 9D772807085B48EC85D552C3 /* Build configuration list for PBXNativeTarget "Wii" */;
+			buildPhases = (
+				26AFA4A714D04642A0688B22 /* Sources */,
+				F827AF064E844826844FF84C /* Frameworks */,
+				B3C1DF55C6904EFD88D145D0 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Wii;
+			productName = Wii;
+			productReference = AC6CB8F335B64A48AE857C59 /* Wii.oesystemplugin */;
+			productType = "com.apple.product-type.bundle";
+		};
 		94D7E8C815073BA000FBDD85 /* NDS */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 94D7E8D415073BA000FBDD85 /* Build configuration list for PBXNativeTarget "NDS" */;
@@ -5429,6 +5498,7 @@
 				C6B947AE1364ECA600A425F0 /* GameBoy */,
 				C646574713771F12002A4F70 /* GameBoy Advance */,
 				94CEB26C17A84809005A2107 /* GameCube */,
+				A6DC94DA282E416C8477FBF4 /* Wii */,
 				8227753E148946DF00B19E27 /* GameGear */,
 				C6B947E51365080B00A425F0 /* Genesis */,
 				277CBA3219DE54200059A2C1 /* Intellivision */,
@@ -5947,6 +6017,16 @@
 				94CEB28A17A84A8F005A2107 /* Controller-Mappings.plist in Resources */,
 				94CEB28B17A84A8F005A2107 /* Controller-Preferences.plist in Resources */,
 				94CEB28D17A84A8F005A2107 /* Keyboard-Mappings.plist in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B3C1DF55C6904EFD88D145D0 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				6DAB96D7C11047B4AA72206A /* Controller-Mappings.plist in Resources */,
+				86FC923CD58043BBBEC5F717 /* Controller-Preferences.plist in Resources */,
+				E0D3D5AF068C48148780583F /* Keyboard-Mappings.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -6731,6 +6811,15 @@
 			files = (
 				94CEB28017A84A75005A2107 /* OEGCSystemController.swift in Sources */,
 				94CEB28117A84A75005A2107 /* OEGCSystemResponder.m in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		26AFA4A714D04642A0688B22 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1E4B7FC710DE4156A46DAB79 /* OEWiiSystemController.m in Sources */,
+				9ACAEF142DD44E2AACFFB26F /* OEWiiSystemResponder.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -8432,6 +8521,26 @@
 			};
 			name = Release;
 		};
+		6820EAA40683463A8A3F2109 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				INFOPLIST_FILE = "SystemPlugins/Wii/Wii-Info.plist";
+				PRODUCT_BUNDLE_IDENTIFIER = "org.openemu.$(PRODUCT_NAME:rfc1034identifier)";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				WRAPPER_EXTENSION = oesystemplugin;
+			};
+			name = Debug;
+		};
+		45D6A596D4BB41DE9CEA1D61 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				INFOPLIST_FILE = "SystemPlugins/Wii/Wii-Info.plist";
+				PRODUCT_BUNDLE_IDENTIFIER = "org.openemu.$(PRODUCT_NAME:rfc1034identifier)";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				WRAPPER_EXTENSION = oesystemplugin;
+			};
+			name = Release;
+		};
 		94D7E8D215073BA000FBDD85 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -9260,6 +9369,15 @@
 			buildConfigurations = (
 				94CEB27617A84809005A2107 /* Debug */,
 				94CEB27717A84809005A2107 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		9D772807085B48EC85D552C3 /* Build configuration list for PBXNativeTarget "Wii" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				6820EAA40683463A8A3F2109 /* Debug */,
+				45D6A596D4BB41DE9CEA1D61 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

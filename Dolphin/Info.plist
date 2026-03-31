@@ -46,6 +46,7 @@
 	<key>OESystemIdentifiers</key>
 	<array>
 		<string>openemu.system.gc</string>
+		<string>openemu.system.wii</string>
 	</array>
 	<key>SUEnableAutomaticChecks</key>
 	<true/>

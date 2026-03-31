@@ -14,7 +14,6 @@
 				8355D4E11A653AAB00E73302 /* ShellScript */,
 			);
 			dependencies = (
-				EE09ECF225AFAC6D002C9E67 /* PBXTargetDependency */,
 				8355D4E01A653AA900E73302 /* PBXTargetDependency */,
 			);
 			name = "Build & Install Dolphin";
@@ -9631,24 +9630,6 @@
 /* End PBXHeadersBuildPhase section */
 
 /* Begin PBXNativeTarget section */
-		3E2217961D74AB3300C55942 /* Wii */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = 3E22179A1D74AB3300C55942 /* Build configuration list for PBXNativeTarget "Wii" */;
-			buildPhases = (
-				3E2217931D74AB3300C55942 /* Sources */,
-				3E2217941D74AB3300C55942 /* Frameworks */,
-				3E2217951D74AB3300C55942 /* Resources */,
-				3E7AE8EA1FB4E9BC0017E3D1 /* CopyFiles */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-			);
-			name = Wii;
-			productName = Wii;
-			productReference = 3E2217971D74AB3300C55942 /* Wii.oesystemplugin */;
-			productType = "com.apple.product-type.bundle";
-		};
 		3E3D76801C839B2E00091C4D /* enet */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 3E3D76891C839B2E00091C4D /* Build configuration list for PBXNativeTarget "enet" */;
@@ -10271,9 +10252,6 @@
 			isa = PBXProject;
 			attributes = {
 				TargetAttributes = {
-					3E2217961D74AB3300C55942 = {
-						CreatedOnToolsVersion = 7.3.1;
-					};
 					3E3D76801C839B2E00091C4D = {
 						CreatedOnToolsVersion = 7.2.1;
 					};
@@ -10305,7 +10283,6 @@
 			targets = (
 				8355D4921A6538FD00E73302 /* Dolphin */,
 				8355D4D91A653A9D00E73302 /* Build & Install Dolphin */,
-				3E2217961D74AB3300C55942 /* Wii */,
 				79836D15F4E048CFBA06C188 /* bdisasm */,
 				B25C5C437ED44D7A82B1AAEE /* lzo2 */,
 				C8D71164030546149D73799E /* spng */,
