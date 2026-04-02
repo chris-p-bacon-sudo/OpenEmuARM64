@@ -37,21 +37,22 @@ private extension NSUserInterfaceItemIdentifier {
 }
 
 final class PrefCoresController: NSViewController {
-    
+
     @IBOutlet var coresTableView: NSTableView!
-    
+
     var coreListObservation: NSKeyValueObservation?
-    
+    private weak var installAllButton: NSButton?
+
     override func viewDidLoad() {
         super.viewDidLoad()
-        
-        coreListObservation = CoreUpdater.shared.observe(\CoreUpdater.coreList) {
-            object, _ in
-            self.coresTableView.reloadData()
+
+        coreListObservation = CoreUpdater.shared.observe(\CoreUpdater.coreList) { [weak self] _, _ in
+            self?.coresTableView.reloadData()
+            self?.updateInstallAllButton()
         }
         CoreUpdater.shared.checkForNewCores()   // TODO: check error from completion handler
         CoreUpdater.shared.checkForUpdates()
-        
+
         for column in coresTableView.tableColumns {
             switch column.identifier {
             case .coreColumn:
@@ -64,7 +65,7 @@ final class PrefCoresController: NSViewController {
                 break
             }
         }
-        
+
         // Add "Action" table column programmatically if not exists
         let actionColumnIdentifier = NSUserInterfaceItemIdentifier("actionColumn")
         if coresTableView.tableColumn(withIdentifier: actionColumnIdentifier) == nil {
@@ -76,8 +77,36 @@ final class PrefCoresController: NSViewController {
             column.resizingMask = .userResizingMask
             coresTableView.addTableColumn(column)
         }
-        
-        coresTableView.delegate = self // Ensure delegate is set for heightOfRow
+
+        coresTableView.delegate = self
+        addInstallAllButton()
+
+        // Reload after appcasts finish fetching — the KVO fires per-core as each
+        // one arrives, but the final button states (e.g. "Unavailable") settle
+        // once all fetches complete. A short deferred reload catches stragglers.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in
+            self?.coresTableView.reloadData()
+            self?.updateInstallAllButton()
+        }
+    }
+
+    private func addInstallAllButton() {
+        let button = NSButton(title: NSLocalizedString("Install All Available Cores", comment: ""), target: self, action: #selector(installAllCores(_:)))
+        button.bezelStyle = .rounded
+        button.translatesAutoresizingMaskIntoConstraints = false
+        installAllButton = button
+        view.addSubview(button)
+
+        let anchor: NSView = coresTableView.enclosingScrollView ?? coresTableView
+        NSLayoutConstraint.activate([
+            button.topAnchor.constraint(equalTo: anchor.bottomAnchor, constant: 8),
+            button.trailingAnchor.constraint(equalTo: anchor.trailingAnchor),
+        ])
+    }
+
+    private func updateInstallAllButton() {
+        let hasInstallable = CoreUpdater.shared.coreList.contains { $0.canBeInstalled && $0.appcastItem != nil }
+        installAllButton?.isEnabled = hasInstallable
     }
     
     @IBAction func installAllCores(_ sender: Any) {
