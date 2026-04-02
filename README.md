@@ -38,7 +38,7 @@ For lighter systems (NES, SNES, GBA), you probably won't. For heavier cores — 
 **Rosetta 2 has a confirmed end of life**
 Starting with macOS 26.4, Apple will show a notification every time you launch an app that still requires Rosetta — alerting users to find native alternatives. Starting with macOS 28 (expected Fall 2027), Rosetta 2 will be largely discontinued. When that happens, the original OpenEmu stops working entirely. This build won't be affected.
 
-If original OpenEmu meets your needs today, there's no urgency. But if you've had a core feel sluggish, noticed audio issues, or want to be ahead of the Rosetta end-of-life, this is the build to switch to. ([full details on the wiki](https://github.com/nickybmon/OpenEmu-Silicon/wiki/Why-Native-ARM64-Matters))
+If original OpenEmu meets your needs today, there's no urgency. But if you've had a core feel sluggish, noticed audio issues, or want to be ahead of the Rosetta end-of-life, this is a build you can switch to now or someday. ([full details on the wiki](https://github.com/nickybmon/OpenEmu-Silicon/wiki/Why-Native-ARM64-Matters))
 
 ---
 
