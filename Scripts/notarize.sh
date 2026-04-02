@@ -10,6 +10,7 @@ PROFILE_NAME="OpenEmu"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(dirname "$SCRIPT_DIR")"
 ENTITLEMENTS="$REPO_ROOT/OpenEmu/OpenEmu.entitlements"
+HELPER_ENTITLEMENTS="$REPO_ROOT/OpenEmu/OpenEmuHelperApp/OpenEmuHelperApp.entitlements"
 
 die() { echo "ERROR: $*" >&2; [ -n "${WORK_DIR:-}" ] && rm -rf "$WORK_DIR"; exit 1; }
 
@@ -62,10 +63,21 @@ sign() {
 }
 
 # Step 1: Sign all standalone Mach-O binaries (executables/dylibs not inside bundles)
-# This catches binaries like OpenEmuHelperApp in MacOS/ and Resources/
+# OpenEmuHelperApp is signed with its own entitlements (disable-library-validation
+# + allow-jit) so it can load core plugins and run dynarec emulation cores.
 echo "-- standalone binaries --"
 while IFS= read -r f; do
-  file "$f" 2>/dev/null | grep -q "Mach-O" && sign "$f"
+  if ! file "$f" 2>/dev/null | grep -q "Mach-O"; then
+    continue
+  fi
+  if [[ "$(basename "$f")" == "OpenEmuHelperApp" ]]; then
+    echo "  signing: OpenEmuHelperApp (with entitlements)"
+    codesign --force --sign "$IDENTITY" --options runtime --timestamp \
+      --entitlements "$HELPER_ENTITLEMENTS" "$f" \
+      || die "codesign failed on: $f"
+  else
+    sign "$f"
+  fi
 done < <(find "$APP" -type f \( -perm +111 -o -name "*.dylib" \) 2>/dev/null)
 
 # Step 2: Sign all nested bundles inside-out (deepest path first)
@@ -79,6 +91,7 @@ done < <(
     -name "*.framework" -o -name "*.xpc" -o -name "*.app" \
     -o -name "*.appex" -o -name "*.qlgenerator" \
     -o -name "*.oesystemplugin" -o -name "*.bundle" \
+    -o -name "*.oecoreplugin" \
   \) -prune 2>/dev/null \
   | awk -F/ '{ print NF, $0 }' | sort -rn | awk '{ $1=""; sub(/^ /,""); print }'
 )
@@ -136,7 +149,27 @@ if ! echo "$ENT" | grep -q "com.apple.security.cs.disable-library-validation"; t
   echo "FAIL [missing disable-library-validation]: OpenEmu.app"
   FAIL=1
 else
-  echo "OK: disable-library-validation entitlement present"
+  echo "OK: disable-library-validation entitlement present on OpenEmu.app"
+fi
+
+# HelperApp entitlements — must have disable-library-validation and allow-jit
+HELPER_BIN=$(find "$APP" -name "OpenEmuHelperApp" -type f 2>/dev/null | head -1)
+if [ -n "$HELPER_BIN" ]; then
+  HENT=$(codesign -d --entitlements - "$HELPER_BIN" 2>&1 || true)
+  if ! echo "$HENT" | grep -q "com.apple.security.cs.disable-library-validation"; then
+    echo "FAIL [missing disable-library-validation]: OpenEmuHelperApp"
+    FAIL=1
+  else
+    echo "OK: disable-library-validation entitlement present on OpenEmuHelperApp"
+  fi
+  if ! echo "$HENT" | grep -q "com.apple.security.cs.allow-jit"; then
+    echo "FAIL [missing allow-jit]: OpenEmuHelperApp"
+    FAIL=1
+  else
+    echo "OK: allow-jit entitlement present on OpenEmuHelperApp"
+  fi
+else
+  echo "WARN: OpenEmuHelperApp not found in bundle — skipping entitlements audit"
 fi
 
 if [ "$FAIL" -ne 0 ]; then
@@ -179,6 +212,12 @@ if grep -q "status: Accepted" "$NOTARIZE_LOG"; then
     -ov -format UDZO \
     "$DMG" || die "hdiutil failed."
 
+  echo "Notarizing DMG..."
+  DMG_NOTARIZE_LOG="$WORK_DIR/notarize-dmg.log"
+  xcrun notarytool submit "$DMG" \
+    --keychain-profile "$PROFILE_NAME" \
+    --wait 2>&1 | tee "$DMG_NOTARIZE_LOG"
+  grep -q "status: Accepted" "$DMG_NOTARIZE_LOG" || die "DMG notarization was not accepted."
   xcrun stapler staple "$DMG" || die "DMG stapling failed."
 
   echo ""

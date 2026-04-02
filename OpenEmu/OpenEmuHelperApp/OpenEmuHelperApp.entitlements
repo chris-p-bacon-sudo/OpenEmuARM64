@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Allow loading emulation core plugins (.oecoreplugin bundles) that may
+	     contain dylibs not signed by the same team as the main app. Without
+	     this, hardened runtime library validation will reject core plugins on
+	     launch and produce "The <core> core has quit unexpectedly". -->
+	<key>com.apple.security.cs.disable-library-validation</key>
+	<true/>
+	<!-- Allow JIT compilation. Dynarec emulation cores (Mupen64Plus, mGBA,
+	     PPSSPP, and others) write and execute code at runtime. Without this,
+	     hardened runtime blocks mmap(MAP_JIT) and the core crashes immediately
+	     on any platform that uses the recompiler. -->
+	<key>com.apple.security.cs.allow-jit</key>
+	<true/>
+</dict>
+</plist>

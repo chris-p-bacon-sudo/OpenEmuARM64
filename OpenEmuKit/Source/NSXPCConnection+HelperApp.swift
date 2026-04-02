@@ -101,7 +101,7 @@ extension NSXPCConnection {
 #if XPC_WAIT_FOREVER
         sem.wait()
 #else
-        if sem.wait(timeout: .now() + .seconds(2)) == .timedOut {
+        if sem.wait(timeout: .now() + .seconds(10)) == .timedOut {
             // mediation of connection between host and helper via broker timed out
             os_log(.error, log: .helper, "Timeout waiting for listener endpoint from broker.")
             

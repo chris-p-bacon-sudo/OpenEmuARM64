@@ -33,7 +33,7 @@ Recent highlights from active development:
 - **Sony PSP** — PPSSPP-Core fully rebuilt and integrated. PSP emulation now works natively on Apple Silicon.
 - **Nintendo 64** — Mupen64Plus revived and working. N64 emulation is back.
 - **Sega Dreamcast** — Migrated from Reicast to Flycast. Dreamcast emulation is significantly more stable.
-- **ScreenScraper cover art** — The library now automatically fetches box art from [ScreenScraper.eu](https://screenscraper.eu), replacing the old manual cover art workflow entirely. Enter your credentials in Preferences → Cover Art and your library fills in automatically.
+- **ScreenScraper cover art** — The library now automatically fetches box art from [ScreenScraper](https://www.screenscraper.fr), replacing the old manual cover art workflow entirely. Enter your credentials in Preferences → Cover Art and your library fills in automatically.
 - **Core updates** — SNES9x updated to 1.63, mGBA updated to 0.10.5.
 - **Pokémon Mini** — PokeMini and Potator (Watara Supervision) workspace integration fixed; both now build and run.
 - **macOS 26 (Tahoe) compatibility** — Multiple fixes across the app and build system for full Tahoe support.
@@ -131,6 +131,7 @@ I'm transparent about this because honesty with the community matters more than 
 
 | Doc | What's in it |
 |-----|-------------|
+| [Wiki](https://github.com/nickybmon/OpenEmu-Silicon/wiki) | User guides: getting started, BIOS files, importing, CD games, controllers, troubleshooting |
 | [`docs/cores.md`](docs/cores.md) | Every emulation core: working status, upstream version, system compatibility, known issues |
 | [`docs/roadmap.md`](docs/roadmap.md) | Planned integrations (Nintendo DS, MAME, GameCube) with implementation details |
 
