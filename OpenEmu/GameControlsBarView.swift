@@ -29,6 +29,7 @@ final class GameControlsBarView: NSView {
     private var slider: NSSlider!
     private var fullScreenButton: NSButton!
     private var pauseButton: NSButton!
+    private weak var adjustmentsPopover: NSPopover?
     
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
@@ -246,15 +247,20 @@ final class GameControlsBarView: NSView {
     }
 
     private func showAdjustmentsPopover(anchoredTo rect: NSRect) {
+        if let popover = adjustmentsPopover, popover.isShown {
+            return
+        }
+        
         let popover = NSPopover()
         popover.behavior = .transient
+        self.adjustmentsPopover = popover
         
         let vc = NSViewController()
         let container = NSView(frame: NSRect(x: 0, y: 0, width: 280, height: 100))
         
         let doc = (window?.parent?.windowController?.document as? OEGameDocument)
-        let sat = doc?.saturation ?? 1.0
-        let gam = doc?.gamma ?? 1.0
+        let sat = doc?.imageSaturation ?? 1.0
+        let gam = doc?.imageGamma ?? 1.0
 
         let (satView, _, satLbl) = makeAdjustmentRow(
             label: "Saturation:", value: sat, minValue: 0.5, maxValue: 3.0, y: 55, width: 260,
@@ -292,7 +298,7 @@ final class GameControlsBarView: NSView {
     }
 
     @objc private func saturationChanged(_ sender: NSSlider) {
-        let v = sender.floatValue
+        let v = OEGameDocument.clampedSaturation(sender.floatValue)
         if let row = sender.superview {
             for sv in row.subviews {
                 if let tf = sv as? NSTextField, tf.stringValue.contains("%") {
@@ -306,7 +312,7 @@ final class GameControlsBarView: NSView {
     }
 
     @objc private func gammaChanged(_ sender: NSSlider) {
-        let v = sender.floatValue
+        let v = OEGameDocument.clampedGamma(sender.floatValue)
         if let row = sender.superview {
             for sv in row.subviews {
                 if let tf = sv as? NSTextField, tf.stringValue.contains("%") {

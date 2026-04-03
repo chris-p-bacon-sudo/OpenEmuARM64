@@ -68,9 +68,9 @@ final class PrefGameplayController: NSViewController {
 
     private func addSliders() {
         let rawSat = UserDefaults.standard.float(forKey: OEGameSaturationKey)
-        let sat: Float = rawSat > 0 ? min(rawSat, 2.5) : 1.0
+        let sat: Float = rawSat >= 0.5 ? OEGameDocument.clampedSaturation(rawSat) : 1.0
         let rawGam = UserDefaults.standard.float(forKey: OEGameGammaKey)
-        let gam: Float = rawGam > 0 ? min(rawGam, 2.5) : 1.0
+        let gam: Float = rawGam >= 0.5 ? OEGameDocument.clampedGamma(rawGam) : 1.0
 
         let rowH:   CGFloat = 24
         let gap:    CGFloat = 12
@@ -102,12 +102,12 @@ final class PrefGameplayController: NSViewController {
         let satY = gap + rowH + gap
 
         let (satView, satSlider, satLbl) = makeRow(
-            label: "Saturation:", value: sat,
+            label: "Saturation:", value: sat, minValue: 0.5, maxValue: 3.0,
             frame: NSRect(x: shaderX, y: satY, width: rowW, height: rowH),
             action: #selector(saturationChanged(_:))
         )
         let (gamView, gamSlider, gamLbl) = makeRow(
-            label: "Gamma:", value: gam,
+            label: "Gamma:", value: gam, minValue: 0.5, maxValue: 2.0,
             frame: NSRect(x: shaderX, y: gamY, width: rowW, height: rowH),
             action: #selector(gammaChanged(_:))
         )
@@ -123,6 +123,7 @@ final class PrefGameplayController: NSViewController {
 
     private func makeRow(
         label: String, value: Float,
+        minValue: Double, maxValue: Double,
         frame: NSRect, action: Selector
     ) -> (NSView, NSSlider, NSTextField) {
 
@@ -137,7 +138,7 @@ final class PrefGameplayController: NSViewController {
         lbl.frame = NSRect(x: 0, y: 0, width: labelW, height: frame.height)
         container.addSubview(lbl)
 
-        let slider = NSSlider(value: Double(value), minValue: 1.0, maxValue: 2.5,
+        let slider = NSSlider(value: Double(value), minValue: minValue, maxValue: maxValue,
                               target: self, action: action)
         slider.isContinuous = true
         slider.frame = NSRect(x: labelW + 4, y: 0, width: sliderW, height: frame.height)
@@ -157,22 +158,22 @@ final class PrefGameplayController: NSViewController {
     // MARK: - Slider actions
 
     @objc private func saturationChanged(_ sender: NSSlider) {
-        let v = sender.floatValue
+        let v = OEGameDocument.clampedSaturation(sender.floatValue)
         saturationLabel?.stringValue = String(format: "%.0f%%", v * 100)
         UserDefaults.standard.set(v, forKey: OEGameSaturationKey)
         
         NSDocumentController.shared.documents.forEach {
-            ($0 as? OEGameDocument)?.setSaturation(v, asDefault: true)
+            ($0 as? OEGameDocument)?.setSaturation(v, asDefault: false)
         }
     }
 
     @objc private func gammaChanged(_ sender: NSSlider) {
-        let v = sender.floatValue
+        let v = OEGameDocument.clampedGamma(sender.floatValue)
         gammaLabel?.stringValue = String(format: "%.0f%%", v * 100)
         UserDefaults.standard.set(v, forKey: OEGameGammaKey)
         
         NSDocumentController.shared.documents.forEach {
-            ($0 as? OEGameDocument)?.setGamma(v, asDefault: true)
+            ($0 as? OEGameDocument)?.setGamma(v, asDefault: false)
         }
     }
     

@@ -54,8 +54,13 @@ public final class FilterChain {
     private var samplers: SamplerFilterArray<MTLSamplerState>
     
     public var hasShader: Bool = false
+    
+    // These are updated from the UI/XPC thread and read from the render thread.
+    // Safe for single-word Floats on Apple Silicon (atomic reads/writes),
+    // but worth noting if porting to non-TSO architectures.
     public var globalGamma: Float = 1.0
     public var globalSaturation: Float = 1.0
+    
     
     private var frameCount: UInt = 0
     private var passCount: Int = 0
@@ -454,12 +459,10 @@ public final class FilterChain {
     private func fetchNextHistoryTexture() -> MTLTexture {
         let needsAdjustments = globalGamma != 1.0 || globalSaturation != 1.0
         
-        // either no history, or we moved a texture of a different size in the front slot,
-        // OR we need adjustments (which require a standalone texture to render into).
+        // either no history, or we moved a texture of a different size in the front slot.
         if historyTextures[0].view == nil || 
            historyTextures[0].size.x != Float(sourceRect.width) || 
-           historyTextures[0].size.y != Float(sourceRect.height) ||
-           needsAdjustments
+           historyTextures[0].size.y != Float(sourceRect.height)
         {
             let td = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .bgra8Unorm,
                                                                width: Int(sourceRect.width),
@@ -558,7 +561,7 @@ public final class FilterChain {
                                                           height: Int(sourceRect.height),
                                                           mipmapped: false)
         td.storageMode = .private
-        td.usage = [.shaderRead, .shaderWrite]
+        td.usage = [.shaderRead, .shaderWrite, .renderTarget]
         
         for i in 0...historyCount {
             initTexture(&historyTextures[i], withDescriptor: td)
@@ -723,7 +726,7 @@ public final class FilterChain {
             
             sourceSize = passSize // capture source size for next pass
             
-            os_log("pass %d, render target size %0.0f x %0.0f", log: .default, type: .debug, i, passSize.width, passSize.height)
+            
             
             let fmt = self.pass[i].format
             let needsAdjustments = globalGamma != 1.0 || globalSaturation != 1.0
@@ -742,9 +745,6 @@ public final class FilterChain {
                    tex.height == height,
                    tex.width != 0, tex.height != 0
                 {
-                    os_log("pass %d: 🏎️🔥 skip resize, tex (w: %d, h: %d) == pass (w: %d, h: %d)",
-                           log: .default, type: .debug,
-                           i, tex.width, tex.height, width, height)
                     let size = TextureSize(width: width, height: height)
                     self.pass[i].renderTarget.size = size
                     if self.pass[i].hasFeedback {
@@ -979,7 +979,6 @@ public final class FilterChain {
         }
         
         let end = CACurrentMediaTime() - start
-        os_log("Shader load completed in %{xcode:interval}f seconds", log: .default, type: .debug, end)
         
         loadLuts(container)
         hasShader = true

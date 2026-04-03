@@ -122,7 +122,7 @@ final class OEGameDocument: NSDocument {
             case .libraryDatabaseUnavailable:
                 return 13
             case .noSystemPlugin:
-                return 13
+                return 14
             }
         }
     }
@@ -162,8 +162,16 @@ final class OEGameDocument: NSDocument {
     /// Non-nil if ROM was decompressed.
     private var decompressedROMFileURL: URL?
     
-    var saturation: Float = 1.0
-    var gamma: Float = 1.0
+    @objc dynamic var imageSaturation: Float = 1.0
+    @objc dynamic var imageGamma: Float = 1.0
+    
+    static func clampedSaturation(_ value: Float) -> Float {
+        return max(0.5, min(3.0, value))
+    }
+    
+    static func clampedGamma(_ value: Float) -> Float {
+        return max(0.5, min(2.0, value))
+    }
     
     var coreIdentifier: String {
         return corePlugin.bundleIdentifier
@@ -274,7 +282,6 @@ final class OEGameDocument: NSDocument {
     }
     
     private func setUpDocument(with rom: OEDBRom, using core: OECorePlugin?) throws {
-        NSLog("[OEGameDocument] setUpDocument(with: %@, using: %@)", rom.game?.displayName ?? "nil", core?.bundleIdentifier ?? "nil")
         Self.initializeDefaults
         
         var fileURL = rom.url
@@ -581,14 +588,10 @@ final class OEGameDocument: NSDocument {
     // MARK: - Setup
     
     func setUpGame(completionHandler handler: @escaping (_ success: Bool, _ error: Error?) -> Void) {
-        NSLog("[OEGameDocument] setUpGame() called")
         do {
             // TODO: Remove after further testing.
-            NSLog("[OEGameDocument] Pre-loading core bundle: %@", corePlugin.bundle.bundleURL.path)
             try corePlugin.bundle.loadAndReturnError()
-            NSLog("[OEGameDocument] Core bundle loaded successfully")
         } catch {
-            NSLog("[OEGameDocument] Core bundle load FAILED: %@", error.localizedDescription)
             handler(false, error)
             return
         }
@@ -608,12 +611,9 @@ final class OEGameDocument: NSDocument {
         // This runs asynchronously; emulation proceeds after the check completes.
         performPreLaunchSyncCheckIfNeeded {
             self.gameCoreManager?.loadROM(completionHandler: {
-            NSLog("[OEGameDocument] ROM loaded by manager, setting up emulation")
             self.gameCoreManager?.setupEmulation() { screenSize, aspectSize in
-                NSLog("[OEGameDocument] Emulation setup COMPLETE, screenSize: %@, aspectSize: %@", NSStringFromOEIntSize(screenSize), NSStringFromOEIntSize(aspectSize))
                 self.gameViewController.setScreenSize(screenSize, aspectSize: aspectSize)
                 
-                DLog("SETUP DONE.")
                 self.emulationStatus = .setup
                 
                 // TODO: #567 and #568 need to be fixed first
@@ -633,12 +633,10 @@ final class OEGameDocument: NSDocument {
                 self.setVolume(self.volume, asDefault: false)
                 
                 // set initial image adjustments
-                self.saturation = (UserDefaults.standard.object(forKey: OEGameSaturationKey) as? Float) ?? 1.0
-                self.saturation = max(0.5, min(3.0, self.saturation))
-                self.gamma = (UserDefaults.standard.object(forKey: OEGameGammaKey) as? Float) ?? 1.0
-                self.gamma = max(0.5, min(2.0, self.gamma))
+                self.imageSaturation = Self.clampedSaturation((UserDefaults.standard.object(forKey: OEGameSaturationKey) as? Float) ?? 1.0)
+                self.imageGamma = Self.clampedGamma((UserDefaults.standard.object(forKey: OEGameGammaKey) as? Float) ?? 1.0)
                 
-                self.gameCoreHelper?.setGlobalShaderParameters(gamma: CGFloat(self.gamma), saturation: CGFloat(self.saturation))
+                self.gameCoreHelper?.setGlobalShaderParameters(gamma: CGFloat(self.imageGamma), saturation: CGFloat(self.imageSaturation))
                 
                 OEBindingsController.default.systemBindings(for: self.systemPlugin.controller).add(self)
                 
@@ -737,49 +735,36 @@ final class OEGameDocument: NSDocument {
     
     private func core(forSystem system: OESystemPlugin) throws -> OECorePlugin {
         let systemIdentifier = system.systemIdentifier
-        NSLog("[DEBUG] OEGameDocument: selecting core for system: %@", systemIdentifier)
         var validPlugins = OECorePlugin.corePlugins(forSystemIdentifier: systemIdentifier)
-        NSLog("[DEBUG] OEGameDocument: found %d valid core plugins for system: %@", validPlugins.count, systemIdentifier)
-        for p in validPlugins { NSLog("[DEBUG]   - Plugin: %@", p.bundleIdentifier) }
 
         if validPlugins.isEmpty {
-            NSLog("[DEBUG] OEGameDocument ERROR: No core found for system: %@", systemIdentifier)
             throw Errors.noCore
         }
         else if validPlugins.count == 1 {
-            let core = validPlugins.first!
-            NSLog("[DEBUG] OEGameDocument: Selected only available core: %@", core.bundleIdentifier)
-            return core
+            return validPlugins.first!
         }
         else {
             let defaults = UserDefaults.standard
             if let coreIdentifier = defaults.string(forKey: "defaultCore.\(systemIdentifier)"),
                let core = OECorePlugin.corePlugin(bundleIdentifier: coreIdentifier) {
-                NSLog("[DEBUG] OEGameDocument: Selected default core: %@", coreIdentifier)
                 return core
             } else {
                 validPlugins.sort { $0.displayName.caseInsensitiveCompare($1.displayName) == .orderedAscending }
-                let core = validPlugins.first!
-                NSLog("[DEBUG] OEGameDocument: Selected first available core: %@", core.bundleIdentifier)
-                return core
+                return validPlugins.first!
             }
         }
     }
     
     private func checkRequiredFiles() -> Bool {
-        NSLog("[DEBUG] OEGameDocument: checkRequiredFiles() for system: %@", systemPlugin.systemIdentifier)
         // Check current system plugin for OERequiredFiles and core plugin for OEGameCoreRequiresFiles opt-in
         if !corePlugin.requiresFiles(forSystemIdentifier: systemPlugin.systemIdentifier) {
-            NSLog("[DEBUG] OEGameDocument: core does not require files for this system")
             return true
         }
         
         if let validRequiredFiles = corePlugin.requiredFiles(forSystemIdentifier: systemPlugin.systemIdentifier) {
             let available = BIOSFile.requiredFilesAvailable(forSystemIdentifier: validRequiredFiles)
-            NSLog("[DEBUG] OEGameDocument: BIOSFile.requiredFilesAvailable: %d", available)
             return available
         } else {
-            NSLog("[DEBUG] OEGameDocument: No specific required files found for system")
             return true
         }
     }
@@ -1260,18 +1245,18 @@ final class OEGameDocument: NSDocument {
     }
     
     func setSaturation(_ value: Float, asDefault: Bool) {
-        saturation = max(0.5, min(3.0, value))
-        gameCoreHelper?.setGlobalShaderParameters(gamma: CGFloat(gamma), saturation: CGFloat(saturation))
+        imageSaturation = Self.clampedSaturation(value)
+        gameCoreHelper?.setGlobalShaderParameters(gamma: CGFloat(imageGamma), saturation: CGFloat(imageSaturation))
         if asDefault {
-            UserDefaults.standard.set(saturation, forKey: OEGameSaturationKey)
+            UserDefaults.standard.set(imageSaturation, forKey: OEGameSaturationKey)
         }
     }
     
     func setGamma(_ value: Float, asDefault: Bool) {
-        gamma = max(0.5, min(2.0, value))
-        gameCoreHelper?.setGlobalShaderParameters(gamma: CGFloat(gamma), saturation: CGFloat(saturation))
+        imageGamma = Self.clampedGamma(value)
+        gameCoreHelper?.setGlobalShaderParameters(gamma: CGFloat(imageGamma), saturation: CGFloat(imageSaturation))
         if asDefault {
-            UserDefaults.standard.set(gamma, forKey: OEGameGammaKey)
+            UserDefaults.standard.set(imageGamma, forKey: OEGameGammaKey)
         }
     }
     
