@@ -257,7 +257,7 @@ final class GameControlsBarView: NSView {
         let gam = doc?.gamma ?? 1.0
 
         let (satView, _, satLbl) = makeAdjustmentRow(
-            label: "Saturation:", value: sat, minValue: 0.0, maxValue: 2.0, y: 55, width: 260,
+            label: "Saturation:", value: sat, minValue: 0.5, maxValue: 3.0, y: 55, width: 260,
             action: #selector(saturationChanged(_:))
         )
         let (gamView, _, gamLbl) = makeAdjustmentRow(

@@ -726,9 +726,8 @@ public final class FilterChain {
             os_log("pass %d, render target size %0.0f x %0.0f", log: .default, type: .debug, i, passSize.width, passSize.height)
             
             let fmt = self.pass[i].format
-            // Always force offscreen rendering so adjustments (gamma/saturation)
-            // are always applied via renderTexture even with custom shaders.
-            if false /* was: i == lastPassIndex, passSize == viewportSize, fmt == .bgra8Unorm */ {
+            let needsAdjustments = globalGamma != 1.0 || globalSaturation != 1.0
+            if !needsAdjustments && i == lastPassIndex && passSize == viewportSize && fmt == .bgra8Unorm {
                 // last pass can render directly to the output render target
                 self.pass[i].renderTarget.size = .init(width: passSize.width, height: passSize.height)
             } else {

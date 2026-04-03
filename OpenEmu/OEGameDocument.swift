@@ -633,10 +633,11 @@ final class OEGameDocument: NSDocument {
                 self.setVolume(self.volume, asDefault: false)
                 
                 // set initial image adjustments
-                let rawSat = UserDefaults.standard.float(forKey: OEGameSaturationKey)
-                self.saturation = rawSat > 0 ? min(rawSat, 2.0) : 1.0
-                let rawGam = UserDefaults.standard.float(forKey: OEGameGammaKey)
-                self.gamma = rawGam > 0 ? min(rawGam, 2.0) : 1.0
+                self.saturation = (UserDefaults.standard.object(forKey: OEGameSaturationKey) as? Float) ?? 1.0
+                self.saturation = max(0.5, min(3.0, self.saturation))
+                self.gamma = (UserDefaults.standard.object(forKey: OEGameGammaKey) as? Float) ?? 1.0
+                self.gamma = max(0.5, min(2.0, self.gamma))
+                
                 self.gameCoreHelper?.setGlobalShaderParameters(gamma: CGFloat(self.gamma), saturation: CGFloat(self.saturation))
                 
                 OEBindingsController.default.systemBindings(for: self.systemPlugin.controller).add(self)
@@ -1259,7 +1260,7 @@ final class OEGameDocument: NSDocument {
     }
     
     func setSaturation(_ value: Float, asDefault: Bool) {
-        saturation = max(0.0, min(2.0, value))
+        saturation = max(0.5, min(3.0, value))
         gameCoreHelper?.setGlobalShaderParameters(gamma: CGFloat(gamma), saturation: CGFloat(saturation))
         if asDefault {
             UserDefaults.standard.set(saturation, forKey: OEGameSaturationKey)
