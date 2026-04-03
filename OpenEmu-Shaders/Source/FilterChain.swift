@@ -568,8 +568,10 @@ public final class FilterChain {
     }
     
     private func renderTexture(_ texture: MTLTexture, renderCommandEncoder rce: MTLRenderCommandEncoder) {
-        uniforms.gamma = globalGamma
-        uniforms.saturation = globalSaturation
+        // Set gamma/saturation to 1.0 because they are already applied during the initial copy 
+        // in prepareNextFrame (pre-pass). Applying them here again would cause double-rendering.
+        uniforms.gamma = 1.0
+        uniforms.saturation = 1.0
         rce.setVertexBytes(&uniforms, length: MemoryLayout<Uniforms>.stride, index: BufferIndex.uniforms.rawValue)
         rce.setFragmentBytes(&uniforms, length: MemoryLayout<Uniforms>.stride, index: BufferIndex.uniforms.rawValue)
         rce.setRenderPipelineState(pipelineState)

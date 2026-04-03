@@ -257,11 +257,11 @@ final class GameControlsBarView: NSView {
         let gam = doc?.gamma ?? 1.0
 
         let (satView, _, satLbl) = makeAdjustmentRow(
-            label: "Saturation:", value: sat, y: 55, width: 260,
+            label: "Saturation:", value: sat, minValue: 0.0, maxValue: 2.0, y: 55, width: 260,
             action: #selector(saturationChanged(_:))
         )
         let (gamView, _, gamLbl) = makeAdjustmentRow(
-            label: "Gamma:", value: gam, y: 15, width: 260,
+            label: "Gamma:", value: gam, minValue: 0.5, maxValue: 2.0, y: 15, width: 260,
             action: #selector(gammaChanged(_:))
         )
         
@@ -272,13 +272,13 @@ final class GameControlsBarView: NSView {
         popover.show(relativeTo: rect, of: self, preferredEdge: .maxY)
     }
 
-    private func makeAdjustmentRow(label: String, value: Float, y: CGFloat, width: CGFloat, action: Selector) -> (NSView, NSSlider, NSTextField) {
+    private func makeAdjustmentRow(label: String, value: Float, minValue: Double, maxValue: Double, y: CGFloat, width: CGFloat, action: Selector) -> (NSView, NSSlider, NSTextField) {
         let row = NSView(frame: NSRect(x: 10, y: y, width: width, height: 30))
         let lbl = NSTextField(labelWithString: label)
         lbl.frame = NSRect(x: 0, y: 5, width: 80, height: 20)
         row.addSubview(lbl)
         
-        let slider = NSSlider(value: Double(value), minValue: 1.0, maxValue: 2.5, target: self, action: action)
+        let slider = NSSlider(value: Double(value), minValue: minValue, maxValue: maxValue, target: self, action: action)
         slider.frame = NSRect(x: 80, y: 5, width: 130, height: 20)
         slider.isContinuous = true
         row.addSubview(slider)
