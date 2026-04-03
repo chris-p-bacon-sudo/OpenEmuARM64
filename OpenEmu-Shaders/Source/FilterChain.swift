@@ -1125,14 +1125,14 @@ extension FilterChain {
     }
     
     @frozen @usableFromInline struct Uniforms {
-        static let empty: Uniforms = .init(projectionMatrix: simd_float4x4(), outputSize: simd_float2(), time: 0, gamma: 1.0, saturation: 1.0, padding1: 0, padding2: simd_float2(0,0))
+        static let empty: Uniforms = .init(projectionMatrix: simd_float4x4(), outputSize: simd_float2(), time: 0.0, gamma: 1.0, saturation: 1.0, padding1: 0.0, padding2: simd_float2(0,0))
         
         var projectionMatrix: simd_float4x4 // 64 bytes
         var outputSize: simd_float2         // 8 bytes
-        var time: simd_float1               // 4 bytes
-        var gamma: simd_float1              // 4 bytes
-        var saturation: simd_float1         // 4 bytes
-        var padding1: simd_float1           // 4 bytes, to align to 16 bytes. Total = 88 bytes. Need 8 for layout alignment
+        var time: Float                     // 4 bytes
+        var gamma: Float                    // 4 bytes
+        var saturation: Float               // 4 bytes
+        var padding1: Float                 // 4 bytes, to align to 16 bytes. Total = 88 bytes. Need 8 for layout alignment
         var padding2: simd_float2           // 8 bytes. Total = 96 bytes. (Matches stride)
     }
 }
