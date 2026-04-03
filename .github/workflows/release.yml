@@ -114,8 +114,14 @@ jobs:
             fi
           done
 
-          # Re-sign the main app to incorporate the updated framework signatures
-          codesign --force --sign "$IDENTITY" --options runtime --timestamp "$APP"
+          # Re-sign the main app to incorporate the updated framework signatures.
+          # Pass --entitlements explicitly — codesign --force strips embedded entitlements
+          # without this, leaving the app with hardened runtime but no entitlements
+          # (no disable-library-validation), which causes all .oecoreplugin bundles to
+          # be rejected at load time with "couldn't be loaded, try reinstalling".
+          codesign --force --sign "$IDENTITY" --options runtime --timestamp \
+            --entitlements "OpenEmu/OpenEmu.entitlements" \
+            "$APP"
 
           # Final verification before submitting
           codesign --verify --deep --strict "$APP"
