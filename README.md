@@ -25,7 +25,7 @@ This is a community-maintained fork of OpenEmu, rebuilt to run natively on M-ser
 It probably does work — Rosetta 2 is genuinely impressive at hiding the fact that you're running an Intel app on Apple Silicon. Here's what's actually happening and why it matters.
 
 **What the original OpenEmu does on Apple Silicon**
-The original project was built for Intel Macs and hasn't had a release since 2022. When you run it on an M-series Mac, macOS silently runs it through Rosetta 2 — Apple's x86-to-ARM translation layer. Rosetta is remarkably good, which is why many people never notice.
+The original project was built for Intel Macs and hasn't had a release for some time. When you run it on an M-series Mac, macOS silently runs it through Rosetta 2 — Apple's x86-to-ARM translation layer. Rosetta is remarkably good, which is why many people never notice.
 
 **What this build does differently**
 - **Native ARM64** — every emulation core runs directly on the Apple Silicon chip, no translation layer

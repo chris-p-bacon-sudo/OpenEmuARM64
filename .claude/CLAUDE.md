@@ -188,6 +188,48 @@ Custom commands live in `.claude/commands/`. Invoke with `/command-name`.
 
 ---
 
+## Release Process
+
+Releases are built and signed **locally** using `Scripts/release.sh`. There is no CI release workflow — it was removed in April 2026 because it was slower than local builds and introduced signing bugs (missing entitlements, Sparkle signature mismatches).
+
+### Before running the release script
+
+1. Bump the version in Xcode: `OpenEmu` target → General → Version (e.g. `1.0.4`) and Build Number
+2. Ensure your notarytool credentials are stored: `xcrun notarytool store-credentials OpenEmu`
+3. Ensure `gh` is authenticated: `gh auth status`
+
+### Run the release
+
+```bash
+# Minimal — appcast entry will have a placeholder description
+./Scripts/release.sh 1.0.4
+
+# With release notes (markdown file → converted to HTML in appcast)
+./Scripts/release.sh 1.0.4 Releases/notes-1.0.4.md
+```
+
+The script does everything in one shot:
+1. `xcodebuild archive` (Release config, Developer ID signed, hardened runtime)
+2. Re-signs all binaries inside-out with entitlements, notarizes, staples
+3. Creates the DMG from the stapled `.app`
+4. Runs `sign_update` on that exact DMG to get the EdDSA signature
+5. Prepends a new entry to `appcast.xml` with the correct signature and length
+6. Creates a **draft** GitHub Release and uploads the DMG
+7. Commits and pushes the updated `appcast.xml`
+
+### After the script finishes
+
+- Review the draft release on GitHub
+- Edit release notes if the script used a placeholder
+- When ready: `gh release edit vX.Y.Z --draft=false --repo nickybmon/OpenEmu-Silicon`
+
+### Never do this manually
+
+- Never hand-edit the `sparkle:edSignature` or `length` in `appcast.xml` — always let `sign_update` generate them from the actual DMG that was uploaded
+- Never publish a GitHub Release without confirming the appcast is committed and pushed — the update will fail if the appcast hasn't been updated yet
+
+---
+
 ## Testing PRs Locally Before Merging
 
 Always test PRs locally before merging. The standard flow:
