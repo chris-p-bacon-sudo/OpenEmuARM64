@@ -457,8 +457,6 @@ public final class FilterChain {
     }
     
     private func fetchNextHistoryTexture() -> MTLTexture {
-        let needsAdjustments = globalGamma != 1.0 || globalSaturation != 1.0
-        
         // either no history, or we moved a texture of a different size in the front slot.
         if historyTextures[0].view == nil || 
            historyTextures[0].size.x != Float(sourceRect.width) || 
@@ -1007,8 +1005,6 @@ public final class FilterChain {
                     t = checkers
                 }
             } catch {
-                os_log("Unable to load LUT texture, using default. Path '%{public}@: %{public}@", log: .default, type: .error,
-                       lut.url.absoluteString, error.localizedDescription)
                 t = checkers
             }
             initTexture(&luts[i], withTexture: t)

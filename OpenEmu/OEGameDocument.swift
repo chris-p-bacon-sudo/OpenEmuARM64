@@ -353,7 +353,6 @@ final class OEGameDocument: NSDocument {
             // check if we have recovered
             let isReachable = try? fileURL?.checkResourceIsReachable()
             if fileURL == nil || isReachable != true {
-                DLog("File does not exist")
                 throw Errors.fileDoesNotExist
             }
         }
@@ -438,14 +437,10 @@ final class OEGameDocument: NSDocument {
     }
     
     override func data(ofType typeName: String) throws -> Data {
-        DLog("\(typeName)")
         throw NSError(domain: NSOSStatusErrorDomain, code: unimpErr)
     }
     
     override func read(from url: URL, ofType typeName: String) throws {
-        DLog("\(url)")
-        DLog("\(typeName)")
-        
         guard let libraryDB = OELibraryDatabase.default else {
             throw Errors.libraryDatabaseUnavailable
         }
@@ -454,7 +449,6 @@ final class OEGameDocument: NSDocument {
         if typeName == "org.openemu.savestate" {
             guard let state = OEDBSaveState.updateOrCreateState(with: url, in: context) else {
                 // TODO: Specify failure reason and add recovery suggestion
-                DLog("Save state is invalid")
                 throw Errors.invalidSaveState
             }
             
@@ -468,13 +462,11 @@ final class OEGameDocument: NSDocument {
         }
         
         if !FileManager.default.fileExists(atPath: url.path) {
-            DLog("File does not exist")
             throw Errors.fileDoesNotExist
         }
-        
+
         if !url.isFileURL {
             // TODO: Handle URLs, by downloading to temp folder
-            DLog("URLs that are not file urls are currently not supported!")
             return
         }
         
@@ -568,7 +560,6 @@ final class OEGameDocument: NSDocument {
             //removeDeviceNotificationObservers()
             
             self.gameCoreManager?.stopEmulation() {
-                DLog("Emulation stopped")
                 OEBindingsController.default.systemBindings(for: self.systemPlugin.controller).remove(self)
                 
                 self.emulationStatus = .notSetup
@@ -1206,7 +1197,6 @@ final class OEGameDocument: NSDocument {
                 gameViewController.showScreenShotNotification()
             }
         } catch {
-            NSLog("Could not save screenshot at URL: \(temporaryURL), with error: \(error)")
         }
     }
     
@@ -1689,8 +1679,6 @@ final class OEGameDocument: NSDocument {
         
         gameCoreManager?.saveStateToFile(at: temporaryStateFileURL) { success, error in
             if !success {
-                NSLog("Could not create save state file at url: \(temporaryStateFileURL)")
-                
                 handler?()
                 return
             }
@@ -1709,8 +1697,6 @@ final class OEGameDocument: NSDocument {
             }
             
             guard let state = saveState else {
-                NSLog("Could not create save state item for \(stateName)")
-                
                 handler?()
                 return
             }
@@ -1733,7 +1719,6 @@ final class OEGameDocument: NSDocument {
                     do {
                         try convertedData?.write(to: state.screenshotURL, options: .atomic)
                     } catch {
-                        NSLog("Could not create screenshot at url: \(state.screenshotURL) with error: \(error)")
                     }
                     handler?()
                 }
@@ -1774,7 +1759,6 @@ final class OEGameDocument: NSDocument {
     
     private func loadState(state: OEDBSaveState) {
         if state.rom != rom {
-            DLog("Invalid save state for current rom")
             return
         }
         
