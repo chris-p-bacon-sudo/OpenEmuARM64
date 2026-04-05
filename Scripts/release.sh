@@ -108,6 +108,7 @@ xcodebuild archive \
   -archivePath "$ARCHIVE_PATH" \
   CODE_SIGN_IDENTITY="$IDENTITY" \
   CODE_SIGN_STYLE=Manual \
+  DEVELOPMENT_TEAM=AJC82Q6789 \
   ENABLE_HARDENED_RUNTIME=YES \
   2>&1 | grep -E "^(Archive|error:|warning:|BUILD)" | tail -20
 
