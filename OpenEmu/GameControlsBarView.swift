@@ -254,7 +254,7 @@ final class GameControlsBarView: NSView {
         }
         
         let popover = NSPopover()
-        popover.behavior = .transient
+        popover.behavior = .semitransient
         self.adjustmentsPopover = popover
         
         let vc = NSViewController()

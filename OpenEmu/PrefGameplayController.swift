@@ -70,88 +70,85 @@ final class PrefGameplayController: NSViewController {
         let sat = OEGameDocument.clampedSaturation((UserDefaults.standard.object(forKey: OEGameSaturationKey) as? Float) ?? 1.0)
         let gam = OEGameDocument.clampedGamma((UserDefaults.standard.object(forKey: OEGameGammaKey) as? Float) ?? 1.0)
 
-        let rowH:   CGFloat = 24
-        let gap:    CGFloat = 12
-        let extraH: CGFloat = gap + rowH + gap + rowH + gap
-        let extraW: CGFloat = 140
+        // The XIB has one NSGridView (2 columns) as the only direct subview.
+        // Walk up from the shader popup to find it, then insert two new rows
+        // at index 0 (above Shader). NSGridView handles all layout automatically.
+        var ancestor: NSView? = globalDefaultShaderSelection
+        while let parent = ancestor?.superview, parent !== view { ancestor = parent }
+        guard let gridView = ancestor as? NSGridView else { return }
 
-        // Capture original height before growing — the new space for sliders
-        // sits at y = originalHeight … y = originalHeight + extraH (flipped view).
-        let originalHeight = view.frame.height
+        // ── Build Saturation row ──────────────────────────────────────────
+        let satLabel = NSTextField(labelWithString: "Saturation:")
+        satLabel.font = .systemFont(ofSize: NSFont.systemFontSize)
 
-        // ── Grow the view ─────────────────────────────────────────────────
-        view.setFrameSize(NSSize(width: view.frame.width + extraW,
-                                 height: view.frame.height + extraH))
+        let satSlider = NSSlider(value: Double(sat), minValue: 0.5, maxValue: 3.0,
+                                 target: self, action: #selector(saturationChanged(_:)))
+        satSlider.isContinuous = true
+        satSlider.setContentHuggingPriority(.defaultLow, for: .horizontal)
 
-        // ── Grow the window to match ───────────────────────────────────────
-        if let window = view.window {
+        let satPct = NSTextField(labelWithString: String(format: "%.0f%%", sat * 100))
+        satPct.font = .monospacedDigitSystemFont(ofSize: NSFont.systemFontSize - 1, weight: .regular)
+        satPct.setContentHuggingPriority(.required, for: .horizontal)
+
+        let satRow = NSStackView(views: [satSlider, satPct])
+        satRow.orientation = .horizontal
+        satRow.spacing = 8
+        satRow.distribution = .fill
+
+        // ── Build Gamma row ───────────────────────────────────────────────
+        let gamLabel = NSTextField(labelWithString: "Gamma:")
+        gamLabel.font = .systemFont(ofSize: NSFont.systemFontSize)
+
+        let gamSlider = NSSlider(value: Double(gam), minValue: 0.5, maxValue: 2.0,
+                                 target: self, action: #selector(gammaChanged(_:)))
+        gamSlider.isContinuous = true
+        gamSlider.setContentHuggingPriority(.defaultLow, for: .horizontal)
+
+        let gamPct = NSTextField(labelWithString: String(format: "%.0f%%", gam * 100))
+        gamPct.font = .monospacedDigitSystemFont(ofSize: NSFont.systemFontSize - 1, weight: .regular)
+        gamPct.setContentHuggingPriority(.required, for: .horizontal)
+
+        let gamRow = NSStackView(views: [gamSlider, gamPct])
+        gamRow.orientation = .horizontal
+        gamRow.spacing = 8
+        gamRow.distribution = .fill
+
+        // ── Insert rows above Shader ──────────────────────────────────────
+        // Insert Gamma at 0 first, then Saturation at 0 → Saturation ends up on top.
+        let sizeBefore = view.fittingSize
+        gridView.insertRow(at: 0, with: [gamLabel, gamRow])
+        gridView.insertRow(at: 0, with: [satLabel, satRow])
+
+        // Center the grid horizontally within the (potentially wider) window.
+        // Deactivate the XIB's fixed leading=30 and soft trailing>=30 constraints,
+        // then pin the grid to the center with minimum side margins.
+        for c in view.constraints where (c.firstItem as? NSView) === gridView
+                                     && c.firstAttribute == .leading {
+            c.isActive = false
+        }
+        for c in view.constraints where c.secondItem as? NSView === gridView
+                                     && c.secondAttribute == .trailing {
+            c.isActive = false
+        }
+        NSLayoutConstraint.activate([
+            gridView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            gridView.leadingAnchor.constraint(greaterThanOrEqualTo: view.leadingAnchor, constant: 30),
+            gridView.trailingAnchor.constraint(lessThanOrEqualTo: view.trailingAnchor, constant: -30)
+        ])
+
+        // ── Grow the window upward to fit the new rows ────────────────────
+        view.layoutSubtreeIfNeeded()
+        let deltaH = view.fittingSize.height - sizeBefore.height
+        if let window = view.window, deltaH > 0 {
             var wf = window.frame
-            wf.origin.y    -= extraH
-            wf.size.height += extraH
-            wf.size.width  += extraW
+            wf.size.height += deltaH
             window.setFrame(wf, display: true, animate: false)
         }
 
-        let shaderX = globalDefaultShaderSelection.frame.minX
-        let rowW    = view.frame.width - shaderX - 20
-
-        // Place sliders in the newly-added space below all existing content.
-        // The view is flipped (y=0 at top), so "below" means higher y values.
-        let gamY = originalHeight + gap
-        let satY = originalHeight + gap + rowH + gap
-
-        let (satView, satSlider, satLbl) = makeRow(
-            label: "Saturation:", value: sat, minValue: 0.5, maxValue: 3.0,
-            frame: NSRect(x: shaderX, y: satY, width: rowW, height: rowH),
-            action: #selector(saturationChanged(_:))
-        )
-        let (gamView, gamSlider, gamLbl) = makeRow(
-            label: "Gamma:", value: gam, minValue: 0.5, maxValue: 2.0,
-            frame: NSRect(x: shaderX, y: gamY, width: rowW, height: rowH),
-            action: #selector(gammaChanged(_:))
-        )
-
-        view.addSubview(satView)
-        view.addSubview(gamView)
-
         saturationSlider = satSlider
-        saturationLabel  = satLbl
+        saturationLabel  = satPct
         gammaSlider      = gamSlider
-        gammaLabel       = gamLbl
-    }
-
-    private func makeRow(
-        label: String, value: Float,
-        minValue: Double, maxValue: Double,
-        frame: NSRect, action: Selector
-    ) -> (NSView, NSSlider, NSTextField) {
-
-        let container = NSView(frame: frame)
-
-        let labelW: CGFloat = 80
-        let pctW:   CGFloat = 44
-        let sliderW = frame.width - labelW - pctW - 8
-
-        let lbl = NSTextField(labelWithString: label)
-        lbl.font  = .systemFont(ofSize: NSFont.systemFontSize)
-        lbl.frame = NSRect(x: 0, y: 0, width: labelW, height: frame.height)
-        container.addSubview(lbl)
-
-        let slider = NSSlider(value: Double(value), minValue: minValue, maxValue: maxValue,
-                              target: self, action: action)
-        slider.isContinuous = true
-        slider.frame = NSRect(x: labelW + 4, y: 0, width: sliderW, height: frame.height)
-        container.addSubview(slider)
-
-        let pct = NSTextField(
-            labelWithString: String(format: "%.0f%%", value * 100))
-        pct.font  = .monospacedDigitSystemFont(ofSize: NSFont.systemFontSize - 1,
-                                               weight: .regular)
-        pct.frame = NSRect(x: labelW + 4 + sliderW + 4, y: 0,
-                           width: pctW, height: frame.height)
-        container.addSubview(pct)
-
-        return (container, slider, pct)
+        gammaLabel       = gamPct
     }
 
     // MARK: - Slider actions
@@ -224,5 +221,5 @@ extension PrefGameplayController: PreferencePane {
     
     var panelTitle: String { "Gameplay" }
     
-    var viewSize: NSSize { view.frame.size }
+    var viewSize: NSSize { view.fittingSize }
 }
