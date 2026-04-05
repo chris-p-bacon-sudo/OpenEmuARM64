@@ -75,14 +75,13 @@ final class PrefGameplayController: NSViewController {
         let extraH: CGFloat = gap + rowH + gap + rowH + gap
         let extraW: CGFloat = 140
 
+        // Capture original height before growing — the new space for sliders
+        // sits at y = originalHeight … y = originalHeight + extraH (flipped view).
+        let originalHeight = view.frame.height
+
         // ── Grow the view ─────────────────────────────────────────────────
         view.setFrameSize(NSSize(width: view.frame.width + extraW,
                                  height: view.frame.height + extraH))
-
-        for sv in view.subviews {
-            sv.setFrameOrigin(NSPoint(x: sv.frame.origin.x,
-                                      y: sv.frame.origin.y + extraH))
-        }
 
         // ── Grow the window to match ───────────────────────────────────────
         if let window = view.window {
@@ -96,8 +95,10 @@ final class PrefGameplayController: NSViewController {
         let shaderX = globalDefaultShaderSelection.frame.minX
         let rowW    = view.frame.width - shaderX - 20
 
-        let gamY = gap
-        let satY = gap + rowH + gap
+        // Place sliders in the newly-added space below all existing content.
+        // The view is flipped (y=0 at top), so "below" means higher y values.
+        let gamY = originalHeight + gap
+        let satY = originalHeight + gap + rowH + gap
 
         let (satView, satSlider, satLbl) = makeRow(
             label: "Saturation:", value: sat, minValue: 0.5, maxValue: 3.0,

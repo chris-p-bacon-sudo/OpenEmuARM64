@@ -340,6 +340,7 @@ final class GameControlsBar: NSWindow {
         menu.addItem(item)
         
         item = NSMenuItem(title: NSLocalizedString("Image Adjustments…", comment: ""), action: #selector(GameControlsBarView.showAdjustmentsPopoverFromMenu(_:)), keyEquivalent: "")
+        item.target = controlsView
         menu.addItem(item)
         
         // insert cart/disk/tape
