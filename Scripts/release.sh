@@ -84,7 +84,7 @@ security find-identity -v | grep -q "Developer ID Application" \
 echo "OK: Developer ID certificate"
 
 # Warn if working tree is dirty (non-appcast files)
-DIRTY=$(git -C "$REPO_ROOT" status --porcelain | grep -v "appcast.xml" | grep -v "Releases/" || true)
+DIRTY=$(git -C "$REPO_ROOT" status --porcelain | grep -v "appcast.xml" | grep -v "Releases/" | grep -v "Dolphin/" || true)
 if [ -n "$DIRTY" ]; then
   echo ""
   echo "WARNING: Working tree has uncommitted changes:"
@@ -243,25 +243,38 @@ step "5/5  Creating GitHub draft release and pushing appcast"
 
 TAG="v$VERSION"
 
-# Ensure tag exists (create it if not)
+# Ensure tag exists and is pushed — must happen before gh release create
+# so GitHub associates the release with the tag URL instead of "untagged-..."
 if ! git -C "$REPO_ROOT" tag -l | grep -qx "$TAG"; then
   echo "Creating git tag $TAG..."
   git -C "$REPO_ROOT" tag "$TAG"
 fi
+echo "Pushing tag $TAG..."
+git -C "$REPO_ROOT" push origin "$TAG"
+
+# Build release notes body for GitHub (use notes file if provided, else placeholder)
+if [ -n "$NOTES_FILE" ] && [ -f "$NOTES_FILE" ]; then
+  GH_NOTES_ARGS=(--notes-file "$NOTES_FILE")
+else
+  GH_NOTES_ARGS=(--notes "Release notes — edit before publishing.")
+fi
 
 # Create or update GitHub draft release
 if gh release view "$TAG" --repo nickybmon/OpenEmu-Silicon &>/dev/null; then
-  echo "Release $TAG already exists — uploading DMG..."
+  echo "Release $TAG already exists — uploading DMG and updating notes..."
   gh release upload "$TAG" "$DMG" \
     --repo nickybmon/OpenEmu-Silicon \
     --clobber
+  gh release edit "$TAG" \
+    --repo nickybmon/OpenEmu-Silicon \
+    "${GH_NOTES_ARGS[@]}"
 else
   echo "Creating draft release $TAG..."
   gh release create "$TAG" "$DMG" \
     --repo nickybmon/OpenEmu-Silicon \
     --title "OpenEmu-Silicon $VERSION" \
     --draft \
-    --notes "Release notes — edit before publishing."
+    "${GH_NOTES_ARGS[@]}"
 fi
 
 echo "DMG uploaded to draft release $TAG."
