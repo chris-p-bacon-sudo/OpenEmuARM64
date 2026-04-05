@@ -54,9 +54,15 @@ final class OEDBSystem: OEDBItem {
         }
         set {
             enabled = newValue as NSNumber
-            
+
             NotificationCenter.default.post(name: .OEDBSystemAvailabilityDidChange, object: self)
         }
+    }
+
+    /// `true` if the user has never explicitly toggled this system's enabled state.
+    /// Used by loadPlugins to distinguish a never-configured system from one the user deliberately disabled.
+    var isEnabledByDefault: Bool {
+        return enabled == nil
     }
     
     var plugin: OESystemPlugin? {

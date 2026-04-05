@@ -377,7 +377,9 @@ class AppDelegate: NSObject {
         for plugin in OESystemPlugin.allPlugins {
             if plugin.controller != nil {
                 let system = OEDBSystem.system(for: plugin, in: context)
-                if !system.isEnabled {
+                // Only auto-enable on first encounter (enabled == nil).
+                // If the user explicitly disabled a system, respect that choice.
+                if system.isEnabledByDefault {
                     system.isEnabled = true
                 }
             }
