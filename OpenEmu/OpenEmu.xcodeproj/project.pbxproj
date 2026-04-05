@@ -257,6 +257,7 @@
 		55BE8EE12542AC1D00E3841E /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 55BE8EE02542AC1D00E3841E /* Images.xcassets */; };
 		55BE8F8B2542AC5100E3841E /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 55BE8F8A2542AC5100E3841E /* Images.xcassets */; };
 		55BE90352542AC8E00E3841E /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 55BE90342542AC8E00E3841E /* Images.xcassets */; };
+		59DBB324440641229726E4C0 /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AEF58A5A63D543529C6A8983 /* Images.xcassets */; };
 		55BE90DF2542AD4F00E3841E /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 55BE90DE2542AD4F00E3841E /* Images.xcassets */; };
 		55BE91512542AD7800E3841E /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 55BE91502542AD7800E3841E /* Images.xcassets */; };
 		55BE91C32542ADA200E3841E /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 55BE91C22542ADA200E3841E /* Images.xcassets */; };
@@ -1432,6 +1433,7 @@
 		55BE8EE02542AC1D00E3841E /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Images.xcassets; sourceTree = "<group>"; };
 		55BE8F8A2542AC5100E3841E /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Images.xcassets; sourceTree = "<group>"; };
 		55BE90342542AC8E00E3841E /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Images.xcassets; sourceTree = "<group>"; };
+		AEF58A5A63D543529C6A8983 /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Images.xcassets; sourceTree = "<group>"; };
 		55BE90DE2542AD4F00E3841E /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Images.xcassets; sourceTree = "<group>"; };
 		55BE91502542AD7800E3841E /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Images.xcassets; sourceTree = "<group>"; };
 		55BE91C22542ADA200E3841E /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Images.xcassets; sourceTree = "<group>"; };
@@ -4143,6 +4145,7 @@
 		8A329FAAF0AF42DD81D8DB5B /* Supporting Files */ = {
 			isa = PBXGroup;
 			children = (
+				AEF58A5A63D543529C6A8983 /* Images.xcassets */,
 				89A4F213D38948F389303F60 /* Wii-Info.plist */,
 				C6534A32E31642F3805D9A90 /* Keyboard-Mappings.plist */,
 				68416A57049F48B997026285 /* Controller-Mappings.plist */,
@@ -6024,6 +6027,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				59DBB324440641229726E4C0 /* Images.xcassets in Resources */,
 				6DAB96D7C11047B4AA72206A /* Controller-Mappings.plist in Resources */,
 				86FC923CD58043BBBEC5F717 /* Controller-Preferences.plist in Resources */,
 				E0D3D5AF068C48148780583F /* Keyboard-Mappings.plist in Resources */,
