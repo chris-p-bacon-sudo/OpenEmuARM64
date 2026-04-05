@@ -54,7 +54,7 @@ import AudioToolbox
     /** Specifies how and when shader effects are rendered.
      *
      * Shader effects are normally paused when the core is paused. This
-     * API allows futher control over when the effects are rendered.
+     * API allows further control over when the effects are rendered.
      *
      * @param mode Determines how and when shader effects are rendered.
      */
@@ -65,6 +65,7 @@ import AudioToolbox
     
     /// Controls whether the renderer should use a variable refresh rate.
     func setAdaptiveSyncEnabled(_ enabled: Bool)
+    func setGlobalShaderParameters(gamma: CGFloat, saturation: CGFloat)
     func setShaderURL(_ url: URL, parameters: [String: NSNumber]?, completionHandler block: @escaping (Error?) -> Void)
     func setShaderParameterValue(_ value: CGFloat, forKey key: String)
     func setupEmulation(completionHandler handler: @escaping (_ screenSize: OEIntSize, _ aspectSize: OEIntSize) -> Void)

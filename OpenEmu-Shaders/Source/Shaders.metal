@@ -65,6 +65,10 @@ typedef struct
     simd_float4x4   projectionMatrix;
     simd_float2     outputSize;
     float time;
+    float gamma;
+    float saturation;
+    float padding1;
+    simd_float2 padding2;
 } Uniforms;
 
 
@@ -87,5 +91,19 @@ fragment float4 basic_fragment_proj_tex(ColorInOut in [[stage_in]],
                                         sampler samp                 [[ sampler(SamplerIndexDraw) ]])
 {
     half4 colorSample = tex.sample(samp, in.texCoord.xy);
+    
+    // Apply Gamma Correction (pre-computed inverse gamma on CPU would be ideal,
+    // but we compute it here in half precision for 2x ALU throughput on Apple Silicon)
+    if (uniforms.gamma != 1.0) {
+        half invGamma = half(1.0h / half(uniforms.gamma));
+        colorSample.rgb = pow(colorSample.rgb, half3(invGamma));
+    }
+    
+    // Apply Saturation (entirely in half precision for 2x throughput)
+    if (uniforms.saturation != 1.0) {
+        half luma = dot(colorSample.rgb, half3(0.2126h, 0.7152h, 0.0722h));
+        colorSample.rgb = mix(half3(luma), colorSample.rgb, half(uniforms.saturation));
+    }
+    
     return float4(colorSample);
 }

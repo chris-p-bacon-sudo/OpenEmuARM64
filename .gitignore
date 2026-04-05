@@ -57,3 +57,4 @@ PPSSPP/PPSSPP-Core/ppsspp/ext/glslang/
 PPSSPP/PPSSPP-Core/ppsspp/ext/miniupnp/
 PPSSPP/PPSSPP-Core/ppsspp/ext/rapidjson/
 PPSSPP/PPSSPP-Core/ppsspp/ext/zstd/
+build.log

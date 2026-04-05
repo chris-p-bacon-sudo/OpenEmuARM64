@@ -29,6 +29,9 @@ final class GameControlsBarView: NSView {
     private var slider: NSSlider!
     private var fullScreenButton: NSButton!
     private var pauseButton: NSButton!
+    private weak var adjustmentsPopover: NSPopover?
+    private weak var satAdjustLabel: NSTextField?
+    private weak var gamAdjustLabel: NSTextField?
     
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
@@ -235,5 +238,85 @@ final class GameControlsBarView: NSView {
     
     func reflectVolume(_ volume: Float) {
         slider.animator().floatValue = volume
+    }
+
+    // MARK: - Image Adjustments Popover
+
+    @objc func showAdjustmentsPopoverFromMenu(_ sender: Any?) {
+        // Anchor to the center of the bar
+        let anchorRect = NSRect(x: bounds.midX - 1, y: bounds.maxY - 5, width: 2, height: 2)
+        showAdjustmentsPopover(anchoredTo: anchorRect)
+    }
+
+    private func showAdjustmentsPopover(anchoredTo rect: NSRect) {
+        if let popover = adjustmentsPopover, popover.isShown {
+            return
+        }
+        
+        let popover = NSPopover()
+        popover.behavior = .transient
+        self.adjustmentsPopover = popover
+        
+        let vc = NSViewController()
+        let rowHeight: CGFloat = 30
+        let rowGap: CGFloat = 15
+        let popoverHeight = rowGap + rowHeight + rowGap + rowHeight + rowGap  // gap + sat row + gap + gam row + gap
+        let container = NSView(frame: NSRect(x: 0, y: 0, width: 280, height: popoverHeight))
+        
+        let doc = (window?.parent?.windowController?.document as? OEGameDocument)
+        let sat = doc?.imageSaturation ?? 1.0
+        let gam = doc?.imageGamma ?? 1.0
+
+        let (satView, _, satLbl) = makeAdjustmentRow(
+            label: "Saturation:", value: sat, minValue: 0.5, maxValue: 3.0, y: 55, width: 260,
+            action: #selector(saturationChanged(_:))
+        )
+        let (gamView, _, gamLbl) = makeAdjustmentRow(
+            label: "Gamma:", value: gam, minValue: 0.5, maxValue: 2.0, y: 15, width: 260,
+            action: #selector(gammaChanged(_:))
+        )
+        satAdjustLabel = satLbl
+        gamAdjustLabel = gamLbl
+
+        container.addSubview(satView)
+        container.addSubview(gamView)
+        vc.view = container
+        popover.contentViewController = vc
+        popover.show(relativeTo: rect, of: self, preferredEdge: .maxY)
+    }
+
+    private func makeAdjustmentRow(label: String, value: Float, minValue: Double, maxValue: Double, y: CGFloat, width: CGFloat, action: Selector) -> (NSView, NSSlider, NSTextField) {
+        let row = NSView(frame: NSRect(x: 10, y: y, width: width, height: 30))
+        let lbl = NSTextField(labelWithString: label)
+        lbl.frame = NSRect(x: 0, y: 5, width: 80, height: 20)
+        row.addSubview(lbl)
+        
+        let slider = NSSlider(value: Double(value), minValue: minValue, maxValue: maxValue, target: self, action: action)
+        slider.frame = NSRect(x: 80, y: 5, width: 130, height: 20)
+        slider.isContinuous = true
+        row.addSubview(slider)
+        
+        let valLbl = NSTextField(labelWithString: String(format: "%.0f%%", value * 100))
+        valLbl.frame = NSRect(x: 215, y: 5, width: 45, height: 20)
+        valLbl.font = .monospacedDigitSystemFont(ofSize: 11, weight: .regular)
+        row.addSubview(valLbl)
+        
+        return (row, slider, valLbl)
+    }
+
+    @objc private func saturationChanged(_ sender: NSSlider) {
+        let v = OEGameDocument.clampedSaturation(sender.floatValue)
+        satAdjustLabel?.stringValue = String(format: "%.0f%%", v * 100)
+        NSDocumentController.shared.documents.forEach {
+            ($0 as? OEGameDocument)?.setSaturation(v, asDefault: false)
+        }
+    }
+
+    @objc private func gammaChanged(_ sender: NSSlider) {
+        let v = OEGameDocument.clampedGamma(sender.floatValue)
+        gamAdjustLabel?.stringValue = String(format: "%.0f%%", v * 100)
+        NSDocumentController.shared.documents.forEach {
+            ($0 as? OEGameDocument)?.setGamma(v, asDefault: false)
+        }
     }
 }

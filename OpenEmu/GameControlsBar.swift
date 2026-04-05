@@ -337,7 +337,11 @@ final class GameControlsBar: NSWindow {
         var item = NSMenuItem(title: NSLocalizedString("Edit Game Controls…", comment: ""), action: #selector(OEGameDocument.editControls(_:)), keyEquivalent: "")
         menu.addItem(item)
         
+        item = NSMenuItem(title: NSLocalizedString("Image Adjustments…", comment: ""), action: #selector(GameControlsBarView.showAdjustmentsPopoverFromMenu(_:)), keyEquivalent: "")
+        menu.addItem(item)
+        
         // insert cart/disk/tape
+
         if gameViewController.supportsFileInsertion {
             item = NSMenuItem(title: NSLocalizedString("Insert Cart/Disk/Tape…", comment: ""), action: #selector(OEGameDocument.insertFile(_:)), keyEquivalent: "")
             menu.addItem(item)

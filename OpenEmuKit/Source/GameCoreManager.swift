@@ -97,6 +97,10 @@ extension GameCoreManager: OEGameCoreHelper {
         gameCoreHelper?.setAdaptiveSyncEnabled(enabled)
     }
     
+    public func setGlobalShaderParameters(gamma: CGFloat, saturation: CGFloat) {
+        gameCoreHelper?.setGlobalShaderParameters(gamma: gamma, saturation: saturation)
+    }
+    
     public func setCheat(_ cheatCode: String, withType type: String, enabled: Bool) {
         gameCoreHelper?.setCheat(cheatCode, withType: type, enabled: enabled)
     }
