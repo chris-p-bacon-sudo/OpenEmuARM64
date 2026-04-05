@@ -99,13 +99,18 @@ final class SidebarController: NSViewController {
         tokens = [
             NotificationCenter.default.addObserver(forName: .OEDBSystemAvailabilityDidChange, object: nil, queue: .main) { [weak self] _ in
                 guard let self = self else { return }
-                
+
                 self.reloadDataAndPreserveSelection()
             },
             NotificationCenter.default.addObserver(forName: .libraryLocationDidChange, object: nil, queue: .main) { [weak self] _ in
                 guard let self = self else { return }
-                
+
                 self.reloadData()
+            },
+            NotificationCenter.default.addObserver(forName: .ROMImporterDidFinish, object: nil, queue: .main) { [weak self] _ in
+                guard let self = self else { return }
+
+                self.reloadDataAndPreserveSelection()
             },
         ]
         
