@@ -143,11 +143,13 @@ final class GameControlsBar: NSWindow {
         fadeTimer?.invalidate()
         fadeTimer = nil
         gameViewController = nil
-        
+
+        NotificationCenter.default.removeObserver(self)
+
         if let eventMonitor = eventMonitor {
             NSEvent.removeMonitor(eventMonitor)
         }
-        
+
         gameWindow = nil
     }
     
