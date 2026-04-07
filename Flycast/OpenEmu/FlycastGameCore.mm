@@ -152,6 +152,17 @@ __weak FlycastGameCore *_current;
     [super startEmulation];
 }
 
+- (void)stopEmulationWithCompletionHandler:(void(^)(void))completionHandler
+{
+    // emu.render() runs the SH4 JIT synchronously on the game loop thread.
+    // The stop block posted via performBlock: cannot execute while that thread
+    // is blocked. Set CpuRunning = 0 here, from the calling thread, so the
+    // JIT exits at its next scheduler check and the game loop becomes free.
+    if (_isInitialized)
+        emu.stop();
+    [super stopEmulationWithCompletionHandler:completionHandler];
+}
+
 - (void)stopEmulation
 {
     if (_isInitialized) {
@@ -184,6 +195,8 @@ __weak FlycastGameCore *_current;
             emu.loadGame(_romPath.fileSystemRepresentation);
             config::ThreadedRendering.override(false);
             rend_init_renderer();
+            settings.display.width  = _videoWidth;
+            settings.display.height = _videoHeight;
             emu.start();
             gui_setState(GuiState::Closed);
             _isInitialized = YES;
