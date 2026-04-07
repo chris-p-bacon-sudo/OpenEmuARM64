@@ -122,13 +122,14 @@ void SetFloatStatusReg()
         if (fpscr.DN)
         	on_mask |= 1 << 24;	// flush denormalized numbers to zero
 
+        unsigned long fpcr_val;
         asm volatile
             (
-                "MRS    x10, FPCR     \n\t"
-                "AND    x10, x10, %0  \n\t"
-                "ORR    x10, x10, %1  \n\t"
-                "MSR    FPCR, x10     \n\t"
-                :
+                "mrs %0, fpcr     \n\t"
+                "and %0, %0, %1   \n\t"
+                "orr %0, %0, %2   \n\t"
+                "msr fpcr, %0     \n\t"
+                : "=&r"(fpcr_val)
                 : "r"(off_mask), "r"(on_mask)
             );
     #else

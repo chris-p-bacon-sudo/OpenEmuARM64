@@ -1250,15 +1250,12 @@ INLINE void DYNACALL do_sqw(u32 Dest)
 }
 
 void DYNACALL do_sqw_mmu(u32 dst) { do_sqw<true>(dst); }
-#if HOST_CPU != CPU_ARM && HOST_CPU != CPU_ARM64
-//yes, this micro optimization makes a difference
 extern "C" void DYNACALL do_sqw_nommu_area_3(u32 dst,u8* sqb)
 {
 	u8* pmem=sqb+512+0x0C000000;
 
 	memcpy((u64*)&pmem[dst&(RAM_MASK-0x1F)],(u64*)&sqb[dst & 0x20],32);
 }
-#endif
 
 extern "C" void DYNACALL do_sqw_nommu_area_3_nonvmem(u32 dst,u8* sqb)
 {
