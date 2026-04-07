@@ -843,8 +843,6 @@ extension AppDelegate: NSMenuDelegate {
         notificationCenter.removeObserver(self, name: NSApplication.didFinishRestoringWindowsNotification, object: nil)
     }
     func applicationDidFinishLaunching(_ notification: Notification) {
-        SentryService.configureIfNeeded()
-
         // Get the “Customize Touch Bar…” menu to display in the View menu.
         NSApp.isAutomaticCustomizeTouchBarMenuItemEnabled = true
         
@@ -921,7 +919,12 @@ extension AppDelegate: NSMenuDelegate {
         if !restoreWindow {
             mainWindowController.showWindow(nil)
         }
-        
+
+        // Deferred from applicationDidFinishLaunching so the main window is visible
+        // before the consent sheet appears. Showing a runModal alert before the window
+        // rendered caused a CA transaction hang on macOS 26 (OPENEM-SILICON-8 et al).
+        SentryService.configureIfNeeded()
+
         CoreUpdater.shared.checkForNewCores()   // TODO: check error from completion handler
         
         let userDefaultsController = NSUserDefaultsController.shared

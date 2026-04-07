@@ -91,15 +91,21 @@ enum SentryService {
         alert.addButton(withTitle: "Don't Send")
         alert.alertStyle = .informational
 
-        let opted = alert.runModal() == .alertFirstButtonReturn
-
-        let defaults = UserDefaults.standard
-        defaults.set(opted,  forKey: consentKey)
-        defaults.set(true,   forKey: hasPromptedKey)
-
-        if opted {
-            start()
+        guard let window = NSApp.mainWindow ?? NSApp.keyWindow else {
+            persistConsent(alert.runModal() == .alertFirstButtonReturn)
+            return
         }
+
+        alert.beginSheetModal(for: window) { response in
+            persistConsent(response == .alertFirstButtonReturn)
+        }
+    }
+
+    private static func persistConsent(_ opted: Bool) {
+        let defaults = UserDefaults.standard
+        defaults.set(opted, forKey: consentKey)
+        defaults.set(true,  forKey: hasPromptedKey)
+        if opted { start() }
     }
 
     private static func start() {
