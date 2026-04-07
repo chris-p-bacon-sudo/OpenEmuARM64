@@ -427,15 +427,50 @@ class AppDelegate: NSObject {
             $0.coreIdentifier == "org.openemu.Dolphin_Core"
         }
         
-        if !incompatibleSaveStates.isEmpty {
-            
-            os_log(.info, log: .default, "Removing %d incompatible save states(s).", incompatibleSaveStates.count)
-            
+        guard !incompatibleSaveStates.isEmpty else { return }
+
+        // Build a human-readable list of affected cores for the alert.
+        let coreDisplayNames: [String: String] = [
+            "org.openemu.CrabEmu":          "CrabEmu (Game Gear / Master System / SG-1000)",
+            "org.openemu.desmume":          "DeSmuME (Nintendo DS)",
+            "org.openemu.GenesisPlus":      "Genesis Plus GX (Genesis / Mega Drive)",
+            "org.openemu.Mupen64Plus":      "Mupen64Plus (Nintendo 64)",
+            "org.openemu.NeoPop":           "NeoPop (Neo Geo Pocket)",
+            "org.openemu.TwoMbit":          "TwoMbit",
+            "org.openemu.VisualBoyAdvance": "VisualBoyAdvance (Game Boy / GBA)",
+            "org.openemu.Dolphin_Core":     "Dolphin (GameCube / Wii)",
+        ]
+        let affectedCores = Set(incompatibleSaveStates.compactMap { $0.coreIdentifier })
+            .sorted()
+            .map { coreDisplayNames[$0] ?? $0 }
+            .joined(separator: "\n")
+        let count = incompatibleSaveStates.count
+
+        let alert = NSAlert()
+        alert.messageText = "\(count) Incompatible Save State\(count == 1 ? "" : "s") Found"
+        alert.informativeText = """
+            The following save states were created with older core versions and are no longer \
+            compatible. Loading them would cause a crash.
+
+            Affected cores:
+            \(affectedCores)
+
+            You can keep them now and back up the files in:
+            ~/Library/Application Support/OpenEmu/Save States/
+            before deleting, or remove them immediately.
+            """
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Delete Save States")
+        alert.addButton(withTitle: "Keep for Now")
+
+        if alert.runModal() == .alertFirstButtonReturn {
+            os_log(.info, log: .default, "Removing %d incompatible save state(s).", count)
             for saveState in incompatibleSaveStates {
                 saveState.deleteAndRemoveFiles()
             }
-            
             try? context.save()
+        } else {
+            os_log(.info, log: .default, "User deferred deletion of %d incompatible save state(s).", count)
         }
     }
     
@@ -885,9 +920,7 @@ extension AppDelegate: NSMenuDelegate {
         OECoreMigration.resignCoresIfNeeded()
         OECoreMigration.runIfNeeded()
         loadPlugins(with: database)
-        removeIncompatibleSaveStates(from: database)
 
-        
         CoreUpdater.shared.checkForUpdatesAndInstall()
         
         if !restoreWindow {
@@ -921,9 +954,10 @@ extension AppDelegate: NSMenuDelegate {
         }
 
         // Deferred from applicationDidFinishLaunching so the main window is visible
-        // before the consent sheet appears. Showing a runModal alert before the window
+        // before any modal alerts appear. Showing a runModal alert before the window
         // rendered caused a CA transaction hang on macOS 26 (OPENEM-SILICON-8 et al).
         SentryService.configureIfNeeded()
+        removeIncompatibleSaveStates(from: database)
 
         CoreUpdater.shared.checkForNewCores()   // TODO: check error from completion handler
         
