@@ -6,7 +6,8 @@
 	objectVersion = 55;
 	objects = {
 
-/* Begin PBXBuildFile section */
+/\* Begin PBXBuildFile section \*/
+		B5AE7A121710BD6200ED5801 /* OELibretroCoreTranslator.m in Sources */ = {isa = PBXBuildFile; fileRef = B5AE7A111710BD6200ED5801 /* OELibretroCoreTranslator.m */; };
 		0109BBA5209F25EB002419C1 /* OEDiffQueueTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 0109BBA4209F25EB002419C1 /* OEDiffQueueTests.m */; };
 		0109BBA7209F25EB002419C1 /* OpenEmuBase.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C6772A261710A4BA00ED580A /* OpenEmuBase.framework */; };
 		011829A720ACA8AA0030B347 /* OEAudioBuffer.h in Headers */ = {isa = PBXBuildFile; fileRef = 011829A620ACA8AA0030B347 /* OEAudioBuffer.h */; settings = {ATTRIBUTES = (Public, ); }; };
@@ -141,7 +142,10 @@
 		};
 /* End PBXContainerItemProxy section */
 
-/* Begin PBXFileReference section */
+/\* Begin PBXFileReference section \*/
+		B5AE7A111710BD6200ED5801 /* OELibretroCoreTranslator.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = OELibretroCoreTranslator.m; sourceTree = "<group>"; };
+		B5AE7A131710BD6200ED5801 /* OELibretroCoreTranslator.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OELibretroCoreTranslator.h; sourceTree = "<group>"; };
+		B5AE7A151710BD6200ED5801 /* libretro.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = libretro.h; sourceTree = "<group>"; };
 		0109BBA2209F25EB002419C1 /* OpenEmuBaseTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = OpenEmuBaseTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		0109BBA4209F25EB002419C1 /* OEDiffQueueTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = OEDiffQueueTests.m; sourceTree = "<group>"; };
 		011829A620ACA8AA0030B347 /* OEAudioBuffer.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = OEAudioBuffer.h; sourceTree = "<group>"; };
@@ -350,6 +354,9 @@
 				C6772A611710BD6200ED580A /* OESystemResponderClient.h */,
 				C6772A621710BD6200ED580A /* OEGameCore.h */,
 				C6772A631710BD6200ED580A /* OEGameCore.m */,
+				B5AE7A131710BD6200ED5801 /* OELibretroCoreTranslator.h */,
+				B5AE7A111710BD6200ED5801 /* OELibretroCoreTranslator.m */,
+				B5AE7A151710BD6200ED5801 /* libretro.h */,
 				013D75CC23BD25CB00D74AD3 /* OEGameCoreDisplayModes.h */,
 				C6772A641710BD6200ED580A /* OEAbstractAdditions.h */,
 				C6772A651710BD6200ED580A /* OEAbstractAdditions.m */,
@@ -525,6 +532,7 @@
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B5AE7A141710BD6200ED5801 /* OELibretroCoreTranslator.h in Headers */,
 				C6772A6E1710BD6200ED580A /* OpenEmuBase.h in Headers */,
 				C6772A721710BD6200ED580A /* OEAbstractAdditions.h in Headers */,
 				C6772A701710BD6200ED580A /* OEGameCore.h in Headers */,
@@ -764,6 +772,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				C6772A711710BD6200ED580A /* OEGameCore.m in Sources */,
+				B5AE7A121710BD6200ED5801 /* OELibretroCoreTranslator.m in Sources */,
 				C6772A731710BD6200ED580A /* OEAbstractAdditions.m in Sources */,
 				27FC95191A92F12700CF1DC6 /* OEDiffQueue.mm in Sources */,
 				C6772A751710BD6200ED580A /* OEGameCoreController.m in Sources */,

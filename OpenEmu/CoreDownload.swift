@@ -135,7 +135,21 @@ extension CoreDownload: URLSessionDownloadDelegate {
             let fileName = ArchiveHelper.decompressFileInArchive(at: location, toDirectory: coresFolder)
         else { return }
         
-        let fullPluginURL = coresFolder.appendingPathComponent(fileName)
+        var fullPluginURL = coresFolder.appendingPathComponent(fileName)
+        
+        if fullPluginURL.pathExtension == "dylib" {
+            let fauxPluginURL = coresFolder.appendingPathComponent("\(bundleIdentifier).oecoreplugin")
+            try? FileManager.default.createDirectory(at: fauxPluginURL, withIntermediateDirectories: true)
+            let plist: [String: Any] = [
+                "CFBundleName": bundleIdentifier,
+                "CFBundleIdentifier": bundleIdentifier,
+                "OEGameCoreClass": "OELibretroCoreTranslator", 
+                "OEGameCorePlayerCount": 4,
+                "OELibretroCorePath": fullPluginURL.path 
+            ]
+            (plist as NSDictionary).write(to: fauxPluginURL.appendingPathComponent("Info.plist"), atomically: true)
+            fullPluginURL = fauxPluginURL
+        }
         
         DLog("Core (\(bundleIdentifier)) extracted to application support folder.")
 

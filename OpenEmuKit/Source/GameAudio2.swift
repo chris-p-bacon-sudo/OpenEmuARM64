@@ -25,7 +25,8 @@
 import Foundation
 import AVFoundation
 internal import os
-import OpenEmuBase.OEGameCore
+import OpenEmuBase
+
 
 @available(macOS 11.0, iOS 14.0, *)
 private var log = Logger(subsystem: "org.openemu.OpenEmuKit", category: "GameAudio2")
@@ -81,7 +82,7 @@ final public class GameAudio2: GameAudioProtocol {
     public func stopAudio() {
         engine.stop()
         destroyNodes()
-        isRunning = true
+        isRunning = false
     }
     
     public func pauseAudio() {

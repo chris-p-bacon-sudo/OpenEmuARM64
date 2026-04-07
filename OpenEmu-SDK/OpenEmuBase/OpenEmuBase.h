@@ -36,6 +36,7 @@
 #import <OpenEmuBase/NSDictionary+OpenEmuSDK.h>
 #import <OpenEmuBase/OEAbstractAdditions.h>
 #import <OpenEmuBase/OEGameCore.h>
+#import <OpenEmuBase/OELibretroCoreTranslator.h>
 #import <OpenEmuBase/OEGameCoreController.h>
 #import <OpenEmuBase/OERingBuffer.h>
 #import <OpenEmuBase/OESystemResponderClient.h>

@@ -576,16 +576,6 @@ final class OEGameDocument: NSDocument {
     
     func setUpGame(completionHandler handler: @escaping (_ success: Bool, _ error: Error?) -> Void) {
         NSLog("[OEGameDocument] setUpGame() called")
-        do {
-            // TODO: Remove after further testing.
-            NSLog("[OEGameDocument] Pre-loading core bundle: %@", corePlugin.bundle.bundleURL.path)
-            try corePlugin.bundle.loadAndReturnError()
-            NSLog("[OEGameDocument] Core bundle loaded successfully")
-        } catch {
-            NSLog("[OEGameDocument] Core bundle load FAILED: %@", error.localizedDescription)
-            handler(false, error)
-            return
-        }
         guard
             emulationStatus == .notSetup,
             checkRequiredFiles(),

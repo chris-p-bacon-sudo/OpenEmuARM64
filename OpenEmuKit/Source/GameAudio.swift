@@ -25,7 +25,8 @@
 import Foundation
 import AVFoundation
 internal import os.log
-import OpenEmuBase.OEGameCore
+import OpenEmuBase
+
 
 extension OSLog {
     static let audio = OSLog(subsystem: "org.openemu.OpenEmuKit", category: "GameAudio")

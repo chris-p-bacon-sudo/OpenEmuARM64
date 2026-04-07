@@ -195,8 +195,8 @@ final class CoreUpdater: NSObject {
                             self.coresDict[coreID] == nil,
                             let coreName = coreNode.attribute(forName: "name")?.stringValue,
                             let systemNodes = try? coreNode.nodes(forXPath: "./systems/system") as? [XMLElement],
-                            let appcastURLString = coreNode.attribute(forName: "appcastURL")?.stringValue,
-                            let appcastURL = URL(string: appcastURLString)
+                            let downloadURLString = coreNode.attribute(forName: "downloadURL")?.stringValue,
+                            let downloadURL = URL(string: downloadURLString)
                         else { continue }
                         
                         let download = CoreDownload()
@@ -219,20 +219,17 @@ final class CoreUpdater: NSObject {
                         download.systemIdentifiers = systemIdentifiers
                         download.canBeInstalled = true
                         
-                        let appcast = CoreAppcast(url: appcastURL)
+                        // Bypass Sparkle Appcast parsing and inject the direct Libretro buildbot URL
+                        download.appcastItem = CoreAppcastItem(url: downloadURL, version: "Current", minOSVersion: "11.0")
+                        download.delegate = self
                         
-                        appcast.fetch {
-                            download.appcastItem = appcast.items.first { $0.isSupported }
-                            download.delegate = self
-                            
-                            DispatchQueue.main.async {
-                                if download == self.coreDownload {
-                                    download.start()
-                                }
-                                
-                                self.coresDict[coreID] = download  // coreID already lowercased above
-                                self.updateCoreList()
+                        DispatchQueue.main.async {
+                            if download == self.coreDownload {
+                                download.start()
                             }
+                            
+                            self.coresDict[coreID] = download  // coreID already lowercased above
+                            self.updateCoreList()
                         }
                     }
                 }

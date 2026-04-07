@@ -25,6 +25,7 @@
 import Foundation
 import OpenEmuBase
 
+
 public class OECorePlugin: OEPlugin {
     
     override public class var pluginExtension: String {
@@ -36,8 +37,13 @@ public class OECorePlugin: OEPlugin {
     }
     
     @objc public class var allPlugins: [OECorePlugin] {
+        // Trigger dynamic core sync and merge results
+        let dynamicCores = OECoreSyncManager.shared.syncCores()
+        
         // swiftlint:disable:next force_cast
-        return plugins() as! [OECorePlugin]
+        let standardPlugins = plugins() as! [OECorePlugin]
+        
+        return standardPlugins + dynamicCores
     }
     
     required init(bundleAtURL bundleURL: URL, name: String?) throws {
@@ -67,9 +73,14 @@ public class OECorePlugin: OEPlugin {
     
     private var _controller: Controller?
     public var controller: OEGameCoreController! {
-        if _controller == nil,
-           let principalClass = bundle.principalClass {
-            _controller = newPluginController(with: principalClass)
+        if _controller == nil {
+            if let principalClass = bundle.principalClass {
+                _controller = newPluginController(with: principalClass)
+            } else {
+                // If the bundle has no executable (e.g. dummy dylib wrappers), instantiate the base Controller.
+                // The base Controller will read OEGameCoreClass natively from the plist we generated.
+                _controller = Controller(bundle: bundle)
+            }
         }
         return _controller
     }
@@ -294,5 +305,144 @@ public extension OECorePlugin {
             architectures.append(.arm64)
         }
         return architectures
+    }
+}
+// Copyright (c) 2026, OpenEmu Team
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+// ...
+
+import Foundation
+
+@objc(OECoreSyncManager)
+public class OECoreSyncManager: NSObject, XMLParserDelegate {
+    @objc public static let shared = OECoreSyncManager()
+    
+    private let localCoresPath: URL = {
+        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        return appSupport.appendingPathComponent("OpenEmu/Cores/Libs", isDirectory: true)
+    }()
+    
+    private let remoteURL = URL(string: "https://raw.githubusercontent.com/pystIC/OpenEmuARM64-metal4-shaders-core-updates/main/oecores.xml")!
+    
+    private var currentElement = ""
+    private var currentCoreID = ""
+    private var currentCoreName = ""
+    private var currentURL = ""
+    private var parsedCores: [[String: String]] = []
+    private var cachedCores: [OECorePlugin]?
+    
+    @objc public func syncCores() -> [OECorePlugin] {
+        if let cached = cachedCores { return cached }
+        var plugins: [OECorePlugin] = []
+        try? FileManager.default.createDirectory(at: localCoresPath, withIntermediateDirectories: true)
+        let contents = try? FileManager.default.contentsOfDirectory(at: localCoresPath, includingPropertiesForKeys: nil)
+        for url in contents ?? [] where url.pathExtension == "dylib" {
+            let coreID = url.deletingPathExtension().lastPathComponent
+            if let plugin = registerCore(id: coreID, url: url) {
+                plugins.append(plugin)
+            }
+        }
+        cachedCores = plugins
+        return plugins
+    }
+    
+    private func registerCore(id: String, url: URL) -> OECorePlugin? {
+        // Instantiate the ObjC Translator dynamically
+        guard let translatorClass = NSClassFromString("OELibretroCoreTranslator") as? NSObject.Type else {
+            print("Failed to find OELibretroCoreTranslator class in Objective-C runtime!")
+            return nil
+        }
+        
+        // We must mock OECorePlugin. OpenEmu expects a physical NSBundle with an Info.plist natively to parse capabilities. 
+        // We generate a faux wrapper here dynamically around the `.dylib`.
+        let fakeBundlePath = localCoresPath.appendingPathComponent("\(id).oecoreplugin")
+        try? FileManager.default.createDirectory(at: fakeBundlePath, withIntermediateDirectories: true)
+        
+        let infoPlistPath = fakeBundlePath.appendingPathComponent("Info.plist")
+        
+        let prefix = id.components(separatedBy: "_").first ?? id
+        let systemId = "openemu.system.\(prefix.lowercased())"
+        
+        let plist: [String: Any] = [
+            "CFBundleIdentifier": id,
+            "OEGameCoreClass": "OELibretroCoreTranslator", // The C-bridge class hooks in here!
+            "OEGameCorePlayerCount": 4,
+            "OELibretroCorePath": url.path, // Custom translation key so the bridge knows exactly what dylib to load via dlopen
+            "OEGameCoreSystemIdentifiers": [systemId]
+        ]
+        (plist as NSDictionary).write(to: infoPlistPath, atomically: true)
+        
+        if let plugin = OECorePlugin.corePlugin(bundleAtURL: fakeBundlePath) {
+            print("Successfully mocked OECorePlugin wrapper for \(id)")
+            return plugin
+        }
+        
+        return nil
+    }
+    
+    @objc public func updateRegistry() {
+        URLSession.shared.dataTask(with: remoteURL) { data, response, error in
+            guard let data = data else { return }
+            let parser = XMLParser(data: data)
+            parser.delegate = self
+            parser.parse()
+        }.resume()
+    }
+    
+    public func parser(_ parser: XMLParser, didStartElement elementName: String, namespaceURI: String?, qualifiedName qName: String?, attributes attributeDict: [String : String] = [:]) {
+        currentElement = elementName
+        if elementName == "core" {
+            currentCoreID = attributeDict["id"] ?? ""
+            currentCoreName = attributeDict["name"] ?? ""
+            currentURL = ""
+        }
+    }
+    
+    public func parser(_ parser: XMLParser, foundCharacters string: String) {
+        if currentElement == "url" {
+            currentURL += string
+        }
+    }
+    
+    public func parser(_ parser: XMLParser, didEndElement elementName: String, namespaceURI: String?, qualifiedName qName: String?) {
+        if elementName == "core" {
+            parsedCores.append(["id": currentCoreID, "url": currentURL.trimmingCharacters(in: .whitespacesAndNewlines)])
+        }
+        if elementName == "cores" {
+            downloadMissingCores()
+        }
+    }
+    
+    private func downloadMissingCores() {
+        try? FileManager.default.createDirectory(at: localCoresPath, withIntermediateDirectories: true)
+        
+        for coreInfo in parsedCores {
+            guard let id = coreInfo["id"], let urlString = coreInfo["url"], let url = URL(string: urlString) else { continue }
+            
+            // Check if we need to unzip
+            let isZip = urlString.hasSuffix(".zip")
+            let destinationURL = localCoresPath.appendingPathComponent("\(id).dylib")
+            
+            if !FileManager.default.fileExists(atPath: destinationURL.path) {
+                print("Downloading missing libretro core: \(id) from \(urlString)")
+                let task = URLSession.shared.downloadTask(with: url) { tempURL, response, error in
+                    guard let tempURL = tempURL, error == nil else { return }
+                    if isZip {
+                        // Normally we would use SSZipArchive or NSTask to unzip
+                        let process = Process()
+                        process.executableURL = URL(fileURLWithPath: "/usr/bin/unzip")
+                        process.arguments = ["-o", tempURL.path, "-d", self.localCoresPath.path]
+                        try? process.run()
+                        process.waitUntilExit()
+                    } else {
+                        try? FileManager.default.moveItem(at: tempURL, to: destinationURL)
+                    }
+                    DispatchQueue.main.async { self.cachedCores = nil }
+                }
+                task.resume()
+            }
+        }
     }
 }

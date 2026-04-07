@@ -35,6 +35,11 @@ class GameHelperMetalLayer: CAMetalLayer {
         
         // TODO: this should come from the host
         contentsScale   = 2.0
+        
+        let colorSpace = CGColorSpace(name: CGColorSpace.itur_709)
+        colorspace = colorSpace
+        wantsExtendedDynamicRangeContent = false
+        
         pixelFormat     = pixelFormat
     }
     

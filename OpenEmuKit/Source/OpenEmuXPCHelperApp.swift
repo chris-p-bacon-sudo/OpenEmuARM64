@@ -23,7 +23,8 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import Foundation
-internal import OpenEmuSystem.OEDeviceManager
+import OpenEmuSystem
+
 internal import os.log
 
 @objc public class OpenEmuXPCHelperApp: OpenEmuHelperApp {
