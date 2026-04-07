@@ -81,6 +81,34 @@ enum SentryService {
         SentrySDK.addBreadcrumb(crumb)
     }
 
+    // MARK: - Structured Logs
+
+    /// Sends a structured log entry to Sentry Logs explorer.
+    /// Logs are independently searchable and linked to the active trace context.
+    /// Use `attributes` to attach filterable key/value pairs (e.g. core, system, game).
+    static func log(_ message: String, level: SentryLevel = .info, attributes: [String: Any] = [:]) {
+        switch level {
+        case .debug:   SentrySDK.logger.debug(message, attributes: attributes)
+        case .warning: SentrySDK.logger.warn(message, attributes: attributes)
+        case .error:   SentrySDK.logger.error(message, attributes: attributes)
+        case .fatal:   SentrySDK.logger.fatal(message, attributes: attributes)
+        default:       SentrySDK.logger.info(message, attributes: attributes)
+        }
+    }
+
+    // MARK: - Performance Tracing
+
+    /// Starts a named transaction for measuring a discrete operation.
+    /// Returns the transaction — call `.finish()` when the operation completes.
+    ///
+    ///     let txn = SentryService.startTransaction("rom-load", operation: "file.load")
+    ///     // ... do work ...
+    ///     txn.finish()
+    @discardableResult
+    static func startTransaction(_ name: String, operation: String) -> Span {
+        SentrySDK.startTransaction(name: name, operation: operation)
+    }
+
     // MARK: - Private
 
     private static func showConsentPrompt() {
@@ -112,11 +140,12 @@ enum SentryService {
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "unknown"
         let build   = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "0"
         SentrySDK.start { options in
-            options.dsn         = dsn
-            options.debug       = false
-            options.releaseName = "openemu-silicon@\(version)+\(build)"
-            options.environment = "production"
-            options.tracesSampleRate = 0   // crash reports only — no performance tracing
+            options.dsn              = dsn
+            options.debug            = false
+            options.releaseName      = "openemu-silicon@\(version)+\(build)"
+            options.environment      = "production"
+            options.tracesSampleRate = 0.2  // sample 20% of sessions for performance tracing
+            options.enableLogs       = true
         }
     }
 }
