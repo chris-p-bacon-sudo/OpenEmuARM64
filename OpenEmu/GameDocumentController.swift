@@ -178,6 +178,12 @@ class GameDocumentController: NSDocumentController {
     }
     
     override func openGameDocument(with game: OEDBGame, display displayDocument: Bool, fullScreen: Bool, completionHandler: @escaping (OEGameDocument?, Error?) -> Void) {
+        // Bring an already-running document for this game to front rather than opening a second copy.
+        if let existing = gameDocuments.first(where: { $0.rom?.game == game }) {
+            existing.gameWindowController?.window?.makeKeyAndOrderFront(nil)
+            completionHandler(existing, nil)
+            return
+        }
         do {
             let document = try OEGameDocument(game: game, core: nil)
             setUpGameDocument(document, display: displayDocument, fullScreen: fullScreen, completionHandler: completionHandler)
@@ -185,8 +191,14 @@ class GameDocumentController: NSDocumentController {
             completionHandler(nil, error)
         }
     }
-    
+
     override func openGameDocument(with rom: OEDBRom, display displayDocument: Bool, fullScreen: Bool, completionHandler: @escaping (OEGameDocument?, Error?) -> Void) {
+        // Bring an already-running document for this rom to front rather than opening a second copy.
+        if let existing = gameDocuments.first(where: { $0.rom == rom }) {
+            existing.gameWindowController?.window?.makeKeyAndOrderFront(nil)
+            completionHandler(existing, nil)
+            return
+        }
         do {
             let document = try OEGameDocument(rom: rom, core: nil)
             setUpGameDocument(document, display: displayDocument, fullScreen: fullScreen, completionHandler: completionHandler)
