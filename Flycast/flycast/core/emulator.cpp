@@ -1000,22 +1000,22 @@ void Emulator::start()
 				ThreadName _("Flycast-emu");
 				InitAudio();
 
-			try {
-				while (state == Running || singleStep || stepRangeTo != 0)
-				{
-					startTime = sh4_sched_now64();
-					renderTimeout = false;
-					runInternal();
-					if (!ggpo::nextFrame())
-						break;
+				try {
+					while (state == Running || singleStep || stepRangeTo != 0)
+					{
+						startTime = sh4_sched_now64();
+						renderTimeout = false;
+						runInternal();
+						if (!ggpo::nextFrame())
+							break;
+					}
+					TermAudio();
+				} catch (...) {
+					setNetworkState(false);
+					getSh4Executor()->Stop();
+					TermAudio();
+					throw;
 				}
-				TermAudio();
-			} catch (...) {
-				setNetworkState(false);
-				getSh4Executor()->Stop();
-				TermAudio();
-				throw;
-			}
 		});
 	}
 	else
@@ -1077,16 +1077,7 @@ bool Emulator::render()
 		return false;
 	if (state != Running)
 		return false;
-	// The SH4 interpreter runs at ~10-20% of real speed on ARM64. A Dreamcast
-	// frame takes ~16ms of emulated time but up to ~500ms+ of real time during
-	// heavy workloads (GD-ROM loading, scene transitions). Use 2000ms when the
-	// interpreter is active so the game loop thread waits long enough.
-#if FEAT_SHREC != DYNAREC_NONE
-	const int frameTimeout = config::DynarecEnabled ? -1 : 2000;
-#else
-	const int frameTimeout = 2000;
-#endif
-	return rend_single_frame(true, frameTimeout);
+	return rend_single_frame(true, 14); // 14ms: return quickly if no frame ready so OE game loop stays responsive
 }
 
 void Emulator::vblank()

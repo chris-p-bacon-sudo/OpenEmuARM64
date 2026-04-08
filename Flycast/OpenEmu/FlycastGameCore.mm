@@ -85,6 +85,7 @@ static OpenEmuAudioBackend openEmuAudioBackend;
     int _videoWidth;
     int _videoHeight;
     BOOL _isInitialized;
+    BOOL _emuInitialized;
     double _frameInterval;
 }
 @end
@@ -137,13 +138,15 @@ __weak FlycastGameCore *_current;
 
     config::RendererType = RenderType::OpenGL;
     config::AudioBackend.set("openemu");
-    config::DynarecEnabled = false;
-    config::UseReios.override(true); // HLE BIOS: skips animated swirl, boots instantly on first launch
+    config::DynarecEnabled.override(false); // interpreter — JIT has stability issues on ARM64 macOS
 
-    addrspace::reserve();
+    if (!addrspace::reserve()) {
+        NSLog(@"[Flycast] Failed to reserve Dreamcast address space");
+    }
     os_InstallFaultHandler();
 
     emu.init();
+    _emuInitialized = YES;
 }
 
 - (void)startEmulation
@@ -153,6 +156,11 @@ __weak FlycastGameCore *_current;
 
 - (void)stopEmulationWithCompletionHandler:(void(^)(void))completionHandler
 {
+    // In threaded rendering mode, the OE game loop thread is blocked inside
+    // rend_single_frame() waiting for the next frame from the SH4 thread.
+    // emu.stop() calls rend_cancel_emu_wait() which unblocks it, freeing the
+    // thread to execute the completion handler. Safe to call twice — emu.stop()
+    // checks state != Running and returns immediately on the second call.
     if (_isInitialized)
         emu.stop();
     [super stopEmulationWithCompletionHandler:completionHandler];
@@ -168,7 +176,10 @@ __weak FlycastGameCore *_current;
         _isInitialized = NO;
     }
     os_UninstallFaultHandler();
-    emu.term();
+    if (_emuInitialized) {
+        emu.term();
+        _emuInitialized = NO;
+    }
     [super stopEmulation];
 }
 
@@ -188,15 +199,12 @@ __weak FlycastGameCore *_current;
             gui_init();
             theGLContext.init();
             emu.loadGame(_romPath.fileSystemRepresentation);
-            // loadGame calls config::Settings::instance().reset() then load(), both of
-            // which clear any override set before loadGame. Re-apply after loadGame so
-            // the JIT stays disabled when emu.start() launches the SH4 thread.
-            config::DynarecEnabled.override(false);
+            // loadGame calls reset()+load() which clears all settings — re-apply after it returns.
+            config::DynarecEnabled.override(false); // keep interpreter; JIT unstable on ARM64 macOS
+            config::AudioBackend.set("openemu");    // reset() clears this to "auto"; restore before InitAudio()
             rend_init_renderer();
-            settings.display.width  = _videoWidth;
-            settings.display.height = _videoHeight;
-            gui_setState(GuiState::Closed);
             emu.start();
+            gui_setState(GuiState::Closed);
             _isInitialized = YES;
         } catch (const std::exception &e) {
             NSLog(@"[Flycast] Error loading game: %s", e.what());
@@ -207,13 +215,7 @@ __weak FlycastGameCore *_current;
         }
     }
 
-    try {
-        emu.render();
-    } catch (const std::exception &e) {
-        NSLog(@"[Flycast] emu.render() exception: %s", e.what());
-    } catch (...) {
-        NSLog(@"[Flycast] emu.render() unknown exception");
-    }
+    emu.render();
 }
 
 #pragma mark - Video
@@ -261,39 +263,40 @@ __weak FlycastGameCore *_current;
 {
     if (!_isInitialized) { block(NO, nil); return; }
 
-    // Schedule on the emulator thread — dc_savestate modifies emulator state
-    // and must not race with the SH4 thread.
-    NSString *fileCopy = [fileName copy];
-    emu.run([fileCopy, block]() {
+    @try {
         dc_savestate(0);
         std::string srcPath = hostfs::getSavestatePath(0, false);
         NSString *src = [NSString stringWithUTF8String:srcPath.c_str()];
         NSError *err = nil;
-        [[NSFileManager defaultManager] removeItemAtPath:fileCopy error:nil];
-        [[NSFileManager defaultManager] copyItemAtPath:src toPath:fileCopy error:&err];
+        [[NSFileManager defaultManager] removeItemAtPath:fileName error:nil];
+        [[NSFileManager defaultManager] copyItemAtPath:src toPath:fileName error:&err];
         block(err == nil, err);
-    });
+    } @catch (NSException *e) {
+        NSError *error = [NSError errorWithDomain:OEGameCoreErrorDomain
+                                             code:OEGameCoreCouldNotSaveStateError
+                                         userInfo:@{NSLocalizedDescriptionKey: e.reason ?: @"Failed to save state"}];
+        block(NO, error);
+    }
 }
 
 - (void)loadStateFromFileAtPath:(NSString *)fileName completionHandler:(void (^)(BOOL, NSError *))block
 {
     if (!_isInitialized) { block(NO, nil); return; }
 
-    // Copy OE's file into Flycast's slot path first (safe to do on any thread),
-    // then schedule dc_loadstate on the emulator thread to avoid racing the SH4.
-    std::string dstPath = hostfs::getSavestatePath(0, true);
-    NSString *dst = [NSString stringWithUTF8String:dstPath.c_str()];
-    NSError *err = nil;
-    [[NSFileManager defaultManager] removeItemAtPath:dst error:nil];
-    [[NSFileManager defaultManager] copyItemAtPath:fileName toPath:dst error:&err];
-    if (err) {
-        block(NO, err);
-        return;
+    @try {
+        std::string dstPath = hostfs::getSavestatePath(0, true);
+        NSString *dst = [NSString stringWithUTF8String:dstPath.c_str()];
+        NSError *err = nil;
+        [[NSFileManager defaultManager] removeItemAtPath:dst error:nil];
+        [[NSFileManager defaultManager] copyItemAtPath:fileName toPath:dst error:&err];
+        if (!err) dc_loadstate(0);
+        block(err == nil, err);
+    } @catch (NSException *e) {
+        NSError *error = [NSError errorWithDomain:OEGameCoreErrorDomain
+                                             code:OEGameCoreCouldNotLoadStateError
+                                         userInfo:@{NSLocalizedDescriptionKey: e.reason ?: @"Failed to load state"}];
+        block(NO, error);
     }
-    emu.run([block]() {
-        dc_loadstate(0);
-        block(YES, nil);
-    });
 }
 
 #pragma mark - Input

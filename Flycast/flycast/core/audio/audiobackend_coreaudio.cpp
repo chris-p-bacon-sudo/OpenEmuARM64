@@ -173,10 +173,10 @@ public:
 			int avail = (samples_rptr - samples_wptr - 4 + BUFSIZE) % BUFSIZE;
 			if (avail == 0)
 			{
-				if (!wait)
-					break;
-				bufferEmpty.Wait();
-				continue;
+				// Never block the caller thread — in OpenEmu the SH4 runs on the
+				// core thread and a blocking wait here deadlocks the game loop.
+				// Drop samples instead of waiting for the buffer to drain.
+				break;
 			}
 			avail = std::min(avail, size);
 			avail = std::min(avail, (int)BUFSIZE - samples_wptr);

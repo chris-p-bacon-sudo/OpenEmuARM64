@@ -131,6 +131,28 @@ These rules exist because AI-assisted sessions have previously created orphaned 
 - Reference the issue with `Fixes #N` in the commit body (auto-closes on merge) or `Related to #N` (soft link)
 - For core-specific fixes, note which systems are affected
 
+**Every PR description must include a "How to test locally" section** with exact copy-paste commands:
+
+```
+## How to test locally
+
+# 1. Check out this PR
+gh pr checkout <N> --repo nickybmon/OpenEmu-Silicon
+
+# 2. Build
+xcodebuild \
+  -workspace OpenEmu-metal.xcworkspace \
+  -scheme OpenEmu \
+  -configuration Debug \
+  -destination 'platform=macOS,arch=arm64' \
+  build 2>&1 | tail -20
+
+# 3. Launch
+open ~/Library/Developer/Xcode/DerivedData/OpenEmu-*/Build/Products/Debug/OpenEmu.app
+```
+
+Replace `<N>` with the actual PR number. Add any PR-specific setup steps below the commands — for example: which ROM or system to test, any BIOS files required, any permissions to revoke first, or specific behaviors to verify from the QA spec.
+
 ---
 
 ## Issue Tracker
