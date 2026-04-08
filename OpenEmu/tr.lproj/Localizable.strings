@@ -26,6 +26,8 @@
 	<string>İznin değiştirilmesi klavye girişi sorunlarını da çözebilir.</string>
 	<key>ALERT_INPUT_MONITORING_PART2_MONTEREY</key>
 	<string>İznin kaldırılması ve yeniden verilmesi de klavye girişi sorunlarını çözebilir.</string>
+	<key>ALERT_INPUT_MONITORING_PART2_TAHOE</key>
+	<string>Click &quot;Open System Settings&quot; below, find OpenEmu in the list, and enable the toggle. Then relaunch the app for the change to take effect.</string>
 	<key>ALERT_MOVE_LIBRARY_HTML</key>
 	<string>OpenEmu Oyun Kütüphanesi, kütüphane aşağıdaki konumlara taşınırsa bozulabilecek bir veritabanı dosyası içerir:&lt;br&gt;&lt;br&gt;&lt;ul&gt;&lt;li&gt;bulut senkronizasyon sistemlerindeki dosyalar (tıpkı &lt;b&gt;iCloud Drive&lt;/b&gt;)&lt;/li&gt;&lt;li&gt;Network klasörleri&lt;/li&gt;&lt;/ul&gt;&lt;br&gt;Ek olarak, &lt;b&gt;aynı kütüphaneyi birkaç bilgisayar ya da kullanıcının kullanması&lt;/b&gt; da bozabilir. Bu aynı zamanda kütüphanenin harici USB sürücülere taşınması için de geçerlidir.</string>
 	<key>Add</key>

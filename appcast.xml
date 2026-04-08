@@ -5,6 +5,93 @@
     <link>https://github.com/nickybmon/OpenEmu-Silicon/releases</link>
     <description>Most recent changes with links to updates.</description>
     <language>en</language>
+            <item>
+      <title>OpenEmu-Silicon 1.0.4</title>
+      <description>
+        <![CDATA[
+        <h2>OpenEmu-Silicon 1.0.4</h2>
+        <h3>What's New in 1.0.4</h3>
+        <ul>
+        <li><strong>Image Adjustments</strong> — Saturation and Gamma sliders now stay open while dragging; no longer dismissed by the drag gesture</li>
+        <li><strong>Preferences window</strong> now opens at the correct full width on first launch, instead of starting narrow until the Controls tab is visited</li>
+        <li><strong>Homebrew tap</strong> — OpenEmu-Silicon is now installable via `brew install --cask openemu-silicon`</li>
+        <li><strong>Crash reporting</strong> — opt-in Sentry crash reporting now includes additional context, breadcrumbs, and release tracking to help diagnose issues faster</li>
+        </ul>
+        <h3>Bug Fixes</h3>
+        <ul>
+        <li>Fixed a crash on macOS 26 caused by mixing `NSLog` format strings with Swift string interpolation</li>
+        <li>Fixed sidebar not refreshing after a ROM import completes</li>
+        <li>Fixed sidebar not updating when a homebrew game was added via Core Data</li>
+        <li>Fixed systems the user explicitly disabled being re-enabled on next launch</li>
+        <li>Fixed a potential crash on quit caused by Core Data writes happening off the correct queue</li>
+        <li>Fixed a memory leak from a dangling `NotificationCenter` observer in the game controls bar</li>
+        <li>Fixed Saturation and Gamma slider positions in the Gameplay preferences pane</li>
+        <li>Fixed the Image Adjustments menu item being grayed out in certain conditions</li>
+        <li>Fixed Gameplay preferences pane being clipped at the bottom on first visit</li>
+        <li>Fixed Help menu links (Submit Feedback, User Guide, Release Notes, Web Site) pointing to the original OpenEmu repo instead of OpenEmu-Silicon</li>
+        </ul>
+        ]]>
+      </description>
+      <pubDate>Sun, 05 Apr 2026 20:38:08 +0000</pubDate>
+      <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
+      <enclosure
+        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/v1.0.4/OpenEmu-Silicon.dmg"
+        sparkle:version="6"
+        sparkle:shortVersionString="1.0.4"
+        sparkle:edSignature="amQMbfJNMHTCKn3o0OgIaxsku69zVZOqdCUJ1BGq5cN/XPUl12mzIvNFYDCnV4dPtMUreUAnERgk28yDDAwPBQ=="
+        length="43514210"
+        type="application/octet-stream"/>
+    </item>
+<item>
+      <title>OpenEmu-Silicon 1.0.3</title>
+      <description>
+        <![CDATA[
+        <h2>OpenEmu-Silicon 1.0.3</h2>
+        <p>Critical hotfix: emulation cores failed to load in v1.0.2 due to a release-signing bug.</p>
+        <ul>
+          <li><strong>Fixed:</strong> All emulation cores failing to load with "couldn't be loaded, try reinstalling" — caused by missing entitlements in the v1.0.2 release build stripping disable-library-validation from the signed app</li>
+          <li><strong>Improved:</strong> App now re-signs installed cores on first launch after each update, preventing similar issues if a future build has a signing regression</li>
+        </ul>
+        ]]>
+      </description>
+      <pubDate>Fri, 04 Apr 2026 00:00:00 +0000</pubDate>
+      <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
+      <enclosure
+        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/v1.0.3/OpenEmu-Silicon.dmg"
+        sparkle:version="4"
+        sparkle:shortVersionString="1.0.3"
+        sparkle:edSignature="Um1PdVkVEFwj+qXOxBJy4PHa6/3unb6MmzcRpmjpoZ8GIO2RSaR+GWg/e463nfSgObeWwgs/INw3CgTl5SUBDA=="
+        length="43821756"
+        type="application/octet-stream"/>
+    </item>
+    <item>
+      <title>OpenEmu-Silicon 1.0.2</title>
+      <description>
+        <![CDATA[
+        <h2>OpenEmu-Silicon 1.0.2</h2>
+        <p>Core distribution overhaul, bug fixes, and UX improvements.</p>
+        <ul>
+          <li><strong>New:</strong> Self-hosted appcasts for all 23 cores — every core now delivers the correct ARM64-native binary and can update independently of the app</li>
+          <li><strong>Fixed:</strong> Duplicate cores in Preferences → Cores (Mednafen, Mupen64Plus, Atari800, and others appearing twice)</li>
+          <li><strong>Fixed:</strong> "doesn't contain a version for the current architecture" error — Intel-only cores are now detected and replaced automatically on every launch</li>
+          <li><strong>Fixed:</strong> Keyboard input not working after granting Input Monitoring permission — no restart needed</li>
+          <li><strong>Fixed:</strong> Setup Assistant hang when 4DO or DeSmuME were selected</li>
+          <li><strong>Improved:</strong> Sidebar hides systems with no installed core and no games</li>
+          <li><strong>Improved:</strong> 4DO and DeSmuME show a greyed "Unavailable" button instead of a broken Install button</li>
+          <li><strong>Improved:</strong> Updated app icon</li>
+        </ul>
+        ]]>
+      </description>
+      <pubDate>Thu, 03 Apr 2026 00:00:00 +0000</pubDate>
+      <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
+      <enclosure
+        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/v1.0.2/OpenEmu-Silicon.dmg"
+        sparkle:version="3"
+        sparkle:shortVersionString="1.0.2"
+        sparkle:edSignature="DlrQ2QIumrKgksQoaR03ZqI7yMkDPLUoXlkswvTPxff+Vp3WH6UMmT+qcOotgl/8jWA8cuIvixSZ2v1/lptQCA=="
+        length="43809309"
+        type="application/octet-stream"/>
+    </item>
     <item>
       <title>OpenEmu-Silicon 1.0.1</title>
       <description>

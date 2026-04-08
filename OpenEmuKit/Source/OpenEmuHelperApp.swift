@@ -114,10 +114,8 @@ extension OSLog {
         
         // 1. Audio
         if #available(macOS 11.0, *) {
-            os_log(.info, log: .helper, "Using GameAudio2 driver")
             _gameAudio = GameAudio2(withCore: gameCore)
         } else {
-            os_log(.info, log: .helper, "Using GameAudio driver")
             _gameAudio = GameAudio(withCore: gameCore)
         }
         
@@ -199,10 +197,8 @@ extension OSLog {
         _surface = CoreVideoTexture(device: _device, metalPixelFormat: .bgra8Unorm)
         
         if gameCore.gameCoreRendering == .openGL2 {
-            os_log(.debug, log: .display, "Using GL 2.x renderer")
             return OpenGL2GameRenderer(withInteropTexture: _surface, gameCore: gameCore)
         } else {
-            os_log(.debug, log: .display, "Using GL 3.x renderer")
             return OpenGL3GameRenderer(withInteropTexture: _surface, gameCore: gameCore)
         }
     }
@@ -214,9 +210,6 @@ extension OSLog {
         if gameCore.gameCoreRendering != .bitmap && gameCore.gameCoreRendering != .metal2 {
             _surface.size = size
             flipVertically = _surface.metalTextureIsFlippedVertically
-            os_log(.debug, log: .display, "Updated GL render surface size to %{public}@", NSStringFromOEIntSize(surfaceSize))
-        } else {
-            os_log(.debug, log: .display, "Set 2D buffer size to %{public}@", NSStringFromOEIntSize(surfaceSize))
         }
         
         _gameRenderer.update()
@@ -226,10 +219,6 @@ extension OSLog {
         let aspectSize = CGSize(width: CGFloat(gameCore.aspectSize.width),
                                 height: CGFloat(gameCore.aspectSize.height))
         
-        os_log(.debug, log: .display,
-               "Set FilterChain sourceRect to %{public}@, aspectSize to %{public}@",
-               NSStringFromRect(sourceRect),
-               NSStringFromSize(aspectSize))
         _filterChain.setSourceRect(sourceRect, aspect: aspectSize)
     }
     
@@ -261,8 +250,6 @@ extension OSLog {
         }
         
         let url = info.romURL.standardizedFileURL
-        
-        os_log(.info, log: .helper, "Load ROM at path %{public}@", url.path)
         
         _shader = info.shaderURL
         _shaderParameters = info.shaderParameters
@@ -299,11 +286,8 @@ extension OSLog {
             self._systemResponder.handle(event)
         }
         
-        os_log(.debug, log: .helper, "Loaded bundle.")
-        
         guard FileManager.default.isReadableFile(atPath: url.path)
         else {
-            os_log(.error, log: .helper, "Unable to access file at path %{public}@", url.path)
             gameCore = nil
             
             throw OEGameCoreErrorCodes(.couldNotLoadROMError,
@@ -315,8 +299,6 @@ extension OSLog {
         
         do {
             try gameCore.loadFile(at: url)
-            os_log(.debug, log: .helper, "Loaded new ROM: %{public}@", url.path)
-            
             gameCoreOwner.setDiscCount(gameCore.discCount)
             if let displayModes = gameCore.displayModes {
                 gameCoreOwner.setDisplayModes(displayModes)
@@ -324,7 +306,6 @@ extension OSLog {
             
             loadedRom = true
         } catch {
-            os_log(.debug, log: .helper, "Failed to load ROM.")
             gameCore = nil
             
 			throw OEGameCoreErrorCodes(.couldNotLoadROMError,
@@ -339,11 +320,6 @@ extension OSLog {
     // MARK: - OEGameCoreOwner subclass handles
     
     private func updateScreenSize(_ newScreenSize: OEIntSize, aspectSize newAspectSize: OEIntSize) {
-        os_log(.debug, log: .display,
-               "Notify OEGameCoreOwner of display size update: screenSize = %{public}@, aspectSize = %{public}@",
-               NSStringFromOEIntSize(newScreenSize),
-               NSStringFromOEIntSize(newAspectSize))
-        
         gameCoreOwner.setScreenSize(newScreenSize, aspectSize: newAspectSize)
     }
     
@@ -373,16 +349,12 @@ extension OSLog {
     }
     
     public func setAudioOutputDeviceID(_ deviceID: AudioDeviceID) {
-        os_log(.debug, log: .helper, "Set audio output to device number 0x%x", UInt32(deviceID))
-        
         gameCore.perform {
             self._gameAudio.setOutputDeviceID(deviceID)
         }
     }
     
     public func setOutputBounds(_ rect: NSRect) {
-        os_log(.debug, log: .display, "Output bounds changed to %{public}@", NSStringFromRect(rect))
-        
         if let _videoLayer = _videoLayer, _videoLayer.bounds != rect {
             CATransaction.begin()
             CATransaction.setDisableActions(true)
@@ -409,7 +381,6 @@ extension OSLog {
     }
     
     public func setAdaptiveSyncEnabled(_ enabled: Bool) {
-        os_log(.debug, log: .default, "Set adaptive sync enabled: %@", enabled ? "YES" : "NO")
         _adaptiveSyncEnabled = enabled
     }
     
@@ -439,6 +410,10 @@ extension OSLog {
     
     public func setShaderParameterValue(_ value: CGFloat, forKey key: String) {
         _filterChain.setValue(value, forParameterName: key)
+    }
+    
+    public func setGlobalShaderParameters(gamma: CGFloat, saturation: CGFloat) {
+        _filterChain.setShaderParameters(gamma: Float(gamma), saturation: Float(saturation))
     }
     
     public func setupEmulation(completionHandler handler: @escaping (_ screenSize: OEIntSize, _ aspectSize: OEIntSize) -> Void) {
@@ -598,10 +573,6 @@ extension OSLog {
         CATransaction.setDisableActions(true)
         
         if previousBufferSize != bufferSize {
-            os_log(.debug, log: .display,
-                   "Game core buffer size change: %{public}@ → %{public}@",
-                   NSStringFromOEIntSize(previousBufferSize),
-                   NSStringFromOEIntSize(bufferSize))
             precondition(_gameRenderer.canChangeBufferSize, "Game tried changing IOSurface in a state we don't support")
             
             setupCVBuffer()
@@ -609,19 +580,10 @@ extension OSLog {
             if screenRect != previousScreenRect {
                 precondition(screenRect.origin.x + screenRect.size.width <= bufferSize.width, "screen rect must not be larger than buffer size")
                 precondition(screenRect.origin.y + screenRect.size.height <= bufferSize.height, "screen rect must not be larger than buffer size")
-                
-                os_log(.debug, log: .display,
-                       "Game core screen rect change: %{public}@ → %{public}@",
-                       NSStringFromOEIntRect(previousScreenRect),
-                       NSStringFromOEIntRect(screenRect))
                 mustUpdate = true
             }
-            
+
             if aspectSize != previousAspectSize {
-                os_log(.debug, log: .display,
-                       "Game core aspect size change: %{public}@ → %{public}@",
-                       NSStringFromOEIntSize(previousAspectSize),
-                       NSStringFromOEIntSize(aspectSize))
                 mustUpdate = true
             }
             
@@ -675,7 +637,6 @@ extension OSLog {
 
 @objc extension OpenEmuHelperApp: OEGameCoreDelegate {
     public func gameCoreDidFinishFrameRefreshThread(_ gameCore: OEGameCore) {
-        os_log(.debug, log: .helper, "Finishing separate thread, stopping")
         CFRunLoopStop(CFRunLoopGetCurrent())
     }
     
@@ -702,7 +663,6 @@ extension OSLog {
             var skipped: DispatchSemaphore? = _inflightSemaphore
             defer {
                 if let skipped = skipped {
-                    os_log(.debug, log: .display, "Skipping frame.")
                     _skippedFrames += 1
                     skipped.signal()
                 }
@@ -757,22 +717,6 @@ extension OSLog {
                 finalCB.present(drawable)
             }
             
-#if false
-            // TODO: Add developer option to show using ImGui?
-            if #available(macOS 10.15.4, *) {
-                drawable.addPresentedHandler { d in
-                    let dur = d.presentedTime - self.previous
-                    self.frameRate = 1.0 / dur
-                    self.previous = d.presentedTime
-                    if d.presentedTime - self.lastLog > 1 {
-                        os_log(.debug, log: .display,
-                               "frame rate: %0.2f fps, interval: %0.2f Hz",
-                               self.frameRate, self.gameCore.frameInterval)
-                        self.lastLog = d.presentedTime
-                    }
-                }
-            }
-#endif
             finalCB.commit()
         }
     }

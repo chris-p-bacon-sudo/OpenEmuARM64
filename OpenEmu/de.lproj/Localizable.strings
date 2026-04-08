@@ -26,6 +26,8 @@
 	<string>Das Aus-/Abwählen der Berechtigung kann dabei helfen, Tastatureingabeprobleme zu beheben.</string>
 	<key>ALERT_INPUT_MONITORING_PART2_MONTEREY</key>
 	<string>Das Entfernen und erneute Erteilen der Berechtigung kann dabei helfen, Tastatureingabeprobleme zu beheben.</string>
+	<key>ALERT_INPUT_MONITORING_PART2_TAHOE</key>
+	<string>Click &quot;Open System Settings&quot; below, find OpenEmu in the list, and enable the toggle. Then relaunch the app for the change to take effect.</string>
 	<key>ALERT_MOVE_LIBRARY_HTML</key>
 	<string>Die OpenEmu-Mediathek enthät eine Datenbankdatei, die beschädigt werden kann, wenn sie an einen der folgenden Orte bewegt wird:&lt;br&gt;&lt;br&gt;&lt;ul&gt;&lt;li&gt;Ordner, die von einem Synchronisierungsdienst (wie &lt;b&gt;iCloud Drive&lt;/b&gt;) verwaltet werden&lt;/li&gt;&lt;li&gt;Netzwerklaufwerke&lt;/li&gt;&lt;/ul&gt;&lt;br&gt;Auch das &lt;b&gt;Teilen der Mediathek zwischen mehreren Computern oder Benutzer:innen&lt;/b&gt; kann zur Beschädigung führen. Dies gilt auch dann, wenn sie auf ein externes Speichermedium verschoben wird.</string>
 	<key>Add</key>

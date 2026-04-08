@@ -130,10 +130,10 @@ final class SetupAssistant: NSViewController {
             //       if the user goes back to the core selection screen, they shouldn't really deselect because
             //       once the download started, we don't cancel or remove it
             for coreInfo in coresToDownload {
-                if coreInfo.isSelected && !coreInfo.isDownloadRequested {
-                    coreInfo.core.start()
-                    coreInfo.isDownloadRequested = true
-                }
+                guard coreInfo.isSelected && !coreInfo.isDownloadRequested else { continue }
+                guard coreInfo.core.appcastItem != nil else { continue }
+                coreInfo.core.start()
+                coreInfo.isDownloadRequested = true
             }
         }
         fsm.onTransitions(from: .coreSelection, to: .welcome) { [unowned self] in

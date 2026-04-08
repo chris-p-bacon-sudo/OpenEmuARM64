@@ -26,6 +26,8 @@
 	<string>切換許可權還可以解決鍵盤輸入問題。</string>
 	<key>ALERT_INPUT_MONITORING_PART2_MONTEREY</key>
 	<string>刪除並重新授予許可權也可以解決鍵盤輸入問題。</string>
+	<key>ALERT_INPUT_MONITORING_PART2_TAHOE</key>
+	<string>Click &quot;Open System Settings&quot; below, find OpenEmu in the list, and enable the toggle. Then relaunch the app for the change to take effect.</string>
 	<key>ALERT_MOVE_LIBRARY_HTML</key>
 	<string>OpenEmu 遊戲庫包含一個資料庫檔，若將遊戲庫移動至以下位置，該檔可能會損壞:&lt;br&gt;&lt;br&gt;&lt;ul&gt;&lt;li&gt;雲同步軟體管理的檔案夾 (如 &lt;b&gt;iCloud Drive&lt;/b&gt;)&lt;/li&gt;&lt;li&gt;網路磁碟&lt;/li&gt;&lt;/ul&gt;&lt;br&gt;此外，&lt;b&gt;在多台電腦或用戶之間共用同一遊戲庫&lt;/b&gt;也可能造成毀損。這也適用於將遊戲庫移動到外接 USB 碟。</string>
 	<key>Add</key>

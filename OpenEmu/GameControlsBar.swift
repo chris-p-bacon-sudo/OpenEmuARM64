@@ -143,11 +143,13 @@ final class GameControlsBar: NSWindow {
         fadeTimer?.invalidate()
         fadeTimer = nil
         gameViewController = nil
-        
+
+        NotificationCenter.default.removeObserver(self)
+
         if let eventMonitor = eventMonitor {
             NSEvent.removeMonitor(eventMonitor)
         }
-        
+
         gameWindow = nil
     }
     
@@ -337,7 +339,12 @@ final class GameControlsBar: NSWindow {
         var item = NSMenuItem(title: NSLocalizedString("Edit Game Controls…", comment: ""), action: #selector(OEGameDocument.editControls(_:)), keyEquivalent: "")
         menu.addItem(item)
         
+        item = NSMenuItem(title: NSLocalizedString("Image Adjustments…", comment: ""), action: #selector(GameControlsBarView.showAdjustmentsPopoverFromMenu(_:)), keyEquivalent: "")
+        item.target = controlsView
+        menu.addItem(item)
+        
         // insert cart/disk/tape
+
         if gameViewController.supportsFileInsertion {
             item = NSMenuItem(title: NSLocalizedString("Insert Cart/Disk/Tape…", comment: ""), action: #selector(OEGameDocument.insertFile(_:)), keyEquivalent: "")
             menu.addItem(item)

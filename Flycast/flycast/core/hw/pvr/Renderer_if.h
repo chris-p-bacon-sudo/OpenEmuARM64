@@ -12,7 +12,7 @@ void rend_vblank();
 void rend_start_render();
 int rend_end_render(int tag, int cycles, int jitter, void *arg);
 void rend_cancel_emu_wait();
-bool rend_single_frame(const bool& enabled);
+bool rend_single_frame(const bool& enabled, int timeoutMs = -1);
 void rend_swap_frame(u32 fb_r_sof1);
 void rend_set_fb_write_addr(u32 fb_w_sof1);
 void rend_reset();

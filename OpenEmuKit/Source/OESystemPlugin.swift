@@ -150,7 +150,7 @@ public class OESystemPlugin: OEPlugin {
     }
     
     public var systemIcon: NSImage {
-        return controller.systemIcon
+        return controller?.systemIcon ?? NSImage()
     }
     
     public var responderClass: AnyClass {

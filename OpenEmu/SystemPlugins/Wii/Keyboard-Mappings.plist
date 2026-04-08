@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>OEWiiClassicButtonUp</key>
+	<integer>82</integer>
+	<key>OEWiiClassicButtonDown</key>
+	<integer>81</integer>
+	<key>OEWiiClassicButtonLeft</key>
+	<integer>80</integer>
+	<key>OEWiiClassicButtonRight</key>
+	<integer>79</integer>
+	<key>OEWiiClassicButtonA</key>
+	<integer>27</integer>
+	<key>OEWiiClassicButtonB</key>
+	<integer>29</integer>
+	<key>OEWiiClassicButtonX</key>
+	<integer>22</integer>
+	<key>OEWiiClassicButtonY</key>
+	<integer>4</integer>
+	<key>OEWiiClassicButtonL</key>
+	<integer>20</integer>
+	<key>OEWiiClassicButtonR</key>
+	<integer>7</integer>
+	<key>OEWiiClassicButtonZr</key>
+	<integer>9</integer>
+	<key>OEWiiClassicButtonZl</key>
+	<integer>11</integer>
+	<key>OEWiiClassicButtonStart</key>
+	<integer>40</integer>
+</dict>
+</plist>

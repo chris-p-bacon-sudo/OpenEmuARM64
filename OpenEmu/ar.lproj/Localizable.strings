@@ -24,6 +24,8 @@
 	<string>Toggling the permission may also resolve keyboard input issues.</string>
 	<key>ALERT_INPUT_MONITORING_PART2_MONTEREY</key>
 	<string>إزالة الإذن وإعادة منحه قد تحل مشكلة إدخال لوحة المفاتيح أيضًا</string>
+	<key>ALERT_INPUT_MONITORING_PART2_TAHOE</key>
+	<string>Click &quot;Open System Settings&quot; below, find OpenEmu in the list, and enable the toggle. Then relaunch the app for the change to take effect.</string>
 	<key>ALERT_MOVE_LIBRARY_HTML</key>
 	<string>تحتوي مكتبة البرنامج على ملف قاعدة بيانات والذي قد يتلف إذا نُقلت المكتبة للأماكن التالية: &lt;br&gt;&lt;br&gt;&lt;ul&gt;&lt;li&gt; المجلدات المُدارة بواسطة برامج المزامنة السحابية (مثل &lt;b&gt;آيكلاود درايف&lt;/b&gt;)&lt;/li&gt;&lt;li&gt;أجهزة الشبكة&lt;/li&gt;&lt;/ul&gt;&lt;br&gt; بالإضافة إلى أن مشاركة نفس المكتبة بين مستخدمين أو أجهزة متعددة قد يتلفها أيضًا. وهذا ينطبق أيًضًا على أجهزة تخزين يو إس بي الخاريجة.</string>
 	<key>Add</key>

@@ -115,12 +115,13 @@ final class OELibraryDatabase: NSObject {
     
     @objc func applicationWillTerminate(_ notification: Notification) {
         importer.saveQueue()
-        
-        do {
-            try writerContext.save()
-        } catch {
-            os_log(.error, log: .library, "Could not save database: %{public}@", error as NSError)
-            NSApp.presentError(error)
+
+        writerContext.performAndWait {
+            do {
+                try self.writerContext.save()
+            } catch {
+                os_log(.error, log: .library, "Could not save database: %{public}@", error as NSError)
+            }
         }
     }
     

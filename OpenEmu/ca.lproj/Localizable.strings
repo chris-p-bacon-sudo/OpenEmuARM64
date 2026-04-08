@@ -26,6 +26,8 @@
 	<string>Commutar el permís també pot resoldre problemes del teclat.</string>
 	<key>ALERT_INPUT_MONITORING_PART2_MONTEREY</key>
 	<string>Eliminar i tornar a concedir el permís també pot resoldre problemes del teclat.</string>
+	<key>ALERT_INPUT_MONITORING_PART2_TAHOE</key>
+	<string>Click &quot;Open System Settings&quot; below, find OpenEmu in the list, and enable the toggle. Then relaunch the app for the change to take effect.</string>
 	<key>ALERT_MOVE_LIBRARY_HTML</key>
 	<string>La biblioteca dels jocs de l'OpenEmu conté un fitxer de base de dades que podria corrompre's si la biblioteca es mou als següents llocs:&lt;br&gt;&lt;br&gt;&lt;ul&gt;&lt;li&gt;Carpetes gestionades per programari de sincronització en el núvol (com ara &lt;b&gt;iCloud Drive&lt;/b&gt;)&lt;/li&gt;&lt;li&gt;Unitats de xarxa&lt;/li&gt;&lt;/ul&gt;&lt;br&gt;A més, &lt;b&gt;compartir la mateixa biblioteca entre diversos ordinadors o usuaris&lt;/b&gt; també pot corrompre-la. Això també s'aplica a moure la biblioteca a unitats USB externes.</string>
 	<key>Add</key>

@@ -137,11 +137,10 @@ __weak FlycastGameCore *_current;
 
     config::RendererType = RenderType::OpenGL;
     config::AudioBackend.set("openemu");
-    config::DynarecEnabled = true;
+    config::DynarecEnabled = false;
+    config::UseReios.override(true); // HLE BIOS: skips animated swirl, boots instantly on first launch
 
-    if (!addrspace::reserve()) {
-        NSLog(@"[Flycast] Failed to reserve Dreamcast address space");
-    }
+    addrspace::reserve();
     os_InstallFaultHandler();
 
     emu.init();
@@ -150,6 +149,13 @@ __weak FlycastGameCore *_current;
 - (void)startEmulation
 {
     [super startEmulation];
+}
+
+- (void)stopEmulationWithCompletionHandler:(void(^)(void))completionHandler
+{
+    if (_isInitialized)
+        emu.stop();
+    [super stopEmulationWithCompletionHandler:completionHandler];
 }
 
 - (void)stopEmulation
@@ -182,10 +188,15 @@ __weak FlycastGameCore *_current;
             gui_init();
             theGLContext.init();
             emu.loadGame(_romPath.fileSystemRepresentation);
-            config::ThreadedRendering.override(false);
+            // loadGame calls config::Settings::instance().reset() then load(), both of
+            // which clear any override set before loadGame. Re-apply after loadGame so
+            // the JIT stays disabled when emu.start() launches the SH4 thread.
+            config::DynarecEnabled.override(false);
             rend_init_renderer();
-            emu.start();
+            settings.display.width  = _videoWidth;
+            settings.display.height = _videoHeight;
             gui_setState(GuiState::Closed);
+            emu.start();
             _isInitialized = YES;
         } catch (const std::exception &e) {
             NSLog(@"[Flycast] Error loading game: %s", e.what());
@@ -196,8 +207,13 @@ __weak FlycastGameCore *_current;
         }
     }
 
-    emu.render();
-    [self.renderDelegate presentDoubleBufferedFBO];
+    try {
+        emu.render();
+    } catch (const std::exception &e) {
+        NSLog(@"[Flycast] emu.render() exception: %s", e.what());
+    } catch (...) {
+        NSLog(@"[Flycast] emu.render() unknown exception");
+    }
 }
 
 #pragma mark - Video
@@ -209,7 +225,7 @@ __weak FlycastGameCore *_current;
 
 - (BOOL)needsDoubleBufferedFBO
 {
-    return YES;
+    return NO;
 }
 
 - (OEIntSize)bufferSize
@@ -245,40 +261,39 @@ __weak FlycastGameCore *_current;
 {
     if (!_isInitialized) { block(NO, nil); return; }
 
-    @try {
+    // Schedule on the emulator thread — dc_savestate modifies emulator state
+    // and must not race with the SH4 thread.
+    NSString *fileCopy = [fileName copy];
+    emu.run([fileCopy, block]() {
         dc_savestate(0);
         std::string srcPath = hostfs::getSavestatePath(0, false);
         NSString *src = [NSString stringWithUTF8String:srcPath.c_str()];
         NSError *err = nil;
-        [[NSFileManager defaultManager] removeItemAtPath:fileName error:nil];
-        [[NSFileManager defaultManager] copyItemAtPath:src toPath:fileName error:&err];
+        [[NSFileManager defaultManager] removeItemAtPath:fileCopy error:nil];
+        [[NSFileManager defaultManager] copyItemAtPath:src toPath:fileCopy error:&err];
         block(err == nil, err);
-    } @catch (NSException *e) {
-        NSError *error = [NSError errorWithDomain:OEGameCoreErrorDomain
-                                             code:OEGameCoreCouldNotSaveStateError
-                                         userInfo:@{NSLocalizedDescriptionKey: e.reason ?: @"Failed to save state"}];
-        block(NO, error);
-    }
+    });
 }
 
 - (void)loadStateFromFileAtPath:(NSString *)fileName completionHandler:(void (^)(BOOL, NSError *))block
 {
     if (!_isInitialized) { block(NO, nil); return; }
 
-    @try {
-        std::string dstPath = hostfs::getSavestatePath(0, true);
-        NSString *dst = [NSString stringWithUTF8String:dstPath.c_str()];
-        NSError *err = nil;
-        [[NSFileManager defaultManager] removeItemAtPath:dst error:nil];
-        [[NSFileManager defaultManager] copyItemAtPath:fileName toPath:dst error:&err];
-        if (!err) dc_loadstate(0);
-        block(err == nil, err);
-    } @catch (NSException *e) {
-        NSError *error = [NSError errorWithDomain:OEGameCoreErrorDomain
-                                             code:OEGameCoreCouldNotLoadStateError
-                                         userInfo:@{NSLocalizedDescriptionKey: e.reason ?: @"Failed to load state"}];
-        block(NO, error);
+    // Copy OE's file into Flycast's slot path first (safe to do on any thread),
+    // then schedule dc_loadstate on the emulator thread to avoid racing the SH4.
+    std::string dstPath = hostfs::getSavestatePath(0, true);
+    NSString *dst = [NSString stringWithUTF8String:dstPath.c_str()];
+    NSError *err = nil;
+    [[NSFileManager defaultManager] removeItemAtPath:dst error:nil];
+    [[NSFileManager defaultManager] copyItemAtPath:fileName toPath:dst error:&err];
+    if (err) {
+        block(NO, err);
+        return;
     }
+    emu.run([block]() {
+        dc_loadstate(0);
+        block(YES, nil);
+    });
 }
 
 #pragma mark - Input

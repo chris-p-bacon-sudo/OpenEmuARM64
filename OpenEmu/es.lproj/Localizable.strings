@@ -26,6 +26,8 @@
 	<string>Cambiar el permiso también puede resolver problemas de entrada de teclado.</string>
 	<key>ALERT_INPUT_MONITORING_PART2_MONTEREY</key>
 	<string>Removing and re-granting the permission may also resolve keyboard input issues.</string>
+	<key>ALERT_INPUT_MONITORING_PART2_TAHOE</key>
+	<string>Click &quot;Open System Settings&quot; below, find OpenEmu in the list, and enable the toggle. Then relaunch the app for the change to take effect.</string>
 	<key>ALERT_MOVE_LIBRARY_HTML</key>
 	<string>La biblioteca de juegos de OpenEmu contiene un archivo de base de datos que puede llegar a corromperse si la biblioteca es movida a las siguientes ubicaciones:&lt;br&gt;&lt;br&gt;&lt;ul&gt;&lt;li&gt;Carpetas administradas por software de sincronización en la nube (como &lt;b&gt;iCloud Drive&lt;/b&gt;)&lt;/li&gt;&lt;li&gt;Unidades de red&lt;/li&gt;&lt;/ul&gt;&lt;br&gt;Además, &lt;b&gt;compartir la misma biblioteca entre multíples equipos o usuarios&lt;/b&gt; también puede corromperlo. Esto también aplica a mover la biblioteca a unidades USB externas.</string>
 	<key>Add</key>

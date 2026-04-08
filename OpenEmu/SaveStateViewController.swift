@@ -70,7 +70,7 @@ extension SaveStateViewController: CollectionViewExtendedDelegate, NSMenuItemVal
             item.name = title
             item.moveToDefaultLocation()
             if !item.writeToDisk() {
-                NSLog("Writing save state '%@' failed. It should be deleted!", title)
+                NSLog("Writing save state '\(title)' failed. It should be deleted!")
             }
             item.save()
         }

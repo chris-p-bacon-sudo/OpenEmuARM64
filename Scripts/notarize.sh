@@ -206,11 +206,17 @@ if grep -q "status: Accepted" "$NOTARIZE_LOG"; then
   mkdir -p "$REPO_ROOT/Releases"
   echo ""
   echo "=== Creating DMG ==="
+  # Copy the stapled app to the Releases/ folder so hdiutil can access it
+  # from a non-temp path (temp dirs under /var/folders are blocked by TCC).
+  STAGED_APP="$REPO_ROOT/Releases/OpenEmu.app"
+  rm -rf "$STAGED_APP"
+  cp -R "$APP" "$STAGED_APP"
   hdiutil create \
     -volname "OpenEmu-Silicon" \
-    -srcfolder "$APP" \
+    -srcfolder "$STAGED_APP" \
     -ov -format UDZO \
-    "$DMG" || die "hdiutil failed."
+    "$DMG" || { rm -rf "$STAGED_APP"; die "hdiutil failed."; }
+  rm -rf "$STAGED_APP"
 
   echo "Notarizing DMG..."
   DMG_NOTARIZE_LOG="$WORK_DIR/notarize-dmg.log"

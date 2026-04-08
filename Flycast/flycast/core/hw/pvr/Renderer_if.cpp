@@ -261,11 +261,12 @@ private:
 
 static PvrMessageQueue pvrQueue;
 
-bool rend_single_frame(const bool& enabled)
+bool rend_single_frame(const bool& enabled, int timeoutMs)
 {
 	FC_PROFILE_SCOPE;
 
-	const int timeout = SPG_CONTROL.isPAL() ? 23 : 20;
+	const int defaultTimeout = SPG_CONTROL.isPAL() ? 23 : 20;
+	const int timeout = (timeoutMs > 0) ? timeoutMs : defaultTimeout;
 	presented = false;
 	while (enabled && !presented)
 		if (!pvrQueue.waitAndExecute(timeout))

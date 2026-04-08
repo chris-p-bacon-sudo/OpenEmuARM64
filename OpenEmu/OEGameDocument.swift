@@ -33,6 +33,9 @@ let OEGameCoreDisplayModeKeyFormat = "displayMode.%@"
 let OEBackgroundPauseKey = "backgroundPause"
 let OEBackgroundControllerPlayKey = "backgroundControllerPlay"
 let OETakeNativeScreenshots = "takeNativeScreenshots"
+let OEGameSaturationKey = "OEImageSaturation"
+let OEGameGammaKey = "OEImageGamma"
+
 
 let OEScreenshotFileFormatKey = "screenshotFormat"
 let OEScreenshotPropertiesKey = "screenshotProperties"
@@ -119,7 +122,7 @@ final class OEGameDocument: NSDocument {
             case .libraryDatabaseUnavailable:
                 return 13
             case .noSystemPlugin:
-                return 13
+                return 14
             }
         }
     }
@@ -158,6 +161,17 @@ final class OEGameDocument: NSDocument {
     
     /// Non-nil if ROM was decompressed.
     private var decompressedROMFileURL: URL?
+    
+    @objc dynamic var imageSaturation: Float = 1.0
+    @objc dynamic var imageGamma: Float = 1.0
+    
+    static func clampedSaturation(_ value: Float) -> Float {
+        return max(0.5, min(3.0, value))
+    }
+    
+    static func clampedGamma(_ value: Float) -> Float {
+        return max(0.5, min(2.0, value))
+    }
     
     var coreIdentifier: String {
         return corePlugin.bundleIdentifier
@@ -268,7 +282,6 @@ final class OEGameDocument: NSDocument {
     }
     
     private func setUpDocument(with rom: OEDBRom, using core: OECorePlugin?) throws {
-        NSLog("[OEGameDocument] setUpDocument(with: %@, using: %@)", rom.game?.displayName ?? "nil", core?.bundleIdentifier ?? "nil")
         Self.initializeDefaults
         
         var fileURL = rom.url
@@ -340,7 +353,6 @@ final class OEGameDocument: NSDocument {
             // check if we have recovered
             let isReachable = try? fileURL?.checkResourceIsReachable()
             if fileURL == nil || isReachable != true {
-                DLog("File does not exist")
                 throw Errors.fileDoesNotExist
             }
         }
@@ -382,7 +394,13 @@ final class OEGameDocument: NSDocument {
         }
         
         loadCheats()
-        
+
+        SentryService.setGameContext(
+            gameName: rom.game?.displayName ?? "Unknown",
+            systemIdentifier: systemPlugin.systemIdentifier,
+            coreIdentifier: corePlugin?.bundleIdentifier ?? "Unknown"
+        )
+
         gameCoreManager = newGameCoreManager(with: corePlugin)
         gameViewController = GameViewController(document: self)
     }
@@ -425,14 +443,10 @@ final class OEGameDocument: NSDocument {
     }
     
     override func data(ofType typeName: String) throws -> Data {
-        DLog("\(typeName)")
         throw NSError(domain: NSOSStatusErrorDomain, code: unimpErr)
     }
     
     override func read(from url: URL, ofType typeName: String) throws {
-        DLog("\(url)")
-        DLog("\(typeName)")
-        
         guard let libraryDB = OELibraryDatabase.default else {
             throw Errors.libraryDatabaseUnavailable
         }
@@ -441,7 +455,6 @@ final class OEGameDocument: NSDocument {
         if typeName == "org.openemu.savestate" {
             guard let state = OEDBSaveState.updateOrCreateState(with: url, in: context) else {
                 // TODO: Specify failure reason and add recovery suggestion
-                DLog("Save state is invalid")
                 throw Errors.invalidSaveState
             }
             
@@ -455,13 +468,11 @@ final class OEGameDocument: NSDocument {
         }
         
         if !FileManager.default.fileExists(atPath: url.path) {
-            DLog("File does not exist")
             throw Errors.fileDoesNotExist
         }
-        
+
         if !url.isFileURL {
             // TODO: Handle URLs, by downloading to temp folder
-            DLog("URLs that are not file urls are currently not supported!")
             return
         }
         
@@ -555,9 +566,10 @@ final class OEGameDocument: NSDocument {
             //removeDeviceNotificationObservers()
             
             self.gameCoreManager?.stopEmulation() {
-                DLog("Emulation stopped")
+                SentryService.addBreadcrumb(message: "Emulation stopped", category: "emulation")
+                SentryService.clearGameContext()
                 OEBindingsController.default.systemBindings(for: self.systemPlugin.controller).remove(self)
-                
+
                 self.emulationStatus = .notSetup
                 
                 self.gameCoreManager = nil
@@ -575,14 +587,10 @@ final class OEGameDocument: NSDocument {
     // MARK: - Setup
     
     func setUpGame(completionHandler handler: @escaping (_ success: Bool, _ error: Error?) -> Void) {
-        NSLog("[OEGameDocument] setUpGame() called")
         do {
             // TODO: Remove after further testing.
-            NSLog("[OEGameDocument] Pre-loading core bundle: %@", corePlugin.bundle.bundleURL.path)
             try corePlugin.bundle.loadAndReturnError()
-            NSLog("[OEGameDocument] Core bundle loaded successfully")
         } catch {
-            NSLog("[OEGameDocument] Core bundle load FAILED: %@", error.localizedDescription)
             handler(false, error)
             return
         }
@@ -602,12 +610,9 @@ final class OEGameDocument: NSDocument {
         // This runs asynchronously; emulation proceeds after the check completes.
         performPreLaunchSyncCheckIfNeeded {
             self.gameCoreManager?.loadROM(completionHandler: {
-            NSLog("[OEGameDocument] ROM loaded by manager, setting up emulation")
             self.gameCoreManager?.setupEmulation() { screenSize, aspectSize in
-                NSLog("[OEGameDocument] Emulation setup COMPLETE, screenSize: %@, aspectSize: %@", NSStringFromOEIntSize(screenSize), NSStringFromOEIntSize(aspectSize))
                 self.gameViewController.setScreenSize(screenSize, aspectSize: aspectSize)
                 
-                DLog("SETUP DONE.")
                 self.emulationStatus = .setup
                 
                 // TODO: #567 and #568 need to be fixed first
@@ -625,6 +630,12 @@ final class OEGameDocument: NSDocument {
                 
                 // set initial volume
                 self.setVolume(self.volume, asDefault: false)
+                
+                // set initial image adjustments
+                self.imageSaturation = Self.clampedSaturation((UserDefaults.standard.object(forKey: OEGameSaturationKey) as? Float) ?? 1.0)
+                self.imageGamma = Self.clampedGamma((UserDefaults.standard.object(forKey: OEGameGammaKey) as? Float) ?? 1.0)
+                
+                self.gameCoreHelper?.setGlobalShaderParameters(gamma: CGFloat(self.imageGamma), saturation: CGFloat(self.imageSaturation))
                 
                 OEBindingsController.default.systemBindings(for: self.systemPlugin.controller).add(self)
                 
@@ -723,49 +734,36 @@ final class OEGameDocument: NSDocument {
     
     private func core(forSystem system: OESystemPlugin) throws -> OECorePlugin {
         let systemIdentifier = system.systemIdentifier
-        NSLog("[DEBUG] OEGameDocument: selecting core for system: %@", systemIdentifier)
         var validPlugins = OECorePlugin.corePlugins(forSystemIdentifier: systemIdentifier)
-        NSLog("[DEBUG] OEGameDocument: found %d valid core plugins for system: %@", validPlugins.count, systemIdentifier)
-        for p in validPlugins { NSLog("[DEBUG]   - Plugin: %@", p.bundleIdentifier) }
 
         if validPlugins.isEmpty {
-            NSLog("[DEBUG] OEGameDocument ERROR: No core found for system: %@", systemIdentifier)
             throw Errors.noCore
         }
         else if validPlugins.count == 1 {
-            let core = validPlugins.first!
-            NSLog("[DEBUG] OEGameDocument: Selected only available core: %@", core.bundleIdentifier)
-            return core
+            return validPlugins.first!
         }
         else {
             let defaults = UserDefaults.standard
             if let coreIdentifier = defaults.string(forKey: "defaultCore.\(systemIdentifier)"),
                let core = OECorePlugin.corePlugin(bundleIdentifier: coreIdentifier) {
-                NSLog("[DEBUG] OEGameDocument: Selected default core: %@", coreIdentifier)
                 return core
             } else {
                 validPlugins.sort { $0.displayName.caseInsensitiveCompare($1.displayName) == .orderedAscending }
-                let core = validPlugins.first!
-                NSLog("[DEBUG] OEGameDocument: Selected first available core: %@", core.bundleIdentifier)
-                return core
+                return validPlugins.first!
             }
         }
     }
     
     private func checkRequiredFiles() -> Bool {
-        NSLog("[DEBUG] OEGameDocument: checkRequiredFiles() for system: %@", systemPlugin.systemIdentifier)
         // Check current system plugin for OERequiredFiles and core plugin for OEGameCoreRequiresFiles opt-in
         if !corePlugin.requiresFiles(forSystemIdentifier: systemPlugin.systemIdentifier) {
-            NSLog("[DEBUG] OEGameDocument: core does not require files for this system")
             return true
         }
         
         if let validRequiredFiles = corePlugin.requiredFiles(forSystemIdentifier: systemPlugin.systemIdentifier) {
             let available = BIOSFile.requiredFilesAvailable(forSystemIdentifier: validRequiredFiles)
-            NSLog("[DEBUG] OEGameDocument: BIOSFile.requiredFilesAvailable: %d", available)
             return available
         } else {
-            NSLog("[DEBUG] OEGameDocument: No specific required files found for system")
             return true
         }
     }
@@ -1011,7 +1009,8 @@ final class OEGameDocument: NSDocument {
         if emulationStatus != .setup {
             return
         }
-        
+
+        SentryService.addBreadcrumb(message: "Emulation started", category: "emulation")
         emulationStatus = .starting
         gameCoreManager?.startEmulation() {
             self.emulationStatus = .playing
@@ -1032,6 +1031,7 @@ final class OEGameDocument: NSDocument {
                 return
             }
             if pauseEmulation {
+                SentryService.addBreadcrumb(message: "Emulation paused", category: "emulation")
                 enableOSSleep()
                 emulationStatus = .paused
                 if let lastPlayStartDate = lastPlayStartDate {
@@ -1039,6 +1039,7 @@ final class OEGameDocument: NSDocument {
                     self.lastPlayStartDate = nil
                 }
             } else {
+                SentryService.addBreadcrumb(message: "Emulation resumed", category: "emulation")
                 disableOSSleep()
                 rom.markAsPlayedNow()
                 lastPlayStartDate = Date()
@@ -1207,7 +1208,6 @@ final class OEGameDocument: NSDocument {
                 gameViewController.showScreenShotNotification()
             }
         } catch {
-            NSLog("Could not save screenshot at URL: \(temporaryURL), with error: \(error)")
         }
     }
     
@@ -1242,6 +1242,22 @@ final class OEGameDocument: NSDocument {
         
         if defaultFlag {
             UserDefaults.standard.set(volume, forKey: OEGameVolumeKey)
+        }
+    }
+    
+    func setSaturation(_ value: Float, asDefault: Bool) {
+        imageSaturation = Self.clampedSaturation(value)
+        gameCoreHelper?.setGlobalShaderParameters(gamma: CGFloat(imageGamma), saturation: CGFloat(imageSaturation))
+        if asDefault {
+            UserDefaults.standard.set(imageSaturation, forKey: OEGameSaturationKey)
+        }
+    }
+    
+    func setGamma(_ value: Float, asDefault: Bool) {
+        imageGamma = Self.clampedGamma(value)
+        gameCoreHelper?.setGlobalShaderParameters(gamma: CGFloat(imageGamma), saturation: CGFloat(imageSaturation))
+        if asDefault {
+            UserDefaults.standard.set(imageGamma, forKey: OEGameGammaKey)
         }
     }
     
@@ -1674,8 +1690,6 @@ final class OEGameDocument: NSDocument {
         
         gameCoreManager?.saveStateToFile(at: temporaryStateFileURL) { success, error in
             if !success {
-                NSLog("Could not create save state file at url: \(temporaryStateFileURL)")
-                
                 handler?()
                 return
             }
@@ -1694,8 +1708,6 @@ final class OEGameDocument: NSDocument {
             }
             
             guard let state = saveState else {
-                NSLog("Could not create save state item for \(stateName)")
-                
                 handler?()
                 return
             }
@@ -1718,7 +1730,6 @@ final class OEGameDocument: NSDocument {
                     do {
                         try convertedData?.write(to: state.screenshotURL, options: .atomic)
                     } catch {
-                        NSLog("Could not create screenshot at url: \(state.screenshotURL) with error: \(error)")
                     }
                     handler?()
                 }
@@ -1759,7 +1770,6 @@ final class OEGameDocument: NSDocument {
     
     private func loadState(state: OEDBSaveState) {
         if state.rom != rom {
-            DLog("Invalid save state for current rom")
             return
         }
         

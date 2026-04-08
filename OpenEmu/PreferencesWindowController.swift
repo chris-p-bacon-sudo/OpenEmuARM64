@@ -151,6 +151,9 @@ final class PreferencesTabViewController: NSTabViewController {
     
     /// Used to track when viewDidLoad has completed so that the default pane index selection of 0 doesn't get recorded in tabView(_:, didSelectTabViewItem:).
     fileprivate var viewDidLoadFinished = false
+
+    /// Floor width computed from all panes at load time so the window never opens narrower than the widest pane.
+    private var minimumContentWidth: CGFloat = 0
     
     override func viewDidLoad() {
         
@@ -188,7 +191,10 @@ final class PreferencesTabViewController: NSTabViewController {
         
         // Select a pane.
         tabView.selectTabViewItem(at: indexOfPaneToSelect)
-        
+
+        // Pre-compute the widest pane so the window never opens too narrow.
+        minimumContentWidth = children.compactMap { $0 as? PreferencePane }.map { $0.viewSize.width }.max() ?? 0
+
         viewDidLoadFinished = true
     }
     
@@ -242,12 +248,20 @@ final class PreferencesTabViewController: NSTabViewController {
     }
     
     func updateWindowFrame(animated: Bool) {
-        
+
         guard let selectedItem = tabView.selectedTabViewItem, let window = view.window else {
             return
         }
-        
-        let contentSize = (selectedItem.viewController! as! PreferencePane).viewSize
+
+        let paneSize = (selectedItem.viewController! as! PreferencePane).viewSize
+
+        // Never shrink width — once a wide pane (Controls) has been shown,
+        // all other panes keep that width. Height changes per pane so each
+        // pane fills its content area correctly (no black bars).
+        let currentContentWidth = window.contentRect(forFrameRect: window.frame).width
+        let contentSize = NSSize(width: max(paneSize.width, currentContentWidth, minimumContentWidth),
+                                 height: paneSize.height)
+
         let newWindowSize = window.frameRect(forContentRect: NSRect(origin: .zero, size: contentSize)).size
         
         var frame = window.frame

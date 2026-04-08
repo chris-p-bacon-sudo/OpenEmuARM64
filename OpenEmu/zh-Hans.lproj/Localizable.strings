@@ -26,6 +26,8 @@
 	<string>切换权限也可能解决键盘输入问题。</string>
 	<key>ALERT_INPUT_MONITORING_PART2_MONTEREY</key>
 	<string>移除并重新授予权限也可能解决键盘输入问题。</string>
+	<key>ALERT_INPUT_MONITORING_PART2_TAHOE</key>
+	<string>Click &quot;Open System Settings&quot; below, find OpenEmu in the list, and enable the toggle. Then relaunch the app for the change to take effect.</string>
 	<key>ALERT_MOVE_LIBRARY_HTML</key>
 	<string>OpenEmu 游戏库包含一个数据库文件，如果将库移动到以下位置，该文件可能会损坏：&lt;br&gt;&lt;br&gt;&lt;ul&gt;&lt;li&gt;由云同步软件（如 &lt;b&gt;iCloud Drive&lt;/b&gt;）管理的文件夹&lt;/li&gt;&lt;li&gt;网络驱动器&lt;/li&gt;&lt;/ul&gt;&lt;br&gt;此外，&lt;b&gt;在多台计算机或用户之间共享同一个库&lt;/b&gt;也可能导致损坏。这同样适用于将库移动到外部 USB 驱动器。</string>
 	<key>Add</key>

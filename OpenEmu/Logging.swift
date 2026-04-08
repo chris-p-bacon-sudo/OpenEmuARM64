@@ -41,7 +41,7 @@ extension OSLog {
 func DLog(_ message: @autoclosure () -> String, fileID: String = #fileID, function: String = #function, line: Int = #line)
 {
 #if DEBUG
-    NSLog("\(fileID):\(line): \(function): %@", message())
+    NSLog("\(fileID):\(line): \(function): \(message())")
 #endif
 }
 

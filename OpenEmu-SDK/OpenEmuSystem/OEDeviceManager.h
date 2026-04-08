@@ -69,6 +69,10 @@ extern NSString *const OEDeviceManagerDeviceHandlerUserInfoKey;
 
 - (BOOL)requestAccess API_AVAILABLE(macosx(10.15)) API_UNAVAILABLE(ios, tvos, watchos);
 
+/*! Re-enumerates keyboard devices with IOKit. Safe to call multiple times.
+    No-op if keyboard access has not been granted or keyboards are already registered. */
+- (void)rescanKeyboardDevices API_AVAILABLE(macosx(10.15)) API_UNAVAILABLE(ios, tvos, watchos);
+
 // If the device has not yet been retrieved, this method will return an OEDeviceHandlerPlaceholder that must be resolved manually.
 - (OEDeviceHandler *)deviceHandlerForUniqueIdentifier:(NSString *)uniqueIdentifier;
 

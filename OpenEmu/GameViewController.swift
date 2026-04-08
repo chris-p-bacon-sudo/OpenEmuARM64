@@ -152,10 +152,9 @@ final class GameViewController: NSViewController {
     
     override func viewWillDisappear() {
         super.viewWillDisappear()
-        
+
         controlsWindow.hide(animated: false, hideCursor: false)
         controlsWindow.gameWindow = nil
-        rootWindow?.removeChildWindow(controlsWindow)
     }
     
     private var rootWindow: NSWindow? {

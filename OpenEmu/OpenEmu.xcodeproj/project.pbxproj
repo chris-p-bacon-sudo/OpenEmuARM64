@@ -208,6 +208,8 @@
 		1BFC26D0116C1CA300B95689 /* OpenEmuHelperApp in Resources */ = {isa = PBXBuildFile; fileRef = 1BEF2A9411682A530090F72B /* OpenEmuHelperApp */; };
 		1E0E90051A8932BB72161909 /* PrefCloudSyncController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EF37C00BE9099269AB29467 /* PrefCloudSyncController.swift */; };
 		1E2F3DBB10DEAB4C0019AA84 /* OEVersionMigrationController.m in Sources */ = {isa = PBXBuildFile; fileRef = 1E2F3DBA10DEAB4C0019AA84 /* OEVersionMigrationController.m */; };
+		22477F282F81F85500C2A0BD /* Sentry in Frameworks */ = {isa = PBXBuildFile; productRef = 22477F272F81F85500C2A0BD /* Sentry */; };
+		22477F2A2F81F99300C2A0BD /* SentryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22477F292F81F99300C2A0BD /* SentryService.swift */; };
 		277CBA3719DE54200059A2C1 /* OpenEmuSystem.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C6D120C417112E1300E868A8 /* OpenEmuSystem.framework */; };
 		277CBA4A19DE54A80059A2C1 /* OEIntellivisionSystemResponder.m in Sources */ = {isa = PBXBuildFile; fileRef = 277CBA4819DE54A80059A2C1 /* OEIntellivisionSystemResponder.m */; };
 		277CBA5A19DE55210059A2C1 /* Keyboard-Mappings.plist in Resources */ = {isa = PBXBuildFile; fileRef = 277CBA5819DE55210059A2C1 /* Keyboard-Mappings.plist */; };
@@ -255,6 +257,7 @@
 		55BE8EE12542AC1D00E3841E /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 55BE8EE02542AC1D00E3841E /* Images.xcassets */; };
 		55BE8F8B2542AC5100E3841E /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 55BE8F8A2542AC5100E3841E /* Images.xcassets */; };
 		55BE90352542AC8E00E3841E /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 55BE90342542AC8E00E3841E /* Images.xcassets */; };
+		59DBB324440641229726E4C0 /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AEF58A5A63D543529C6A8983 /* Images.xcassets */; };
 		55BE90DF2542AD4F00E3841E /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 55BE90DE2542AD4F00E3841E /* Images.xcassets */; };
 		55BE91512542AD7800E3841E /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 55BE91502542AD7800E3841E /* Images.xcassets */; };
 		55BE91C32542ADA200E3841E /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 55BE91C22542ADA200E3841E /* Images.xcassets */; };
@@ -272,6 +275,7 @@
 		55BE99BC254333FC00E3841E /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 55BE99BB254333FC00E3841E /* Images.xcassets */; };
 		55BE9A2E2543344300E3841E /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 55BE9A2D2543344300E3841E /* Images.xcassets */; };
 		55BE9B1025439A1E00E3841E /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 55BE9B0F25439A1E00E3841E /* Images.xcassets */; };
+		56ECCDC1488945C2A09403D7 /* OECoreMigration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FAD47F297164AD6B87C99DF /* OECoreMigration.swift */; };
 		5A2CE89A206EA61B00790F89 /* NSArray+OEAdditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A2CE899206EA61B00790F89 /* NSArray+OEAdditions.swift */; };
 		5A3BB0391D964A4500E10F27 /* CenteredTextFieldCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A3BB0381D964A4500E10F27 /* CenteredTextFieldCell.swift */; };
 		5A3DB1691D8C93C3009445EC /* PreferencesControlsBox.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A3DB1681D8C93C3009445EC /* PreferencesControlsBox.swift */; };
@@ -623,6 +627,13 @@
 		94CEB28B17A84A8F005A2107 /* Controller-Preferences.plist in Resources */ = {isa = PBXBuildFile; fileRef = 94CEB28517A84A8F005A2107 /* Controller-Preferences.plist */; };
 		94CEB28D17A84A8F005A2107 /* Keyboard-Mappings.plist in Resources */ = {isa = PBXBuildFile; fileRef = 94CEB28717A84A8F005A2107 /* Keyboard-Mappings.plist */; };
 		94CEB28E17A85A72005A2107 /* OpenEmuSystem.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C6D120C417112E1300E868A8 /* OpenEmuSystem.framework */; };
+		0E026D7220704B74B7A5E66C /* Wii.oesystemplugin in Copy System Plugins to App Plugins */ = {isa = PBXBuildFile; fileRef = AC6CB8F335B64A48AE857C59 /* Wii.oesystemplugin */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		1E4B7FC710DE4156A46DAB79 /* OEWiiSystemController.m in Sources */ = {isa = PBXBuildFile; fileRef = 60C6AA00A0A44B609186B94D /* OEWiiSystemController.m */; };
+		6DAB96D7C11047B4AA72206A /* Controller-Mappings.plist in Resources */ = {isa = PBXBuildFile; fileRef = 68416A57049F48B997026285 /* Controller-Mappings.plist */; };
+		86FC923CD58043BBBEC5F717 /* Controller-Preferences.plist in Resources */ = {isa = PBXBuildFile; fileRef = BD51C12166464EADB02A6758 /* Controller-Preferences.plist */; };
+		9ACAEF142DD44E2AACFFB26F /* OEWiiSystemResponder.m in Sources */ = {isa = PBXBuildFile; fileRef = 4C5E668B27CE43FF88AE57AF /* OEWiiSystemResponder.m */; };
+		E0D3D5AF068C48148780583F /* Keyboard-Mappings.plist in Resources */ = {isa = PBXBuildFile; fileRef = C6534A32E31642F3805D9A90 /* Keyboard-Mappings.plist */; };
+		EF78E5264D33437A93870DF2 /* OpenEmuSystem.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C6D120C417112E1300E868A8 /* OpenEmuSystem.framework */; };
 		94CEB29C17A8D507005A2107 /* Sega 32X.oesystemplugin in Copy System Plugins to App Plugins */ = {isa = PBXBuildFile; fileRef = 946B9462178289BA00A212AC /* Sega 32X.oesystemplugin */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		94D7E8DC15073DB000FBDD85 /* Controller-Preferences.plist in Resources */ = {isa = PBXBuildFile; fileRef = 94D7E8D815073DB000FBDD85 /* Controller-Preferences.plist */; };
 		94D7E8E415073E3900FBDD85 /* OENDSSystemResponder.m in Sources */ = {isa = PBXBuildFile; fileRef = 94D7E8E115073E3800FBDD85 /* OENDSSystemResponder.m */; };
@@ -1193,6 +1204,7 @@
 			dstSubfolderSpec = 13;
 			files = (
 				87F077B423B68D02001FFC9B /* GameCube.oesystemplugin in Copy System Plugins to App Plugins */,
+				0E026D7220704B74B7A5E66C /* Wii.oesystemplugin in Copy System Plugins to App Plugins */,
 				873A36421FE233E00004D81D /* Saturn.oesystemplugin in Copy System Plugins to App Plugins */,
 				DEAAB8E598494A97A260F43C84A6B563 /* Dreamcast.oesystemplugin in Copy System Plugins to App Plugins */,
 				87BD9E331C2A679B006722DF /* WonderSwan.oesystemplugin in Copy System Plugins to App Plugins */,
@@ -1353,6 +1365,7 @@
 		1BEF2A9411682A530090F72B /* OpenEmuHelperApp */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = OpenEmuHelperApp; sourceTree = BUILT_PRODUCTS_DIR; };
 		1E2F3DB910DEAB4C0019AA84 /* OEVersionMigrationController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OEVersionMigrationController.h; sourceTree = "<group>"; };
 		1E2F3DBA10DEAB4C0019AA84 /* OEVersionMigrationController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = OEVersionMigrationController.m; sourceTree = "<group>"; };
+		22477F292F81F99300C2A0BD /* SentryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SentryService.swift; sourceTree = "<group>"; };
 		277CBA4519DE54200059A2C1 /* Intellivision.oesystemplugin */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = Intellivision.oesystemplugin; sourceTree = BUILT_PRODUCTS_DIR; };
 		277CBA4719DE54A80059A2C1 /* OEIntellivisionSystemResponder.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OEIntellivisionSystemResponder.h; sourceTree = "<group>"; };
 		277CBA4819DE54A80059A2C1 /* OEIntellivisionSystemResponder.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = OEIntellivisionSystemResponder.m; sourceTree = "<group>"; };
@@ -1420,6 +1433,7 @@
 		55BE8EE02542AC1D00E3841E /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Images.xcassets; sourceTree = "<group>"; };
 		55BE8F8A2542AC5100E3841E /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Images.xcassets; sourceTree = "<group>"; };
 		55BE90342542AC8E00E3841E /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Images.xcassets; sourceTree = "<group>"; };
+		AEF58A5A63D543529C6A8983 /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Images.xcassets; sourceTree = "<group>"; };
 		55BE90DE2542AD4F00E3841E /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Images.xcassets; sourceTree = "<group>"; };
 		55BE91502542AD7800E3841E /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Images.xcassets; sourceTree = "<group>"; };
 		55BE91C22542ADA200E3841E /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Images.xcassets; sourceTree = "<group>"; };
@@ -1468,6 +1482,7 @@
 		5AFD06BC2058893B00DFE765 /* GameScannerViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameScannerViewController.swift; sourceTree = "<group>"; };
 		5CCE228E57ED51524BAE52BB /* OESyncStatusOverlayView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OESyncStatusOverlayView.swift; sourceTree = "<group>"; };
 		6F74677D2124A2E934C10038 /* OESaveSyncManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OESaveSyncManager.swift; sourceTree = "<group>"; };
+		6FAD47F297164AD6B87C99DF /* OECoreMigration.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = OECoreMigration.swift; sourceTree = "<group>"; };
 		7699EC921D6303EB005BC437 /* ca */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.strings; name = ca; path = ca.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		7699EC931D6303EC005BC437 /* ca */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.strings; name = ca; path = ca.lproj/Localizable.strings; sourceTree = "<group>"; };
 		7699EC941D6303EC005BC437 /* ca */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.strings; name = ca; path = ca.lproj/ControlLabels.strings; sourceTree = "<group>"; };
@@ -1958,6 +1973,16 @@
 		94BE9E67171689C900AB08E6 /* Keyboard-Mappings.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "Keyboard-Mappings.plist"; sourceTree = "<group>"; };
 		94C59FBE1921CCBD0096BCC2 /* OEN64SystemController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = OEN64SystemController.swift; sourceTree = "<group>"; };
 		94CEB26D17A84809005A2107 /* GameCube.oesystemplugin */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = GameCube.oesystemplugin; sourceTree = BUILT_PRODUCTS_DIR; };
+		AC6CB8F335B64A48AE857C59 /* Wii.oesystemplugin */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = Wii.oesystemplugin; sourceTree = BUILT_PRODUCTS_DIR; };
+		89A4F213D38948F389303F60 /* Wii-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Wii-Info.plist"; sourceTree = "<group>"; };
+		669734CE138046AC84F66296 /* OEWiiSystemController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OEWiiSystemController.h; sourceTree = "<group>"; };
+		60C6AA00A0A44B609186B94D /* OEWiiSystemController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = OEWiiSystemController.m; sourceTree = "<group>"; };
+		99574CB1B5EE4AE89B192EBD /* OEWiiSystemResponder.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OEWiiSystemResponder.h; sourceTree = "<group>"; };
+		4C5E668B27CE43FF88AE57AF /* OEWiiSystemResponder.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = OEWiiSystemResponder.m; sourceTree = "<group>"; };
+		5C5F9C05070A447796EC6D4D /* OEWiiSystemResponderClient.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OEWiiSystemResponderClient.h; sourceTree = "<group>"; };
+		68416A57049F48B997026285 /* Controller-Mappings.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "Controller-Mappings.plist"; sourceTree = "<group>"; };
+		BD51C12166464EADB02A6758 /* Controller-Preferences.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "Controller-Preferences.plist"; sourceTree = "<group>"; };
+		C6534A32E31642F3805D9A90 /* Keyboard-Mappings.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "Keyboard-Mappings.plist"; sourceTree = "<group>"; };
 		94CEB27117A84809005A2107 /* GameCube-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GameCube-Info.plist"; sourceTree = "<group>"; };
 		94CEB27C17A84A75005A2107 /* OEGCSystemController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = OEGCSystemController.swift; sourceTree = "<group>"; };
 		94CEB27D17A84A75005A2107 /* OEGCSystemResponder.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OEGCSystemResponder.h; sourceTree = "<group>"; };
@@ -2199,6 +2224,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				22477F282F81F85500C2A0BD /* Sentry in Frameworks */,
 				05F5BAED228662D3004D713C /* OpenEmuShaders.framework in Frameworks */,
 				052B92D4226EE66C00701431 /* libc++.tbd in Frameworks */,
 				058B557D27AF240A00EE0E47 /* OrderedCollections in Frameworks */,
@@ -2426,6 +2452,14 @@
 			buildActionMask = 2147483647;
 			files = (
 				94CEB28E17A85A72005A2107 /* OpenEmuSystem.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F827AF064E844826844FF84C /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				EF78E5264D33437A93870DF2 /* OpenEmuSystem.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -2752,6 +2786,7 @@
 				9405538417A34C6B009B505D /* PC Engine CD.oesystemplugin */,
 				941F5A0117A785AD0005D7EA /* Atari 7800.oesystemplugin */,
 				94CEB26D17A84809005A2107 /* GameCube.oesystemplugin */,
+				AC6CB8F335B64A48AE857C59 /* Wii.oesystemplugin */,
 				FEB6625B187B791800D14713 /* MSX.oesystemplugin */,
 				94404755199D4DF0002D805E /* Odyssey2.oesystemplugin */,
 				277CBA4519DE54200059A2C1 /* Intellivision.oesystemplugin */,
@@ -2880,6 +2915,7 @@
 		2A37F4AAFDCFA73011CA2CEA /* OpenEmu */ = {
 			isa = PBXGroup;
 			children = (
+				22477F292F81F99300C2A0BD /* SentryService.swift */,
 				5AECA14A1BE1D26700C3B4E2 /* Swift Bridging Header */,
 				2A37F4ABFDCFA73011CA2CEA /* Sources */,
 				C67118201363687A0034379A /* System Plugins */,
@@ -3192,6 +3228,7 @@
 			children = (
 				83CACEC7196D6D1300999E70 /* Download.swift */,
 				8375E14E1477FC0D0018DA1F /* CoreUpdater.swift */,
+				6FAD47F297164AD6B87C99DF /* OECoreMigration.swift */,
 				839310BB147802380020058E /* CoreDownload.swift */,
 			);
 			name = Downloader;
@@ -4092,6 +4129,31 @@
 			name = "Supporting Files";
 			sourceTree = "<group>";
 		};
+		A394B929EA9543B58DFCD285 /* Wii */ = {
+			isa = PBXGroup;
+			children = (
+				669734CE138046AC84F66296 /* OEWiiSystemController.h */,
+				60C6AA00A0A44B609186B94D /* OEWiiSystemController.m */,
+				99574CB1B5EE4AE89B192EBD /* OEWiiSystemResponder.h */,
+				4C5E668B27CE43FF88AE57AF /* OEWiiSystemResponder.m */,
+				5C5F9C05070A447796EC6D4D /* OEWiiSystemResponderClient.h */,
+				8A329FAAF0AF42DD81D8DB5B /* Supporting Files */,
+			);
+			path = Wii;
+			sourceTree = "<group>";
+		};
+		8A329FAAF0AF42DD81D8DB5B /* Supporting Files */ = {
+			isa = PBXGroup;
+			children = (
+				AEF58A5A63D543529C6A8983 /* Images.xcassets */,
+				89A4F213D38948F389303F60 /* Wii-Info.plist */,
+				C6534A32E31642F3805D9A90 /* Keyboard-Mappings.plist */,
+				68416A57049F48B997026285 /* Controller-Mappings.plist */,
+				BD51C12166464EADB02A6758 /* Controller-Preferences.plist */,
+			);
+			name = "Supporting Files";
+			sourceTree = "<group>";
+		};
 		94D7E8CB15073BA000FBDD85 /* NDS */ = {
 			isa = PBXGroup;
 			children = (
@@ -4255,6 +4317,7 @@
 				C6B947B11364ECA700A425F0 /* GameBoy */,
 				C646574A13771F12002A4F70 /* GameBoy Advance */,
 				94CEB26F17A84809005A2107 /* GameCube */,
+				A394B929EA9543B58DFCD285 /* Wii */,
 				822775521489471A00B19E27 /* GameGear */,
 				C6B947E81365080B00A425F0 /* Genesis */,
 				277CBA2E19DE52640059A2C1 /* Intellivision */,
@@ -4718,6 +4781,7 @@
 				8F44DEB426DFD07200893A18 /* Sparkle */,
 				8F2543F92714C274003FC137 /* Finite */,
 				058B557C27AF240A00EE0E47 /* OrderedCollections */,
+				22477F272F81F85500C2A0BD /* Sentry */,
 			);
 			productName = OpenEmu;
 			productReference = 8D15AC370486D014006FF6A4 /* OpenEmu.app */;
@@ -5184,6 +5248,23 @@
 			productReference = 94CEB26D17A84809005A2107 /* GameCube.oesystemplugin */;
 			productType = "com.apple.product-type.bundle";
 		};
+		A6DC94DA282E416C8477FBF4 /* Wii */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 9D772807085B48EC85D552C3 /* Build configuration list for PBXNativeTarget "Wii" */;
+			buildPhases = (
+				26AFA4A714D04642A0688B22 /* Sources */,
+				F827AF064E844826844FF84C /* Frameworks */,
+				B3C1DF55C6904EFD88D145D0 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Wii;
+			productName = Wii;
+			productReference = AC6CB8F335B64A48AE857C59 /* Wii.oesystemplugin */;
+			productType = "com.apple.product-type.bundle";
+		};
 		94D7E8C815073BA000FBDD85 /* NDS */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 94D7E8D415073BA000FBDD85 /* Build configuration list for PBXNativeTarget "NDS" */;
@@ -5396,6 +5477,7 @@
 				8F2543F82714C273003FC137 /* XCRemoteSwiftPackageReference "Finite" */,
 				058B557B27AF240A00EE0E47 /* XCRemoteSwiftPackageReference "swift-collections" */,
 				8F7C2953288A2D7C00A16C09 /* XCRemoteSwiftPackageReference "ZIPFoundation" */,
+				22477F262F81F85500C2A0BD /* XCRemoteSwiftPackageReference "sentry-cocoa" */,
 			);
 			productRefGroup = 19C28FB0FE9D524F11CA2CBB /* Products */;
 			projectDirPath = "";
@@ -5419,6 +5501,7 @@
 				C6B947AE1364ECA600A425F0 /* GameBoy */,
 				C646574713771F12002A4F70 /* GameBoy Advance */,
 				94CEB26C17A84809005A2107 /* GameCube */,
+				A6DC94DA282E416C8477FBF4 /* Wii */,
 				8227753E148946DF00B19E27 /* GameGear */,
 				C6B947E51365080B00A425F0 /* Genesis */,
 				277CBA3219DE54200059A2C1 /* Intellivision */,
@@ -5940,6 +6023,17 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		B3C1DF55C6904EFD88D145D0 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				59DBB324440641229726E4C0 /* Images.xcassets in Resources */,
+				6DAB96D7C11047B4AA72206A /* Controller-Mappings.plist in Resources */,
+				86FC923CD58043BBBEC5F717 /* Controller-Preferences.plist in Resources */,
+				E0D3D5AF068C48148780583F /* Keyboard-Mappings.plist in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		94D7E8C715073BA000FBDD85 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -6401,6 +6495,7 @@
 				0571307F259A8859001CB13A /* AppMover.swift in Sources */,
 				05888F3A25A0373300286232 /* ShaderParametersViewController.swift in Sources */,
 				8F80217A24F45E4800DC82E3 /* ControlsScroller.swift in Sources */,
+				22477F2A2F81F99300C2A0BD /* SentryService.swift in Sources */,
 				EFBD5D7814EFE19A00FBD1E0 /* NSColor+OEAdditions.swift in Sources */,
 				8F3A184E2860B5D9008A7AC9 /* OELibraryDatabase+Moving.swift in Sources */,
 				EFBD5D7F14EFE26300FBD1E0 /* OEGridView.m in Sources */,
@@ -6470,6 +6565,7 @@
 				0544B69723D16D0C00F63D61 /* ImageCacheService.swift in Sources */,
 				8337F38E1726B3600068DD90 /* BackgroundImageView.swift in Sources */,
 				94A4E98D179F9A4D00AD8C7D /* OEDBSaveStatesMedia.swift in Sources */,
+				56ECCDC1488945C2A09403D7 /* OECoreMigration.swift in Sources */,
 				8F9410C0273A0167004C47CC /* CoreUpdater.swift in Sources */,
 				94A4E992179F9D0400AD8C7D /* OEDBScreenshotsMedia.swift in Sources */,
 				94A4E996179FAB9F00AD8C7D /* OEMediaViewController.m in Sources */,
@@ -6719,6 +6815,15 @@
 			files = (
 				94CEB28017A84A75005A2107 /* OEGCSystemController.swift in Sources */,
 				94CEB28117A84A75005A2107 /* OEGCSystemResponder.m in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		26AFA4A714D04642A0688B22 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1E4B7FC710DE4156A46DAB79 /* OEWiiSystemController.m in Sources */,
+				9ACAEF142DD44E2AACFFB26F /* OEWiiSystemResponder.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -8420,6 +8525,26 @@
 			};
 			name = Release;
 		};
+		6820EAA40683463A8A3F2109 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				INFOPLIST_FILE = "SystemPlugins/Wii/Wii-Info.plist";
+				PRODUCT_BUNDLE_IDENTIFIER = "org.openemu.$(PRODUCT_NAME:rfc1034identifier)";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				WRAPPER_EXTENSION = oesystemplugin;
+			};
+			name = Debug;
+		};
+		45D6A596D4BB41DE9CEA1D61 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				INFOPLIST_FILE = "SystemPlugins/Wii/Wii-Info.plist";
+				PRODUCT_BUNDLE_IDENTIFIER = "org.openemu.$(PRODUCT_NAME:rfc1034identifier)";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				WRAPPER_EXTENSION = oesystemplugin;
+			};
+			name = Release;
+		};
 		94D7E8D215073BA000FBDD85 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -8484,7 +8609,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 11.0;
-				MARKETING_VERSION = 1.0.1;
+				MARKETING_VERSION = 1.0.4;
 				PRODUCT_BUNDLE_IDENTIFIER = "org.openemu.$(PRODUCT_NAME:identifier)";
 				PRODUCT_NAME = OpenEmu;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited)";
@@ -8524,7 +8649,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 11.0;
-				MARKETING_VERSION = 1.0.1;
+				MARKETING_VERSION = 1.0.4;
 				PRODUCT_BUNDLE_IDENTIFIER = "org.openemu.$(PRODUCT_NAME:identifier)";
 				PRODUCT_NAME = OpenEmu;
 				SWIFT_OBJC_BRIDGING_HEADER = "OpenEmu-Bridging-Header.h";
@@ -9252,6 +9377,15 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		9D772807085B48EC85D552C3 /* Build configuration list for PBXNativeTarget "Wii" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				6820EAA40683463A8A3F2109 /* Debug */,
+				45D6A596D4BB41DE9CEA1D61 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		94D7E8D415073BA000FBDD85 /* Build configuration list for PBXNativeTarget "NDS" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -9362,6 +9496,14 @@
 				minimumVersion = 1.0.0;
 			};
 		};
+		22477F262F81F85500C2A0BD /* XCRemoteSwiftPackageReference "sentry-cocoa" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/getsentry/sentry-cocoa";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 9.9.0;
+			};
+		};
 		8F2543F82714C273003FC137 /* XCRemoteSwiftPackageReference "Finite" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/vknabel/Finite.git";
@@ -9393,6 +9535,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 058B557B27AF240A00EE0E47 /* XCRemoteSwiftPackageReference "swift-collections" */;
 			productName = OrderedCollections;
+		};
+		22477F272F81F85500C2A0BD /* Sentry */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 22477F262F81F85500C2A0BD /* XCRemoteSwiftPackageReference "sentry-cocoa" */;
+			productName = Sentry;
 		};
 		8F2543F92714C274003FC137 /* Finite */ = {
 			isa = XCSwiftPackageProductDependency;

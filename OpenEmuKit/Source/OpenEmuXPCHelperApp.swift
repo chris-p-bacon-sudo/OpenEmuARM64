@@ -59,7 +59,7 @@ internal import os.log
             fatalError("Unable to find XPCBrokerServiceName argument")
         }
         
-        NSLog("[OpenEmuHelperApp] Initializing and launching application for service: %@", serviceName)
+        NSLog("[OpenEmuHelperApp] Initializing and launching application for service: \(serviceName)")
         
         autoreleasepool {
             let app = OpenEmuXPCHelperApp(serviceName: serviceName)

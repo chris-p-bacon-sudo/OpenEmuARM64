@@ -26,6 +26,8 @@
 	<string>Se i controlli da tastiera smettono di funzionare, disattivare e poi riattivare questo permesso.</string>
 	<key>ALERT_INPUT_MONITORING_PART2_MONTEREY</key>
 	<string>Removing and re-granting the permission may also resolve keyboard input issues.</string>
+	<key>ALERT_INPUT_MONITORING_PART2_TAHOE</key>
+	<string>Click &quot;Open System Settings&quot; below, find OpenEmu in the list, and enable the toggle. Then relaunch the app for the change to take effect.</string>
 	<key>ALERT_MOVE_LIBRARY_HTML</key>
 	<string>La Libreria Giochi di OpenEmu contiene un database che si corrompe facilmente se la Libreria viene spostata in una di queste posizioni:&lt;br&gt;&lt;br&gt;&lt;ul&gt;&lt;li&gt;Cartelle gestite da applicazioni di sincronizzazione cloud (ad esempio &lt;b&gt;iCloud Drive&lt;/b&gt;)&lt;/li&gt;&lt;li&gt;Dischi di rete&lt;/li&gt;&lt;/ul&gt;&lt;br&gt;Inoltre, la Libreria si può corrompere &lt;b&gt;se viene condivisa tra più computer o utenti&lt;/b&gt;, e anche se la condivisione viene effettuata tramite un disco USB esterno.</string>
 	<key>Add</key>

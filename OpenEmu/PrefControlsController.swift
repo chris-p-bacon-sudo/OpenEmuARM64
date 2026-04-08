@@ -206,8 +206,8 @@ final class PrefControlsController: NSViewController {
         OEBindingsController.default.synchronize()
         
         let nc = NotificationCenter.default
-        nc.removeObserver(self, name: NSWindow.didBecomeKeyNotification, object: view.window)
-        nc.removeObserver(self, name: NSWindow.didResignKeyNotification, object: view.window)
+        nc.removeObserver(self, name: NSWindow.didBecomeKeyNotification, object: nil)
+        nc.removeObserver(self, name: NSWindow.didResignKeyNotification, object: nil)
         
         tearDownEventMonitor()
     }
@@ -229,7 +229,11 @@ final class PrefControlsController: NSViewController {
         if eventMonitor != nil {
             return
         }
-        
+
+        if #available(macOS 10.15, *) {
+            OEDeviceManager.shared.rescanKeyboardDevices()
+        }
+
         eventMonitor = OEDeviceManager.shared.addGlobalEventMonitorHandler { _, event in
             self.registerEventIfNeeded(event)
             return false

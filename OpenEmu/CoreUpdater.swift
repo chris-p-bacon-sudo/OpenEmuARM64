@@ -60,6 +60,7 @@ final class CoreUpdater: NSObject {
         
         for plugin in OECorePlugin.allPlugins {
             let download = CoreDownload(plugin: plugin)
+            download.delegate = self
             let bundleID = plugin.bundleIdentifier.lowercased()
             coresDict[bundleID] = download
         }
@@ -190,7 +191,7 @@ final class CoreUpdater: NSObject {
                 DispatchQueue.main.async {
                     for coreNode in coreNodes {
                         guard
-                            let coreID = coreNode.attribute(forName: "id")?.stringValue,
+                            let coreID = coreNode.attribute(forName: "id")?.stringValue?.lowercased(),
                             self.coresDict[coreID] == nil,
                             let coreName = coreNode.attribute(forName: "name")?.stringValue,
                             let systemNodes = try? coreNode.nodes(forXPath: "./systems/system") as? [XMLElement],
@@ -229,7 +230,7 @@ final class CoreUpdater: NSObject {
                                     download.start()
                                 }
                                 
-                                self.coresDict[coreID] = download
+                                self.coresDict[coreID] = download  // coreID already lowercased above
                                 self.updateCoreList()
                             }
                         }

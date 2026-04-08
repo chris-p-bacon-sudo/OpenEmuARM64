@@ -37,21 +37,20 @@ private extension NSUserInterfaceItemIdentifier {
 }
 
 final class PrefCoresController: NSViewController {
-    
+
     @IBOutlet var coresTableView: NSTableView!
-    
+
     var coreListObservation: NSKeyValueObservation?
-    
+
     override func viewDidLoad() {
         super.viewDidLoad()
-        
-        coreListObservation = CoreUpdater.shared.observe(\CoreUpdater.coreList) {
-            object, _ in
-            self.coresTableView.reloadData()
+
+        coreListObservation = CoreUpdater.shared.observe(\CoreUpdater.coreList) { [weak self] _, _ in
+            self?.coresTableView.reloadData()
         }
         CoreUpdater.shared.checkForNewCores()   // TODO: check error from completion handler
         CoreUpdater.shared.checkForUpdates()
-        
+
         for column in coresTableView.tableColumns {
             switch column.identifier {
             case .coreColumn:
@@ -64,7 +63,7 @@ final class PrefCoresController: NSViewController {
                 break
             }
         }
-        
+
         // Add "Action" table column programmatically if not exists
         let actionColumnIdentifier = NSUserInterfaceItemIdentifier("actionColumn")
         if coresTableView.tableColumn(withIdentifier: actionColumnIdentifier) == nil {
@@ -76,8 +75,13 @@ final class PrefCoresController: NSViewController {
             column.resizingMask = .userResizingMask
             coresTableView.addTableColumn(column)
         }
-        
-        coresTableView.delegate = self // Ensure delegate is set for heightOfRow
+
+        coresTableView.delegate = self
+
+        // Reload after appcasts finish fetching so Unavailable/Install states settle.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in
+            self?.coresTableView.reloadData()
+        }
     }
     
     @IBAction func updateOrInstall(_ sender: NSButton) {
@@ -215,6 +219,9 @@ extension PrefCoresController: NSTableViewDelegate {
 
              if plugin.isDownloading {
                 button.title = "..."
+                button.isEnabled = false
+            } else if plugin.canBeInstalled && plugin.appcastItem == nil {
+                button.title = NSLocalizedString("Unavailable", comment: "")
                 button.isEnabled = false
             } else if plugin.canBeInstalled {
                 button.title = NSLocalizedString("Install", comment: "")

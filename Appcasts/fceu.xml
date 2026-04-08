@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0"
+  xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle"
+  xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <channel>
+    <title>FCEU</title>
+    <item>
+      <title>FCEU 2.6.6</title>
+      <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
+      <enclosure
+        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.0.0/FCEU.oecoreplugin.zip"
+        sparkle:version="2.6.6"
+        sparkle:shortVersionString="2.6.6"
+        length="396312"
+        type="application/octet-stream" />
+    </item>
+  </channel>
+</rss>

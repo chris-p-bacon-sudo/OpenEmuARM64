@@ -26,6 +26,8 @@
 	<string>Включение этого доступа может также исправить проблемы с вводом с клавиатуры.</string>
 	<key>ALERT_INPUT_MONITORING_PART2_MONTEREY</key>
 	<string>Удаление и повторное предоставление разрешения может также исправить проблемы с вводом с клавиатуры.</string>
+	<key>ALERT_INPUT_MONITORING_PART2_TAHOE</key>
+	<string>Click &quot;Open System Settings&quot; below, find OpenEmu in the list, and enable the toggle. Then relaunch the app for the change to take effect.</string>
 	<key>ALERT_MOVE_LIBRARY_HTML</key>
 	<string>Библиотека игр OpenEmu содержит файл базы данных, который может быть повреждён при перемещении библиотеки в следующие места:&lt;br&gt;&lt;br&gt;&lt;ul&gt;&lt;li&gt;Папки, управляемые ПО для синхронизации с облаком (например, &lt;b&gt;iCloud Drive&lt;/b&gt;)&lt;/li&gt;&lt;li&gt;Сетевые диски&lt;/li&gt;&lt;/ul&gt;&lt;br&gt;В дополнение к этому, &lt;b&gt;совместное использование библиотеки между несколькими компьютерами или пользователями&lt;/b&gt; может также повредить её. Это также касается перемещения библиотеки на внешние USB-накопители.</string>
 	<key>Add</key>

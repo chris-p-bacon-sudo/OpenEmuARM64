@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0"
+  xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle"
+  xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <channel>
+    <title>Stella</title>
+    <item>
+      <title>Stella 3.9.3</title>
+      <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
+      <enclosure
+        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.0.0/Stella.oecoreplugin.zip"
+        sparkle:version="3.9.3"
+        sparkle:shortVersionString="3.9.3"
+        length="364169"
+        type="application/octet-stream" />
+    </item>
+  </channel>
+</rss>

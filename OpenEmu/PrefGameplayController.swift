@@ -31,14 +31,23 @@ final class PrefGameplayController: NSViewController {
     
     private var token: NSObjectProtocol?
     
+    // Injected slider controls (nil until viewDidAppear)
+    private var saturationSlider: NSSlider?
+    private var saturationLabel:  NSTextField?
+    private var gammaSlider:      NSSlider?
+    private var gammaLabel:       NSTextField?
+
+    // MARK: - Lifecycle
+    
     override func viewDidLoad() {
         super.viewDidLoad()
-        
+
         loadShaderMenu()
-        
+        addSliders()
+
         token = NotificationCenter.default.addObserver(forName: .shaderModelCustomShadersDidChange, object: nil, queue: .main) { [weak self] _ in
             guard let self = self else { return }
-            
+
             self.loadShaderMenu()
         }
     }
@@ -47,6 +56,105 @@ final class PrefGameplayController: NSViewController {
         if let token = token {
             NotificationCenter.default.removeObserver(token)
             self.token = nil
+        }
+    }
+    
+    // MARK: - Slider injection
+
+    private func addSliders() {
+        let sat = OEGameDocument.clampedSaturation((UserDefaults.standard.object(forKey: OEGameSaturationKey) as? Float) ?? 1.0)
+        let gam = OEGameDocument.clampedGamma((UserDefaults.standard.object(forKey: OEGameGammaKey) as? Float) ?? 1.0)
+
+        // The XIB has one NSGridView (2 columns) as the only direct subview.
+        // Walk up from the shader popup to find it, then insert two new rows
+        // at index 0 (above Shader). NSGridView handles all layout automatically.
+        var ancestor: NSView? = globalDefaultShaderSelection
+        while let parent = ancestor?.superview, parent !== view { ancestor = parent }
+        guard let gridView = ancestor as? NSGridView else { return }
+
+        // ── Build Saturation row ──────────────────────────────────────────
+        let satLabel = NSTextField(labelWithString: "Saturation:")
+        satLabel.font = .systemFont(ofSize: NSFont.systemFontSize)
+
+        let satSlider = NSSlider(value: Double(sat), minValue: 0.5, maxValue: 3.0,
+                                 target: self, action: #selector(saturationChanged(_:)))
+        satSlider.isContinuous = true
+        satSlider.setContentHuggingPriority(.defaultLow, for: .horizontal)
+
+        let satPct = NSTextField(labelWithString: String(format: "%.0f%%", sat * 100))
+        satPct.font = .monospacedDigitSystemFont(ofSize: NSFont.systemFontSize - 1, weight: .regular)
+        satPct.setContentHuggingPriority(.required, for: .horizontal)
+
+        let satRow = NSStackView(views: [satSlider, satPct])
+        satRow.orientation = .horizontal
+        satRow.spacing = 8
+        satRow.distribution = .fill
+
+        // ── Build Gamma row ───────────────────────────────────────────────
+        let gamLabel = NSTextField(labelWithString: "Gamma:")
+        gamLabel.font = .systemFont(ofSize: NSFont.systemFontSize)
+
+        let gamSlider = NSSlider(value: Double(gam), minValue: 0.5, maxValue: 2.0,
+                                 target: self, action: #selector(gammaChanged(_:)))
+        gamSlider.isContinuous = true
+        gamSlider.setContentHuggingPriority(.defaultLow, for: .horizontal)
+
+        let gamPct = NSTextField(labelWithString: String(format: "%.0f%%", gam * 100))
+        gamPct.font = .monospacedDigitSystemFont(ofSize: NSFont.systemFontSize - 1, weight: .regular)
+        gamPct.setContentHuggingPriority(.required, for: .horizontal)
+
+        let gamRow = NSStackView(views: [gamSlider, gamPct])
+        gamRow.orientation = .horizontal
+        gamRow.spacing = 8
+        gamRow.distribution = .fill
+
+        // ── Insert rows above Shader ──────────────────────────────────────
+        // Insert Gamma at 0 first, then Saturation at 0 → Saturation ends up on top.
+        gridView.insertRow(at: 0, with: [gamLabel, gamRow])
+        gridView.insertRow(at: 0, with: [satLabel, satRow])
+
+        // Center the grid horizontally within the (potentially wider) window.
+        // Deactivate the XIB's fixed leading=30 and soft trailing>=30 constraints,
+        // then pin the grid to the center with minimum side margins.
+        for c in view.constraints where (c.firstItem as? NSView) === gridView
+                                     && c.firstAttribute == .leading {
+            c.isActive = false
+        }
+        for c in view.constraints where c.secondItem as? NSView === gridView
+                                     && c.secondAttribute == .trailing {
+            c.isActive = false
+        }
+        NSLayoutConstraint.activate([
+            gridView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            gridView.leadingAnchor.constraint(greaterThanOrEqualTo: view.leadingAnchor, constant: 30),
+            gridView.trailingAnchor.constraint(lessThanOrEqualTo: view.trailingAnchor, constant: -30)
+        ])
+
+        saturationSlider = satSlider
+        saturationLabel  = satPct
+        gammaSlider      = gamSlider
+        gammaLabel       = gamPct
+    }
+
+    // MARK: - Slider actions
+
+    @objc private func saturationChanged(_ sender: NSSlider) {
+        let v = OEGameDocument.clampedSaturation(sender.floatValue)
+        saturationLabel?.stringValue = String(format: "%.0f%%", v * 100)
+        UserDefaults.standard.set(v, forKey: OEGameSaturationKey)
+        
+        NSDocumentController.shared.documents.forEach {
+            ($0 as? OEGameDocument)?.setSaturation(v, asDefault: false)
+        }
+    }
+
+    @objc private func gammaChanged(_ sender: NSSlider) {
+        let v = OEGameDocument.clampedGamma(sender.floatValue)
+        gammaLabel?.stringValue = String(format: "%.0f%%", v * 100)
+        UserDefaults.standard.set(v, forKey: OEGameGammaKey)
+        
+        NSDocumentController.shared.documents.forEach {
+            ($0 as? OEGameDocument)?.setGamma(v, asDefault: false)
         }
     }
     

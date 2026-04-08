@@ -46,12 +46,29 @@ final class PrefLibraryController: NSViewController {
         gridView.cell(for: librariesView)?.contentView = scrollView
         librariesView.removeFromSuperview()
         librariesView = scrollView
-        
+
         scrollView.translatesAutoresizingMaskIntoConstraints = false
         scrollView.borderType = .bezelBorder
+        // Use a minimum height but allow the scroll view to grow taller.
         NSLayoutConstraint.activate([
             scrollView.widthAnchor.constraint(equalToConstant: size.width),
-            scrollView.heightAnchor.constraint(equalToConstant: size.height)
+            scrollView.heightAnchor.constraint(greaterThanOrEqualToConstant: size.height)
+        ])
+
+        // Center the grid horizontally within the (potentially wider) window.
+        // Deactivate XIB's fixed leading=30 and soft trailing>=30, then pin to center.
+        for c in view.constraints where (c.firstItem as? NSView) === gridView
+                                     && c.firstAttribute == .leading {
+            c.isActive = false
+        }
+        for c in view.constraints where c.secondItem as? NSView === gridView
+                                     && c.secondAttribute == .trailing {
+            c.isActive = false
+        }
+        NSLayoutConstraint.activate([
+            gridView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            gridView.leadingAnchor.constraint(greaterThanOrEqualTo: view.leadingAnchor, constant: 30),
+            gridView.trailingAnchor.constraint(lessThanOrEqualTo: view.trailingAnchor, constant: -30)
         ])
 
         availableLibrariesViewController.loadData()

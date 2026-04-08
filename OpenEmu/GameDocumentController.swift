@@ -125,11 +125,15 @@ class GameDocumentController: NSDocumentController {
     }
     
     fileprivate func setUpGameDocument(_ document: OEGameDocument, display displayDocument: Bool, fullScreen: Bool, completionHandler: ((OEGameDocument?, NSError?) -> Void)?) {
-        NSLog("[DEBUG] GameDocumentController: setUpGameDocument for url: %@", document.fileURL?.path ?? "nil")
+        #if DEBUG
+        NSLog("[DEBUG] GameDocumentController: setUpGameDocument for url: \(document.fileURL?.path ?? "nil")")
+        #endif
         addDocument(document)
-        
+
         document.setUpGame { success, error in
-            NSLog("[DEBUG] GameDocumentController: setUpGame result success: %d, error: %@", success, error?.localizedDescription ?? "nil")
+            #if DEBUG
+            NSLog("[DEBUG] GameDocumentController: setUpGame result success: \(success), error: \(error?.localizedDescription ?? "nil")")
+            #endif
 
             
             if success {
@@ -147,9 +151,13 @@ class GameDocumentController: NSDocumentController {
     }
     
     override func openDocument(withContentsOf url: URL, display displayDocument: Bool, completionHandler: @escaping (NSDocument?, Bool, Error?) -> Void) {
-        NSLog("[DEBUG] GameDocumentController: openDocument with url: %@", url.path)
+        #if DEBUG
+        NSLog("[DEBUG] GameDocumentController: openDocument with url: \(url.path)")
+        #endif
         super.openDocument(withContentsOf: url, display: false) { document, documentWasAlreadyOpen, error in
-            NSLog("[DEBUG] GameDocumentController: super.openDocument finished with error: %@", error?.localizedDescription ?? "nil")
+            #if DEBUG
+            NSLog("[DEBUG] GameDocumentController: super.openDocument finished with error: \(error?.localizedDescription ?? "nil")")
+            #endif
             if let document = document as? OEGameDocument {
 
                 let fullScreen = UserDefaults.standard.bool(forKey: OEFullScreenGameWindowKey)
@@ -170,6 +178,12 @@ class GameDocumentController: NSDocumentController {
     }
     
     override func openGameDocument(with game: OEDBGame, display displayDocument: Bool, fullScreen: Bool, completionHandler: @escaping (OEGameDocument?, Error?) -> Void) {
+        // Bring an already-running document for this game to front rather than opening a second copy.
+        if let existing = gameDocuments.first(where: { $0.rom?.game == game }) {
+            existing.gameWindowController?.window?.makeKeyAndOrderFront(nil)
+            completionHandler(existing, nil)
+            return
+        }
         do {
             let document = try OEGameDocument(game: game, core: nil)
             setUpGameDocument(document, display: displayDocument, fullScreen: fullScreen, completionHandler: completionHandler)
@@ -177,8 +191,14 @@ class GameDocumentController: NSDocumentController {
             completionHandler(nil, error)
         }
     }
-    
+
     override func openGameDocument(with rom: OEDBRom, display displayDocument: Bool, fullScreen: Bool, completionHandler: @escaping (OEGameDocument?, Error?) -> Void) {
+        // Bring an already-running document for this rom to front rather than opening a second copy.
+        if let existing = gameDocuments.first(where: { $0.rom == rom }) {
+            existing.gameWindowController?.window?.makeKeyAndOrderFront(nil)
+            completionHandler(existing, nil)
+            return
+        }
         do {
             let document = try OEGameDocument(rom: rom, core: nil)
             setUpGameDocument(document, display: displayDocument, fullScreen: fullScreen, completionHandler: completionHandler)

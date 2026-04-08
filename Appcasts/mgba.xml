@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0"
+  xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle"
+  xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <channel>
+    <title>mGBA</title>
+    <item>
+      <title>mGBA 0.10.5</title>
+      <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
+      <enclosure
+        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.0.0/mGBA.oecoreplugin.zip"
+        sparkle:version="0.10.5"
+        sparkle:shortVersionString="0.10.5"
+        length="209032"
+        type="application/octet-stream" />
+    </item>
+  </channel>
+</rss>

@@ -42,15 +42,37 @@ final class SidebarController: NSViewController {
     
     var database: OELibraryDatabase? {
         didSet {
+            // Remove previous context observer when database changes.
+            if let old = dbToken {
+                NotificationCenter.default.removeObserver(old)
+                dbToken = nil
+            }
+
+            // Reload sidebar when games are added directly (e.g. via Homebrew),
+            // bypassing the ROM importer.
+            if let context = database?.mainThreadContext {
+                dbToken = NotificationCenter.default.addObserver(
+                    forName: .NSManagedObjectContextDidSave,
+                    object: context,
+                    queue: .main
+                ) { [weak self] notification in
+                    guard let self = self else { return }
+                    let inserted = notification.userInfo?[NSInsertedObjectsKey] as? Set<NSManagedObject> ?? []
+                    if inserted.contains(where: { $0 is OEDBGame }) {
+                        self.reloadDataAndPreserveSelection()
+                    }
+                }
+            }
+
             let lastSidebarSelection = self.lastSidebarSelection
             reloadData()
             self.lastSidebarSelection = lastSidebarSelection
-            
+
             guard
                 !lastSidebarSelection.isEmpty,
                 let item = lastSidebarSelectionItem
             else { return }
-            
+
             selectItem(item)
         }
     }
@@ -79,7 +101,8 @@ final class SidebarController: NSViewController {
     }
     
     private var tokens = [NSObjectProtocol]()
-    
+    private var dbToken: NSObjectProtocol?
+
     override func viewDidLoad() {
         super.viewDidLoad()
 
@@ -99,13 +122,18 @@ final class SidebarController: NSViewController {
         tokens = [
             NotificationCenter.default.addObserver(forName: .OEDBSystemAvailabilityDidChange, object: nil, queue: .main) { [weak self] _ in
                 guard let self = self else { return }
-                
+
                 self.reloadDataAndPreserveSelection()
             },
             NotificationCenter.default.addObserver(forName: .libraryLocationDidChange, object: nil, queue: .main) { [weak self] _ in
                 guard let self = self else { return }
-                
+
                 self.reloadData()
+            },
+            NotificationCenter.default.addObserver(forName: .ROMImporterDidFinish, object: nil, queue: .main) { [weak self] _ in
+                guard let self = self else { return }
+
+                self.reloadDataAndPreserveSelection()
             },
         ]
         
@@ -116,6 +144,10 @@ final class SidebarController: NSViewController {
             NotificationCenter.default.removeObserver(observer)
         }
         tokens = []
+        if let old = dbToken {
+            NotificationCenter.default.removeObserver(old)
+            dbToken = nil
+        }
     }
     
     func reloadDataAndPreserveSelection() {
@@ -162,7 +194,12 @@ final class SidebarController: NSViewController {
             sidebarView.abortEditing()
         }
         
-        systems     = OEDBSystem.enabledSystems(in: database.mainThreadContext)
+        let allSystems = OEDBSystem.enabledSystems(in: database.mainThreadContext)
+        systems = allSystems.filter { system in
+            let hasCores = !OECorePlugin.corePlugins(forSystemIdentifier: system.systemIdentifier).isEmpty
+            let hasGames = !system.games.isEmpty
+            return hasCores || hasGames
+        }
         collections = database.collections
         sidebarView.reloadData()
     }

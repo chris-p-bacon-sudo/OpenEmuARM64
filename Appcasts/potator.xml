@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0"
+  xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle"
+  xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <channel>
+    <title>Potator</title>
+    <item>
+      <title>Potator 0.1</title>
+      <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
+      <enclosure
+        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.0.0/Potator.oecoreplugin.zip"
+        sparkle:version="0.1"
+        sparkle:shortVersionString="0.1"
+        length="28855"
+        type="application/octet-stream" />
+    </item>
+  </channel>
+</rss>

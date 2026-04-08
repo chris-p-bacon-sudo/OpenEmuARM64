@@ -26,6 +26,8 @@
 	<string>Basculer l’autorisation peut également résoudre les problèmes de saisie clavier.</string>
 	<key>ALERT_INPUT_MONITORING_PART2_MONTEREY</key>
 	<string>Supprimer et réaccorder l’autorisation peut également résoudre les problèmes de saisie clavier.</string>
+	<key>ALERT_INPUT_MONITORING_PART2_TAHOE</key>
+	<string>Click &quot;Open System Settings&quot; below, find OpenEmu in the list, and enable the toggle. Then relaunch the app for the change to take effect.</string>
 	<key>ALERT_MOVE_LIBRARY_HTML</key>
 	<string>La bibliothèque de jeux OpenEmu contient un fichier de base de données qui peut être corrompu si elle est déplacée aux emplacements suivants :&lt;br&gt;&lt;br&gt;&lt;ul&gt;&lt;li&gt;Dossiers gérés par un logiciel de synchronisation de cloud (tel que &lt;b&gt;iCloud Drive&lt;/b&gt;)&lt;/li&gt;&lt;li&gt;Lecteurs réseau&lt;/li&gt;&lt;/ul&gt;&lt;br&gt;De plus, &lt;b&gt;partager la même bibliothèque avec plusieurs ordinateurs ou utilisateurs&lt;/b&gt; peut également la corrompre. Il en est de même si elle est déplacée sur un lecteur USB.</string>
 	<key>Add</key>

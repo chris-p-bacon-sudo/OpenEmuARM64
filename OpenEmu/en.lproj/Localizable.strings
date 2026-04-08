@@ -27,7 +27,7 @@
 	<key>ALERT_INPUT_MONITORING_PART2_MONTEREY</key>
 	<string>Removing and re-granting the permission may also resolve keyboard input issues.</string>
 	<key>ALERT_INPUT_MONITORING_PART2_TAHOE</key>
-	<string>Removing and re-granting the permission in System Settings → Privacy &amp; Security → Input Monitoring may resolve this. If the popup keeps appearing after granting permission, it may be caused by the app not being code-signed — try right-clicking OpenEmu and choosing Open.</string>
+	<string>Click "Open System Settings" below, find OpenEmu in the list, and enable the toggle. Then relaunch the app for the change to take effect.</string>
 	<key>Open System Settings</key>
 	<string>Open System Settings</string>
 	<key>ALERT_MOVE_LIBRARY_HTML</key>
