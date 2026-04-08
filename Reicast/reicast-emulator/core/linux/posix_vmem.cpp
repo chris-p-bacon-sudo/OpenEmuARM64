@@ -178,20 +178,28 @@ void vmem_platform_create_mappings(const vmem_mapping *vmem_maps, unsigned numma
 
 // Prepares the code region for JIT operations, thus marking it as RWX
 bool vmem_platform_prepare_jit_block(void *code_area, unsigned size, void **code_area_rwx) {
-	// Try to map is as RWX, this fails apparently on OSX (and perhaps other systems?)
-	if (mprotect(code_area, size, PROT_READ | PROT_WRITE | PROT_EXEC)) {
-		// Well it failed, use another approach, unmap the memory area and remap it back.
-		// Seems it works well on Darwin according to reicast code :P
-		munmap(code_area, size);
-		void *ret_ptr = mmap(code_area, size, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_FIXED | MAP_PRIVATE | MAP_ANON, 0, 0);
-		// Ensure it's the area we requested
-		if (ret_ptr != code_area)
-			return false;   // Couldn't remap it? Perhaps RWX is disabled? This should never happen in any supported Unix platform.
+	// Try to mark as RWX
+	if (mprotect(code_area, size, PROT_READ | PROT_WRITE | PROT_EXEC) == 0) {
+		*code_area_rwx = code_area;
+		return true;
 	}
-
-	// Pointer location should be same:
-	*code_area_rwx = code_area;
-	return true;
+	// macOS W^X: RWX mprotect fails. Try unmapping and remapping with MAP_JIT.
+	munmap(code_area, size);
+	void *ret_ptr = mmap(code_area, size, PROT_READ | PROT_WRITE | PROT_EXEC,
+	                     MAP_FIXED | MAP_PRIVATE | MAP_ANON | MAP_JIT, -1, 0);
+	if (ret_ptr == code_area) {
+		*code_area_rwx = code_area;
+		return true;
+	}
+	// MAP_JIT also failed (missing entitlement). For the CPP recompiler, CodeCache
+	// stores function pointers (data), not machine code — RW is sufficient.
+	ret_ptr = mmap(code_area, size, PROT_READ | PROT_WRITE,
+	               MAP_FIXED | MAP_PRIVATE | MAP_ANON, -1, 0);
+	if (ret_ptr == code_area) {
+		*code_area_rwx = code_area;
+		return true;
+	}
+	return false;
 }
 
 // Use two addr spaces: need to remap something twice, therefore use allocate_shared_filemem()

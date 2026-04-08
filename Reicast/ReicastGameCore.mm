@@ -142,6 +142,7 @@ volatile bool has_init = false;
     
     //Setup the bios directory
     snprintf(bios_dir,sizeof(bios_dir),"%s%c",[[self biosDirectoryPath] UTF8String],'/');
+    add_system_data_dir([[self biosDirectoryPath] UTF8String]);
     
     //Initialize core gles
     rend_init_renderer();
