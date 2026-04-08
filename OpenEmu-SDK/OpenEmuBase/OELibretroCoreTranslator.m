@@ -97,6 +97,7 @@ static void libretro_log_cb(enum retro_log_level level, const char *fmt, ...) {
 @property (nonatomic, strong) NSBundle *coreBundle;
 @property (nonatomic, assign) enum retro_pixel_format retroPixelFormat;
 @property (nonatomic, assign) BOOL didExplicitlySetPixelFormat;
+@property (nonatomic, assign) BOOL didClearSaturnBuffer;
 @end
 
 static __thread __unsafe_unretained OELibretroCoreTranslator *_current = nil;
@@ -182,6 +183,7 @@ static bool libretro_environment_cb(unsigned cmd, void *data) {
             if (data && _current) {
                 const struct retro_game_geometry *geom = (const struct retro_game_geometry *)data;
                 _current->_avInfo.geometry = *geom;
+                _current.didClearSaturnBuffer = NO; // Resolution changed, re-clear padding
                 NSLog(@"[OELibretro] Geometry updated: %dx%d (Aspect: %.2f)", geom->base_width, geom->base_height, geom->aspect_ratio);
                 return true;
             }
@@ -210,6 +212,16 @@ static void libretro_video_refresh_cb(const void *data, unsigned width, unsigned
             enum retro_pixel_format coreFormat = _current.retroPixelFormat;
             const uint8_t *src = (const uint8_t *)data;
             
+            NSString *bundleID = [_current.coreBundle bundleIdentifier];
+            BOOL isSaturn = [bundleID containsString:@"Saturn"];
+            
+            // For Saturn, clear the buffer once per resolution change to remove garbage pixels in padding.
+            // This has zero overhead after the first frame of a new resolution.
+            if (isSaturn && !_current.didClearSaturnBuffer) {
+                memset(dst, 0, destRowWords * _current.bufferSize.height * 4);
+                _current.didClearSaturnBuffer = YES;
+            }
+            
             for (unsigned y = 0; y < height; y++) {
                 uint32_t *d = dst + (y * destRowWords);
                 const uint16_t *s16 = (const uint16_t *)(src + (y * pitch));
@@ -218,10 +230,21 @@ static void libretro_video_refresh_cb(const void *data, unsigned width, unsigned
                 // Use the core's explicitly set format if available, otherwise fallback to our core-specific default.
                 enum retro_pixel_format effectiveFormat = coreFormat;
                 
+                // Centering offsets
+                int xOffset = 0;
+                int yOffset = 0;
+                
                 // If the core hasn't explicitly set its format, we check if it's a known high-res core (PSX) or use heuristic.
                 if (!_current.didExplicitlySetPixelFormat) {
                     NSString *bundleID = [_current.coreBundle bundleIdentifier];
                     BOOL isSNES = [bundleID containsString:@"Snes9x"] || [bundleID containsString:@"BSNES"] || [bundleID containsString:@"SNES"];
+                    BOOL isPSP = [bundleID containsString:@"PPSSPP"] || [bundleID containsString:@"PSP"];
+                    
+                    if (isPSP) {
+                        // For PSP, center the 480x272 image within the 512x512 buffer.
+                        xOffset = (int)(destRowWords - width) / 2;
+                        yOffset = (int)(_current.bufferSize.height - height) / 2;
+                    }
                     
                     if (pitch == width * 4 && !isSNES) {
                         // For non-SNES cores with a 32-bit pitch, assume XRGB8888.
@@ -230,17 +253,17 @@ static void libretro_video_refresh_cb(const void *data, unsigned width, unsigned
                 }
                 
                 for (unsigned x = 0; x < width; x++) {
+                    uint32_t *destPos = d + x + xOffset + (yOffset * destRowWords);
                     switch (effectiveFormat) {
                         case RETRO_PIXEL_FORMAT_0RGB1555:
-                            d[x] = convert_0rgb1555_to_bgra8888(s16[x]);
+                            *destPos = convert_0rgb1555_to_bgra8888(s16[x]);
                             break;
                         case RETRO_PIXEL_FORMAT_RGB565:
-                            d[x] = convert_rgb565_to_bgra8888(s16[x]);
+                            *destPos = convert_rgb565_to_bgra8888(s16[x]);
                             break;
                         case RETRO_PIXEL_FORMAT_XRGB8888: {
                             uint32_t pix = s32[x];
-                            // Libretro XRGB8888 is 0xRRGGBB. Match BGRA output (0xFFRRGGBB).
-                            d[x] = 0xFF000000 | pix;
+                            *destPos = 0xFF000000 | pix;
                             break;
                         }
                         default:
@@ -471,15 +494,6 @@ static void* bridge_dlsym(void *handle, const char *symbol) {
 }
 
 - (OEIntSize)bufferSize {
-    NSString *bundleID = [self.coreBundle bundleIdentifier];
-    if ([bundleID containsString:@"PPSSPP"] || [bundleID containsString:@"PSP"]) {
-        // For PSP, force the buffer size to match the active screen area (480x272)
-        // because the core's max_width of 512 includes black padding that offsets the image.
-        size_t width = _avInfo.geometry.base_width ?: 480;
-        size_t height = _avInfo.geometry.base_height ?: 272;
-        return OEIntSizeMake((int)width, (int)height);
-    }
-    
     size_t width = _avInfo.geometry.max_width ?: 640;
     size_t height = _avInfo.geometry.max_height ?: 480;
     return OEIntSizeMake((int)width, (int)height);
