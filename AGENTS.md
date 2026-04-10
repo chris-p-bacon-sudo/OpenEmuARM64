@@ -131,7 +131,9 @@ These rules exist because AI-assisted sessions have previously created orphaned 
 - Reference the issue with `Fixes #N` in the commit body (auto-closes on merge) or `Related to #N` (soft link)
 - For core-specific fixes, note which systems are affected
 
-**Every PR description must include a "How to test locally" section** with exact copy-paste commands:
+**Every PR description must include a "How to test locally" section** with exact copy-paste commands.
+
+**If the PR only touches main app code** (`OpenEmu/`, `OpenEmuKit/`, `OpenEmu-SDK/`):
 
 ```
 ## How to test locally
@@ -148,10 +150,35 @@ xcodebuild \
   build 2>&1 | tail -20
 
 # 3. Launch
-open ~/Library/Developer/Xcode/DerivedData/OpenEmu-*/Build/Products/Debug/OpenEmu.app
+open ~/Library/Developer/Xcode/DerivedData/OpenEmu-metal-*/Build/Products/Debug/OpenEmu.app
 ```
 
-Replace `<N>` with the actual PR number. Add any PR-specific setup steps below the commands — for example: which ROM or system to test, any BIOS files required, any permissions to revoke first, or specific behaviors to verify from the QA spec.
+**If the PR touches a core plugin** (anything inside `Dolphin/`, `Flycast/`, etc.):
+
+```
+## How to test locally
+
+# 1. Check out this PR
+gh pr checkout <N> --repo nickybmon/OpenEmu-Silicon
+
+# 2. Build the core scheme (the main OpenEmu scheme does not build core plugins)
+xcodebuild \
+  -workspace OpenEmu-metal.xcworkspace \
+  -scheme <CoreName> \
+  -configuration Debug \
+  -destination 'platform=macOS,arch=arm64' \
+  build 2>&1 | tail -20
+
+# 3. Install the core (quits OpenEmu automatically, then copies binary + Info.plist)
+./Scripts/install-core.sh <CoreName>
+
+# 4. Launch
+open ~/Library/Developer/Xcode/DerivedData/OpenEmu-metal-*/Build/Products/Debug/OpenEmu.app
+```
+
+**Never use `cp -Rf` to install a core plugin.** macOS merges bundle directories rather than replacing them — old files silently stay in place. Always use `./Scripts/install-core.sh` or `cp -f` on individual files. Always quit OpenEmu before installing — the helper process holds the binary open while running.
+
+Replace `<N>` with the actual PR number and `<CoreName>` with the scheme name (e.g. `Dolphin`, `Flycast`). Add any PR-specific setup steps below — which ROM or system to test, any BIOS files required, any permissions to revoke first, or specific behaviors to verify from the QA spec.
 
 ---
 
@@ -234,6 +261,8 @@ gh pr checkout 54 --repo nickybmon/OpenEmu-Silicon
 
 ### Build
 
+For main app changes:
+
 ```bash
 xcodebuild \
   -workspace OpenEmu-metal.xcworkspace \
@@ -243,10 +272,33 @@ xcodebuild \
   build 2>&1 | tail -30
 ```
 
+For core plugin changes, use the core's own scheme (e.g. `Dolphin`, `Flycast`):
+
+```bash
+xcodebuild \
+  -workspace OpenEmu-metal.xcworkspace \
+  -scheme Dolphin \
+  -configuration Debug \
+  -destination 'platform=macOS,arch=arm64' \
+  build 2>&1 | tail -30
+```
+
+The main `OpenEmu` scheme does not build core plugins. Building the wrong scheme means you're testing old code.
+
+### Install a core plugin after building
+
+Use the install script — it quits OpenEmu first and copies files correctly:
+
+```bash
+./Scripts/install-core.sh Dolphin
+```
+
+**Never use `cp -Rf` to install a core plugin.** macOS merges bundle directories rather than replacing them, so old files silently stay in place. Always use the script or `cp -f` on individual files. Always quit OpenEmu before installing — the helper process holds the binary open while running and `cp` will silently fail to replace it.
+
 ### Launch the built app
 
 ```bash
-open ~/Library/Developer/Xcode/DerivedData/OpenEmu-*/Build/Products/Debug/OpenEmu.app
+open ~/Library/Developer/Xcode/DerivedData/OpenEmu-metal-*/Build/Products/Debug/OpenEmu.app
 ```
 
 Or launch from Spotlight — after a Debug build the app is registered and findable by name.
