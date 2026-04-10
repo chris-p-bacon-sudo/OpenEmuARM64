@@ -16,6 +16,7 @@
 #include "reios.h"
 #include "imgread/common.h"
 #include "hw/sh4/modules/mmu.h"
+#include "emulator.h"
 
 #include <algorithm>
 
@@ -23,6 +24,7 @@
 
 #define debugf(...) DEBUG_LOG(REIOS, __VA_ARGS__)
 static void readSectors(u32 addr, u32 sector, u32 count, bool virtualAddr);
+static void GD_HLE_Command(gd_command cc);
 
 struct gdrom_hle_state_t
 {
@@ -115,9 +117,21 @@ static int schedCallback(int tag, int cycles, int jitter, void *arg)
 	return getGdromTicks();
 }
 
+// VBlank callback: advance pending GD-ROM HLE commands automatically.
+// The real Dreamcast BIOS kernel calls GDROM_EXEC_SERVER on every VBL interrupt.
+// Games like SA2 rely on this — they issue a command and spin-poll the status,
+// trusting the BIOS to advance the state machine. Without this, status stays
+// GDC_BUSY forever and the game freezes on the loading screen.
+static void gdrom_hle_vblank(Event /*event*/, void* /*arg*/)
+{
+	if (gd_hle_state.status == GDC_BUSY)
+		GD_HLE_Command(gd_hle_state.command);
+}
+
 void reios_init() {
 	if (schedId == -1)
 		schedId = sh4_sched_register(0, schedCallback);
+	EventManager::listen(Event::VBlank, gdrom_hle_vblank);
 }
 
 void reios_serialize(Serializer& ser) {
@@ -138,6 +152,7 @@ void gdrom_hle_reset() {
 
 void reios_term()
 {
+	EventManager::unlisten(Event::VBlank, gdrom_hle_vblank);
 	if (schedId != -1)
 		sh4_sched_unregister(schedId);
 	schedId = -1;

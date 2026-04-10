@@ -32,6 +32,8 @@ cdda_t cdda;
 
 static gd_states gd_state;
 static DiscType gd_disk_type;
+
+int gdrom_diag_get_state() { return (int)gd_state; }
 /*
 	GD rom reset -> GDS_WAITCMD
 

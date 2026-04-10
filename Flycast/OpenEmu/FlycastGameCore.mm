@@ -46,9 +46,14 @@
 #include "hw/mem/addrspace.h"
 #include "oslib/oslib.h"
 #include "wsi/osx.h"
+#include "hw/gdrom/gdromv3.h"
 
 #include <OpenGL/gl3.h>
 #include <sys/stat.h>
+#include <atomic>
+
+// Diagnostic probes defined in their respective translation units
+extern std::atomic<uint32_t> g_sh4_diag_pc;
 
 #define SAMPLERATE 44100
 #define SIZESOUNDBUFFER (44100 / 60 * 4)
@@ -97,6 +102,12 @@ static OpenEmuAudioBackend openEmuAudioBackend;
     BOOL _isInitialized;
     BOOL _emuInitialized;
     double _frameInterval;
+    // Diagnostic: track cold-boot timing and frame activity
+    NSTimeInterval _bootStartTime;
+    NSTimeInterval _lastFrameTime;
+    uint32_t _frameCount;
+    BOOL _firstFrameLogged;
+    FILE *_diagFile;  // direct file log to bypass NSLog rate-limiting
 }
 @end
 
@@ -113,6 +124,9 @@ __weak FlycastGameCore *_current;
         _videoHeight = 480;
         _isInitialized = NO;
         _frameInterval = 59.94;
+        NSString *diagPath = [NSTemporaryDirectory() stringByAppendingPathComponent:@"flycast_diag.txt"];
+        _diagFile = fopen(diagPath.fileSystemRepresentation, "w");
+        NSLog(@"[Flycast] Diag file: %@", diagPath);
     }
     _current = self;
     return self;
@@ -120,6 +134,7 @@ __weak FlycastGameCore *_current;
 
 - (void)dealloc
 {
+    if (_diagFile) { fclose(_diagFile); _diagFile = nil; }
     _current = nil;
 }
 
@@ -212,9 +227,17 @@ __weak FlycastGameCore *_current;
             // loadGame calls reset()+load() which clears all settings — re-apply after it returns.
             config::DynarecEnabled.override(false); // keep interpreter; JIT unstable on ARM64 macOS
             config::AudioBackend.set("openemu");    // reset() clears this to "auto"; restore before InitAudio()
+            // FastGDRomLoad makes disc reads instantaneous, dramatically cutting cold-boot
+            // time under the interpreter (which runs at ~10-20% real speed). Without this,
+            // simulated disc I/O adds minutes to the cold-boot black screen.
+            config::FastGDRomLoad.override(true);
+            NSLog(@"[Flycast] Starting emulation — UseReios=%d FastGDRomLoad=1 DynarecEnabled=0",
+                  (bool)config::UseReios);
             rend_init_renderer();
             emu.start();
             gui_setState(GuiState::Closed);
+            _bootStartTime = [NSDate timeIntervalSinceReferenceDate];
+            _firstFrameLogged = NO;
             _isInitialized = YES;
         } catch (const std::exception &e) {
             NSLog(@"[Flycast] Error loading game: %s", e.what());
@@ -225,7 +248,54 @@ __weak FlycastGameCore *_current;
         }
     }
 
-    emu.render();
+    bool frameReady = emu.render();
+
+    NSTimeInterval now = [NSDate timeIntervalSinceReferenceDate];
+
+// Convenience macro: write to file (bypasses NSLog rate-limiting from log flood)
+#define DIAG_LOG(fmt, ...) \
+    do { if (_diagFile) { fprintf(_diagFile, fmt "\n", ##__VA_ARGS__); fflush(_diagFile); } } while(0)
+
+    if (frameReady) {
+        if (!_firstFrameLogged) {
+            _firstFrameLogged = YES;
+            NSLog(@"[Flycast] First frame rendered %.1f s after emu.start()", now - _bootStartTime);
+            DIAG_LOG("[Flycast] First frame rendered %.1f s after emu.start()", now - _bootStartTime);
+        }
+        _lastFrameTime = now;
+        _frameCount++;
+        // Log frame rate every 300 rendered frames (~5 s at 60 fps)
+        if (_frameCount % 300 == 0) {
+            NSLog(@"[Flycast] Heartbeat: %u frames rendered, running %.0f s", _frameCount, now - _bootStartTime);
+            DIAG_LOG("[Flycast] Heartbeat: %u frames rendered, running %.0f s", _frameCount, (double)(now - _bootStartTime));
+        }
+    } else {
+        // emu.render() timed out — no PVR frame in 50 ms. Log PC and GD-ROM state
+        // every 2 s to diagnose cold-boot loading freeze. Write to file to bypass
+        // macOS NSLog rate-limiting caused by Flycast's internal debug log flood.
+        if (_firstFrameLogged && (now - _lastFrameTime) > 5.0) {
+            int elapsed = (int)(now - _lastFrameTime);
+            if (elapsed % 2 == 0) {
+                uint32_t pc = g_sh4_diag_pc.load(std::memory_order_relaxed);
+                int gdState = gdrom_diag_get_state();
+                const char *gdName =
+                      gdState == 0 ? "waitcmd" :
+                      gdState == 1 ? "procata" :
+                      gdState == 2 ? "waitpacket" :
+                      gdState == 3 ? "procpacket" :
+                      gdState == 4 ? "pio_send" :
+                      gdState == 5 ? "pio_get" :
+                      gdState == 6 ? "pio_end" :
+                      gdState == 7 ? "procpacketdone" :
+                      gdState == 8 ? "readsector_pio" :
+                      gdState == 9 ? "readsector_dma" :
+                      gdState == 10 ? "process_set_mode" : "unknown";
+                DIAG_LOG("[Flycast] Stuck %d s — SH4 PC=0x%08x GD-ROM state=%d (%s)",
+                         elapsed, pc, gdState, gdName);
+            }
+        }
+    }
+#undef DIAG_LOG
 }
 
 #pragma mark - Video

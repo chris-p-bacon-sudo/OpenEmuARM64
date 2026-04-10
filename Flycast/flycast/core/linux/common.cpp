@@ -74,6 +74,24 @@ void fault_handler(int sn, siginfo_t * si, void *segfault_ctx)
 	svcQueryMemory(&meminfo, &pageinfo, (u64)&__start__);
 	ERROR_LOG(COMMON, ".text base: %p -> offset: %lx", (void*)meminfo.addr, ctx.pc - meminfo.addr);
 #else
+	// Log enough context to diagnose which subsystem owns the faulting address.
+	// On macOS, Sentry's Mach exception handler may capture this crash before the
+	// POSIX SIGBUS handler delivers it — this log will not appear in that case.
+	// Check if the address falls in the expected DC virtual memory range.
+	{
+		void *ram_b = nullptr, *ram = nullptr, *vr = nullptr, *aica = nullptr;
+		addrspace::getAddress(&ram_b, &ram, &vr, &aica);
+		ERROR_LOG(COMMON, "Unhandled fault: signal=%d addr=%p ram_base=%p vram=%p",
+		          sn, si->si_addr, ram_b, vr);
+		if (ram_b != nullptr) {
+			ptrdiff_t off = (u8*)si->si_addr - (u8*)ram_b;
+			ERROR_LOG(COMMON, "  offset from ram_base: 0x%tx (area byte=%d)",
+			          off, (int)((ptrdiff_t)off >> 24));
+		}
+		u32 vramOff = addrspace::getVramOffset(si->si_addr);
+		ERROR_LOG(COMMON, "  getVramOffset=%u (0x%x) %s",
+		          vramOff, vramOff, (vramOff == (u32)-1) ? "(not VRAM)" : "(in VRAM — lock missing?)");
+	}
 	if (next_segv_handler.sa_sigaction != nullptr)
 		next_segv_handler.sa_sigaction(sn, si, segfault_ctx);
 	else

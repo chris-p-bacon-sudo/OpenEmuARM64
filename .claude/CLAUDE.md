@@ -143,7 +143,9 @@ git branch -d fix/your-description
 | Delete local branch after merge | Run `git branch -d` immediately after syncing |
 | Never force-push to `main` | Destructive; breaks history |
 
-**Commit message format:** `<type>: <description>`
+**Commit message format:** `<type>(<scope>): <description>`
+
+The scope is optional but **required for core changes** — it identifies which emulation core was touched. This is how `/prep-release` detects which cores have diverged from the last cores release.
 
 | Type | When |
 |------|------|
@@ -152,6 +154,16 @@ git branch -d fix/your-description
 | `chore:` | Cleanup, tooling, config |
 | `docs:` | Documentation only |
 | `refactor:` | Restructure with no behavior change |
+
+**Core scope convention:** use the core's directory name, lowercase.
+
+```
+fix(flycast): resolve cold-launch black screen
+feat(dolphin): wire Metal rendering backend
+chore(mgba): update to upstream 0.10.3
+```
+
+This makes core changes grepping trivially easy and ensures the `/prep-release` Step 0 audit produces clean, readable output.
 
 **Linking issues:**
 - `Fixes #N` in commit body — auto-closes issue on merge to `main`
@@ -165,6 +177,16 @@ git branch -d fix/your-description
 | New feature | `enhancement` |
 | Docs only | `documentation` |
 | Needs discussion | `question` |
+| Core source change | `core` |
+
+Apply the `core` label to any PR that touches a core directory (`Flycast/`, `Dolphin/`, `mGBA/`, etc.). This makes it easy to filter PRs when auditing what needs a new cores release.
+
+**Issue titles for core work:**
+
+Follow the same no-prefix rule (no `fix:` / `feat:` in titles), but name the core explicitly:
+- Good: `Flycast — black screen on cold launch`
+- Good: `Dolphin — Wii controller input not registering`
+- Bad: `fix(flycast): black screen` ← that's a commit message, not an issue title
 
 **Automation in place:**
 - `.git/hooks/pre-push` — blocks accidental direct pushes to `upstream master`

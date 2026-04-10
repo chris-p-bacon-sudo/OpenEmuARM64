@@ -3,6 +3,7 @@
 */
 
 #include "types.h"
+#include <atomic>
 
 #include "../sh4_interpreter.h"
 #include "../sh4_opcode_list.h"
@@ -17,6 +18,10 @@
 Sh4ICache icache;
 Sh4OCache ocache;
 Sh4Interpreter *Sh4Interpreter::Instance;
+
+// Diagnostic: current SH4 PC, sampled once per timeslice from the interpreter thread.
+// Read from the OE render thread to detect infinite loops during cold boot.
+std::atomic<uint32_t> g_sh4_diag_pc{0};
 
 void Sh4Interpreter::ExecuteOpcode(u16 op)
 {
@@ -47,6 +52,7 @@ void Sh4Interpreter::Run()
 		do
 		{
 			try {
+				g_sh4_diag_pc.store(ctx->pc, std::memory_order_relaxed);
 				do
 				{
 					u32 op = ReadNexOp();

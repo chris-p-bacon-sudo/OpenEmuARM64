@@ -1077,16 +1077,21 @@ bool Emulator::render()
 		return false;
 	if (state != Running)
 		return false;
-	// The SH4 interpreter runs at ~10-20% of real speed on ARM64. GD-ROM loading
-	// can take arbitrarily long under the interpreter, so we wait indefinitely
-	// (-1) rather than using a fixed timeout. rend_cancel_emu_wait() unblocks
-	// the render thread on quit via cancelEnqueue(), preventing a deadlock.
-	// With JIT/dynarec the emulator runs at full speed so the default per-field
-	// timeout (0 → 20ms NTSC / 23ms PAL) is used instead.
+	// Use a 50 ms timeout so the caller (e.g. OpenEmu's game-loop thread) stays
+	// responsive during cold boot.  rend_single_frame() returns false when the
+	// timeout fires with no frame ready; the caller simply re-invokes render()
+	// on the next tick, showing a black frame until the DC boot completes.
+	//
+	// History: this was formerly -1 (wait forever) to handle the slow GD-ROM
+	// load under the interpreter, but that blocks the OE game-loop thread for
+	// the entire cold-boot duration, causing an AppHang >2000 ms.  50 ms is
+	// comfortably above one DC frame at real-time speed (~16 ms) so gameplay
+	// after boot is unaffected.  rend_cancel_emu_wait() / cancelEnqueue() still
+	// unblocks this wait cleanly on quit.
 #if FEAT_SHREC != DYNAREC_NONE
-	const int frameTimeout = config::DynarecEnabled ? 0 : -1;
+	const int frameTimeout = config::DynarecEnabled ? 0 : 50;
 #else
-	const int frameTimeout = -1;
+	const int frameTimeout = 50;
 #endif
 	return rend_single_frame(true, frameTimeout);
 }
@@ -1095,6 +1100,11 @@ void Emulator::vblank()
 {
 	EventManager::event(Event::VBlank);
 	runner.execTasks();
+	// Log a heartbeat every 300 vblanks (~5 s at 60 fps) so we can confirm
+	// the SH4 is alive during slow cold-boot loading screens.
+	static u32 vblankCount = 0;
+	if (++vblankCount % 300 == 0)
+		NOTICE_LOG(COMMON, "SH4 heartbeat: %u vblanks elapsed", vblankCount);
 	// Time out if a frame hasn't been rendered for 50 ms
 	if (sh4_sched_now64() - startTime <= 10000000)
 		return;

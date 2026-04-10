@@ -365,4 +365,8 @@ extern const u16 reply_71[];
 #define SPI_CD_SCAN   0x22 // 
 #define SPI_CD_READ   0x30 // 
 #define SPI_CD_READ2  0x31 // 
-#define SPI_GET_SCD   0x40 // 
+#define SPI_GET_SCD   0x40 //
+
+// Diagnostic: returns current GD-ROM controller state as int (maps to gd_states enum).
+// Read from the OE render thread during stuck-frame diagnosis.
+int gdrom_diag_get_state();
