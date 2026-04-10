@@ -202,6 +202,13 @@ __weak FlycastGameCore *_current;
             // loadGame calls reset()+load() which clears all settings — re-apply after it returns.
             config::DynarecEnabled.override(false); // keep interpreter; JIT unstable on ARM64 macOS
             config::AudioBackend.set("openemu");    // reset() clears this to "auto"; restore before InitAudio()
+            // Use HLE BIOS to skip the slow GD-ROM loading phase. The SH4 interpreter
+            // runs at ~15% speed on ARM64, making real-BIOS GD-ROM loading take so long
+            // that rend_single_frame times out and OE sees a permanent black screen.
+            // Skip this override only if loadSpecialSettings() already forced real BIOS
+            // for per-game compatibility (e.g. Slave Zero, World Series Baseball 2K2).
+            if (!config::UseReios.isReadOnly())
+                config::UseReios.override(true);
             rend_init_renderer();
             emu.start();
             gui_setState(GuiState::Closed);
