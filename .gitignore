@@ -51,6 +51,9 @@ test_dlopen
 # Claude Code local config
 .claude/settings.json
 
+# Cursor IDE config
+.cursor/
+
 # PPSSPP third-party ext libraries (not committed — large C++ dependencies)
 PPSSPP/PPSSPP-Core/ppsspp/ext/SPIRV-Cross/
 PPSSPP/PPSSPP-Core/ppsspp/ext/armips/
