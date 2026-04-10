@@ -69,6 +69,13 @@ final class GameInfoHelper {
                     if let title = ss.gameTitle   { fallback["gameTitle"] = title }
                     if let desc  = ss.gameDescription { fallback["gameDescription"] = desc }
                 }
+
+                // Tier 3: libretro-thumbnails — no credentials, best-effort name match
+                if fallback["boxImageURL"] == nil, let title = fallback["gameTitle"] as? String {
+                    if let ltURL = LibretroThumbnailsClient.shared.fetchBoxArtURL(gameName: title, systemIdentifier: systemIdentifier) {
+                        fallback["boxImageURL"] = ltURL
+                    }
+                }
                 return fallback
             }
 
@@ -208,7 +215,16 @@ final class GameInfoHelper {
                         resultDict["gameDescription"] = desc
                     }
                 }
-                // ScreenScraper handled it; no need for fuzzy fallback.
+
+                // Tier 3: libretro-thumbnails — runs when ScreenScraper found no box art
+                if resultDict["boxImageURL"] == nil,
+                   let title = resultDict["gameTitle"] as? String {
+                    if let ltURL = LibretroThumbnailsClient.shared.fetchBoxArtURL(gameName: title, systemIdentifier: systemIdentifier) {
+                        resultDict["boxImageURL"] = ltURL
+                    }
+                }
+
+                // ScreenScraper (+ libretro fallback) handled it; no need for fuzzy fallback.
                 return resultDict
             }
 
@@ -308,6 +324,15 @@ final class GameInfoHelper {
                     var picked = best
                     picked.removeValue(forKey: "region")
                     resultDict.merge(picked) { (existing, _) in existing }
+                }
+
+                // Tier 3: libretro-thumbnails — runs when OpenVGDB fuzzy matching found no box art
+                let stillMissingArt = resultDict["boxImageURL"] == nil
+                                   || (resultDict["boxImageURL"] as? String)?.isEmpty == true
+                if stillMissingArt, let title = resultDict["gameTitle"] as? String {
+                    if let ltURL = LibretroThumbnailsClient.shared.fetchBoxArtURL(gameName: title, systemIdentifier: systemIdentifier) {
+                        resultDict["boxImageURL"] = ltURL
+                    }
                 }
             }
 

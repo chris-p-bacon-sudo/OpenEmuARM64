@@ -711,6 +711,7 @@
 		C6F696C01648F64B00B243DB /* Controller-Database.plist in Resources */ = {isa = PBXBuildFile; fileRef = C6F696BF1648F64B00B243DB /* Controller-Database.plist */; };
 		C6F697D6164E0EFD00B243DB /* Keyboard-Mappings.plist in Resources */ = {isa = PBXBuildFile; fileRef = C6F697D5164E0EFD00B243DB /* Keyboard-Mappings.plist */; };
 		CC0011223344556701900001 /* ScreenScraperClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0011223344556601900001 /* ScreenScraperClient.swift */; };
+		CC0011223344556B01900001 /* LibretroThumbnailsClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0011223344556A01900001 /* LibretroThumbnailsClient.swift */; };
 		CC0011223344556901900001 /* PrefScreenScraperController.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0011223344556801900001 /* PrefScreenScraperController.swift */; };
 		CC0011223344557101900001 /* ScreenScraperDevCredentials.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0011223344557001900001 /* ScreenScraperDevCredentials.swift */; };
 		DEAAB8E598494A97A260F43C84A6B563 /* Dreamcast.oesystemplugin in Copy System Plugins to App Plugins */ = {isa = PBXBuildFile; fileRef = 87DF04FE1BCE2D100060E2C2 /* Dreamcast.oesystemplugin */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
@@ -2063,6 +2064,7 @@
 		C6F696BF1648F64B00B243DB /* Controller-Database.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "Controller-Database.plist"; sourceTree = "<group>"; };
 		C6F697D5164E0EFD00B243DB /* Keyboard-Mappings.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "Keyboard-Mappings.plist"; sourceTree = "<group>"; };
 		CC0011223344556601900001 /* ScreenScraperClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenScraperClient.swift; sourceTree = "<group>"; };
+		CC0011223344556A01900001 /* LibretroThumbnailsClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibretroThumbnailsClient.swift; sourceTree = "<group>"; };
 		CC0011223344556801900001 /* PrefScreenScraperController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrefScreenScraperController.swift; sourceTree = "<group>"; };
 		CC0011223344557001900001 /* ScreenScraperDevCredentials.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenScraperDevCredentials.swift; sourceTree = "<group>"; };
 		CC0011223344557201900001 /* ScreenScraperDevCredentials.template.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ScreenScraperDevCredentials.template.swift; sourceTree = "<group>"; };
@@ -3322,6 +3324,7 @@
 			children = (
 				8FBD79182736A17B00E455FC /* GameInfoHelper.swift */,
 				CC0011223344556601900001 /* ScreenScraperClient.swift */,
+				CC0011223344556A01900001 /* LibretroThumbnailsClient.swift */,
 				8F4AEAC0273594E6005C6246 /* OpenVGDB.swift */,
 				836BC9561853815A00B6AF26 /* SQLiteDatabase.swift */,
 			);
@@ -6519,6 +6522,7 @@
 				0570B85725449E4C008EC8A6 /* ImageCollectionViewController.swift in Sources */,
 				01E2A2F323E60F7E00194150 /* PrefCoresController.swift in Sources */,
 				CC0011223344556701900001 /* ScreenScraperClient.swift in Sources */,
+				CC0011223344556B01900001 /* LibretroThumbnailsClient.swift in Sources */,
 				CC0011223344556901900001 /* PrefScreenScraperController.swift in Sources */,
 				CC0011223344557101900001 /* ScreenScraperDevCredentials.swift in Sources */,
 				8FBD79192736A17B00E455FC /* GameInfoHelper.swift in Sources */,

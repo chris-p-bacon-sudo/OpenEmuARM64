@@ -44,7 +44,7 @@ final class PrefScreenScraperController: NSViewController {
     // MARK: - Lifecycle
 
     override func loadView() {
-        view = NSView(frame: NSRect(x: 0, y: 0, width: 468, height: 340))
+        view = NSView(frame: NSRect(x: 0, y: 0, width: 468, height: 360))
         buildUI()
     }
 
@@ -58,13 +58,13 @@ final class PrefScreenScraperController: NSViewController {
 
     private func buildUI() {
         // Header
-        headerLabel.stringValue = "ScreenScraper Cover Art"
+        headerLabel.stringValue = "Cover Art"
         headerLabel.font = .boldSystemFont(ofSize: 15)
         headerLabel.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(headerLabel)
 
         // Description
-        descLabel.stringValue = "Enter your screenscraper.fr credentials to fetch cover art and game metadata. Anonymous use works without an account but is heavily rate-limited. Registration is free."
+        descLabel.stringValue = "OpenEmu looks up cover art in three places: first the built-in OpenVGDB database, then ScreenScraper (if you're signed in below), and finally libretro-thumbnails as a last resort. Signing in to ScreenScraper gives the best coverage — registration is free."
         descLabel.font = .systemFont(ofSize: 12)
         descLabel.textColor = .secondaryLabelColor
         descLabel.translatesAutoresizingMaskIntoConstraints = false
@@ -188,7 +188,7 @@ final class PrefScreenScraperController: NSViewController {
             statusLabel.stringValue = "✓  Signed in as \(username)"
             statusLabel.textColor = NSColor(red: 0.2, green: 0.78, blue: 0.35, alpha: 1)
         } else {
-            statusLabel.stringValue = "No credentials saved — using anonymous access (rate-limited)"
+            statusLabel.stringValue = "Not signed in — ScreenScraper will be skipped. OpenVGDB and libretro-thumbnails are still active."
             statusLabel.textColor = .secondaryLabelColor
         }
     }
@@ -240,7 +240,7 @@ extension PrefScreenScraperController: PreferencePane {
 
     var panelTitle: String { "Cover Art" }
 
-    var viewSize: NSSize { NSSize(width: 468, height: 340) }
+    var viewSize: NSSize { NSSize(width: 468, height: 360) }
 }
 
 // MARK: - Keychain Helper
