@@ -227,6 +227,11 @@ __weak FlycastGameCore *_current;
             // loadGame calls reset()+load() which clears all settings — re-apply after it returns.
             config::DynarecEnabled.override(false); // keep interpreter; JIT unstable on ARM64 macOS
             config::AudioBackend.set("openemu");    // reset() clears this to "auto"; restore before InitAudio()
+            // UseReios must be forced on after loadGame() because loadGameSpecificSettings()
+            // calls config::Settings::instance().load(true), which can apply a saved per-game
+            // config that sets UseReios=false. Without HLE BIOS, SA2 and similar games that
+            // don't call GDROM_EXEC_SERVER themselves will freeze on the loading screen.
+            config::UseReios.override(true);
             // FastGDRomLoad makes disc reads instantaneous, dramatically cutting cold-boot
             // time under the interpreter (which runs at ~10-20% real speed). Without this,
             // simulated disc I/O adds minutes to the cold-boot black screen.
