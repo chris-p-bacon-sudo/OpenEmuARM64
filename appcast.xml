@@ -36,7 +36,7 @@
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
         url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/v1.0.4/OpenEmu-Silicon.dmg"
-        sparkle:version="6"
+        sparkle:version="5"
         sparkle:shortVersionString="1.0.4"
         sparkle:edSignature="amQMbfJNMHTCKn3o0OgIaxsku69zVZOqdCUJ1BGq5cN/XPUl12mzIvNFYDCnV4dPtMUreUAnERgk28yDDAwPBQ=="
         length="43514210"

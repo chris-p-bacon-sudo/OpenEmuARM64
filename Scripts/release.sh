@@ -94,6 +94,23 @@ if [ -n "$DIRTY" ]; then
   [[ "$CONFIRM" =~ ^[Yy]$ ]] || { echo "Aborted."; exit 0; }
 fi
 
+# Verify CFBundleVersion in the plist matches the sparkle:version this script
+# will write into the appcast. Catches the case where the plist was not bumped
+# before running the release script, which causes Sparkle to loop forever.
+PLIST="$REPO_ROOT/OpenEmu/OpenEmu-Info.plist"
+PLIST_BUILD_VERSION=$(/usr/libexec/PlistBuddy -c "Print CFBundleVersion" "$PLIST" 2>/dev/null || true)
+CURRENT_MAX=$(grep -o 'sparkle:version="[0-9]*"' "$APPCAST" | grep -o '[0-9]*' | sort -n | tail -1)
+NEXT_VERSION=$((CURRENT_MAX + 1))
+
+if [ "$PLIST_BUILD_VERSION" != "$NEXT_VERSION" ]; then
+  die "CFBundleVersion mismatch.
+  OpenEmu-Info.plist has CFBundleVersion = \"$PLIST_BUILD_VERSION\"
+  appcast.xml will write sparkle:version = \"$NEXT_VERSION\"
+  These must match or Sparkle will offer the update in a loop.
+  Fix: set CFBundleVersion to $NEXT_VERSION in OpenEmu-Info.plist before running this script."
+fi
+echo "OK: CFBundleVersion ($PLIST_BUILD_VERSION) matches next sparkle:version ($NEXT_VERSION)"
+
 # ── 1. Archive ────────────────────────────────────────────────────────────────
 step "1/5  Archiving OpenEmu (Release)"
 
@@ -155,10 +172,7 @@ echo "length:      $DMG_LENGTH"
 # ── 4. Update appcast.xml ─────────────────────────────────────────────────────
 step "4/5  Updating appcast.xml"
 
-# Get next sparkle:version (increment max currently in appcast)
-CURRENT_MAX=$(grep -o 'sparkle:version="[0-9]*"' "$APPCAST" | grep -o '[0-9]*' | sort -n | tail -1)
-NEXT_VERSION=$((CURRENT_MAX + 1))
-
+# NEXT_VERSION was already computed and validated in the preflight check above.
 PUB_DATE=$(date -u "+%a, %d %b %Y %H:%M:%S +0000")
 
 # Build release notes HTML
