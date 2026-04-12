@@ -104,6 +104,9 @@ public:
 {
     memset(pad, 0, sizeof(pad));
 
+    if (!_videoBuffer)
+        _videoBuffer = (uint32_t *)malloc(160 * 144 * 4);
+
     // Set battery save dir
     NSURL *batterySavesDirectory = [NSURL fileURLWithPath:self.batterySavesDirectoryPath];
     [[NSFileManager defaultManager] createDirectoryAtURL:batterySavesDirectory withIntermediateDirectories:YES attributes:nil error:nil];
