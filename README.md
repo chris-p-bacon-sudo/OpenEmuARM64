@@ -69,55 +69,13 @@ Recent highlights from active development:
 
 ---
 
-## What Works
+## Supported Systems
 
-| System | Core | Notes |
-|--------|------|-------|
-| Atari 2600 | [Stella](https://github.com/stella-emu/stella) | |
-| Atari 5200 | [Atari800](https://github.com/atari800/atari800) | |
-| Atari 7800 | [ProSystem](https://gitlab.com/jgemu/prosystem) | |
-| Atari Jaguar | [VirtualJaguar](https://github.com/OpenEmu/VirtualJaguar-Core) | |
-| Atari Lynx | [Mednafen](https://mednafen.github.io) | |
-| ColecoVision | [JollyCV](https://github.com/OpenEmu/JollyCV-Core) | |
-| Famicom Disk System | [Nestopia](https://gitlab.com/jgemu/nestopia) | |
-| Game Boy / GBC | [Gambatte](https://gitlab.com/jgemu/gambatte) | |
-| Game Boy Advance | [mGBA](https://github.com/mgba-emu/mgba) 0.10.5 | |
-| Game Gear | [Genesis Plus GX](https://github.com/ekeeke/Genesis-Plus-GX) | |
-| Intellivision | [Bliss](https://github.com/jeremiah-sypult/BlissEmu) | |
-| MSX | [blueMSX](https://github.com/OpenEmu/blueMSX-Core) | |
-| Nintendo (NES) | [Nestopia](https://gitlab.com/jgemu/nestopia), [FCEU](https://github.com/TASEmulators/fceux) | |
-| Nintendo 64 | [Mupen64Plus](https://github.com/mupen64plus) | Revived |
-| Odyssey² / Videopac+ | [O2EM](https://sourceforge.net/projects/o2em/) | |
-| PC Engine / TurboGrafx-16 | [Mednafen](https://mednafen.github.io) | |
-| Pokémon Mini | [PokeMini](https://github.com/pokerazor/pokemini) | |
-| Sega 32X | [picodrive](https://github.com/notaz/picodrive) | |
-| Sega CD / Mega CD | [Genesis Plus GX](https://github.com/ekeeke/Genesis-Plus-GX) | |
-| Sega Dreamcast | [Flycast](https://github.com/flyinghead/flycast) | Needs BIOS: dc_boot.bin, dc_flash.bin |
-| Sega Genesis / Mega Drive | [Genesis Plus GX](https://github.com/ekeeke/Genesis-Plus-GX) | |
-| Sega Master System | [Genesis Plus GX](https://github.com/ekeeke/Genesis-Plus-GX) | |
-| Sega Saturn | [Mednafen](https://mednafen.github.io) | |
-| Sony PlayStation | [Mednafen](https://mednafen.github.io) | |
-| Sony PSP | [PPSSPP](https://github.com/hrydgard/ppsspp) | Rebuilt for Apple Silicon |
-| Super Nintendo (SNES) | [Snes9x](https://github.com/snes9xgit/snes9x) 1.63 | |
-| Vectrex | [VecXGL](https://github.com/james7780/VecXGL) | |
-| Watara Supervision | [Potator](https://github.com/alekmaul/potator) | |
-| WonderSwan | [Mednafen](https://mednafen.github.io) | |
-| 3DO | [4DO](https://github.com/fourdo/fourdo) | |
+> **Full details — working status, known issues, in-progress cores, and what's planned — are on the [`docs/cores.md`](docs/cores.md) page.**
+
+Quick summary: 30+ systems work today, including NES, SNES, Game Boy, GBA, N64, PlayStation, Dreamcast, and more. A handful have known issues (PSP, Saturn registration, Game Boy Color categorization). GameCube/Wii (Dolphin) and a new Nintendo DS core (melonDS) are actively in progress. Commodore 64, Arcade/MAME, and PS2 have no core yet.
 
 **Also working:** controller mapping and detection, save states, Google Drive sync for saves, ScreenScraper cover art.
-
----
-
-## What's Planned
-
-The next major milestones on the roadmap:
-
-- **Nintendo DS** — melonDS integration (greenfield wrapper; DeSmuME is abandoned)
-- **MAME / Arcade** — system plugin is ready; emulation core integration is the remaining work
-- **GameCube** — Dolphin overhaul; community fork exists, high complexity
-- **Core version updates** — targeting latest stable releases across all cores
-
-See [`docs/roadmap.md`](docs/roadmap.md) for the full plan with implementation details.
 
 ---
 
@@ -163,8 +121,7 @@ I'm transparent about this because honesty with the community matters more than 
 |-----|-------------|
 | [Wiki](https://github.com/nickybmon/OpenEmu-Silicon/wiki) | User guides: getting started, BIOS files, importing, CD games, controllers, troubleshooting |
 | [`docs/migrating-from-openemu.md`](docs/migrating-from-openemu.md) | Switching from the original OpenEmu: what carries over, what doesn't, and how to back up |
-| [`docs/cores.md`](docs/cores.md) | Every emulation core: working status, upstream version, system compatibility, known issues |
-| [`docs/roadmap.md`](docs/roadmap.md) | Planned integrations (Nintendo DS, MAME, GameCube) with implementation details |
+| [`docs/cores.md`](docs/cores.md) | Supported systems: working status, known issues, in-progress cores, what’s planned, and developer reference |
 | [`CREDITS.md`](CREDITS.md) | Everyone who contributed — original OpenEmu team, ARM64 port, core sources, illustrators, and this repo's contributors |
 
 ---
