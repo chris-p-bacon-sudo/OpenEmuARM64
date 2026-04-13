@@ -947,7 +947,16 @@ extension AppDelegate: NSMenuDelegate {
     }
     
     func application(_ sender: NSApplication, openFiles filenames: [String]) {
+        let appBundleURL = Bundle.main.bundleURL
+        let appExecutableURL = Bundle.main.executableURL
+        
         let urls = filenames.compactMap { URL(fileURLWithPath: $0) }
+                            .filter { $0 != appBundleURL && $0 != appExecutableURL }
+        
+        guard !urls.isEmpty else {
+            NSApp.reply(toOpenOrPrint: .success)
+            return
+        }
         
         guard UserDefaults.standard.bool(forKey: SetupAssistant.hasFinishedKey) else {
             NSApp.reply(toOpenOrPrint: .cancel)

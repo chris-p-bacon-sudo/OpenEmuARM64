@@ -154,6 +154,19 @@ class GameDocumentController: NSDocumentController {
         #if DEBUG
         NSLog("[DEBUG] GameDocumentController: openDocument with url: \(url.path)")
         #endif
+        
+        // Ignore requests to open the app's own bundle or executable (prevents terminal launch errors)
+        let standardizedPath = url.standardizedFileURL.path
+        let bundlePath = Bundle.main.bundleURL.standardizedFileURL.path
+        if standardizedPath == bundlePath
+            || standardizedPath == Bundle.main.executableURL?.standardizedFileURL.path
+            || standardizedPath.hasPrefix(bundlePath + "/") {
+            #if DEBUG
+            NSLog("[DEBUG] GameDocumentController: ignoring self-reference URL: \(url.path)")
+            #endif
+            completionHandler(nil, false, nil)
+            return
+        }
         super.openDocument(withContentsOf: url, display: false) { document, documentWasAlreadyOpen, error in
             #if DEBUG
             NSLog("[DEBUG] GameDocumentController: super.openDocument finished with error: \(error?.localizedDescription ?? "nil")")

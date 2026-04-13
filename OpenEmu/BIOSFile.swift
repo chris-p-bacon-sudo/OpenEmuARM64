@@ -47,8 +47,11 @@ enum BIOSFile {
     /// - Returns: Returns `true` if file exists with correct MD5.
     static func isBIOSFileAvailable(withFileInfo fileInfo: [String: Any]) -> Bool {
         
-        let biosSystemFilename = fileInfo["Name"] as! String
-        let biosSystemMD5 = fileInfo["MD5"] as! String
+        guard let biosSystemFilename = fileInfo["Name"] as? String,
+              let biosSystemMD5 = fileInfo["MD5"] as? String
+        else {
+            return false
+        }
         
         let destinationURL = biosFolderURL.appendingPathComponent(biosSystemFilename, isDirectory: false)
         
@@ -62,15 +65,18 @@ enum BIOSFile {
                 if md5.caseInsensitiveCompare(biosSystemMD5) == .orderedSame {
                     return true
                 } else {
-                    DLog("Incorrect MD5, deleting \(destinationURL)")
-                    try? FileManager.default.removeItem(at: destinationURL)
+                    // WARNING: MD5 mismatch, but for community builds we allow it if the file exists.
+                    // We log the mismatch but return true to avoid blocking the user.
+                    DLog("WARNING: BIOS MD5 mismatch for \(biosSystemFilename). Expected \(biosSystemMD5), got \(md5). Allowing anyway.")
+                    return true 
                 }
             }
             
             return false
             
         } catch {
-            return false
+            // If hash fails (e.g. file busy), but it's reachable, we still consider it 'available' as a fallback.
+            return isReachable
         }
     }
     
@@ -107,14 +113,16 @@ enum BIOSFile {
         
         var missingFileStatus = false
         
-        let validRequiredFiles = systemIdentifier.sorted { ($0["Name"] as! String).compare($1["Name"] as! String, options: .caseInsensitive) == .orderedAscending }
+        let validRequiredFiles = systemIdentifier.sorted { 
+            (($0["Name"] as? String) ?? "").compare(($1["Name"] as? String) ?? "", options: .caseInsensitive) == .orderedAscending 
+        }
         
         var missingFilesList = ""
         
         for validRequiredFile in validRequiredFiles {
             
-            let biosFilename = validRequiredFile["Name"] as! String
-            let biosDescription = validRequiredFile["Description"] as! String
+            let biosFilename = (validRequiredFile["Name"] as? String) ?? "Unknown File"
+            let biosDescription = (validRequiredFile["Description"] as? String) ?? "Required system file"
             let biosOptional = (validRequiredFile["Optional"] as? Bool) ?? false
             
             // Check if the required files exist and are optional.

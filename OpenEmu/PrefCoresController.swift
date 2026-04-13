@@ -63,6 +63,8 @@ final class PrefCoresController: NSViewController {
                 column.headerCell.title = NSLocalizedString("System", comment: "Cores preferences, column header")
             case .versionColumn:
                 column.headerCell.title = NSLocalizedString("Version", comment: "Cores preferences, column header")
+                column.width = 120
+                column.minWidth = 100
             default:
                 break
             }
@@ -198,10 +200,15 @@ extension PrefCoresController: NSTableViewDelegate {
             
         } else if ident == .versionColumn {
             
-            let view = tableView.makeView(withIdentifier: .systemListCell, owner: self) as! NSTableCellView
+            let view = tableView.makeView(withIdentifier: .versionCell, owner: self) as! NSTableCellView
             let currentVer = plugin.version
             let latestVer = plugin.appcastItem?.version ?? currentVer
-            view.textField?.stringValue = "Ver: \(currentVer)\nLat: \(latestVer)"
+            
+            if currentVer.isEmpty || currentVer == "1.0-Libretro" || currentVer == "Nightly" {
+                view.textField?.stringValue = "Lat: \(latestVer)"
+            } else {
+                view.textField?.stringValue = "Ver: \(currentVer)\nLat: \(latestVer)"
+            }
             view.textField?.textColor = .secondaryLabelColor
             return view
             

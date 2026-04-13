@@ -253,10 +253,18 @@ extension OSLog {
         
         _shader = info.shaderURL
         _shaderParameters = info.shaderParameters
-        _systemController = OESystemPlugin.systemPlugin(bundleAtURL: info.systemPluginURL)!.controller
+        guard let systemPlugin = OESystemPlugin.systemPlugin(bundleAtURL: info.systemPluginURL) else {
+            NSLog("[OpenEmuHelperApp] FAILED TO LOAD SYSTEM PLUGIN AT: \(info.systemPluginURL)")
+            throw NSError(domain: "org.openemu.OpenEmuKit.GameCoreError", code: -1, userInfo: [NSLocalizedDescriptionKey: "Could not find system plugin at \(info.systemPluginURL.path)"])
+        }
+        _systemController = systemPlugin.controller
         _systemResponder  = _systemController.newGameSystemResponder()
         
-        _gameController = OECorePlugin.corePlugin(bundleAtURL: info.corePluginURL)!.controller
+        guard let corePlugin = OECorePlugin.corePlugin(bundleAtURL: info.corePluginURL) else {
+            NSLog("[OpenEmuHelperApp] FAILED TO LOAD CORE PLUGIN AT: \(info.corePluginURL)")
+            throw NSError(domain: "org.openemu.OpenEmuKit.GameCoreError", code: -1, userInfo: [NSLocalizedDescriptionKey: "Could not find core plugin at \(info.corePluginURL.path)"])
+        }
+        _gameController = corePlugin.controller
         gameCore = _gameController.newGameCore()
         
         let systemIdentifier = _systemController.systemIdentifier!

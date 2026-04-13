@@ -160,10 +160,11 @@ extension CoreDownload: URLSessionDownloadDelegate {
 
             if fullPluginURL.pathExtension == "dylib" {
                 let fauxPluginURL = coresFolder.appendingPathComponent("\(self.bundleIdentifier).oecoreplugin")
-                let contentsURL = fauxPluginURL.appendingPathComponent("Contents")
-                let binURL = contentsURL.appendingPathComponent("MacOS")
                 do {
-                    try FileManager.default.createDirectory(at: binURL, withIntermediateDirectories: true)
+                    if FileManager.default.fileExists(atPath: fauxPluginURL.path) {
+                        try FileManager.default.removeItem(at: fauxPluginURL)
+                    }
+                    try FileManager.default.createDirectory(at: fauxPluginURL, withIntermediateDirectories: true)
                 } catch {
                     DispatchQueue.main.async { [weak self] in
                         guard let self = self else { return }
@@ -173,8 +174,8 @@ extension CoreDownload: URLSessionDownloadDelegate {
                     return
                 }
 
-                // Move the extracted dylib into the bundle's MacOS folder with a standardized name.
-                let dylibDestinationURL = binURL.appendingPathComponent("libretro.dylib")
+                // Move the extracted dylib into the bundle's root folder without executing NSBundle's rigid 'Contents/MacOS' layout.
+                let dylibDestinationURL = fauxPluginURL.appendingPathComponent("libretro.dylib")
                 do {
                     try FileManager.default.moveItem(at: fullPluginURL, to: dylibDestinationURL)
                 } catch {
@@ -185,28 +186,30 @@ extension CoreDownload: URLSessionDownloadDelegate {
                     }
                     return
                 }
-                fullPluginURL = dylibDestinationURL
 
                 // Resolve system identifiers: prefer what CoreDownload already knows (populated by
-                // OELibretroBuildbot.injectCoreDownloads), fall back to the static registry.
+                // OELibretroBuildbot.injectCoreDownloads), fall back to the static registry
+                // using the ORIGINAL file name (e.g., snes9x_libretro.dylib).
+                let originalDylibName = fileName
                 let sysIDs: [String] = {
                     if !self.systemIdentifiers.isEmpty { return self.systemIdentifiers }
-                    return OELibretroBuildbot.systemIdentifiers(forDylibFilename: fullPluginURL.lastPathComponent)
+                    return OELibretroBuildbot.systemIdentifiers(forDylibFilename: originalDylibName)
                 }()
+
+                let versionString = self.appcastItem?.version ?? "1.0-Libretro"
 
                 let plist: [String: Any] = [
                     "CFBundleName":                  self.bundleIdentifier,
                     "CFBundleIdentifier":            self.bundleIdentifier,
-                    "CFBundleExecutable":            "libretro.dylib",
-                    "CFBundlePackageType":           "BNDL",
-                    "CFBundleInfoDictionaryVersion": "6.0",
+                    "CFBundleVersion":               versionString,
+                    "CFBundleShortVersionString":    versionString,
                     "OEGameCoreClass":               "OELibretroCoreTranslator",
                     "OEGameCorePlayerCount":         4,
-                    "OELibretroCorePath":            fullPluginURL.path,
+                    "OELibretroCorePath":            dylibDestinationURL.path,
                     "OESystemIdentifiers":           sysIDs
                 ]
 
-                let plistWriteSuccess = (plist as NSDictionary).write(to: contentsURL.appendingPathComponent("Info.plist"), atomically: true)
+                let plistWriteSuccess = (plist as NSDictionary).write(to: fauxPluginURL.appendingPathComponent("Info.plist"), atomically: true)
                 if !plistWriteSuccess {
                     DispatchQueue.main.async { [weak self] in
                         guard let self = self else { return }
@@ -252,19 +255,40 @@ extension CoreDownload {
     /// Ad-hoc signs the plugin bundle so macOS 26+ will load it.
     /// Downloaded cores arrive unsigned; the OS refuses to dlopen them even
     /// with disable-library-validation unless they carry at least an ad-hoc signature.
+    /// Ad-hoc signs the plugin bundle so macOS 26+ will load it.
+    /// Downloaded cores arrive unsigned; the OS refuses to dlopen them even
+    /// with disable-library-validation unless they carry at least an ad-hoc signature.
     private func adHocSign(_ bundleURL: URL) {
         let task = Process()
         task.executableURL = URL(fileURLWithPath: "/usr/bin/codesign")
-        task.arguments = ["--force", "--sign", "-", bundleURL.path]
+        task.arguments = ["--force", "--deep", "--sign", "-", bundleURL.path]
+
+        let timeoutSeconds: TimeInterval = 30
+        let semaphore = DispatchSemaphore(value: 0)
+        
+        task.terminationHandler = { _ in
+            semaphore.signal()
+        }
 
         do {
             try task.run()
-            task.waitUntilExit()
-            if task.terminationStatus != 0 {
-                DLog("codesign exited with status \(task.terminationStatus) for \(bundleURL.lastPathComponent)")
+            
+            let waitResult = semaphore.wait(timeout: .now() + timeoutSeconds)
+            if waitResult == .timedOut {
+                DLog("!!! [CoreDownload] codesign TIMED OUT for \(bundleURL.lastPathComponent). Terminating task.")
+                task.terminate()
+            } else {
+                if task.terminationStatus != 0 {
+                    DLog("!!! [CoreDownload] codesign FAILED with status \(task.terminationStatus) for \(bundleURL.lastPathComponent)")
+                } else {
+                    DLog("[CoreDownload] codesign SUCCESS for \(bundleURL.lastPathComponent)")
+                }
             }
         } catch {
-            DLog("Failed to run codesign for \(bundleURL.lastPathComponent): \(error)")
+            DLog("!!! [CoreDownload] Failed to run codesign for \(bundleURL.lastPathComponent): \(error)")
+            if task.isRunning {
+                task.terminate()
+            }
         }
     }
 }

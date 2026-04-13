@@ -358,25 +358,14 @@ public class OECoreSyncManager: NSObject {
             .appendingPathComponent("OpenEmu/Cores", isDirectory: true)
     }
 
-    // Static fallback: dylib filename → OpenEmu system identifiers.
-    // Keep in sync with OELibretroBuildbot.allCores in the OpenEmu target.
-    // Keep in sync with OELibretroBuildbot.allCores in the OpenEmu target.
-    private static let systemIDsByDylib: [String: [String]] = [
-        "snes9x_libretro.dylib":           ["openemu.system.snes"],
-        "genesis_plus_gx_libretro.dylib":  ["openemu.system.genesis",
-                                             "openemu.system.gg",
-                                             "openemu.system.sms"],
-        "mupen64plus_next_libretro.dylib": ["openemu.system.n64"],
-        "pcsx_rearmed_libretro.dylib":     ["openemu.system.psx"],
-        "mgba_libretro.dylib":             ["openemu.system.gba"],
-        "nestopia_libretro.dylib":         ["openemu.system.nes"],
-        "gambatte_libretro.dylib":         ["openemu.system.gb", "openemu.system.gbc"],
-        "kronos_libretro.dylib":           ["openemu.system.saturn"],
-        "mednafen_pce_libretro.dylib":     ["openemu.system.pcengine"],
-        "stella_libretro.dylib":           ["openemu.system.2600"],
-        "mednafen_ngp_libretro.dylib":     ["openemu.system.ngp"],
-        "mednafen_wswan_libretro.dylib":   ["openemu.system.wswan"],
-        "melonds_libretro.dylib":          ["openemu.system.nds"],
+    // Static fallback: dylib filename -> [OpenEmu system identifiers, BIOS requirements]
+    // Synchronized with OELibretroBuildbot.allCores
+    private static let metadataByDylib: [String: (sysIDs: [String], bios: [[String: Any]]?)] = [
+        "melonds_libretro.dylib":            (["openemu.system.nds"], [
+            ["Name": "bios7.bin", "Description": "ARM7 BIOS", "MD5": "df692a80a5b1bcbae72ba034cf3af048", "Size": 16384],
+            ["Name": "bios9.bin", "Description": "ARM9 BIOS", "MD5": "a39217daabfcf4a30ae9e564f0b240f8", "Size": 4096],
+            ["Name": "firmware.bin", "Description": "Firmware", "MD5": "6c361df89e13d46a894a4b4ed6dbd380", "Size": 262144]
+        ]),
     ]
 
     private var cachedPlugins: [OECorePlugin]?
@@ -389,8 +378,6 @@ public class OECoreSyncManager: NSObject {
     /// Returns `OECorePlugin` instances for every libretro dylib that does NOT yet
     /// have a companion `.oecoreplugin` bundle handled by `OEPlugin.plugins()`.
     @objc public func syncCores() -> [OECorePlugin] {
-        if let cached = cachedPlugins { return cached }
-
         var result: [OECorePlugin] = []
         let fm = FileManager.default
 
@@ -403,27 +390,51 @@ public class OECoreSyncManager: NSObject {
 
         for dylibURL in contents where dylibURL.pathExtension == "dylib" {
             let stem = dylibURL.deletingPathExtension().lastPathComponent
+            
+            // CRITICAL: Avoid duplicate registration.
+            // If this dylib is already inside a standard .oecoreplugin bundle, ignore it.
+            let standardStem = stem.replacingOccurrences(of: "_libretro", with: "")
+            let standardBundleID = "org.openemu.libretro.\(standardStem)"
+            let standardBundleURL = coresFolder.appendingPathComponent("\(standardBundleID).oecoreplugin")
             let fauxURL = coresFolder.appendingPathComponent("\(stem).oecoreplugin")
-
-            // If a valid faux bundle already exists, OEPlugin.plugins() handles it.
-            if fm.fileExists(atPath: fauxURL.appendingPathComponent("Info.plist").path) {
+            
+            if fm.fileExists(atPath: standardBundleURL.path) {
+                // remediate clashing faux bundle
+                if fm.fileExists(atPath: fauxURL.path) {
+                    try? fm.removeItem(at: fauxURL)
+                }
                 continue
             }
 
-            // Resolve system IDs: check companion plist (may exist without dylib entry),
-            // then fall back to the static table.
-            let sysIDs: [String] = {
+            // Resolve system IDs and BIOS requirements: check companion plist first,
+            // then fall back to the local metadata table.
+            let (sysIDs, bios): ([String], [[String: Any]]?) = {
                 if let plist = NSDictionary(contentsOf: fauxURL.appendingPathComponent("Info.plist")),
                    let ids = plist["OESystemIdentifiers"] as? [String], !ids.isEmpty {
-                    return ids
+                    
+                    // Correctly extract BIOS requirements from the nested options dictionary
+                    var bio: [[String: Any]]? = nil
+                    if let options = plist["OEGameCoreOptions"] as? [String: Any] {
+                        for (_, value) in options {
+                            if let dict = value as? [String: Any],
+                               let files = dict["OERequiredFiles"] as? [[String: Any]] {
+                                bio = files
+                                break
+                            }
+                        }
+                    }
+                    return (ids, bio)
                 }
-                return Self.systemIDsByDylib[dylibURL.lastPathComponent] ?? []
+                
+                let metadata = Self.metadataByDylib[dylibURL.lastPathComponent]
+                return (metadata?.sysIDs ?? [], metadata?.bios)
             }()
 
-            guard !sysIDs.isEmpty else { continue }
-
-            if let plugin = makePlugin(dylib: dylibURL, stem: stem, sysIDs: sysIDs) {
-                result.append(plugin)
+            // Pulse metadata into Info.plist and register the plugin
+            if !sysIDs.isEmpty {
+                if let plugin = makePlugin(dylib: dylibURL, stem: stem, sysIDs: sysIDs, requiredFiles: bios) {
+                    result.append(plugin)
+                }
             }
         }
 
@@ -431,9 +442,10 @@ public class OECoreSyncManager: NSObject {
         return result
     }
 
+
     // MARK: - Private helpers
 
-    private func makePlugin(dylib dylibURL: URL, stem: String, sysIDs: [String]) -> OECorePlugin? {
+    private func makePlugin(dylib dylibURL: URL, stem: String, sysIDs: [String], requiredFiles: [[String: Any]]?) -> OECorePlugin? {
         let fauxURL = coresFolder.appendingPathComponent("\(stem).oecoreplugin")
         let fm = FileManager.default
 
@@ -444,14 +456,33 @@ public class OECoreSyncManager: NSObject {
             return nil
         }
 
-        let plist: [String: Any] = [
+        // Use the actual core version if available, otherwise fallback.
+        // Use the actual core version if available, otherwise fallback.
+        let coreVersion = OELibretroCoreTranslator.libraryVersionForCore(at: dylibURL) ?? "1.0-Libretro"
+
+        var plist: [String: Any] = [
             "CFBundleName":                  stem,
             "CFBundleIdentifier":            stem,
+            "CFBundleVersion":               coreVersion,
+            "CFBundleShortVersionString":    coreVersion,
             "OEGameCoreClass":               "OELibretroCoreTranslator",
             "OEGameCorePlayerCount":         4,
             "OELibretroCorePath":            dylibURL.path,
             "OESystemIdentifiers":           sysIDs,
         ]
+        
+        // Inject BIOS requirements if we have them
+        if let requiredFiles = requiredFiles {
+            var options: [String: Any] = [:]
+            for sysID in sysIDs {
+                options[sysID] = [
+                    "OEGameCoreRequiresFiles": true,
+                    "OERequiredFiles": requiredFiles
+                ]
+            }
+            plist["OEGameCoreOptions"] = options
+        }
+
         (plist as NSDictionary).write(
             to: fauxURL.appendingPathComponent("Info.plist"),
             atomically: true

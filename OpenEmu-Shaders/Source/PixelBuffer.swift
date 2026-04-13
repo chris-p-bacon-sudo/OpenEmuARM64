@@ -152,9 +152,9 @@ public class PixelBuffer {
             
             let size = MTLSize(width: Int(outputRect.width), height: Int(outputRect.height), depth: 1)
             if let bce = commandBuffer.makeBlitCommandEncoder() {
-                let offset = (Int(outputRect.origin.y) * sourceBytesPerRow) + Int(outputRect.origin.x) * 4 // 4 bpp
-                let len = sourceBuffer.length - (Int(outputRect.origin.y) * sourceBytesPerRow)
-                bce.copy(from: sourceBuffer, sourceOffset: offset, sourceBytesPerRow: sourceBytesPerRow, sourceBytesPerImage: len, sourceSize: size,
+                let offset = (Int(outputRect.origin.y) * sourceBytesPerRow) + (Int(outputRect.origin.x) * bpp)
+                let bytesPerImage = sourceBytesPerRow * size.height
+                bce.copy(from: sourceBuffer, sourceOffset: offset, sourceBytesPerRow: sourceBytesPerRow, sourceBytesPerImage: bytesPerImage, sourceSize: size,
                          to: texture, destinationSlice: 0, destinationLevel: 0, destinationOrigin: .init())
                 bce.endEncoding()
             }

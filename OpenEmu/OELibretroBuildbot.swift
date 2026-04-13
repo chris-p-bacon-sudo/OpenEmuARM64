@@ -34,11 +34,13 @@ struct LibretroCore {
     let displayName: String
     /// Base filename on the buildbot, without the trailing "_libretro" suffix (e.g. "snes9x").
     let buildbotStem: String
+    /// Metadata for required system files (BIOS).
+    let requiredFiles: [[String: Any]]?
 
     /// Full dylib filename as it appears after extraction (e.g. "snes9x_libretro.dylib").
     var dylibFilename: String { "\(buildbotStem)_libretro.dylib" }
 
-    /// Download URL on the official macOS nightly buildbot.
+    /// Download URL on the Libretro development buildbot for macOS.
     var downloadURL: URL {
         #if arch(arm64)
         let arch = "arm64"
@@ -46,6 +48,14 @@ struct LibretroCore {
         let arch = "x86_64"
         #endif
         return URL(string: "https://buildbot.libretro.com/nightly/apple/osx/\(arch)/latest/\(dylibFilename).zip")!
+    }
+
+    init(systemIdentifiers: [String], bundleIdentifier: String, displayName: String, buildbotStem: String, requiredFiles: [[String: Any]]? = nil) {
+        self.systemIdentifiers = systemIdentifiers
+        self.bundleIdentifier = bundleIdentifier
+        self.displayName = displayName
+        self.buildbotStem = buildbotStem
+        self.requiredFiles = requiredFiles
     }
 }
 
@@ -68,66 +78,63 @@ enum OELibretroBuildbot {
         // NES / Famicom Disk System — Nestopia UE
         LibretroCore(
             systemIdentifiers: ["openemu.system.nes", "openemu.system.fds"],
-            bundleIdentifier:  "org.openemu.Nestopia",
+            bundleIdentifier:  "org.openemu.libretro.nestopia",
             displayName:       "Nestopia",
             buildbotStem:      "nestopia"
         ),
-
+        
         // Super Nintendo
         LibretroCore(
             systemIdentifiers: ["openemu.system.snes"],
-            bundleIdentifier:  "org.openemu.Snes9x",
+            bundleIdentifier:  "org.openemu.libretro.snes9x",
             displayName:       "Snes9x",
             buildbotStem:      "snes9x"
         ),
-
-        // Game Boy / Game Boy Color — Gambatte: reference-quality, native ARM64
+        
+        // Game Boy / Game Boy Color — Gambatte
         LibretroCore(
             systemIdentifiers: ["openemu.system.gb"],
-            bundleIdentifier:  "org.openemu.Gambatte",
+            bundleIdentifier:  "org.openemu.libretro.gambatte",
             displayName:       "Gambatte",
             buildbotStem:      "gambatte"
         ),
-
-        // Game Boy Advance — mGBA: most accurate, active ARM64 nightly builds
+        
+        // Game Boy Advance — mGBA
         LibretroCore(
             systemIdentifiers: ["openemu.system.gba"],
-            bundleIdentifier:  "org.openemu.mGBA",
+            bundleIdentifier:  "org.openemu.libretro.mgba",
             displayName:       "mGBA",
             buildbotStem:      "mgba"
         ),
-
-        // Nintendo DS — melonDS: best accuracy, active ARM64 nightly builds,
-        // native Metal renderer, Wi-Fi + microphone support.
-        // Replaces DeSmuME which was never ported to ARM64.
+        
+        // Nintendo DS — DeSmuME
         LibretroCore(
             systemIdentifiers: ["openemu.system.nds"],
-            bundleIdentifier:  "org.openemu.melonDS",
-            displayName:       "melonDS",
-            buildbotStem:      "melonds"
+            bundleIdentifier:  "org.openemu.libretro.desmume",
+            displayName:       "DeSmuME",
+            buildbotStem:      "desmume"
         ),
-
-        // Nintendo 64 — Mupen64Plus-Next: only N64 core with HW rendering on
-        // Apple Silicon; outputs XRGB8888
+        
+        // Nintendo 64 — Mupen64Plus-Next
         LibretroCore(
             systemIdentifiers: ["openemu.system.n64"],
-            bundleIdentifier:  "org.openemu.Mupen64Plus",
+            bundleIdentifier:  "org.openemu.libretro.mupen64plus",
             displayName:       "Mupen64Plus-Next",
             buildbotStem:      "mupen64plus_next"
         ),
-
+        
         // Virtual Boy — Beetle VB
         LibretroCore(
             systemIdentifiers: ["openemu.system.vb"],
-            bundleIdentifier:  "org.openemu.BeetleVB",
+            bundleIdentifier:  "org.openemu.libretro.beetlevb",
             displayName:       "Beetle Virtual Boy",
             buildbotStem:      "mednafen_vb"
         ),
-
+        
         // Pokemon Mini
         LibretroCore(
             systemIdentifiers: ["openemu.system.pokemonmini"],
-            bundleIdentifier:  "org.openemu.PokeMini",
+            bundleIdentifier:  "org.openemu.libretro.pokemini",
             displayName:       "PokeMini",
             buildbotStem:      "pokemini"
         ),
@@ -142,7 +149,7 @@ enum OELibretroBuildbot {
                                  "openemu.system.sms",
                                  "openemu.system.gg",
                                  "openemu.system.sg1000"],
-            bundleIdentifier:  "org.openemu.GenesisPlus",
+            bundleIdentifier:  "org.openemu.libretro.genesisplus",
             displayName:       "Genesis Plus GX",
             buildbotStem:      "genesis_plus_gx"
         ),
@@ -150,7 +157,7 @@ enum OELibretroBuildbot {
         // Sega 32X — Picodrive: the only libretro core that emulates 32X
         LibretroCore(
             systemIdentifiers: ["openemu.system.32x"],
-            bundleIdentifier:  "org.openemu.Picodrive",
+            bundleIdentifier:  "org.openemu.libretro.picodrive",
             displayName:       "PicoDrive",
             buildbotStem:      "picodrive"
         ),
@@ -158,16 +165,21 @@ enum OELibretroBuildbot {
         // Sega Saturn — Beetle Saturn (Mednafen): very accurate, native ARM64
         LibretroCore(
             systemIdentifiers: ["openemu.system.saturn"],
-            bundleIdentifier:  "org.openemu.Mednafen",
+            bundleIdentifier:  "org.openemu.libretro.mednafen",
             displayName:       "Beetle Saturn",
-            buildbotStem:      "mednafen_saturn"
+            buildbotStem:      "mednafen_saturn",
+            requiredFiles: [
+                ["Name": "sat_bios_jp.bin", "Description": "Saturn BIOS (JP)", "MD5": "2aba4251329305f8b29bc62d3a3d537f", "Size": 524288],
+                ["Name": "sat_bios_us.bin", "Description": "Saturn BIOS (US)", "MD5": "af58e0fdc11efec58df169ca13c36c64", "Size": 524288],
+                ["Name": "sat_bios_eu.bin", "Description": "Saturn BIOS (EU)", "MD5": "9469502759e07503fa658d57053e19fb", "Size": 524288]
+            ]
         ),
 
         // Dreamcast — Flycast libretro: modern, active, high-performance ARM64.
         // Replaces the custom Flycast native wrapper (same upstream, libretro API).
         LibretroCore(
             systemIdentifiers: ["openemu.system.dc"],
-            bundleIdentifier:  "org.openemu.Flycast",
+            bundleIdentifier:  "org.openemu.libretro.flycast",
             displayName:       "Flycast",
             buildbotStem:      "flycast"
         ),
@@ -178,15 +190,18 @@ enum OELibretroBuildbot {
         // active nightly ARM64 builds, best PSX performance on Apple Silicon.
         LibretroCore(
             systemIdentifiers: ["openemu.system.psx"],
-            bundleIdentifier:  "org.openemu.PCSX-ReARMed",
+            bundleIdentifier:  "org.openemu.libretro.pcsx-rearmed",
             displayName:       "PCSX-ReARMed",
-            buildbotStem:      "pcsx_rearmed"
+            buildbotStem:      "pcsx_rearmed",
+            requiredFiles: [
+                ["Name": "scph5501.bin", "Description": "PlayStation BIOS (US)", "MD5": "490f666e1a21530d03ad55ad333aa372", "Size": 524288]
+            ]
         ),
 
         // PlayStation Portable — PPSSPP: best PSP performance, active nightly
         LibretroCore(
             systemIdentifiers: ["openemu.system.psp"],
-            bundleIdentifier:  "org.openemu.PPSSPP",
+            bundleIdentifier:  "org.openemu.libretro.ppsspp",
             displayName:       "PPSSPP",
             buildbotStem:      "ppsspp"
         ),
@@ -196,9 +211,9 @@ enum OELibretroBuildbot {
         // PC Engine / TurboGrafx-16 / PC Engine CD — Beetle PCE
         LibretroCore(
             systemIdentifiers: ["openemu.system.pce", "openemu.system.pcecd"],
-            bundleIdentifier:  "org.openemu.BeetlePCE",
+            bundleIdentifier:  "org.openemu.libretro.beetlepce",
             displayName:       "Beetle PC Engine",
-            buildbotStem:      "mednafen_pce"
+            buildbotStem:      "mednafen_pce_fast"
         ),
 
         // PC-FX — Beetle PC-FX
@@ -304,7 +319,11 @@ enum OELibretroBuildbot {
             systemIdentifiers: ["openemu.system.msx"],
             bundleIdentifier:  "org.openemu.blueMSX",
             displayName:       "blueMSX",
-            buildbotStem:      "bluemsx"
+            buildbotStem:      "bluemsx",
+            requiredFiles: [
+                ["Name": "MSX.ROM", "Description": "MSX BIOS", "MD5": "70d06191c95e1e1948842183f38128ec", "Size": 32768],
+                ["Name": "MSX2.ROM", "Description": "MSX2 BIOS", "MD5": "1356f627727a3c330f606a5992fe464d", "Size": 32768]
+            ]
         ),
 
         // ColecoVision — GearColeco
@@ -347,8 +366,10 @@ enum OELibretroBuildbot {
     }
 
     /// Returns all system identifiers known for the given dylib filename.
+    /// Comparison is case-insensitive to handle buildbot vs registry naming differences.
     static func systemIdentifiers(forDylibFilename filename: String) -> [String] {
-        core(forDylibFilename: filename)?.systemIdentifiers ?? []
+        let core = allCores.first { $0.dylibFilename.caseInsensitiveCompare(filename) == .orderedSame }
+        return core?.systemIdentifiers ?? []
     }
 
     // MARK: - CoreUpdater injection

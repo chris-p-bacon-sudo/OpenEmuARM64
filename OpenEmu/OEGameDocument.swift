@@ -365,9 +365,15 @@ final class OEGameDocument: NSDocument {
             guard let game = rom.game else { throw Errors.couldNotLoadROM }
             CoreUpdater.shared.installCore(for: game) { [weak self] plugin, error in
                 guard let self = self else { return }
-                if error == nil,
-                   let plugin = plugin {
-                    self.corePlugin = plugin
+                if error == nil {
+                    if let plugin = plugin {
+                        self.corePlugin = plugin
+                    } else if let coreID = CoreUpdater.shared.coreIdentifier,
+                              let fallbackPlugin = OECorePlugin.corePlugin(bundleIdentifier: coreID) {
+                        // Final safety check: if Updater finished successfully but returned nil plugin,
+                        // try to resolve it one last time from the manager.
+                        self.corePlugin = fallbackPlugin
+                    }
                 }
                 else if let error = error as NSError?,
                         error.domain == NSCocoaErrorDomain,
@@ -375,7 +381,9 @@ final class OEGameDocument: NSDocument {
                     nsError = error
                 }
                 else if let error = error as? CoreUpdater.Errors {
-                    nsError = error
+                    if error != .noDownloadableCoreForIdentifierError {
+                        nsError = error
+                    }
                 }
             }
             
@@ -591,13 +599,6 @@ final class OEGameDocument: NSDocument {
 
     func setUpGame(completionHandler handler: @escaping (_ success: Bool, _ error: Error?) -> Void) {
         NSLog("[OEGameDocument] setUpGame() called")
-        do {
-            // TODO: Remove after further testing.
-            try corePlugin.bundle.loadAndReturnError()
-        } catch {
-            handler(false, error)
-            return
-        }
         guard
             emulationStatus == .notSetup,
             checkRequiredFiles(),
@@ -697,7 +698,9 @@ final class OEGameDocument: NSDocument {
             self.setUpGame { success, error in
                 if !success {
                     if let error = error {
-                        self.presentError(error)
+                        if (error as? CoreUpdater.Errors) != .noDownloadableCoreForIdentifierError {
+                            self.presentError(error)
+                        }
                     }
                     return
                 }
@@ -1431,7 +1434,9 @@ final class OEGameDocument: NSDocument {
             self.gameCoreManager?.insertFile(at: fileURL) { success, error in
                 if !success {
                     if let error = error {
-                        self.presentError(error)
+                        if (error as? CoreUpdater.Errors) != .noDownloadableCoreForIdentifierError {
+                            self.presentError(error)
+                        }
                     }
                     return
                 }
@@ -1796,7 +1801,9 @@ final class OEGameDocument: NSDocument {
             self.gameCoreManager?.loadStateFromFile(at: state.dataFileURL) { success, error in
                 if !success {
                     if let error = error {
-                        self.presentError(error)
+                        if (error as? CoreUpdater.Errors) != .noDownloadableCoreForIdentifierError {
+                            self.presentError(error)
+                        }
                     }
                     return
                 }
@@ -1817,7 +1824,9 @@ final class OEGameDocument: NSDocument {
                 }
             } else {
                 if let error = error {
-                    self.presentError(error)
+                    if (error as? CoreUpdater.Errors) != .noDownloadableCoreForIdentifierError {
+                        self.presentError(error)
+                    }
                 }
                 return
             }

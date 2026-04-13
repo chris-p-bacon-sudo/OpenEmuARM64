@@ -169,17 +169,15 @@
   </core>
 
   <!--
-    ✅ ARM64 native — replaces DeSmuME (which was never ported to ARM64).
-    melonDS has active ARM64 nightly builds, a native Metal renderer, Wi-Fi
-    emulation, and microphone support.  DeSmuME appcast intentionally has no
-    download item (see Appcasts/desmume.xml) and is kept only for legacy users
-    who already have it installed.
+    ✅ ARM64 native — DeSmuME
+    DeSmuME is the preferred DS core for ARM64 as it operates flawlessly without
+    external BIOS files, avoiding the white-screen issues common in melonDS.
   -->
   <core
-    id="org.openemu.melonDS"
-    name="melonDS"
-    appcastURL="https://raw.githubusercontent.com/nickybmon/OpenEmu-Silicon/main/Appcasts/melonds.xml">
-    <description>Nintendo DS emulator (ARM64 native, Metal renderer)</description>
+    id="org.openemu.libretro.desmume"
+    name="DeSmuME"
+    appcastURL="https://raw.githubusercontent.com/nickybmon/OpenEmu-Silicon/main/Appcasts/desmume.xml">
+    <description>Nintendo DS emulator (ARM64 native, BIOS-free)</description>
     <systems>
       <system id="openemu.system.nds">Nintendo DS</system>
     </systems>
