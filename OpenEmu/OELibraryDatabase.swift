@@ -109,8 +109,6 @@ final class OELibraryDatabase: NSObject {
     
     deinit {
         NotificationCenter.default.removeObserver(self)
-        
-        os_log(.debug, log: .library, "Destroying library database")
     }
     
     @objc func applicationWillTerminate(_ notification: Notification) {
@@ -120,7 +118,7 @@ final class OELibraryDatabase: NSObject {
             do {
                 try self.writerContext.save()
             } catch {
-                os_log(.error, log: .library, "Could not save database: %{public}@", error as NSError)
+                // Log removed for Release
             }
         }
     }
@@ -149,11 +147,9 @@ final class OELibraryDatabase: NSObject {
     // MARK: -
     
     static func load(from url: URL) throws {
-        os_log(.info, log: .library, "Load library database from '%{public}@'", url.path)
         
         var isDir = ObjCBool(false)
         if !FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir) || !isDir.boolValue {
-            os_log(.error, log: .library, "Library database folder not found")
             throw Errors.folderNotFound
         }
         
@@ -225,8 +221,6 @@ final class OELibraryDatabase: NSObject {
         // remeber last location as database path
         let path = (databaseURL.path as NSString).abbreviatingWithTildeInPath
         UserDefaults.standard.set(path, forKey: Self.databasePathKey)
-        
-        os_log(.debug, log: .library, "ROMs folder URL: %{public}@", romsFolderURL?.path ?? "nil")
     }
     
     private func createInitialItemsIfNeeded() {
@@ -310,7 +304,6 @@ final class OELibraryDatabase: NSObject {
             do {
                 result = try context.fetch(fetchRequest) as? [OEDBRom]
             } catch {
-                os_log(.error, log: .library, "Error executing fetch request to get rom by md5: %{public}@", error as NSError)
                 return
             }
         }

@@ -23,7 +23,6 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import Foundation
-internal import os.log
 
 public enum OEGameCorePluginError: Int, CustomNSError {
     case alreadyLoaded = -1000
@@ -115,13 +114,13 @@ public class OEPlugin: NSObject {
         
         if isOutOfSupport {
             // plugin must be removed
-            os_log(.default, log: .default, "Removing out-of-support plugin %{public}@", bundleURL.path)
+            // Log removed for Release
             
             let fm = FileManager.default
             do {
                 try fm.removeItem(at: bundleURL)
             } catch {
-                os_log(.error, log: .default, "Error when removing out-of-support plugin: %{public}@", error as NSError)
+                // Log removed for Release
             }
             
             throw OEGameCorePluginError.outOfSupport

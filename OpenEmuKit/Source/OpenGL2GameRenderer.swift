@@ -26,7 +26,6 @@ import Foundation
 import OpenEmuBase
 import OpenGL
 @_implementationOnly import Atomics
-internal import os.log
 
 final class OpenGL2GameRenderer: BaseOpenGLGameRenderer {
     
@@ -45,9 +44,7 @@ final class OpenGL2GameRenderer: BaseOpenGLGameRenderer {
         glFramebufferTexture2DEXT(GLenum(GL_FRAMEBUFFER), GLenum(GL_COLOR_ATTACHMENT0), GLenum(GL_TEXTURE_RECTANGLE_ARB), texture.openGLTexture, 0)
         var status = glGetError()
         if status != 0 {
-            os_log(.error, log: .renderer,
-                   "Setup failed: create interop texture FBO 1, OpenGL error %04X",
-                   status)
+            // Log removed for Release
         }
         
         // Complete the FBO
@@ -57,16 +54,12 @@ final class OpenGL2GameRenderer: BaseOpenGLGameRenderer {
         glFramebufferRenderbufferEXT(GLenum(GL_FRAMEBUFFER_EXT), GLenum(GL_DEPTH_STENCIL_ATTACHMENT), GLenum(GL_RENDERBUFFER_EXT), depthStencilRB)
         status = glGetError()
         if status != 0 {
-            os_log(.error, log: .renderer,
-                   "Setup failed: create ioSurface FBO 2, OpenGL error %04X",
-                   status)
+            // Log removed for Release
         }
         
         status = glCheckFramebufferStatusEXT(GLenum(GL_FRAMEBUFFER_EXT))
         if status != GL_FRAMEBUFFER_COMPLETE_EXT {
-            os_log(.error, log: .renderer,
-                   "Cannot create FBO, OpenGL error %04X",
-                   status)
+            // Log removed for Release
         }
     }
     
@@ -88,16 +81,13 @@ final class OpenGL2GameRenderer: BaseOpenGLGameRenderer {
         
         let status = glCheckFramebufferStatusEXT(GLenum(GL_FRAMEBUFFER_EXT))
         if status != GL_FRAMEBUFFER_COMPLETE_EXT {
-            os_log(.error, log: .renderer, "Cannot create temp FBO. OpenGL error %04X", status)
-            
             glDeleteFramebuffersEXT(1, &alternateFBO)
         }
         
         glClear(GLbitfield(GL_COLOR_BUFFER_BIT))
         
         isDoubleBufferFBOMode = true
-        
-        os_log(.debug, log: .renderer, "Setup GL2.1 3D 'double-buffered FBO' rendering")
+        // Log removed for Release
     }
     
     override func bindFBO(_ fbo: GLuint) {
@@ -106,12 +96,12 @@ final class OpenGL2GameRenderer: BaseOpenGLGameRenderer {
         // Assume FBOs JUST WORK, because we checked on startExecution
         var status = glGetError()
         if status != 0 {
-            os_log(.error, log: .renderer, "bindFBO: OpenGL error %04X", status)
+            // Log removed for Release
         }
         
         status = glCheckFramebufferStatusEXT(GLenum(GL_FRAMEBUFFER_EXT))
         if status != GL_FRAMEBUFFER_COMPLETE_EXT {
-            os_log(.error, log: .renderer, "OpenGL error %04X in draw, check FBO", status)
+            // Log removed for Release
         }
     }
     
@@ -123,7 +113,7 @@ final class OpenGL2GameRenderer: BaseOpenGLGameRenderer {
                              0, 0, GLint(texture.size.width), GLint(texture.size.height), GLbitfield(GL_COLOR_BUFFER_BIT), GLenum(GL_NEAREST))
         let status = glGetError()
         if status != 0 {
-            os_log(.error, log: .renderer, "glBlitFramebufferEXT: OpenGL error %04X", status)
+            // Log removed for Release
         }
         
         glBindFramebufferEXT(GLenum(GL_FRAMEBUFFER_EXT), alternateFBO)

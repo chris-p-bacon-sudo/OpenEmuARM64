@@ -162,7 +162,6 @@ final class OESaveSyncManager: NSObject {
         
         monitoredURLs = urls
         startFSEventStream(for: urls)
-        os_log(.info, log: log, "Save Sync Manager started monitoring %d directories.", urls.count)
         
         startBackgroundTimer()
     }
@@ -177,7 +176,6 @@ final class OESaveSyncManager: NSObject {
             FSEventStreamRelease(stream)
             eventStream = nil
         }
-        os_log(.info, log: log, "Save Sync Manager stopped monitoring.")
     }
     
     // MARK: - FSEventStream Setup
@@ -212,7 +210,6 @@ final class OESaveSyncManager: NSObject {
             latency,
             FSEventStreamCreateFlags(kFSEventStreamCreateFlagFileEvents | kFSEventStreamCreateFlagUseCFTypes)
         ) else {
-            os_log(.error, log: log, "Failed to create FSEventStream.")
             return
         }
         
@@ -227,7 +224,6 @@ final class OESaveSyncManager: NSObject {
         let changed = urls.filter { relevantExtensions.contains($0.pathExtension.lowercased()) }
         guard !changed.isEmpty else { return }
         
-        os_log(.debug, log: log, "FSEvent: %d relevant file(s) changed, scheduling upload.", changed.count)
         
         for url in changed {
             Task { await self.uploadFile(at: url) }
@@ -243,7 +239,6 @@ final class OESaveSyncManager: NSObject {
         backgroundTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
             self?.performFullSyncCheck()
         }
-        os_log(.debug, log: log, "Background sync timer started (interval: %.0fs).", interval)
     }
     
     private func stopBackgroundTimer() {
@@ -254,8 +249,6 @@ final class OESaveSyncManager: NSObject {
     /// Manually triggers a check for all currently monitored folders to see if anything needs uploading or downloading.
     @objc func performFullSyncCheck() {
         guard isSignedIn else { return }
-        
-        os_log(.info, log: log, "Performing full background sync check...")
         
         // In a real implementation, we might want to iterate over recent games.
         // For now, we rely on FSEvents for uploads, and pre-launch checks for downloads.
@@ -303,16 +296,8 @@ final class OESaveSyncManager: NSObject {
                 let localModified = localModifiedDate(system: systemIdentifier, gameName: gameName)
                 let isCloudNewer = remoteDate > (localModified ?? .distantPast)
                 
-                os_log(.debug, log: log,
-                       "Sync check for '%@': cloud=%@, local=%@, cloudNewer=%d",
-                       gameName,
-                       remoteDate.description,
-                       localModified?.description ?? "none",
-                       isCloudNewer)
-                
                 await MainActor.run { completion(isCloudNewer, remoteDate) }
             } catch {
-                os_log(.error, log: log, "Sync pre-launch check failed: %@", error.localizedDescription)
                 await MainActor.run { completion(false, nil) }
             }
         }
@@ -344,7 +329,6 @@ final class OESaveSyncManager: NSObject {
                     let data = try await downloadFile(fileId: fileId)
                     let destination = localSaveURL(forCloudFileName: fileName, system: systemIdentifier, gameName: gameName)
                     try data.write(to: destination, options: .atomic)
-                    os_log(.info, log: log, "Downloaded cloud save: %@", fileName)
                 }
                 
                 lastSyncDate = Date()
@@ -375,16 +359,13 @@ final class OESaveSyncManager: NSObject {
             
             if let existingFile = existing.first(where: { $0.name == cloudName }), let fileId = existingFile.id {
                 try await updateFile(fileId: fileId, data: data, mimeType: mimeType(for: localURL))
-                os_log(.debug, log: log, "Updated cloud save: %@", cloudName)
             } else {
                 try await createFile(name: cloudName, data: data, mimeType: mimeType(for: localURL))
-                os_log(.debug, log: log, "Created cloud save: %@", cloudName)
             }
             
             lastSyncDate = Date()
             setStatus(.success, message: "Uploaded \(localURL.lastPathComponent).")
         } catch {
-            os_log(.error, log: log, "Upload failed for %@: %@", localURL.lastPathComponent, error.localizedDescription)
             setStatus(.failed, message: "Upload failed: \(error.localizedDescription)")
         }
     }
@@ -515,9 +496,7 @@ final class OESaveSyncManager: NSObject {
             
             Task {
                 do {
-                    try await self.exchangeCodeForTokens(code: code, redirectURI: redirectURI)
                     self.setStatus(.idle, message: "Signed in to Google Drive.")
-                    os_log(.info, log: log, "OAuth sign-in successful.")
                 } catch {
                     self.setStatus(.failed, message: "Sign-in failed: \(error.localizedDescription)")
                 }
@@ -556,7 +535,6 @@ final class OESaveSyncManager: NSObject {
             
             listener.start(queue: .main)
         } catch {
-            os_log(.error, log: log, "Failed to start OAuth listener: %{public}@", error.localizedDescription)
             completion(nil, nil)
         }
     }
@@ -601,7 +579,6 @@ final class OESaveSyncManager: NSObject {
         tokenExpiryDate = nil
         refreshToken  = nil   // clears from keychain
         setStatus(.idle, message: nil)
-        os_log(.info, log: log, "Signed out of Google Drive.")
     }
     
     /// Call this from `AppDelegate` or a URL handler when the app receives the OAuth redirect.
@@ -617,7 +594,6 @@ final class OESaveSyncManager: NSObject {
             do {
                 try await exchangeCodeForTokens(code: code, redirectURI: OEGoogleDriveConfig.redirectURI)
                 setStatus(.idle, message: "Signed in to Google Drive.")
-                os_log(.info, log: log, "OAuth sign-in successful.")
             } catch {
                 setStatus(.failed, message: "Sign-in failed: \(error.localizedDescription)")
             }
@@ -705,7 +681,6 @@ final class OESaveSyncManager: NSObject {
     public func fetchCloudFileList() async throws -> [DriveFile] {
         try await ensureValidAccessToken()
         let files = try await listFiles(inFolder: OEGoogleDriveConfig.appDataFolderName)
-        os_log(.info, log: log, "Fetched %d files from appDataFolder", files.count)
         return files
     }
     
@@ -799,7 +774,6 @@ final class OESaveSyncManager: NSObject {
         guard let http = response as? HTTPURLResponse else { return }
         if !(200..<300).contains(http.statusCode) {
             let body = String(data: data, encoding: .utf8) ?? "<binary>"
-            os_log(.error, log: log, "[%@] HTTP %d: %@", context, http.statusCode, body)
             throw OESaveSyncError.apiError(statusCode: http.statusCode, body: body)
         }
     }
@@ -828,7 +802,7 @@ final class OESaveSyncManager: NSObject {
         ]
         let status = SecItemAdd(addQuery as CFDictionary, nil)
         if status != errSecSuccess {
-            os_log(.error, log: log, "Keychain write failed for '%@': %d", account, status)
+            // Log removed for Release
         }
     }
     

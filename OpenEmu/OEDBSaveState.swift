@@ -117,7 +117,7 @@ final class OEDBSaveState: OEDBItem {
         let predicate = NSPredicate(format: "location == %@", urlString)
         let results = context.allObjects(ofType: Self.self, matching: predicate)
         if results.count > 1 {
-            NSLog("WARNING: Found several save states with the same URL!")
+            // Warning removed for Release
         }
         
         return results.first

@@ -24,6 +24,11 @@
 
 import Foundation
 import Metal
+import os.log
+
+extension OSLog {
+    static let renderer = OSLog(subsystem: "org.openemu.OpenEmuShaders", category: "renderer")
+}
 
 public class PixelBuffer {
     let device: MTLDevice
@@ -58,7 +63,11 @@ public class PixelBuffer {
         self.sourceBytesPerRow  = bytesPerRow
         self.sourceSize         = .init(width: bytesPerRow / bpp, height: height)
         self.bufferLenBytes     = length
-        self.sourceBuffer       = device.makeBuffer(length: length, options: .storageModeShared)!
+        
+        guard let mtlBuffer = device.makeBuffer(length: length, options: .storageModeShared) else {
+            fatalError("CRITICAL: Failed to allocate Metal buffer of length \(length)")
+        }
+        self.sourceBuffer = mtlBuffer
         
         if let pointer {
             buffer      = pointer
@@ -80,16 +89,14 @@ public class PixelBuffer {
     }
     
     func copyBuffer() {
+        let dest = sourceBuffer.contents()
+        
         if shortCopy {
-            var src = buffer
-            var dst = sourceBuffer.contents()
             let rowLen = Int(outputRect.width) * bpp
+            let offset = (Int(outputRect.origin.y) * sourceBytesPerRow) + (Int(outputRect.origin.x) * bpp)
             
-            if outputRect.origin != .zero {
-                let offset = (Int(outputRect.origin.y) * sourceBytesPerRow) + (Int(outputRect.origin.x) * bpp)
-                src += offset
-                dst += offset
-            }
+            var src = buffer + offset
+            var dst = dest + offset
             
             for _ in 0..<Int(outputRect.height) {
                 dst.copyMemory(from: src, byteCount: rowLen)
@@ -97,7 +104,7 @@ public class PixelBuffer {
                 dst += sourceBytesPerRow
             }
         } else {
-            sourceBuffer.contents().copyMemory(from: buffer, byteCount: bufferLenBytes)
+            dest.copyMemory(from: buffer, byteCount: bufferLenBytes)
         }
     }
     
@@ -122,7 +129,10 @@ public class PixelBuffer {
                                      pointer: bytes)
         }
         
-        guard let conv = converter.bufferConverter(withFormat: format) else { fatalError("Unable to create converter") }
+        guard let conv = converter.bufferConverter(withFormat: format) else {
+            os_log("CRITICAL: Unable to create pixel converter for format %{public}@", log: .renderer, type: .error, String(describing: format))
+            fatalError("Check console for pixel conversion failure")
+        }
         
         return IntermediatePixelBuffer(withDevice: device, converter: conv, format: format,
                                        height: height, bytesPerRow: bytesPerRow,

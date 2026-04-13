@@ -105,7 +105,7 @@ public enum AppMover {
             return
         }
         if needAuth {
-            os_log(.info, log: .default, "The destination is not writable; prompting for permissions")
+            // Log removed for Release
             
             switch authorizedInstall(from: srcUrl, to: dstUrl) {
             case .canceled:
@@ -127,7 +127,6 @@ public enum AppMover {
                 }
                 try fm.copyItem(at: srcUrl, to: dstUrl)
             } catch {
-                os_log(.error, log: .default, "Failed to move application bundle { error = %{public}@ }", error.localizedDescription)
                 return
             }
         }
@@ -168,9 +167,8 @@ public enum AppMover {
             }
             
             if let errNum = error[NSAppleScript.errorNumber] as? Int16,
-               let errStr = error[NSAppleScript.errorMessage] as? String {
-                os_log(.error, log: .default, "Executing the authorizedInstall AppleScript failed with an error. { errorNumber = %d, errorMessage = %{public}@",
-                       errNum, errStr)
+               let _ = error[NSAppleScript.errorMessage] as? String {
+                // Log removed for Release
             }
             
             return .failed

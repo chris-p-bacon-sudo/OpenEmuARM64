@@ -579,7 +579,7 @@ final class ImportOperation: Operation, NSCopying, @unchecked Sendable {
             let fm = FileManager.default
             if !fm.fileExists(atPath: extractionDst.path) {
                 if !archive.oe_extractEntry(i, as: extractionDst.path, deferDirectories: true, dataFork: true, resourceFork: false) {
-                    NSLog("exception handeled")
+                    // Log removed for Release
                 }
                 
                 // exception is caught but handler does not execute, so check if extraction worked

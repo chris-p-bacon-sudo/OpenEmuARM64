@@ -23,7 +23,6 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import Foundation
-internal import os.log
 
 extension NSXPCListener {
     private static var helperIdentifierFromArguments: String? {
@@ -40,22 +39,22 @@ extension NSXPCListener {
             fatalError("Expected to find helper identifier")
         }
         
-        os_log(.info, log: .helper, "Registering helper listener endpoint with broker. { id = %{public}@ }", identifier)
+        // Log removed for Release
         
         let cn = NSXPCConnection(serviceName: name)
         cn.invalidationHandler = {
-            os_log(.error, log: .helper, "Broker connection was unexpectedely invalidated.")
+            // Log removed for Release
         }
         
         cn.remoteObjectInterface = .init(with: OEXPCMatchMaking.self)
         cn.resume()
         
         let mm = cn.remoteObjectProxyWithErrorHandler { error in
-            os_log(.error, log: .helper, "Error waiting for reply from OEXPCMatchMaking. { error = %{public}@ }", error.localizedDescription)
+            // Log removed for Release
         } as? OEXPCMatchMaking
         
         guard let mm = mm else {
-            os_log(.error, log: .helper, "Unexpected nil for OEXPCMatchMaking proxy.")
+            // Log removed for Release
             fatalError("Unexpected nil for OEXPCMatchMaking proxy.")
         }
         
@@ -63,7 +62,7 @@ extension NSXPCListener {
         
         let listener = NSXPCListener.anonymous()
         mm.register(listener.endpoint, forIdentifier: identifier) {
-            os_log(.info, log: .helper, "Successfully connected helper to host. { id = '%{public}@' }", identifier)
+            // Log removed for Release
             sem.signal()
         }
         
@@ -72,7 +71,7 @@ extension NSXPCListener {
         #else
         if sem.wait(timeout: .now() + .seconds(2)) == .timedOut {
             // mediation of connection between host and helper via broker timed out
-            os_log(.error, log: .helper, "Timeout waiting for host connection.")
+            // Log removed for Release
             listener.invalidate()
             fatalError("Timeout waiting for host connection.")
         }

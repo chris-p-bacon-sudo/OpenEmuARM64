@@ -26,7 +26,7 @@ import Foundation
 import OpenEmuShaders
 import OpenEmuBase
 @_implementationOnly import Atomics
-internal import os.log
+import os.log
 
 final class MTL3DGameRenderer: GameRenderer {
     var surfaceSize: OEIntSize { gameCore.bufferSize }

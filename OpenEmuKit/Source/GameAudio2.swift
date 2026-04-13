@@ -24,12 +24,8 @@
 
 import Foundation
 import AVFoundation
-internal import os
+import AudioToolbox
 import OpenEmuBase
-
-
-@available(macOS 11.0, iOS 14.0, *)
-private var log = Logger(subsystem: "org.openemu.OpenEmuKit", category: "GameAudio2")
 
 @available(macOS 11.0, iOS 14.0, *)
 final public class GameAudio2: GameAudioProtocol {
@@ -41,7 +37,7 @@ final public class GameAudio2: GameAudioProtocol {
     
     private let engine = AVAudioEngine()
     private var src: AVAudioSourceNode?
-    private weak var gameCore: OEGameCore!
+    private weak var gameCore: OEGameCore?
     private var isDefaultOutputDevice = true
     private var isRunning = false
     
@@ -65,8 +61,10 @@ final public class GameAudio2: GameAudioProtocol {
     }
     
     public func startAudio() {
-        precondition(gameCore.audioBufferCount == 1,
-                     "nly one buffer supported; got \(gameCore.audioBufferCount)")
+        guard let gameCore = gameCore else { return }
+        if gameCore.audioBufferCount != 1 {
+            return
+        }
         
         updateSourceNode()
         connectNodes()
@@ -102,13 +100,14 @@ final public class GameAudio2: GameAudioProtocol {
         do {
             try engine.start()
         } catch {
-            log.error("Unable to start AVAudioEngine: \(error.localizedDescription, privacy: .public)")
+            // Log removed for Release
         }
     }
     
     private func readBlockForBuffer(_ buffer: OEAudioBuffer) -> OEAudioBufferReadBlock {
-        if buffer.responds(to: #selector(OEAudioBuffer.readBlock)) {
-            return buffer.readBlock!()
+        if buffer.responds(to: #selector(OEAudioBuffer.readBlock)),
+           let block = buffer.readBlock?() {
+            return block
         }
         return { buf, max -> UInt in
             buffer.read(buf, maxLength: max)
@@ -116,6 +115,10 @@ final public class GameAudio2: GameAudioProtocol {
     }
     
     private var streamDescription: AudioStreamBasicDescription {
+        guard let gameCore = self.gameCore else {
+            return AudioStreamBasicDescription(mSampleRate: 44100, mFormatID: kAudioFormatLinearPCM, mFormatFlags: 0, mBytesPerPacket: 4, mFramesPerPacket: 1, mBytesPerFrame: 4, mChannelsPerFrame: 2, mBitsPerChannel: 16, mReserved: 0)
+        }
+        
         let channelCount    = UInt32(gameCore.channelCount(forBuffer: 0))
         let bytesPerSample  = UInt32(gameCore.audioBitDepth / 8)
         
@@ -124,7 +127,7 @@ final public class GameAudio2: GameAudioProtocol {
             ? kAudioFormatFlagIsFloat | kAudioFormatFlagsNativeEndian | kAudioFormatFlagIsNonInterleaved | kAudioFormatFlagIsPacked
             : kAudioFormatFlagIsSignedInteger | kAudioFormatFlagsNativeEndian
         
-        return AudioStreamBasicDescription(mSampleRate: gameCore.audioSampleRate(forBuffer: 0),
+        return AudioStreamBasicDescription(mSampleRate: Float64(gameCore.audioSampleRate(forBuffer: 0)),
                                            mFormatID: kAudioFormatLinearPCM,
                                            mFormatFlags: formatFlags,
                                            mBytesPerPacket: bytesPerSample * channelCount,
@@ -137,8 +140,7 @@ final public class GameAudio2: GameAudioProtocol {
     
     private var renderFormat: AVAudioFormat {
         var desc = streamDescription
-        return AVAudioFormat(streamDescription: &desc)!
-        
+        return AVAudioFormat(streamDescription: &desc) ?? AVAudioFormat(standardFormatWithSampleRate: 44100, channels: 2)!
     }
     
     // MARK: - Helpers
@@ -149,6 +151,7 @@ final public class GameAudio2: GameAudioProtocol {
             self.src = nil
         }
         
+        guard let gameCore = gameCore else { return }
         let read = readBlockForBuffer(gameCore.audioBuffer(at: 0))
         let sd   = streamDescription
         let bytesPerFrame = sd.mBytesPerFrame
@@ -177,7 +180,9 @@ final public class GameAudio2: GameAudioProtocol {
     }
     
     private func connectNodes() {
-        guard let src else { fatalError("Expected src node") }
+        guard let src = src else {
+            return
+        }
         engine.connect(src, to: engine.mainMixerNode, format: nil)
         engine.mainMixerNode.outputVolume = volume
     }
@@ -189,7 +194,6 @@ final public class GameAudio2: GameAudioProtocol {
             .addObserver(forName: .AVAudioEngineConfigurationChange, object: engine, queue: .main) { [weak self] _ in
                 guard let self = self else { return }
                 
-                log.debug("AVAudioEngine configuration change")
                 self.setOutputDeviceID(self.outputDeviceID)
             }
     }
@@ -216,7 +220,6 @@ final public class GameAudio2: GameAudioProtocol {
         if newOutputDeviceID == 0 {
             id = defaultAudioOutputDeviceID
             isDefaultOutputDevice = true
-            log.debug("Using default audio device \(id)")
         } else {
             id = newOutputDeviceID
             isDefaultOutputDevice = false
@@ -227,7 +230,7 @@ final public class GameAudio2: GameAudioProtocol {
         do {
             try engine.outputNode.auAudioUnit.setDeviceID(id)
         } catch {
-            log.error("Unable to set output device ID \(id): \(error.localizedDescription, privacy: .public)")
+            // Log removed for Release
         }
         
         connectNodes()

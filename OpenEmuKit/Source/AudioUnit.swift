@@ -25,7 +25,6 @@
 import Foundation
 import AudioToolbox
 import AVFoundation
-internal import os.log
 
 @objc(OEAudioUnit) final public class AudioUnit: AUAudioUnit {
     // swiftlint:disable identifier_name
@@ -112,7 +111,6 @@ internal import os.log
         var conv: AudioConverterRef?
         let status = AudioConverterNew(srcDesc, dstDesc, &conv)
         if status != noErr {
-            os_log(.error, log: .audio, "Unable to create audio converter: %d", status)
             return
         }
         
@@ -127,8 +125,6 @@ internal import os.log
                                   buffer: .allocate(capacity: bufferSize),
                                   inputFrameCount: inputFrameCount,
                                   inputBytePerFrame: inputBytePerFrame)
-        
-        os_log(.info, log: .audio, "Audio converter buffer size = %u bytes", bufferSize)
     }
     
     @objc public override func deallocateRenderResources() {

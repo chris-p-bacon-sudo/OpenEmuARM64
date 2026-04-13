@@ -26,7 +26,6 @@ import Foundation
 import OpenEmuBase
 import OpenGL.GLTypes
 @_implementationOnly import Atomics
-internal import os.log
 
 class BaseOpenGLGameRenderer: OpenGLGameRenderer {
     let gameCore: OEGameCore
@@ -106,17 +105,13 @@ class BaseOpenGLGameRenderer: OpenGLGameRenderer {
         var numPixelFormats: GLint = 0
         var err = CGLChoosePixelFormat(Self.attributes, &glPixelFormat, &numPixelFormats)
         if err != kCGLNoError {
-            os_log(.error, log: .renderer,
-                   "Error choosing pixel format %{public}s",
-                   CGLErrorString(err))
+            // Log removed for Release
             NSApp.terminate(nil)
         }
         
         err = CGLCreateContext(glPixelFormat, nil, &glContext)
         if err != kCGLNoError {
-            os_log(.error, log: .renderer,
-                   "Error creating context %{public}s",
-                   CGLErrorString(err))
+            // Log removed for Release
             NSApp.terminate(nil)
         }
         
@@ -133,7 +128,7 @@ class BaseOpenGLGameRenderer: OpenGLGameRenderer {
             CGLCreateContext(glPixelFormat, glContext, &alternateContext)
         }
         
-        os_log(.debug, log: .renderer, "Setup GL 3D 'alternate-threaded' rendering")
+        // Log removed for Release
     }
     
     func setupDoubleBufferedFBO() {

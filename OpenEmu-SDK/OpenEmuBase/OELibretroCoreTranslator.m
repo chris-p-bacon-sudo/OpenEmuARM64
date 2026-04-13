@@ -207,9 +207,9 @@ static void (*libretro_get_proc_address(const char *sym))(void) {
     }
     
     if (addr) {
-        // fprintf(stderr, "[OELibretro] Resolved GL symbol: %s -> %p\n", sym, addr);
+        // Log removed for Release
     } else {
-        fprintf(stderr, "[OELibretro] FAILED to resolve GL symbol: %s\n", sym);
+        // Silent failure for Release - the caller will handle NULL
     }
     
     return (void(*)(void))addr;
@@ -228,35 +228,38 @@ static BOOL verify_bios_files(NSString *biosPath, NSArray<NSString *> *files) {
 }
 
 static void libretro_log_cb(enum retro_log_level level, const char *fmt, ...) {
+#if DEBUG
     va_list args;
     va_start(args, fmt);
     char buffer[4096];
     vsnprintf(buffer, sizeof(buffer), fmt, args);
     va_end(args);
     
+    os_log_type_t logType = OS_LOG_TYPE_DEFAULT;
+    const char *prefix = "[OELibretro]";
+    
     switch (level) {
         case RETRO_LOG_DEBUG: 
-            os_log_debug(OE_LOG_DEFAULT, "[Libretro] %{public}s", buffer); 
+            logType = OS_LOG_TYPE_DEBUG; 
             break;
         case RETRO_LOG_INFO:  
-            os_log_info(OE_LOG_DEFAULT, "[Libretro] %{public}s", buffer); 
-            NSLog(@"[OELibretro Core] %s", buffer);
-            fprintf(stderr, "[OELibretro Core] %s\n", buffer);
+            logType = OS_LOG_TYPE_INFO;  
+            prefix = "[OELibretro Core]";
             break;
         case RETRO_LOG_WARN:  
-            os_log_error(OE_LOG_DEFAULT, "[Libretro] %{public}s", buffer); 
-            NSLog(@"[OELibretro Core Warning] %s", buffer);
-            fprintf(stderr, "[OELibretro Core Warning] %s\n", buffer);
+            logType = OS_LOG_TYPE_ERROR; 
+            prefix = "[OELibretro Core Warning]";
             break;
         case RETRO_LOG_ERROR: 
-            os_log_error(OE_LOG_DEFAULT, "!!! [Libretro Error] %{public}s", buffer); 
-            NSLog(@"!!! [OELibretro Core Error] %s", buffer);
-            fprintf(stderr, "!!! [OELibretro Core Error] %s\n", buffer);
+            logType = OS_LOG_TYPE_FAULT; 
+            prefix = "!!! [OELibretro Core Error]";
             break;
         default: 
-            os_log(OE_LOG_DEFAULT, "[Libretro] %{public}s", buffer); 
             break;
     }
+    
+    os_log_with_type(OE_LOG_DEFAULT, logType, "%{public}s %{public}s", prefix, buffer);
+#endif
 }
 
 @implementation OELibretroCoreTranslator
@@ -684,27 +687,73 @@ static void OEVideoCopy0RGB1555(const uint8_t *src, uint32_t *dst, unsigned widt
 }
 
 static void OEVideoCopyRGB565(const uint8_t *src, uint32_t *dst, unsigned width, unsigned height, size_t srcPitch, size_t dstPitchWords, BOOL swap) {
+    const uint16_t *s_line = (const uint16_t *)src;
+    uint32_t *d_line = dst;
+
     for (unsigned y = 0; y < height; y++) {
-        const uint16_t *s = (const uint16_t *)(src + y * srcPitch);
-        uint32_t *d = dst + y * dstPitchWords;
-        for (unsigned x = 0; x < width; x++) {
-            uint16_t pix = s[x];
-            uint32_t r, g, b;
+        const uint16_t *s = s_line;
+        uint32_t *d = d_line;
+        unsigned x = 0;
+
+        // NEON path: process 8 pixels at a time
+        for (; x + 7 < width; x += 8) {
+            uint16x8_t pixels = vld1q_u16(s + x);
+            
+            uint16x8_t r_16, g_16, b_16;
+            // Native RGB565: RRRRRGGGGGGBBBBB
+            
             if (swap) {
-                b = (pix >> 11) & 0x1F;
-                g = (pix >> 5) & 0x3F;
-                r = (pix >> 0) & 0x1F;
+                // Core is providing BGR565: BBBBBGGGGGGRRRRR
+                b_16 = vandq_u16(vshrq_n_u16(pixels, 11), vdupq_n_u16(0x1F));
+                g_16 = vandq_u16(vshrq_n_u16(pixels, 5), vdupq_n_u16(0x3F));
+                r_16 = vandq_u16(pixels, vdupq_n_u16(0x1F));
             } else {
-                r = (pix >> 11) & 0x1F;
-                g = (pix >> 5) & 0x3F;
-                b = (pix >> 0) & 0x1F;
+                r_16 = vandq_u16(vshrq_n_u16(pixels, 11), vdupq_n_u16(0x1F));
+                g_16 = vandq_u16(vshrq_n_u16(pixels, 5), vdupq_n_u16(0x3F));
+                b_16 = vandq_u16(pixels, vdupq_n_u16(0x1F));
             }
-            r = (r << 3) | (r >> 2);
-            g = (g << 2) | (g >> 4);
-            b = (b << 3) | (b >> 2);
-            // In memory on little-endian: Byte 0:b, 1:g, 2:r, 3:0xFF
-            d[x] = 0xFF000000 | (r << 16) | (g << 8) | b;
+
+            // Expand components to 8-bit
+            // R: (x << 3) | (x >> 2)
+            uint8x8_t r = vmovn_u16(vorrq_u16(vshlq_n_u16(r_16, 3), vshrq_n_u16(r_16, 2)));
+            // G: (x << 2) | (x >> 4) -- 6-bit to 8-bit
+            uint8x8_t g = vmovn_u16(vorrq_u16(vshlq_n_u16(g_16, 2), vshrq_n_u16(g_16, 4)));
+            // B: (x << 3) | (x >> 2)
+            uint8x8_t b = vmovn_u16(vorrq_u16(vshlq_n_u16(b_16, 3), vshrq_n_u16(b_16, 2)));
+            uint8x8_t a = vdup_n_u8(0xFF);
+
+            // Interleave into BGRA pattern (Byte 0:B, 1:G, 2:R, 3:A)
+            uint8x8x2_t bg = vzip_u8(b, g);
+            uint8x8x2_t ra = vzip_u8(r, a);
+
+            uint16x4x2_t bgra0 = vzip_u16(vreinterpret_u16_u8(bg.val[0]), vreinterpret_u16_u8(ra.val[0]));
+            uint16x4x2_t bgra1 = vzip_u16(vreinterpret_u16_u8(bg.val[1]), vreinterpret_u16_u8(ra.val[1]));
+
+            vst1q_u32(d + x + 0, vreinterpretq_u32_u16(vcombine_u16(bgra0.val[0], bgra0.val[1])));
+            vst1q_u32(d + x + 4, vreinterpretq_u32_u16(vcombine_u16(bgra1.val[0], bgra1.val[1])));
         }
+
+        // Scalar fallback
+        for (; x < width; x++) {
+            uint16_t pix = s[x];
+            uint32_t r_val, g_val, b_val;
+            if (swap) {
+                b_val = (pix >> 11) & 0x1F;
+                g_val = (pix >> 5) & 0x3F;
+                r_val = pix & 0x1F;
+            } else {
+                r_val = (pix >> 11) & 0x1F;
+                g_val = (pix >> 5) & 0x3F;
+                b_val = pix & 0x1F;
+            }
+            r_val = (r_val << 3) | (r_val >> 2);
+            g_val = (g_val << 2) | (g_val >> 4);
+            b_val = (b_val << 3) | (b_val >> 2);
+            d[x] = 0xFF000000 | (r_val << 16) | (g_val << 8) | b_val;
+        }
+
+        s_line = (const uint16_t *)((const uint8_t *)s_line + srcPitch);
+        d_line += dstPitchWords;
     }
 }
 

@@ -66,8 +66,6 @@ enum BIOSFile {
                     return true
                 } else {
                     // WARNING: MD5 mismatch, but for community builds we allow it if the file exists.
-                    // We log the mismatch but return true to avoid blocking the user.
-                    DLog("WARNING: BIOS MD5 mismatch for \(biosSystemFilename). Expected \(biosSystemMD5), got \(md5). Allowing anyway.")
                     return true 
                 }
             }
@@ -90,12 +88,10 @@ enum BIOSFile {
         
         let isReachable = (try? destinationURL.checkResourceIsReachable()) ?? false
         if isReachable {
-            DLog("Deleting \(destinationURL)")
             do {
                 try FileManager.default.trashItem(at: destinationURL, resultingItemURL: nil)
                 return true
             } catch {
-                DLog("\(error)")
                 return false
             }
         } else {
@@ -168,8 +164,9 @@ enum BIOSFile {
         // Copy known BIOS/system files to BIOS folder.
         for validFile in OECorePlugin.requiredFiles {
             
-            let biosSystemFilename = validFile["Name"] as! String
-            let biosSystemFileMD5 = validFile["MD5"] as! String
+            guard let biosSystemFilename = validFile["Name"] as? String,
+                  let biosSystemFileMD5  = validFile["MD5"]  as? String
+            else { continue }
             
             let destinationURL = biosFolderURL.appendingPathComponent(biosSystemFilename, isDirectory: false)
             
@@ -178,15 +175,13 @@ enum BIOSFile {
                 do {
                     try fileManager.createDirectory(at: biosFolderURL, withIntermediateDirectories: true)
                 } catch {
-                    DLog("Could not create directory before copying bios at \(url)")
-                    DLog("\(error)")
+                    // Error ignored for Release
                 }
                 
                 do {
                     try fileManager.copyItem(at: url, to: destinationURL)
                 } catch {
-                    DLog("Could not copy BIOS file \(url) to \(destinationURL)")
-                    DLog("\(error)")
+                    // Error ignored for Release
                 }
                 
                 NotificationCenter.default.post(Notification(name: .didImportBIOSFile, userInfo: validFile))

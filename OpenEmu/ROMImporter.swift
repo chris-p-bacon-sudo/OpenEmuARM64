@@ -106,7 +106,6 @@ final class ROMImporter: NSObject {
                 try queueData.write(to: url, options: [.atomic])
                 return true
             } catch {
-                os_log(.error, log: .import, "Error writing import queue data to disk: %{public}@", error.localizedDescription);
                 return false
             }
         }
@@ -268,7 +267,6 @@ final class ROMImporter: NSObject {
     
     @objc
     func start() {
-        DLog("\(operationQueue.operationCount != 0 && status != .running)")
         
         if operationQueue.operationCount != 0 && status != .running {
             status = .running
@@ -279,7 +277,6 @@ final class ROMImporter: NSObject {
     }
     
     func pause() {
-        DLog("\(status == .running)")
         
         if status == .running {
             status = .paused
@@ -291,18 +288,14 @@ final class ROMImporter: NSObject {
     
     func togglePause() {
         if status == .paused {
-            DLog("start")
             start()
         } else if status == .running {
-            DLog("pause")
             pause()
         } else {
-            DLog("nothing")
         }
     }
     
     func cancel() {
-        DLog("cancel")
         
         status = .stopped
         operationQueue.cancelAllOperations()
@@ -316,7 +309,6 @@ final class ROMImporter: NSObject {
     }
     
     func finish() {
-        DLog("Finish")
         
         status = .stopped
         operationQueue.cancelAllOperations()

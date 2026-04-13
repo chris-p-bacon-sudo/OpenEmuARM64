@@ -28,17 +28,11 @@ import OpenEmuBase
 import OpenEmuSystem
 import OpenEmuKitPrivate
 import OpenEmuShaders
-internal import os.log
-
-extension OSLog {
-    static let display  = OSLog(subsystem: "org.openemu.OpenEmuKit", category: "display")
-    static let renderer = OSLog(subsystem: "org.openemu.OpenEmuKit", category: "renderer")
-}
 
 @objc public class OpenEmuHelperApp: NSResponder, NSApplicationDelegate {
-    @objc public var gameCoreOwner: OEGameCoreOwner!
-    @objc public private(set) var gameCore: OEGameCore!
-    @objc public private(set) var gameSystemResponderClientProtocol: Protocol!
+    @objc public var gameCoreOwner: OEGameCoreOwner?
+    @objc public private(set) var gameCore: OEGameCore?
+    @objc public private(set) var gameSystemResponderClientProtocol: Protocol?
     
     // MARK: - State
     // swiftlint:disable identifier_name
@@ -46,16 +40,16 @@ extension OSLog {
     var _previousAspectSize: OEIntSize = .init()
     
     // Video
-    var _gameRenderer: GameRenderer!
+    var _gameRenderer: GameRenderer?
     var _openGLGameRenderer: OpenGLGameRenderer?
-    var _surface: CoreVideoTexture!
+    var _surface: CoreVideoTexture?
     var flipVertically: Bool = false
     
     // OE stuff
-    var _gameController: OEGameCoreController!
-    var _systemController: OESystemController!
-    var _systemResponder: OESystemResponder!
-    var _gameAudio: GameAudioProtocol!
+    var _gameController: OEGameCoreController?
+    var _systemController: OESystemController?
+    var _systemResponder: OESystemResponder?
+    var _gameAudio: GameAudioProtocol?
     
     // initial shader and parameters
     var _shader: URL?
@@ -66,16 +60,16 @@ extension OSLog {
     var _gameVideoCAContext: CAContext!
     
     var _videoLayer: GameHelperMetalLayer!
-    var _filterChain: FilterChain!
-    var _screenshot: Screenshot!
+    var _filterChain: FilterChain?
+    var _screenshot: Screenshot?
     /// Only send 1 frame at once to the GPU.
     /// Since we aren't synced to the display, even one more
     /// is enough to block in nextDrawable for more than a frame
     /// and cause audio skipping.
     var _inflightSemaphore = DispatchSemaphore(value: 1)
-    var _scope: MTLCaptureScope!
-    var _device: MTLDevice!
-    var _commandQueue: MTLCommandQueue!
+    var _scope: MTLCaptureScope?
+    var _device: MTLDevice?
+    var _commandQueue: MTLCommandQueue?
     
     var _clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 1)
     var _skippedFrames: UInt = 0
@@ -110,7 +104,9 @@ extension OSLog {
     }
     
     private func setupGameCoreAudioAndVideo() {
-        guard let gameCore else { fatalError("Expected gameCore to be set") }
+        guard let gameCore = self.gameCore else {
+            return 
+        }
         
         // 1. Audio
         if #available(macOS 11.0, *) {
@@ -119,32 +115,33 @@ extension OSLog {
             _gameAudio = GameAudio(withCore: gameCore)
         }
         
-        _gameAudio.volume = 1.0
+        _gameAudio?.volume = 1.0
         
         // 2. Video
         _device         = MTLCreateSystemDefaultDevice()
-        _scope          = MTLCaptureManager.shared().makeCaptureScope(device: _device)
-        _commandQueue   = _device.makeCommandQueue()
-        
-        // TODO: Handle error
-        // Original Obj-C didn't handle the error either
-        _filterChain    = try? FilterChain(device: _device)
-        _screenshot     = Screenshot(device: _device)
-        
-        updateScreenSize()
-        setupGameRenderer()
-        setupCVBuffer()
-        setupRemoteLayer()
-        if let _shader = _shader {
-            try? setShaderURL(_shader, parameters: _shaderParameters)
-            self._shader            = nil
-            self._shaderParameters  = nil
+        if let device = _device {
+            _scope          = MTLCaptureManager.shared().makeCaptureScope(device: device)
+            _commandQueue   = device.makeCommandQueue()
+            
+            _filterChain    = try? FilterChain(device: device)
+            _screenshot     = Screenshot(device: device)
+            
+            updateScreenSize()
+            setupGameRenderer()
+            setupCVBuffer()
+            setupRemoteLayer()
+            if let _shader = _shader {
+                try? setShaderURL(_shader, parameters: _shaderParameters)
+                self._shader            = nil
+                self._shaderParameters  = nil
+            }
         }
     }
     
     // MARK: - Core Video and Generic Video
     
     private func updateScreenSize() {
+        guard let gameCore = gameCore else { return }
         _previousAspectSize = gameCore.aspectSize
         _previousScreenRect = gameCore.screenRect
     }
@@ -160,6 +157,7 @@ extension OSLog {
         _videoLayer.framebufferOnly = true
         _videoLayer.displaySyncEnabled = true
         
+        guard let gameCore = self.gameCore else { return }
         let rendering = gameCore.gameCoreRendering
         switch rendering {
         case .bitmap:
@@ -172,54 +170,63 @@ extension OSLog {
             _gameRenderer = setup3dVideo()
             
         default:
-            fatalError("Rendering API \(rendering) not supported")
+            break
         }
     }
     
-    private func setup2dVideo() -> GameRenderer {
+    private func setup2dVideo() -> GameRenderer? {
+        guard let device = _device, let gameCore = gameCore else { return nil }
         do {
-            return try MTLGameRenderer(withDevice: _device, gameCore: gameCore)
+            return try MTLGameRenderer(withDevice: device, gameCore: gameCore)
         } catch {
-            fatalError("Unable to create MTLGameRenderer")
+            return nil
         }
     }
     
-    private func setup3dVideo() -> GameRenderer {
+    private func setup3dVideo() -> GameRenderer? {
+        guard let device = _device, let gameCore = gameCore else { return nil }
         do {
-            return try MTL3DGameRenderer(withDevice: _device, gameCore: gameCore)
+            return try MTL3DGameRenderer(withDevice: device, gameCore: gameCore)
         } catch {
-            fatalError("Unable to create MTL3DGameRenderer")
+            return nil
         }
     }
     
-    private func setupOpenGLVideo() -> OpenGLGameRenderer {
-        precondition(gameCore.gameCoreRendering == .openGL2 || gameCore.gameCoreRendering == .openGL3)
-        _surface = CoreVideoTexture(device: _device, metalPixelFormat: .bgra8Unorm)
+    private func setupOpenGLVideo() -> OpenGLGameRenderer? {
+        guard let gameCore = gameCore, let device = _device else { return nil }
+        let rendering = gameCore.gameCoreRendering
+        precondition(rendering == .openGL2 || rendering == .openGL3)
+        _surface = CoreVideoTexture(device: device, metalPixelFormat: .bgra8Unorm)
         
-        if gameCore.gameCoreRendering == .openGL2 {
-            return OpenGL2GameRenderer(withInteropTexture: _surface, gameCore: gameCore)
-        } else {
-            return OpenGL3GameRenderer(withInteropTexture: _surface, gameCore: gameCore)
+        if let surface = _surface {
+            if rendering == .openGL2 {
+                return OpenGL2GameRenderer(withInteropTexture: surface, gameCore: gameCore)
+            } else {
+                return OpenGL3GameRenderer(withInteropTexture: surface, gameCore: gameCore)
+            }
         }
+        return nil
     }
     
     private func setupCVBuffer() {
+        guard let gameCore = gameCore else { return }
         let surfaceSize = gameCore.bufferSize
         let size = CGSize(width: CGFloat(surfaceSize.width), height: CGFloat(surfaceSize.height))
         
-        if gameCore.gameCoreRendering != .bitmap && gameCore.gameCoreRendering != .metal2 {
-            _surface.size = size
-            flipVertically = _surface.metalTextureIsFlippedVertically
+        let rendering = gameCore.gameCoreRendering
+        if rendering != .bitmap && rendering != .metal2 {
+            _surface?.size = size
+            flipVertically = _surface?.metalTextureIsFlippedVertically ?? false
         }
         
-        _gameRenderer.update()
+        _gameRenderer?.update()
         let rect = gameCore.screenRect
         let sourceRect = CGRect(x: CGFloat(rect.origin.x), y: CGFloat(rect.origin.y),
                                 width: CGFloat(rect.size.width), height: CGFloat(rect.size.height))
         let aspectSize = CGSize(width: CGFloat(gameCore.aspectSize.width),
                                 height: CGFloat(gameCore.aspectSize.height))
         
-        _filterChain.setSourceRect(sourceRect, aspect: aspectSize)
+        _filterChain?.setSourceRect(sourceRect, aspect: aspectSize)
     }
     
     private func setupRemoteLayer() {
@@ -228,16 +235,20 @@ extension OSLog {
             CATransaction.setDisableActions(true)
             defer { CATransaction.commit() }
             
+            guard let gameCore = gameCore, let videoLayer = _videoLayer else { return }
+            
             // TODO: If there's a good default bounds, use that.
-            _videoLayer.bounds = .init(x: 0, y: 0, width: Int(gameCore.bufferSize.width), height: Int(gameCore.bufferSize.height))
-            _filterChain.drawableSize = _videoLayer.drawableSize
+            videoLayer.bounds = .init(x: 0, y: 0, width: Int(gameCore.bufferSize.width), height: Int(gameCore.bufferSize.height))
+            _filterChain?.drawableSize = videoLayer.drawableSize
             
             let connectionID = CGSMainConnectionID()
             _gameVideoCAContext = CAContext(cgsConnection: connectionID, options: [kCAContextCIFilterBehavior: "ignore"])
-            _gameVideoCAContext.layer = _videoLayer
+            _gameVideoCAContext?.layer = videoLayer
+            
+            if let contextId = _gameVideoCAContext?.contextId {
+                updateRemoteContextID(contextId)
+            }
         }
-        
-        updateRemoteContextID(_gameVideoCAContext.contextId)
     }
     
     // MARK: - Game Core methods
@@ -254,20 +265,23 @@ extension OSLog {
         _shader = info.shaderURL
         _shaderParameters = info.shaderParameters
         guard let systemPlugin = OESystemPlugin.systemPlugin(bundleAtURL: info.systemPluginURL) else {
-            NSLog("[OpenEmuHelperApp] FAILED TO LOAD SYSTEM PLUGIN AT: \(info.systemPluginURL)")
             throw NSError(domain: "org.openemu.OpenEmuKit.GameCoreError", code: -1, userInfo: [NSLocalizedDescriptionKey: "Could not find system plugin at \(info.systemPluginURL.path)"])
         }
         _systemController = systemPlugin.controller
-        _systemResponder  = _systemController.newGameSystemResponder()
+        _systemResponder  = _systemController?.newGameSystemResponder()
         
         guard let corePlugin = OECorePlugin.corePlugin(bundleAtURL: info.corePluginURL) else {
-            NSLog("[OpenEmuHelperApp] FAILED TO LOAD CORE PLUGIN AT: \(info.corePluginURL)")
             throw NSError(domain: "org.openemu.OpenEmuKit.GameCoreError", code: -1, userInfo: [NSLocalizedDescriptionKey: "Could not find core plugin at \(info.corePluginURL.path)"])
         }
         _gameController = corePlugin.controller
-        gameCore = _gameController.newGameCore()
+        self.gameCore = _gameController?.newGameCore()
         
-        let systemIdentifier = _systemController.systemIdentifier!
+        guard let gameCore = gameCore,
+              let systemController = _systemController,
+              let systemIdentifier = systemController.systemIdentifier
+        else {
+            throw NSError(domain: "org.openemu.OpenEmuKit.GameCoreError", code: -2, userInfo: [NSLocalizedDescriptionKey: "GameCore or SystemIdentifier not initialized"])
+        }
         
         gameCore.owner          = _gameController
         gameCore.delegate       = self
@@ -275,14 +289,10 @@ extension OSLog {
         gameCore.audioDelegate  = self
         
         gameCore.systemIdentifier   = systemIdentifier
-        gameCore.systemRegion       = info.systemRegion
-        gameCore.displayModeInfo    = info.displayModeInfo ?? [:]
-        gameCore.romMD5             = info.romMD5
-        gameCore.romHeader          = info.romHeader
         gameCore.romSerial          = info.romSerial
         
-        _systemResponder.client                 = gameCore
-        _systemResponder.globalEventsHandler    = self
+        self._systemResponder?.client = gameCore
+        self._systemResponder?.globalEventsHandler = self
         
         _unhandledEventsMonitor = OEDeviceManager.shared.addUnhandledEventMonitorHandler { [weak self] _, event in
             guard
@@ -291,12 +301,12 @@ extension OSLog {
                 self._handleKeyboardEvents || event.type != .keyboard
             else { return }
             
-            self._systemResponder.handle(event)
+            self._systemResponder?.handle(event)
         }
         
         guard FileManager.default.isReadableFile(atPath: url.path)
         else {
-            gameCore = nil
+            self.gameCore = nil
             
             throw OEGameCoreErrorCodes(.couldNotLoadROMError,
                                        userInfo: [
@@ -307,14 +317,14 @@ extension OSLog {
         
         do {
             try gameCore.loadFile(at: url)
-            gameCoreOwner.setDiscCount(gameCore.discCount)
+            gameCoreOwner?.setDiscCount(gameCore.discCount)
             if let displayModes = gameCore.displayModes {
-                gameCoreOwner.setDisplayModes(displayModes)
+                gameCoreOwner?.setDisplayModes(displayModes)
             }
             
             loadedRom = true
         } catch {
-            gameCore = nil
+            self.gameCore = nil
             
 			throw OEGameCoreErrorCodes(.couldNotLoadROMError,
                                        userInfo: [
@@ -328,11 +338,11 @@ extension OSLog {
     // MARK: - OEGameCoreOwner subclass handles
     
     private func updateScreenSize(_ newScreenSize: OEIntSize, aspectSize newAspectSize: OEIntSize) {
-        gameCoreOwner.setScreenSize(newScreenSize, aspectSize: newAspectSize)
+        gameCoreOwner?.setScreenSize(newScreenSize, aspectSize: newAspectSize)
     }
     
     private func updateRemoteContextID(_ newContextID: CAContextID) {
-        gameCoreOwner.setRemoteContextID(newContextID)
+        gameCoreOwner?.setRemoteContextID(newContextID)
     }
 }
 
@@ -341,14 +351,14 @@ extension OSLog {
 @objc extension OpenEmuHelperApp: OEGameCoreHelper {
     
     public func setVolume(_ volume: Float) {
-        gameCore.perform {
-            self._gameAudio.volume = volume
+        gameCore?.perform {
+            self._gameAudio?.volume = volume
         }
     }
     
     public func setPauseEmulation(_ paused: Bool) {
-        gameCore.perform {
-            self.gameCore.setPauseEmulation(paused)
+        gameCore?.perform {
+            self.gameCore?.setPauseEmulation(paused)
         }
     }
     
@@ -357,8 +367,8 @@ extension OSLog {
     }
     
     public func setAudioOutputDeviceID(_ deviceID: AudioDeviceID) {
-        gameCore.perform {
-            self._gameAudio.setOutputDeviceID(deviceID)
+        gameCore?.perform {
+            self._gameAudio?.setOutputDeviceID(deviceID)
         }
     }
     
@@ -369,14 +379,14 @@ extension OSLog {
             defer { CATransaction.commit() }
             
             _videoLayer.bounds = rect
-            _filterChain.drawableSize = _videoLayer.drawableSize
+            _filterChain?.drawableSize = _videoLayer.drawableSize
         }
         
         // Game will try to render at the window size on its next frame.
-        guard _gameRenderer.canChangeBufferSize else { return }
+        guard let _gameRenderer = _gameRenderer, _gameRenderer.canChangeBufferSize else { return }
         
         let newBufferSize = OEIntSize(width: Int32(rect.size.width.rounded(.up)), height: Int32(rect.size.height.rounded(.up)))
-        gameCore.tryToResizeVideo(to: newBufferSize)
+        gameCore?.tryToResizeVideo(to: newBufferSize)
     }
     
     public func setBackingScaleFactor(_ newBackingScaleFactor: CGFloat) {
@@ -384,8 +394,8 @@ extension OSLog {
         CATransaction.setDisableActions(true)
         defer { CATransaction.commit() }
         
-        _videoLayer.contentsScale = newBackingScaleFactor
-        _filterChain.drawableSize = _videoLayer.drawableSize
+        _videoLayer?.contentsScale = newBackingScaleFactor
+        _filterChain?.drawableSize = _videoLayer?.drawableSize ?? .zero
     }
     
     public func setAdaptiveSyncEnabled(_ enabled: Bool) {
@@ -393,7 +403,7 @@ extension OSLog {
     }
     
     public func setShaderURL(_ url: URL, parameters: [String: NSNumber]?, completionHandler block: @escaping (Error?) -> Void) {
-        gameCore.perform {
+        gameCore?.perform {
             do {
                 try self.setShaderURL(url, parameters: parameters as? [String: Double])
                 block(nil)
@@ -405,7 +415,7 @@ extension OSLog {
     
     func setShaderURL(_ url: URL, parameters: [String: Double]?) throws {
         if _currentShader != url {
-            try _filterChain.setShader(fromURL: url, options: .makeOptions())
+            try _filterChain?.setShader(fromURL: url, options: .makeOptions())
             _currentShader = url
         }
         
@@ -417,15 +427,15 @@ extension OSLog {
     }
     
     public func setShaderParameterValue(_ value: CGFloat, forKey key: String) {
-        _filterChain.setValue(value, forParameterName: key)
+        _filterChain?.setValue(value, forParameterName: key)
     }
     
     public func setGlobalShaderParameters(gamma: CGFloat, saturation: CGFloat) {
-        _filterChain.setShaderParameters(gamma: Float(gamma), saturation: Float(saturation))
+        _filterChain?.setShaderParameters(gamma: Float(gamma), saturation: Float(saturation))
     }
     
     public func setupEmulation(completionHandler handler: @escaping (_ screenSize: OEIntSize, _ aspectSize: OEIntSize) -> Void) {
-        gameCore.setupEmulation {
+        gameCore?.setupEmulation {
             self.setupGameCoreAudioAndVideo()
             
             handler(self._previousScreenRect.size, self._previousAspectSize)
@@ -433,18 +443,18 @@ extension OSLog {
     }
     
     public func startEmulation(completionHandler handler: @escaping () -> Void) {
-        gameCore.startEmulation(completionHandler: handler)
+        gameCore?.startEmulation(completionHandler: handler)
     }
     
     public func resetEmulation(completionHandler handler: @escaping () -> Void) {
-        gameCore.resetEmulation(completionHandler: handler)
+        gameCore?.resetEmulation(completionHandler: handler)
     }
     
     public func stopEmulation(completionHandler handler: @escaping () -> Void) {
         guard let gameCore = gameCore else { return }
         
         gameCore.stopEmulation {
-            self._gameAudio.stopAudio()
+            self._gameAudio?.stopAudio()
             gameCore.renderDelegate = nil
             gameCore.audioDelegate = nil
             self.gameCoreOwner = nil
@@ -456,47 +466,47 @@ extension OSLog {
     }
     
     public func saveStateToFile(at fileURL: URL, completionHandler block: @escaping (Bool, Error?) -> Void) {
-        gameCore.perform {
-            self.gameCore.saveStateToFile(at: fileURL, completionHandler: block)
+        gameCore?.perform {
+            self.gameCore?.saveStateToFile(at: fileURL, completionHandler: block)
         }
     }
     
     public func loadStateFromFile(at fileURL: URL, completionHandler block: @escaping (Bool, Error?) -> Void) {
-        gameCore.perform {
-            self.gameCore.loadStateFromFile(at: fileURL, completionHandler: block)
+        gameCore?.perform {
+            self.gameCore?.loadStateFromFile(at: fileURL, completionHandler: block)
         }
     }
     
     public func setCheat(_ cheatCode: String, withType type: String, enabled: Bool) {
-        gameCore.perform {
-            self.gameCore.setCheat(cheatCode, setType: type, setEnabled: enabled)
+        gameCore?.perform {
+            self.gameCore?.setCheat(cheatCode, setType: type, setEnabled: enabled)
         }
     }
     
     public func setDisc(_ discNumber: UInt) {
-        gameCore.perform {
-            self.gameCore.setDisc(discNumber)
+        gameCore?.perform {
+            self.gameCore?.setDisc(discNumber)
         }
     }
     
     public func changeDisplay(withMode displayMode: String) {
-        gameCore.perform {
-            self.gameCore.changeDisplay(withMode: displayMode)
-            if let displayModes = self.gameCore.displayModes {
-                self.gameCoreOwner.setDisplayModes(displayModes)
+        gameCore?.perform {
+            self.gameCore?.changeDisplay(withMode: displayMode)
+            if let displayModes = self.gameCore?.displayModes {
+                self.gameCoreOwner?.setDisplayModes(displayModes)
             }
         }
     }
     
     public func insertFile(at url: URL, completionHandler block: @escaping (Bool, Error?) -> Void) {
-        gameCore.perform {
-            self.gameCore.insertFile(at: url, completionHandler: block)
+        gameCore?.perform {
+            self.gameCore?.insertFile(at: url, completionHandler: block)
         }
     }
     
     public func handleMouseEvent(_ event: OEEvent) {
         DispatchQueue.main.async {
-            self._systemResponder.handleMouseEvent(event)
+            self._systemResponder?.handleMouseEvent(event)
         }
     }
     
@@ -510,24 +520,22 @@ extension OSLog {
     
     public func systemBindingsDidSetEvent(_ event: OEHIDEvent, forBinding bindingDescription: OEBindingDescription, playerNumber: UInt) {
         DispatchQueue.main.async {
-            self._systemResponder.systemBindingsDidSetEvent(event, forBinding: bindingDescription, playerNumber: playerNumber)
+            self._systemResponder?.systemBindingsDidSetEvent(event, forBinding: bindingDescription, playerNumber: playerNumber)
         }
     }
     
     public func systemBindingsDidUnsetEvent(_ event: OEHIDEvent, forBinding bindingDescription: OEBindingDescription, playerNumber: UInt) {
         DispatchQueue.main.async {
-            self._systemResponder.systemBindingsDidUnsetEvent(event, forBinding: bindingDescription, playerNumber: playerNumber)
+            self._systemResponder?.systemBindingsDidUnsetEvent(event, forBinding: bindingDescription, playerNumber: playerNumber)
         }
     }
     
     // MARK: - OEGameCoreOwner image capture
     
     public func captureOutputImage(completionHandler block: @escaping (NSBitmapImageRep) -> Void) {
-        let gr      = _gameRenderer!
-        let ss      = _screenshot!
-        let chain   = _filterChain!
+        guard let gr = _gameRenderer, let ss = _screenshot, let chain = _filterChain else { return }
         let flipped = flipVertically
-        gameCore.perform {
+        gameCore?.perform {
             let imgRef = ss.getCGImageFromOutput(gameRenderer: gr, filterChain: chain, flippedVertically: flipped)
             let img    = NSBitmapImageRep(cgImage: imgRef)
             block(img)
@@ -535,10 +543,9 @@ extension OSLog {
     }
     
     public func captureSourceImage(completionHandler block: @escaping (NSBitmapImageRep) -> Void) {
-        let gr      = _gameRenderer!
-        let ss      = _screenshot!
+        guard let gr = _gameRenderer, let ss = _screenshot else { return }
         let flipped = flipVertically
-        gameCore.perform {
+        gameCore?.perform {
             let imgRef = ss.getCGImageFromGameRenderer(gr, flippedVertically: flipped)
             let img    = NSBitmapImageRep(cgImage: imgRef)
             block(img)
@@ -564,10 +571,11 @@ extension OSLog {
     }
     
     public func willExecute() {
-        _gameRenderer.willExecuteFrame()
+        _gameRenderer?.willExecuteFrame()
     }
     
     public func didExecute() {
+        guard let gameCore = gameCore, let _gameRenderer = _gameRenderer else { return }
         let previousBufferSize = _gameRenderer.surfaceSize
         let previousAspectSize = _previousAspectSize
         let previousScreenRect = _previousScreenRect
@@ -607,17 +615,17 @@ extension OSLog {
         CATransaction.commit()
         
         if !_hasStartedAudio {
-            _gameAudio.startAudio()
+            _gameAudio?.startAudio()
             _hasStartedAudio = true
         }
     }
     
     public func suspendFPSLimiting() {
-        _gameRenderer.suspendFPSLimiting()
+        _gameRenderer?.suspendFPSLimiting()
     }
     
     public func resumeFPSLimiting() {
-        _gameRenderer.resumeFPSLimiting()
+        _gameRenderer?.resumeFPSLimiting()
     }
 }
 
@@ -625,20 +633,20 @@ extension OSLog {
 
 @objc extension OpenEmuHelperApp: OEAudioDelegate {
     public func audioSampleRateDidChange() {
-        gameCore.perform {
-            self._gameAudio.audioSampleRateDidChange()
+        gameCore?.perform {
+            self._gameAudio?.audioSampleRateDidChange()
         }
     }
     
     public func pauseAudio() {
-        gameCore.perform {
-            self._gameAudio.pauseAudio()
+        gameCore?.perform {
+            self._gameAudio?.pauseAudio()
         }
     }
     
     public func resumeAudio() {
-        gameCore.perform {
-            self._gameAudio.resumeAudio()
+        gameCore?.perform {
+            self._gameAudio?.resumeAudio()
         }
     }
 }
@@ -649,12 +657,12 @@ extension OSLog {
     }
     
     public func gameCoreWillBeginFrame(_ isExecuting: Bool) {
-        _scope.begin()
+        _scope?.begin()
     }
     
     public func gameCoreWillEndFrame(_ isExecuting: Bool) {
         defer {
-            _scope.end()
+            _scope?.end()
         }
         
         guard isExecuting || _effectsMode == .displayAlways
@@ -676,6 +684,11 @@ extension OSLog {
                 }
             }
             
+            guard let _commandQueue = _commandQueue,
+                  let _gameRenderer = _gameRenderer,
+                  let _filterChain = _filterChain
+            else { return }
+            
             guard let offscreenCB = _commandQueue.makeCommandBuffer() else { return }
             offscreenCB.label = "offscreen"
             offscreenCB.enqueue()
@@ -684,12 +697,10 @@ extension OSLog {
             }
             offscreenCB.commit()
             
-            guard let drawable = _videoLayer.nextDrawable() else { return }
+            guard let drawable = _videoLayer?.nextDrawable() else { return }
             
             let rpd = MTLRenderPassDescriptor()
             rpd.colorAttachments[0].clearColor = _clearColor
-            // TODO: Investigate whether we can avoid the MTLLoadActionClear
-            // Frame buffer should be overwritten completely by final pass.
             rpd.colorAttachments[0].loadAction = .clear
             rpd.colorAttachments[0].texture    = drawable.texture
             
@@ -709,14 +720,7 @@ extension OSLog {
             }
             
             if _adaptiveSyncEnabled {
-                if #available(macOS 10.15.4, *) {
-                    // NOTE:
-                    // When a variable refresh rate display is configured with minimum and maximum
-                    // refresh rates, and the game window is full-screen, we inform the variable
-                    // refresh rate display about the desired frame rate of the game core to
-                    // produce smooth animation.
-                    //
-                    // This information came from the "Optimize for variable refresh rate displays" WWDC21 talk
+                if #available(macOS 10.15.4, *), let gameCore = gameCore {
                     finalCB.present(drawable, afterMinimumDuration: 1.0 / gameCore.frameInterval)
                 } else {
                     finalCB.present(drawable)
@@ -732,79 +736,79 @@ extension OSLog {
 
 @objc extension OpenEmuHelperApp: OEGlobalEventsHandler {
     public func saveState(_ sender: Any) {
-        gameCoreOwner.saveState()
+        gameCoreOwner?.saveState()
     }
     
     public func loadState(_ sender: Any) {
-        gameCoreOwner.loadState()
+        gameCoreOwner?.loadState()
     }
     
     public func quickSave(_ sender: Any) {
-        gameCoreOwner.quickSave()
+        gameCoreOwner?.quickSave()
     }
     
     public func quickLoad(_ sender: Any) {
-        gameCoreOwner.quickLoad()
+        gameCoreOwner?.quickLoad()
     }
     
     public func toggleFullScreen(_ sender: Any) {
-        gameCoreOwner.toggleFullScreen()
+        gameCoreOwner?.toggleFullScreen()
     }
     
     public func toggleAudioMute(_ sender: Any) {
-        gameCoreOwner.toggleAudioMute()
+        gameCoreOwner?.toggleAudioMute()
     }
     
     public func volumeDown(_ sender: Any) {
-        gameCoreOwner.volumeDown()
+        gameCoreOwner?.volumeDown()
     }
     
     public func volumeUp(_ sender: Any) {
-        gameCoreOwner.volumeUp()
+        gameCoreOwner?.volumeUp()
     }
     
     public func stopEmulation(_ sender: Any) {
-        gameCoreOwner.stopEmulation()
+        gameCoreOwner?.stopEmulation()
     }
     
     public func resetEmulation(_ sender: Any) {
-        gameCoreOwner.resetEmulation()
+        gameCoreOwner?.resetEmulation()
     }
     
     public func toggleEmulationPaused(_ sender: Any) {
-        gameCoreOwner.toggleEmulationPaused()
+        gameCoreOwner?.toggleEmulationPaused()
     }
     
     public func takeScreenshot(_ sender: Any) {
-        gameCoreOwner.takeScreenshot()
+        gameCoreOwner?.takeScreenshot()
     }
     
     public func fastForwardGameplay(_ enable: Bool) {
         // Required so that _videoLayer.nextDrawable() vends frames faster than the display refresh rate
         // Fixes: https://github.com/OpenEmu/OpenEmu/issues/4780
-        _videoLayer.displaySyncEnabled = !enable
-        gameCoreOwner.fastForwardGameplay(enable)
+        _videoLayer?.displaySyncEnabled = !enable
+        gameCoreOwner?.fastForwardGameplay(enable)
     }
     
     public func rewindGameplay(_ enable: Bool) {
         // TODO: technically a data race, but it is only updating a single NSInteger
-        _filterChain.frameDirection = enable ? -1 : 1
-        gameCoreOwner.rewindGameplay(enable)
+        _filterChain?.frameDirection = enable ? -1 : 1
+        gameCoreOwner?.rewindGameplay(enable)
     }
     
     public func stepGameplayFrameForward(_ sender: Any) {
-        gameCoreOwner.stepGameplayFrameForward()
+        gameCoreOwner?.stepGameplayFrameForward()
     }
     
     public func stepGameplayFrameBackward(_ sender: Any) {
-        gameCoreOwner.stepGameplayFrameBackward()
+        gameCoreOwner?.stepGameplayFrameBackward()
     }
     
     public func nextDisplayMode(_ sender: Any) {
-        gameCoreOwner.nextDisplayMode()
+        gameCoreOwner?.nextDisplayMode()
     }
     
     public func lastDisplayMode(_ sender: Any) {
-        gameCoreOwner.lastDisplayMode()
+        gameCoreOwner?.lastDisplayMode()
     }
 }

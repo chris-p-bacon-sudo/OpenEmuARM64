@@ -23,7 +23,6 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import Foundation
-internal import os.log
 import OpenEmuKitPrivate
 
 @objc public class OEXPCGameCoreManager: GameCoreManager {
@@ -49,7 +48,7 @@ import OpenEmuKitPrivate
         
         let cn: NSXPCConnection
         do {
-            NSLog("[OEXPCGameCoreManager] Launching helper at \(executableURL.path)")
+            // Log removed for Release
             cn = try .makeConnection(serviceName: serviceName, executableURL: executableURL)
             helperConnection = cn
         } catch {
@@ -86,7 +85,7 @@ import OpenEmuKitPrivate
         cn.resume()
         
         let gameCoreHelper = cn.remoteObjectProxyWithErrorHandler { error in
-            os_log(.error, log: .helper, "Helper connection failed with error: %{public}@", error.localizedDescription)
+            // Log removed for Release
             DispatchQueue.main.async {
                 completionHandler(error)
                 self.stop()

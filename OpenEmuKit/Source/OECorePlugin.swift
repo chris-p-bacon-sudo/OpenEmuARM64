@@ -452,44 +452,37 @@ public class OECoreSyncManager: NSObject {
         do {
             try fm.createDirectory(at: fauxURL, withIntermediateDirectories: true)
         } catch {
-            print("[OECoreSyncManager] Could not create faux bundle at \(fauxURL.path): \(error)")
             return nil
         }
 
-        // Use the actual core version if available, otherwise fallback.
-        // Use the actual core version if available, otherwise fallback.
         let coreVersion = OELibretroCoreTranslator.libraryVersionForCore(at: dylibURL) ?? "1.0-Libretro"
 
         var plist: [String: Any] = [
-            "CFBundleName":                  stem,
-            "CFBundleIdentifier":            stem,
-            "CFBundleVersion":               coreVersion,
-            "CFBundleShortVersionString":    coreVersion,
-            "OEGameCoreClass":               "OELibretroCoreTranslator",
-            "OEGameCorePlayerCount":         4,
-            "OELibretroCorePath":            dylibURL.path,
-            "OESystemIdentifiers":           sysIDs,
+            "CFBundleName":               stem,
+            "CFBundleIdentifier":         "org.openemu.libretro.\(stem)",
+            "CFBundleVersion":            coreVersion,
+            "CFBundleShortVersionString": coreVersion,
+            "OEGameCoreClass":            "OELibretroCoreTranslator",
+            "OEGameCorePlayerCount":      4,
+            "OELibretroCorePath":         dylibURL.path,
+            "OESystemIdentifiers":        sysIDs,
         ]
         
         // Inject BIOS requirements if we have them
-        if let requiredFiles = requiredFiles {
+        if let files = requiredFiles {
             var options: [String: Any] = [:]
             for sysID in sysIDs {
                 options[sysID] = [
                     "OEGameCoreRequiresFiles": true,
-                    "OERequiredFiles": requiredFiles
+                    "OERequiredFiles": files
                 ]
             }
             plist["OEGameCoreOptions"] = options
         }
 
-        (plist as NSDictionary).write(
-            to: fauxURL.appendingPathComponent("Info.plist"),
-            atomically: true
-        )
+        (plist as NSDictionary).write(to: fauxURL.appendingPathComponent("Info.plist"), atomically: true)
 
         if let plugin = OECorePlugin.corePlugin(bundleAtURL: fauxURL) {
-            print("[OECoreSyncManager] Registered orphaned libretro core: \(stem)")
             return plugin
         }
         return nil

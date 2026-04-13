@@ -25,7 +25,6 @@
 import Foundation
 import OpenEmuSystem
 
-internal import os.log
 
 @objc public class OpenEmuXPCHelperApp: OpenEmuHelperApp {
     var mainListener: NSXPCListener!
@@ -53,14 +52,14 @@ internal import os.log
     }
     
     public static func run() {
-        NSLog("[OpenEmuHelperApp] run() started")
+        // Log removed for Release
         
         guard let serviceName = Self.serviceNameArgument else {
-            NSLog("[OpenEmuHelperApp] FATAL: Unable to find XPCBrokerServiceName argument")
+            // Log removed for Release
             fatalError("Unable to find XPCBrokerServiceName argument")
         }
         
-        NSLog("[OpenEmuHelperApp] Initializing and launching application for service: \(serviceName)")
+        // Log removed for Release
         
         autoreleasepool {
             let app = OpenEmuXPCHelperApp(serviceName: serviceName)
@@ -80,7 +79,7 @@ internal import os.log
             CFRunLoopRun()
             _Exit(EXIT_SUCCESS)
         } catch {
-            os_log(.error, log: .helper, "Unable to retrieve helper listener. error = %{public}@", error.localizedDescription)
+            // Log removed for Release
             _Exit(EXIT_FAILURE)
         }
     }
@@ -90,13 +89,13 @@ internal import os.log
         if #available(macOS 10.15, *) {
             if dm.accessType != .granted {
                 dm.requestAccess()
-                os_log(.info, log: .helper, "Input monitoring failed: Access Denied")
+                // Log removed for Release
             }
         }
     }
     
     func terminate() {
-        os_log(.debug, log: .helper, "Terminating helper")
+        // Log removed for Release
         CFRunLoopStop(CFRunLoopGetMain())
     }
 }
@@ -122,18 +121,18 @@ internal import os.log
         newConnection.exportedObject = self
         newConnection.remoteObjectInterface = NSXPCInterface(with: OEGameCoreOwner.self)
         newConnection.invalidationHandler = {
-            os_log(.debug, log: .helper, "Connection was invalidated; exiting.")
+            // Log removed for Release
             _Exit(EXIT_SUCCESS)
         }
         newConnection.interruptionHandler = {
-            os_log(.debug, log: .helper, "Connection was interrupted; exiting.")
+            // Log removed for Release
             _Exit(EXIT_SUCCESS)
         }
         
         newConnection.resume()
         
         gameCoreOwner = newConnection.remoteObjectProxyWithErrorHandler({ error in
-            os_log(.debug, log: .helper, "Error communicating with OEGameCoreOwner proxy: %{public}@", error.localizedDescription)
+            // Log removed for Release
             self.stopEmulation {
             }
         }) as? OEGameCoreOwner

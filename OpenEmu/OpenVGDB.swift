@@ -94,7 +94,7 @@ final class OpenVGDB: NSObject {
                 let updateInterval = defaults.double(forKey: OpenVGDB.updateIntervalKey)
                 
                 if Date().timeIntervalSince(lastUpdateCheck) > updateInterval {
-                    NSLog("Check for updates (\(Date().timeIntervalSince(lastUpdateCheck)) > \(updateInterval))")
+                    // Log removed for Release
                     
                     sharedHelper.checkForUpdates { url, version in
                         if let url = url, let version = version {

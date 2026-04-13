@@ -23,7 +23,6 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import Foundation
-internal import os.log
 
 extension NSXPCConnection {
     struct BrokerError: Error, LocalizedError {
@@ -47,11 +46,7 @@ extension NSXPCConnection {
         task.executableURL = url
         task.arguments = ["\(Self.helperIdentifierArgumentPrefix)\(identifier)", "\(Self.helperServiceNameArgumentPrefix)\(name)"]
         task.terminationHandler = { task in
-            os_log(.error, log: .helper,
-                   "Helper terminated unexpectedly. { id = %{public}@, reason = %ld, exit = %d }",
-                   identifier,
-                   task.terminationReason.rawValue,
-                   task.terminationStatus)
+            // Log removed for Release
         }
         task.standardError  = FileHandle.standardError
         task.standardOutput = FileHandle.standardOutput
@@ -65,9 +60,7 @@ extension NSXPCConnection {
         defer {
             // Terminate helper when broker connection fails
             if !success {
-                os_log(.error, log: .helper,
-                       "Terminating helper; failed to complete handshake. { id = %{public}@ }",
-                       identifier)
+                // Log removed for Release
                 task.terminationHandler = nil
                 task.terminate()
             }
@@ -76,18 +69,18 @@ extension NSXPCConnection {
         /// 2. Launch a connection to the broker
         let cn = NSXPCConnection(serviceName: name)
         cn.invalidationHandler = {
-            os_log(.error, log: .helper, "Broker connection was unexpectedely invalidated.")
+            // Log removed for Release
         }
         
         cn.remoteObjectInterface = .init(with: OEXPCMatchMaking.self)
         cn.resume()
         
         let mm = cn.remoteObjectProxyWithErrorHandler { error in
-            os_log(.error, log: .helper, "Error waiting for reply from OEXPCMatchMaking. { error = %{public}@ }", error.localizedDescription)
+            // Log removed for Release
         } as? OEXPCMatchMaking
         
         guard let mm = mm else {
-            os_log(.error, log: .helper, "Unexpected nil for OEXPCMatchMaking proxy.")
+            // Log removed for Release
             throw BrokerError(failureReason: NSLocalizedString("OEXPCMatchMaking proxy was nil", comment: ""))
         }
         
@@ -103,7 +96,7 @@ extension NSXPCConnection {
 #else
         if sem.wait(timeout: .now() + .seconds(10)) == .timedOut {
             // mediation of connection between host and helper via broker timed out
-            os_log(.error, log: .helper, "Timeout waiting for listener endpoint from broker.")
+            // Log removed for Release
             
             throw BrokerError(failureReason: NSLocalizedString("Timeout waiting for connection from helper app", comment: ""))
         }
@@ -124,10 +117,7 @@ extension NSXPCConnection {
         let newCn = NSXPCConnection(listenerEndpoint: endpoint)
         
         task.terminationHandler = { [weak newCn] task in
-            os_log(.debug, log: .helper,
-                   "Helper terminated. { id = %{public}@, exit = %d }.",
-                   identifier,
-                   task.terminationStatus)
+            // Log removed for Release
             newCn?.invalidate()
         }
         

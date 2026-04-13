@@ -25,6 +25,7 @@
  */
 
 import Foundation
+import os.log
 
 extension OSLog {
     static let `default` = OSLog(subsystem: "org.openemu.OpenEmu", category: "default")
@@ -40,9 +41,7 @@ extension OSLog {
 /// Logs a string in debug mode.
 func DLog(_ message: @autoclosure () -> String, fileID: String = #fileID, function: String = #function, line: Int = #line)
 {
-#if DEBUG
-    NSLog("\(fileID):\(line): \(function): \(message())")
-#endif
+    // Log removed for Release
 }
 
 @available(macOS 11.0, *)

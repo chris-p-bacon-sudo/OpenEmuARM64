@@ -29,11 +29,11 @@ import CoreGraphics
 
 public class Screenshot {
     let ss: OpenEmuShaders.Screenshot
-    let commandQueue: MTLCommandQueue
+    let commandQueue: MTLCommandQueue?
     
     public init(device: MTLDevice) {
         ss = .init(device: device)
-        commandQueue = device.makeCommandQueue()!
+        commandQueue = device.makeCommandQueue()
     }
     
     /// Returns a raw image from the GameRenderer.
@@ -41,7 +41,9 @@ public class Screenshot {
     /// The image dimensions are equal to the source pixel
     /// buffer and therefore not aspect corrected.
     func getCGImageFromGameRenderer(_ f: GameRenderer, flippedVertically: Bool) -> CGImage {
-        guard let commandBuffer = commandQueue.makeCommandBuffer() else { return blackImage }
+        guard let commandQueue = commandQueue,
+              let commandBuffer = commandQueue.makeCommandBuffer()
+        else { return blackImage }
         
         guard let sourceTexture = f.prepareFrameForRender(commandBuffer: commandBuffer) else {
             return blackImage
@@ -58,7 +60,9 @@ public class Screenshot {
     
     /// Returns an image of the last source image after all shaders have been applied
     func getCGImageFromOutput(gameRenderer gr: GameRenderer, filterChain f: FilterChain, flippedVertically: Bool) -> CGImage {
-        guard let commandBuffer = commandQueue.makeCommandBuffer() else { return blackImage }
+        guard let commandQueue = commandQueue,
+              let commandBuffer = commandQueue.makeCommandBuffer()
+        else { return blackImage }
         
         guard let sourceTexture = gr.prepareFrameForRender(commandBuffer: commandBuffer) else {
             return blackImage
@@ -68,16 +72,22 @@ public class Screenshot {
     }
     
     private lazy var blackImage: CGImage = {
-        let cs = CGColorSpace(name: CGColorSpace.sRGB)!
-        let ctx: CGContext = .init(data: nil,
-                                   width: 32, height: 32,
-                                   bitsPerComponent: 8,
-                                   bytesPerRow: 32 * 4,
-                                   space: cs,
-                                   bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue)!
+        let cs = CGColorSpace(name: CGColorSpace.sRGB) ?? CGColorSpaceCreateDeviceRGB()
+        let ctx: CGContext? = .init(data: nil,
+                                    width: 32, height: 32,
+                                    bitsPerComponent: 8,
+                                    bytesPerRow: 32 * 4,
+                                    space: cs,
+                                    bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue)
         
-        ctx.setFillColor(.black)
-        ctx.fill(CGRect(x: 0, y: 0, width: 32, height: 32))
-        return ctx.makeImage()!
+        guard let context = ctx else {
+            // Fallback to a tiny empty image if even context creation fails
+            return CGImage(width: 1, height: 1, bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: 4, space: cs, bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedFirst.rawValue), provider: CGDataProvider(data: Data([0,0,0,0]) as CFData)!, decode: nil, shouldInterpolate: false, intent: .defaultIntent)!
+        }
+        
+        context.setFillColor(.black)
+        context.fill(CGRect(x: 0, y: 0, width: 32, height: 32))
+        return context.makeImage() ?? 
+            CGImage(width: 1, height: 1, bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: 4, space: cs, bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedFirst.rawValue), provider: CGDataProvider(data: Data([0,0,0,0]) as CFData)!, decode: nil, shouldInterpolate: false, intent: .defaultIntent)!
     }()
 }

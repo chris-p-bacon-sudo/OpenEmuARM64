@@ -430,9 +430,6 @@ final class OEGameDocument: NSDocument {
             // The latter uses Cocoa document architecture and relies on documents having URLs,
             // including untitled (new) documents.
             var displayName = rom.game?.displayName ?? ""
-            #if DEBUG
-            displayName += " (DEBUG BUILD)"
-            #endif
             return displayName
         }
         set {
@@ -598,7 +595,7 @@ final class OEGameDocument: NSDocument {
     // MARK: - Setup
 
     func setUpGame(completionHandler handler: @escaping (_ success: Bool, _ error: Error?) -> Void) {
-        NSLog("[OEGameDocument] setUpGame() called")
+        // Log removed for Release
         guard
             emulationStatus == .notSetup,
             checkRequiredFiles(),

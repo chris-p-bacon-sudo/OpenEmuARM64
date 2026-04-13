@@ -26,10 +26,10 @@ import Foundation
 import OpenEmuKitPrivate
 
 @objc public class OEThreadGameCoreManager: GameCoreManager {
-    var helperThread: Thread!
-    var dummyTimer: Timer!
+    var helperThread: Thread?
+    var dummyTimer: Timer?
     
-    var helper: OpenEmuHelperApp!
+    var helper: OpenEmuHelperApp?
     
     typealias StopHandler = () -> Void
     var stopHandler: StopHandler?
@@ -45,21 +45,25 @@ import OpenEmuKitPrivate
     }
     
     public override func loadROM(completionHandler: @escaping StartupCompletionHandler) {
-        helperThread = Thread {
+        let thread = Thread {
             self.execute(completionHandler: completionHandler)
         }
-        helperThread.name = "org.openemu.core-manager-thread"
-        helperThread.qualityOfService = .userInitiated
+        helperThread = thread
+        thread.name = "org.openemu.core-manager-thread"
+        thread.qualityOfService = .userInitiated
         
-        helper = .init()
+        let helperInstance = OpenEmuHelperApp()
+        self.helper = helperInstance
         
-        if let proxy = OEThreadProxy(target: gameCoreOwner, thread: .main) as? OEGameCoreOwner {
-            helper.gameCoreOwner = proxy
+        if let gameCoreOwner = gameCoreOwner,
+           let proxy = OEThreadProxy(target: gameCoreOwner, thread: .main) as? OEGameCoreOwner {
+            helperInstance.gameCoreOwner = proxy
         } else {
-            fatalError("Unable to cast to OEGameCoreOwner proxy")
+            completionHandler(NSError(domain: "org.openemu.OpenEmuKit.ThreadError", code: -1, userInfo: [NSLocalizedDescriptionKey: "Unable to initialize core owner proxy"]))
+            return
         }
 
-        helperThread.start()
+        thread.start()
     }
     
     public override func stopEmulation(completionHandler handler: @escaping () -> Void) {
@@ -70,6 +74,7 @@ import OpenEmuKitPrivate
     }
     
     override func stop() {
+        guard let helperThread = helperThread else { return }
         if Thread.current == helperThread {
             stopHelperThread(nil)
         } else {
@@ -80,10 +85,14 @@ import OpenEmuKitPrivate
     private func execute(completionHandler handler: @escaping StartupCompletionHandler) {
         autoreleasepool {
             do {
+                guard let helper = helper else {
+                    throw NSError(domain: "org.openemu.OpenEmuKit.ThreadError", code: -2, userInfo: [NSLocalizedDescriptionKey: "Helper app not initialized"])
+                }
+                
                 if let proxy = OEThreadProxy(target: helper, thread: .current) as? OEGameCoreHelper {
                     gameCoreHelper = proxy
                 } else {
-                    fatalError("Unable to cast to OEGameCoreHelper proxy")
+                    throw NSError(domain: "org.openemu.OpenEmuKit.ThreadError", code: -3, userInfo: [NSLocalizedDescriptionKey: "Unable to initialize core helper proxy"])
                 }
 
                 try helper.load(withStartupInfo: startupInfo)
@@ -91,7 +100,8 @@ import OpenEmuKitPrivate
                     handler(nil)
                 }
                 
-                dummyTimer = .scheduledTimer(withTimeInterval: 1e9, repeats: true, block: { _ in })
+                let timer = Timer.scheduledTimer(withTimeInterval: 1e9, repeats: true, block: { _ in })
+                dummyTimer = timer
                 
                 CFRunLoopRun()
                 
@@ -108,7 +118,7 @@ import OpenEmuKitPrivate
     }
 
     @objc private func stopHelperThread(_ id: Any?) {
-        dummyTimer.invalidate()
+        dummyTimer?.invalidate()
         dummyTimer = nil
         
         CFRunLoopStop(CFRunLoopGetCurrent())

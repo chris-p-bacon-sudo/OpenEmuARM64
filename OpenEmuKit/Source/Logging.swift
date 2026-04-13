@@ -22,10 +22,14 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-internal import os.log
+import os.log
 
 extension OSLog {
-    static let `default` = OSLog(subsystem: "org.openemu.OpenEmuKit", category: "default")
+    static let kit       = OSLog(subsystem: "org.openemu.OpenEmuKit", category: "default")
     /// Subsystem for logging XPC helper messages.
     static let helper    = OSLog(subsystem: "org.openemu.OpenEmuKit", category: "helper")
+    /// Subsystem for audio engine messages.
+    static let audio     = OSLog(subsystem: "org.openemu.OpenEmuKit", category: "audio")
+    /// Subsystem for renderer messages.
+    static let renderer  = OSLog(subsystem: "org.openemu.OpenEmuKit", category: "renderer")
 }
