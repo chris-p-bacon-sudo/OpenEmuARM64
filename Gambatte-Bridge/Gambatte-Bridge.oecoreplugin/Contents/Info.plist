@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>English</string>
+	<key>CFBundleExecutable</key>
+	<string>gambatte_libretro.dylib</string>
+	<key>CFBundleIdentifier</key>
+	<string>org.openemu.Gambatte-Bridge</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>Gambatte (Bridge)</string>
+	<key>CFBundlePackageType</key>
+	<string>BNDL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>1.0</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<key>OEGameCoreClass</key>
+	<string>OELibretroCoreTranslator</string>
+	<key>OELibretroCorePath</key>
+	<string>gambatte_libretro.dylib</string>
+	<key>OEGameCoreName</key>
+	<string>Gambatte (Bridge)</string>
+	<key>OESystemIdentifiers</key>
+	<array>
+		<string>openemu.system.gb</string>
+	</array>
+	<key>OEGameCorePlayerCount</key>
+	<string>1</string>
+	<key>OEGameCoreOptions</key>
+	<dict>
+		<key>openemu.system.gb</key>
+		<dict>
+			<key>OEGameCoreSupportsRewinding</key>
+			<true/>
+			<key>OEGameCoreRewindInterval</key>
+			<integer>0</integer>
+			<key>OEGameCoreRewindBufferSeconds</key>
+			<integer>60</integer>
+		</dict>
+	</dict>
+</dict>
+</plist>

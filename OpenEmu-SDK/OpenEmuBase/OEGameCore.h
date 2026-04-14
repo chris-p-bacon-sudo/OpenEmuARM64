@@ -24,15 +24,22 @@
   SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#import <TargetConditionals.h>
 #import <Foundation/Foundation.h>
 #import <Metal/Metal.h>
 #if TARGET_OS_OSX
 #import <Cocoa/Cocoa.h>
 #endif
-#import <OpenEmuBase/OEGameCoreController.h>
 #import <OpenEmuBase/OESystemResponderClient.h>
 #import <OpenEmuBase/OEGeometry.h>
 #import <OpenEmuBase/OEDiffQueue.h>
+
+@class OEGameCoreController, OEGameCore;
+
+@protocol OELibretroInputReceiver <NSObject>
+- (void)receiveLibretroButton:(uint8_t)buttonID forPort:(NSUInteger)port pressed:(BOOL)pressed;
+- (void)receiveLibretroAnalogIndex:(uint8_t)index axis:(uint8_t)axis value:(int16_t)value forPort:(NSUInteger)port;
+@end
 
 #ifndef DLog
 
@@ -59,8 +66,12 @@
  * for the optimizations. Especially effective for dead code stripping and LTO.
  */
 #define OE_EXPORTED_CLASS     __attribute__((visibility("default")))
+
 #define OE_DEPRECATED(reason) __attribute__((deprecated(reason)))
 #define OE_DEPRECATED_WITH_REPLACEMENT(reason, replacement) __attribute__((deprecated(reason, replacement)))
+
+#define OEGameCoreDefaultRealtimeConstraint 0.007
+#define OEGameCoreDefaultRealtimeLimit      0.03
 
 #pragma mark -
 

@@ -1,0 +1,4 @@
+# Pre-built dylibs are not committed to the repo.
+# Download from: https://buildbot.libretro.com/nightly/apple/osx/arm64/latest/gambatte_libretro.dylib.zip
+# and place at: Gambatte-Bridge/Gambatte-Bridge.oecoreplugin/Contents/MacOS/gambatte_libretro.dylib
+*.dylib

@@ -34,6 +34,7 @@
 #import "OETimingUtils.h"
 #import "OELogging.h"
 #import <os/signpost.h>
+#import <os/lock.h>
 
 #ifndef BOOL_STR
 #define BOOL_STR(b) ((b) ? "YES" : "NO")
@@ -61,6 +62,8 @@ NSString *const OEGameCoreErrorDomain = @"org.openemu.GameCore.ErrorDomain";
 
     NSTimeInterval          lastRate;
 
+    os_unfair_lock          _ringBufferLock;
+
     NSUInteger frameCounter;
 }
 
@@ -81,6 +84,7 @@ static Class GameCoreClass = Nil;
     self = [super init];
     if(self != nil)
     {
+        _ringBufferLock = OS_UNFAIR_LOCK_INIT;
         NSUInteger count = [self audioBufferCount];
         ringBuffers = (__strong OERingBuffer **)calloc(count, sizeof(OERingBuffer *));
     }
@@ -93,6 +97,8 @@ static Class GameCoreClass = Nil;
         ringBuffers[i] = nil;
 
     free(ringBuffers);
+    _stopEmulationHandler = nil;
+    _frameCallback = nil;
 }
 
 - (NSString *)pluginName
@@ -160,6 +166,7 @@ static Class GameCoreClass = Nil;
     }
 
     CFRunLoopPerformBlock(_gameCoreRunLoop, kCFRunLoopCommonModes, block);
+    CFRunLoopWakeUp(_gameCoreRunLoop);
 }
 
 - (void)_gameCoreThreadWithStartEmulationCompletionHandler:(void (^)(void))startCompletionHandler
@@ -233,7 +240,7 @@ static Class GameCoreClass = Nil;
     __block int wasZero=1;
 #endif
 
-    OESetThreadRealtime(1. / (_rate * [self frameInterval]), .007, .03); // guessed from bsnes
+    OESetThreadRealtime(1. / (_rate * [self frameInterval]), OEGameCoreDefaultRealtimeConstraint, OEGameCoreDefaultRealtimeLimit); // guessed from bsnes
     nextFrameTime = OEMonotonicTime();
 
     while(!shouldStop)
@@ -325,9 +332,12 @@ static Class GameCoreClass = Nil;
         if (_frameCallback)
             _frameCallback(1.0 / frameRate);
 
-        // Service the event loop, which may now contain HID events, exactly once.
-        // TODO: If paused, this burns CPU waiting to unpause, because it still runs at 1x rate.
-        CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0, 0);
+        if (!executing) {
+            [NSThread sleepForTimeInterval:0.016];
+            nextFrameTime = OEMonotonicTime() + advance;
+        }
+        
+        CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.001, true);
     }
     }
 
@@ -526,10 +536,11 @@ static Class GameCoreClass = Nil;
 - (void)createMetalTextureWithDevice:(id<MTLDevice>)device
 {
     _metalDevice = device;
+    OEIntSize size = self.bufferSize;
     MTLTextureDescriptor* desc = [MTLTextureDescriptor
         texture2DDescriptorWithPixelFormat:MTLPixelFormatBGRA8Unorm
-                                     width:self.screenRect.size.width
-                                    height:self.screenRect.size.height
+                                     width:size.width
+                                    height:size.height
                                  mipmapped:false];
     [desc setUsage:MTLTextureUsageShaderRead];
     [desc setStorageMode:MTLStorageModePrivate];
@@ -610,17 +621,18 @@ static Class GameCoreClass = Nil;
 
 - (void)fastForwardAtSpeed:(CGFloat)fastForwardSpeed;
 {
-    // FIXME: Need implementation.
+    [self setRate:fastForwardSpeed];
 }
 
 - (void)rewindAtSpeed:(CGFloat)rewindSpeed;
 {
-    // FIXME: Need implementation.
+    isRewinding = (rewindSpeed > 0);
+    [self setRate:rewindSpeed];
 }
 
 - (void)slowMotionAtSpeed:(CGFloat)slowMotionSpeed;
 {
-    // FIXME: Need implementation.
+    [self setRate:slowMotionSpeed];
 }
 
 - (void)stepFrameForward
@@ -639,7 +651,7 @@ static Class GameCoreClass = Nil;
 
     _rate = rate;
     if (_rate > 0.001)
-      OESetThreadRealtime(1./(_rate * [self frameInterval]), .007, .03);
+      OESetThreadRealtime(1./(_rate * [self frameInterval]), OEGameCoreDefaultRealtimeConstraint, OEGameCoreDefaultRealtimeLimit);
 }
 
 - (void)beginPausedExecution
@@ -676,11 +688,15 @@ static Class GameCoreClass = Nil;
 {
     NSAssert1(index < [self audioBufferCount], @"The index %lu is too high", index);
     
+    os_unfair_lock_lock(&_ringBufferLock);
     OERingBuffer *result = ringBuffers[index];
     if(result == nil) {
-        /* ring buffer is 0.05 seconds
+        /* ring buffer is 0.1 seconds
          * the larger the buffer, the higher the maximum possible audio lag */
-        double frameSampleCount = [self audioSampleRateForBuffer:index] * 0.1;
+        double sampleRate = [self audioSampleRateForBuffer:index];
+        NSAssert(sampleRate > 0, @"Sample rate must be greater than 0 for buffer %lu", index);
+        
+        double frameSampleCount = sampleRate * 0.1;
         NSUInteger channelCount = [self channelCountForBuffer:index];
         NSUInteger bytesPerSample = [self audioBitDepth] / 8;
         NSAssert(frameSampleCount, @"frameSampleCount is 0");
@@ -693,6 +709,7 @@ static Class GameCoreClass = Nil;
         [result setAnticipatesUnderflow:YES];
         ringBuffers[index] = result;
     }
+    os_unfair_lock_unlock(&_ringBufferLock);
 
     return result;
 }
