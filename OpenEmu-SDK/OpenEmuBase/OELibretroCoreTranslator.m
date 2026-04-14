@@ -1311,6 +1311,30 @@ static const NSUInteger OEGBButtonCount = sizeof(OEGBButtonToLibretro) / sizeof(
 
 #pragma mark - Save States
 
+- (void)saveStateToFileAtPath:(NSString *)fileName completionHandler:(void(^)(BOOL success, NSError *error))block {
+    NSError *err = nil;
+    NSData *data = [self serializeStateWithError:&err];
+    if (!data) {
+        if (block) block(NO, err);
+        return;
+    }
+    NSError *writeErr = nil;
+    BOOL ok = [data writeToFile:fileName options:NSDataWritingAtomic error:&writeErr];
+    if (block) block(ok, writeErr);
+}
+
+- (void)loadStateFromFileAtPath:(NSString *)fileName completionHandler:(void(^)(BOOL success, NSError *error))block {
+    NSError *readErr = nil;
+    NSData *data = [NSData dataWithContentsOfFile:fileName options:0 error:&readErr];
+    if (!data) {
+        if (block) block(NO, readErr);
+        return;
+    }
+    NSError *err = nil;
+    BOOL ok = [self deserializeState:data withError:&err];
+    if (block) block(ok, err);
+}
+
 - (NSData *)serializeStateWithError:(NSError **)error {
     if (!_retro_serialize_size || !_retro_serialize) {
         if (error) {
