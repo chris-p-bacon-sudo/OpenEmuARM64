@@ -534,9 +534,23 @@ static bool libretro_environment_cb(unsigned cmd, void *data) {
                     }
                 }
                 
-                // Flycast/Reicast Defaults (core uses 'reicast_' prefix)
+                // Flycast/Reicast Defaults (core uses 'reicast_' prefix for legacy vars)
                 if ([systemID containsString:@"dc"]) {
                     if (strcmp(var->key, "reicast_hle_bios") == 0) {
+                        var->value = "disabled";
+                        return true;
+                    }
+                    // 2x native resolution (640x480 → 1280x960) — good default for M-series Macs
+                    if (strcmp(var->key, "reicast_internal_resolution") == 0 ||
+                        strcmp(var->key, "flycast_internal_resolution") == 0) {
+                        var->value = "1280x960";
+                        return true;
+                    }
+                    // Disable threaded rendering — our bridge provides a single GL context;
+                    // Flycast's threaded renderer spawns a second thread that needs a shared
+                    // context we don't provide, which causes black screens on Apple Silicon.
+                    if (strcmp(var->key, "reicast_threaded_rendering") == 0 ||
+                        strcmp(var->key, "flycast_threaded_rendering") == 0) {
                         var->value = "disabled";
                         return true;
                     }
@@ -1281,6 +1295,88 @@ static const NSUInteger OEGBButtonCount = sizeof(OEGBButtonToLibretro) / sizeof(
 - (oneway void)didReleaseGBButton:(NSInteger)button {
     if ((NSUInteger)button < OEGBButtonCount) {
         [self receiveLibretroButton:OEGBButtonToLibretro[button] forPort:0 pressed:NO];
+    }
+}
+
+#pragma mark - OEDCSystemResponderClient
+
+// OEDCButton enum values (must match OEDCSystemResponderClient.h):
+// Up=0, Down=1, Left=2, Right=3, A=4, B=5, X=6, Y=7,
+// AnalogL=8, AnalogR=9, Start=10,
+// AnalogUp=11, AnalogDown=12, AnalogLeft=13, AnalogRight=14
+
+// Digital button → RETRO_DEVICE_ID_JOYPAD_* mapping.
+// Analog entries (AnalogL, AnalogR, AnalogUp/Down/Left/Right) are handled
+// separately in didMoveDCJoystickDirection: and map to 0xFF as a sentinel.
+static const uint8_t OEDCButtonToLibretro[] = {
+    RETRO_DEVICE_ID_JOYPAD_UP,     // OEDCButtonUp     = 0
+    RETRO_DEVICE_ID_JOYPAD_DOWN,   // OEDCButtonDown   = 1
+    RETRO_DEVICE_ID_JOYPAD_LEFT,   // OEDCButtonLeft   = 2
+    RETRO_DEVICE_ID_JOYPAD_RIGHT,  // OEDCButtonRight  = 3
+    RETRO_DEVICE_ID_JOYPAD_A,      // OEDCButtonA      = 4
+    RETRO_DEVICE_ID_JOYPAD_B,      // OEDCButtonB      = 5
+    RETRO_DEVICE_ID_JOYPAD_X,      // OEDCButtonX      = 6
+    RETRO_DEVICE_ID_JOYPAD_Y,      // OEDCButtonY      = 7
+    0xFF,                          // OEDCAnalogL      = 8  (analog — not a digital button)
+    0xFF,                          // OEDCAnalogR      = 9  (analog — not a digital button)
+    RETRO_DEVICE_ID_JOYPAD_START,  // OEDCButtonStart  = 10
+    0xFF,                          // OEDCAnalogUp     = 11 (analog — not a digital button)
+    0xFF,                          // OEDCAnalogDown   = 12 (analog — not a digital button)
+    0xFF,                          // OEDCAnalogLeft   = 13 (analog — not a digital button)
+    0xFF,                          // OEDCAnalogRight  = 14 (analog — not a digital button)
+};
+static const NSUInteger OEDCButtonCount = sizeof(OEDCButtonToLibretro) / sizeof(OEDCButtonToLibretro[0]);
+
+- (oneway void)didPushDCButton:(NSInteger)button forPlayer:(NSUInteger)player {
+    if ((NSUInteger)button >= OEDCButtonCount) return;
+    uint8_t libretroID = OEDCButtonToLibretro[button];
+    if (libretroID != 0xFF) {
+        NSUInteger port = player > 0 ? player - 1 : 0;
+        [self receiveLibretroButton:libretroID forPort:port pressed:YES];
+    }
+}
+
+- (oneway void)didReleaseDCButton:(NSInteger)button forPlayer:(NSUInteger)player {
+    if ((NSUInteger)button >= OEDCButtonCount) return;
+    uint8_t libretroID = OEDCButtonToLibretro[button];
+    if (libretroID != 0xFF) {
+        NSUInteger port = player > 0 ? player - 1 : 0;
+        [self receiveLibretroButton:libretroID forPort:port pressed:NO];
+    }
+}
+
+- (oneway void)didMoveDCJoystickDirection:(NSInteger)button withValue:(CGFloat)value forPlayer:(NSUInteger)player {
+    NSUInteger port = player > 0 ? player - 1 : 0;
+    if (port >= 4) return;
+
+    // Scale CGFloat value to libretro int16_t range.
+    // Sticks: OE sends [-1.0, 1.0] → libretro [-32768, 32767]
+    // Triggers: OE sends [0.0, 1.0] → libretro [0, 32767] (stored as positive half-range)
+    int16_t scaled = (int16_t)(value * 32767.0);
+
+    switch (button) {
+        // Analog stick axes — mapped to left stick (index 0)
+        case 13: // OEDCAnalogLeft  → X axis negative
+            _analogStates[port][RETRO_DEVICE_INDEX_ANALOG_LEFT][RETRO_DEVICE_ID_ANALOG_X] = scaled;
+            break;
+        case 14: // OEDCAnalogRight → X axis positive
+            _analogStates[port][RETRO_DEVICE_INDEX_ANALOG_LEFT][RETRO_DEVICE_ID_ANALOG_X] = scaled;
+            break;
+        case 11: // OEDCAnalogUp    → Y axis negative (up = negative in libretro)
+            _analogStates[port][RETRO_DEVICE_INDEX_ANALOG_LEFT][RETRO_DEVICE_ID_ANALOG_Y] = scaled;
+            break;
+        case 12: // OEDCAnalogDown  → Y axis positive
+            _analogStates[port][RETRO_DEVICE_INDEX_ANALOG_LEFT][RETRO_DEVICE_ID_ANALOG_Y] = scaled;
+            break;
+        // Analog triggers — mapped to RETRO_DEVICE_INDEX_ANALOG_BUTTON (index 2)
+        case 8:  // OEDCAnalogL → left trigger
+            _analogStates[port][RETRO_DEVICE_INDEX_ANALOG_BUTTON][RETRO_DEVICE_ID_ANALOG_X] = scaled;
+            break;
+        case 9:  // OEDCAnalogR → right trigger
+            _analogStates[port][RETRO_DEVICE_INDEX_ANALOG_BUTTON][RETRO_DEVICE_ID_ANALOG_Y] = scaled;
+            break;
+        default:
+            break;
     }
 }
 
