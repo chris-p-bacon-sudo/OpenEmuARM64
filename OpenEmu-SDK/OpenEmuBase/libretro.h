@@ -31,12 +31,20 @@ extern "C" {
 #define RETRO_DEVICE_ID_POINTER_X 0
 #define RETRO_DEVICE_ID_POINTER_Y 1
 #define RETRO_DEVICE_ID_POINTER_PRESSED 2
+#define RETRO_DEVICE_INDEX_ANALOG_LEFT   0
+#define RETRO_DEVICE_INDEX_ANALOG_RIGHT  1
+#define RETRO_DEVICE_INDEX_ANALOG_BUTTON 2
+#define RETRO_DEVICE_ID_ANALOG_X         0
+#define RETRO_DEVICE_ID_ANALOG_Y         1
+
 typedef bool (*retro_environment_t)(unsigned cmd, void *data);
 typedef void (*retro_video_refresh_t)(const void *data, unsigned width, unsigned height, size_t pitch);
 typedef void (*retro_audio_sample_t)(int16_t left, int16_t right);
 typedef size_t (*retro_audio_sample_batch_t)(const int16_t *data, size_t frames);
 typedef void (*retro_input_poll_t)(void);
 typedef int16_t (*retro_input_state_t)(unsigned port, unsigned device, unsigned index, unsigned id);
+typedef void (*retro_keyboard_event_t)(bool down, unsigned keycode, uint32_t character, uint16_t key_modifiers);
+struct retro_keyboard_callback { retro_keyboard_event_t callback; };
 struct retro_system_info { const char *library_name; const char *library_version; const char *valid_extensions; bool need_fullpath; bool block_extract; };
 struct retro_game_geometry { unsigned base_width; unsigned base_height; unsigned max_width; unsigned max_height; float aspect_ratio; };
 struct retro_system_timing { double fps; double sample_rate; };

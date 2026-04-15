@@ -60,6 +60,7 @@ static inline uint32_t convert_rgb565_to_bgra8888(uint16_t pix) {
 #define RETRO_ENVIRONMENT_SET_INPUT_DESCRIPTORS 11
 #define RETRO_ENVIRONMENT_SET_CONTROLLER_INFO 35
 #define RETRO_ENVIRONMENT_SET_HW_RENDER_CONTEXT_NEGOTIATION_INTERFACE 26
+#define RETRO_ENVIRONMENT_SET_KEYBOARD_CALLBACK 12
 
 @interface OELibretroCoreTranslator () <OELibretroInputReceiver>
 @property (nonatomic, strong) NSBundle *coreBundle;
@@ -296,8 +297,10 @@ static void libretro_log_cb(enum retro_log_level level, const char *fmt, ...) {
     
     // Input state: 4 ports × 16 buttons (RETRO_DEVICE_JOYPAD)
     int16_t _buttonStates[4][16];
-    // Analog state: 4 ports × 2 sticks (index) × 2 axes
-    int16_t _analogStates[4][2][2];
+    // Analog state: 4 ports × 3 indices × 2 axes
+    int16_t _analogStates[4][3][2];
+    // Keyboard event callback registered by cores that use keyboard input (e.g. VICE)
+    retro_keyboard_event_t _retro_keyboard_event;
     
     // Logging: Resolution tracking
     unsigned _lastWidth;
@@ -464,6 +467,12 @@ static bool libretro_environment_cb(unsigned cmd, void *data) {
             // We acknowledge it but let the existing context handle it.
             NSLog(@"[OELibretro] Core requested context negotiation interface.");
             return true;
+        case RETRO_ENVIRONMENT_SET_KEYBOARD_CALLBACK:
+            if (data) {
+                struct retro_keyboard_callback *kb = (struct retro_keyboard_callback *)data;
+                _current->_retro_keyboard_event = kb->callback;
+            }
+            return true;
         case RETRO_ENVIRONMENT_SET_INPUT_DESCRIPTORS:
         case RETRO_ENVIRONMENT_SET_CONTROLLER_INFO:
             // Acknowledge but ignore — OpenEmu has its own input system.
@@ -573,6 +582,30 @@ static bool libretro_environment_cb(unsigned cmd, void *data) {
                         return true;
                     }
                     if (strcmp(var->key, "ppsspp_force_max_fps") == 0) {
+                        var->value = "enabled";
+                        return true;
+                    }
+                }
+
+                // VICE (Commodore 64) Defaults
+                if ([systemID containsString:@"c64"]) {
+                    // C64C model — more compatible with late-era software
+                    if (strcmp(var->key, "vice_c64_model") == 0) {
+                        var->value = "C64C PAL";
+                        return true;
+                    }
+                    // Disable true drive emulation by default — it's accurate but slow
+                    if (strcmp(var->key, "vice_drive_true_emulation") == 0) {
+                        var->value = "disabled";
+                        return true;
+                    }
+                    // Joystick in port 2 is the standard for most C64 games
+                    if (strcmp(var->key, "vice_joyport") == 0) {
+                        var->value = "2";
+                        return true;
+                    }
+                    // Autostart — load and run the first program on the disk/tape
+                    if (strcmp(var->key, "vice_autostart") == 0) {
                         var->value = "enabled";
                         return true;
                     }
@@ -786,6 +819,26 @@ static void libretro_video_refresh_cb(const void *data, unsigned width, unsigned
 
         _current->_videoBuffer = data;
 
+        static int videoFrameCount = 0;
+        int fc = videoFrameCount++;
+        if (fc == 0 || fc == 60) {
+            FILE *f = fopen("/tmp/oe_bridge_load.txt", "a");
+            if (f) {
+                fprintf(f, "[video_cb] frame %d: %ux%u pitch=%zu hint=%p fmt=%d data=%p\n", fc, width, height, pitch, _current->_oeBufferHint, _current.retroPixelFormat, data);
+                // Log first few source pixels (RGB565) and what they'd convert to
+                if (data && width > 0) {
+                    const uint16_t *src = (const uint16_t *)data;
+                    fprintf(f, "[video_cb] first 4 src pixels (RGB565): %04x %04x %04x %04x\n", src[0], src[1], src[2], src[3]);
+                }
+                // Log first few dest pixels after conversion
+                if (_current->_oeBufferHint && width > 0) {
+                    // peek after copy — but we haven't copied yet, so log the hint pointer value
+                    fprintf(f, "[video_cb] bufferSize=%dx%d screenRect=%dx%d\n", (int)_current.bufferSize.width, (int)_current.bufferSize.height, _current.screenRect.size.width, _current.screenRect.size.height);
+                }
+                fclose(f);
+            }
+        }
+
         if (_current->_oeBufferHint) {
             uint32_t *dst = (uint32_t *)_current->_oeBufferHint;
             size_t destRowWords = _current.bufferSize.width;
@@ -815,6 +868,15 @@ static void libretro_video_refresh_cb(const void *data, unsigned width, unsigned
                 // Copy to (0,0) and let OpenEmu Metal handle centering of the viewport.
                 // No R/B swap — the pixel conversion functions handle format correctly.
                 handler((const uint8_t *)data, dst, width, height, pitch, destRowWords, NO);
+                
+                static int postCopyLogCount = 0;
+                if (postCopyLogCount++ == 0) {
+                    FILE *f = fopen("/tmp/oe_bridge_load.txt", "a");
+                    if (f) {
+                        fprintf(f, "[video_cb] post-copy first 4 dst pixels (BGRA): %08x %08x %08x %08x\n", dst[0], dst[1], dst[2], dst[3]);
+                        fclose(f);
+                    }
+                }
             }
         }
     }
@@ -919,6 +981,9 @@ static void* bridge_dlsym(void *handle, const char *symbol) {
 
 - (BOOL)loadFileAtPath:(NSString *)path error:(NSError **)error {
     _current = self;
+    // Diagnostic log to /tmp — remove after debugging
+    FILE *diagLog = fopen("/tmp/oe_bridge_load.txt", "a");
+    if (diagLog) { fprintf(diagLog, "[loadFileAtPath] path=%s\n", [path UTF8String]); fflush(diagLog); }
     self.coreBundle = [[self owner] bundle];
     
     // If owner didn't provide a bundle, find it by scanning all loaded bundles
@@ -968,10 +1033,12 @@ static void* bridge_dlsym(void *handle, const char *symbol) {
 
     NSLog(@"[OELibretro] Bundle path: %@", self.coreBundle.bundlePath);
     NSLog(@"[OELibretro] corePath resolved: %@", corePath);
+    if (diagLog) { fprintf(diagLog, "[loadFileAtPath] bundle=%s corePath=%s\n", [self.coreBundle.bundlePath UTF8String] ?: "(nil)", [corePath UTF8String] ?: "(nil)"); fflush(diagLog); }
     NSLog(@"[OELibretro] ROM path: %@", path);
     
     if (![[NSFileManager defaultManager] fileExistsAtPath:corePath]) {
         NSLog(@"[OELibretro] ERROR: Core dylib NOT found at path!");
+        if (diagLog) { fprintf(diagLog, "[loadFileAtPath] FAIL: dylib not found at %s\n", [corePath UTF8String]); fclose(diagLog); }
         if (error) {
             *error = [NSError errorWithDomain:OEGameCoreErrorDomain code:OEGameCoreCouldNotLoadROMError userInfo:@{NSLocalizedDescriptionKey: [NSString stringWithFormat:@"Libretro core not found at %@", corePath]}];
         }
@@ -982,11 +1049,13 @@ static void* bridge_dlsym(void *handle, const char *symbol) {
     if (!_coreHandle) {
         const char *err = dlerror();
         NSLog(@"[OELibretro] dlopen FAILED: %s", err ?: "unknown error");
+        if (diagLog) { fprintf(diagLog, "[loadFileAtPath] FAIL: dlopen failed: %s\n", err ?: "unknown"); fclose(diagLog); }
         if (error) {
             *error = [NSError errorWithDomain:OEGameCoreErrorDomain code:OEGameCoreCouldNotLoadROMError userInfo:@{NSLocalizedDescriptionKey: [NSString stringWithFormat:@"Failed to load libretro core: %s", err ?: "unknown error"]}];
         }
         return NO;
     }
+    if (diagLog) { fprintf(diagLog, "[loadFileAtPath] dlopen OK\n"); fflush(diagLog); }
     
     // Resolve all mandatory symbols with fallback and logging
     #define RESOLVE(name) _##name = bridge_dlsym(_coreHandle, #name); \
@@ -1071,6 +1140,8 @@ static void* bridge_dlsym(void *handle, const char *symbol) {
     
     _clearFramesRemaining = 20; // Warm-up: Clear buffer for 20 frames to avoid memory artifacts
 
+    fprintf(stderr, "[OELibretro] Calling retro_load_game: path=%s data=%p size=%zu\n",
+            gameInfo.path ?: "(null)", gameInfo.data, gameInfo.size);
     NSLog(@"[OELibretro] Successfully prepared game info. Calling retro_load_game...");
     if (!_retro_load_game(&gameInfo)) {
         errorMsg = @"The core rejected the ROM load. This is usually due to missing BIOS or corrupted files.";
@@ -1082,6 +1153,8 @@ static void* bridge_dlsym(void *handle, const char *symbol) {
              errorMsg = @"Nintendo DS load failed. Ensure bios7.bin, bios9.bin, firmware.bin are in your BIOS folder.";
         }
         
+        fprintf(stderr, "[OELibretro] retro_load_game FAILED for system: %s\n", [systemID UTF8String]);
+        if (diagLog) { fprintf(diagLog, "[loadFileAtPath] retro_load_game FAILED system=%s\n", [systemID UTF8String]); fflush(diagLog); fclose(diagLog); }
         NSLog(@"[OELibretro] !!! CRITICAL LOAD FAILURE: %@", errorMsg);
         if (error) {
             *error = [NSError errorWithDomain:OEGameCoreErrorDomain 
@@ -1102,6 +1175,7 @@ static void* bridge_dlsym(void *handle, const char *symbol) {
         }
         
         NSLog(@"[OELibretro] Core Handshake: %dx%d (max), Audio: %.0fHz", (int)_cachedMaxWidth, (int)_cachedMaxHeight, _avInfo.timing.sample_rate);
+    if (diagLog) { fprintf(diagLog, "[loadFileAtPath] SUCCESS %dx%d %.0fHz\n", (int)_cachedMaxWidth, (int)_cachedMaxHeight, _avInfo.timing.sample_rate); fflush(diagLog); fclose(diagLog); }
     }
     
     return YES;
@@ -1155,6 +1229,13 @@ static void* bridge_dlsym(void *handle, const char *symbol) {
         if (width == 0) width = 1024;
         if (height == 0) height = 1024;
         
+        static BOOL loggedOnce = NO;
+        if (!loggedOnce) {
+            loggedOnce = YES;
+            FILE *f = fopen("/tmp/oe_bridge_load.txt", "a");
+            if (f) { fprintf(f, "[bufferSize] %zux%zu (max_w=%u max_h=%u)\n", width, height, _avInfo.geometry.max_width, _avInfo.geometry.max_height); fclose(f); }
+        }
+        
         return OEIntSizeMake((int)width, (int)height);
     }
 }
@@ -1167,6 +1248,13 @@ static void* bridge_dlsym(void *handle, const char *symbol) {
         // Fallback to max dimensions if base is invalid
         if (width <= 0) width = 320;
         if (height <= 0) height = 240;
+        
+        static BOOL loggedOnce = NO;
+        if (!loggedOnce) {
+            loggedOnce = YES;
+            FILE *f = fopen("/tmp/oe_bridge_load.txt", "a");
+            if (f) { fprintf(f, "[screenRect] %dx%d (base_w=%u base_h=%u)\n", width, height, _avInfo.geometry.base_width, _avInfo.geometry.base_height); fclose(f); }
+        }
         
         // Always return from (0,0). OpenEmu's Metal renderer extracts the game from our Max-Canvas.
         return OEIntRectMake(0, 0, width, height);
@@ -1391,6 +1479,61 @@ static const NSUInteger OEGBButtonCount = sizeof(OEGBButtonToLibretro) / sizeof(
     NSLog(@"[OELibretro] Save state loaded: %lu bytes", (unsigned long)state.length);
     return YES;
 }
+
+#pragma mark - OEC64SystemResponderClient
+
+// OEC64Button enum values (must match OEC64SystemResponderClient.h):
+// OEC64JoystickUp=0, Down=1, Left=2, Right=3, Fire=4, Jump=5, SwapJoysticks=6
+static const uint8_t OEC64ButtonToLibretro[] = {
+    RETRO_DEVICE_ID_JOYPAD_UP,    // OEC64JoystickUp    = 0
+    RETRO_DEVICE_ID_JOYPAD_DOWN,  // OEC64JoystickDown  = 1
+    RETRO_DEVICE_ID_JOYPAD_LEFT,  // OEC64JoystickLeft  = 2
+    RETRO_DEVICE_ID_JOYPAD_RIGHT, // OEC64JoystickRight = 3
+    RETRO_DEVICE_ID_JOYPAD_B,     // OEC64ButtonFire    = 4 (primary fire)
+    RETRO_DEVICE_ID_JOYPAD_A,     // OEC64ButtonJump    = 5 (second fire / up)
+    0xFF,                          // OEC64SwapJoysticks = 6 (handled by system responder)
+};
+static const NSUInteger OEC64ButtonCount = sizeof(OEC64ButtonToLibretro) / sizeof(OEC64ButtonToLibretro[0]);
+
+// VICE uses joystick port 2 by default for single-player games.
+// Port index is 0-based: port 2 in VICE = index 1 in libretro.
+static const NSUInteger kVICEDefaultJoystickPort = 1;
+
+- (oneway void)didPushC64Button:(NSInteger)button forPlayer:(NSUInteger)player {
+    if ((NSUInteger)button >= OEC64ButtonCount) return;
+    uint8_t retroButton = OEC64ButtonToLibretro[button];
+    if (retroButton == 0xFF) return; // SwapJoysticks — handled upstream
+    NSUInteger port = player > 0 ? player - 1 : kVICEDefaultJoystickPort;
+    [self receiveLibretroButton:retroButton forPort:port pressed:YES];
+}
+
+- (oneway void)didReleaseC64Button:(NSInteger)button forPlayer:(NSUInteger)player {
+    if ((NSUInteger)button >= OEC64ButtonCount) return;
+    uint8_t retroButton = OEC64ButtonToLibretro[button];
+    if (retroButton == 0xFF) return;
+    NSUInteger port = player > 0 ? player - 1 : kVICEDefaultJoystickPort;
+    [self receiveLibretroButton:retroButton forPort:port pressed:NO];
+}
+
+- (oneway void)swapJoysticks {}
+
+// Keyboard passthrough — forward raw HID keycodes as libretro keyboard events.
+// VICE's libretro core maps these directly to C64 key matrix positions.
+- (oneway void)keyDown:(NSUInteger)keyCode {
+    if (_retro_keyboard_event) {
+        _retro_keyboard_event(true, (unsigned)keyCode, 0, 0);
+    }
+}
+
+- (oneway void)keyUp:(NSUInteger)keyCode {
+    if (_retro_keyboard_event) {
+        _retro_keyboard_event(false, (unsigned)keyCode, 0, 0);
+    }
+}
+
+// Mouse stubs — C64 protocol requires these; no-arg variants not covered by generic stubs
+- (oneway void)leftMouseUp {}
+- (oneway void)rightMouseUp {}
 
 #pragma mark - NDS Specific Responder
 - (oneway void)didPushNDSButton:(NSInteger)button forPlayer:(NSUInteger)player {}

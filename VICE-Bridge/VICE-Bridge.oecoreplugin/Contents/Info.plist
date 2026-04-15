@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>English</string>
+	<key>CFBundleExecutable</key>
+	<string>VICE-Bridge</string>
+	<key>CFBundleIdentifier</key>
+	<string>org.openemu.VICE-Bridge</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>VICE (Bridge)</string>
+	<key>CFBundlePackageType</key>
+	<string>BNDL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>1.0</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<key>NSPrincipalClass</key>
+	<string>OEGameCoreController</string>
+	<key>OEGameCoreClass</key>
+	<string>OELibretroCoreTranslator</string>
+	<key>OELibretroCorePath</key>
+	<string>vice_x64_libretro.dylib</string>
+	<key>OEGameCoreName</key>
+	<string>VICE (Bridge)</string>
+	<key>OESystemIdentifiers</key>
+	<array>
+		<string>openemu.system.c64</string>
+	</array>
+	<key>OEGameCorePlayerCount</key>
+	<string>2</string>
+	<key>OEGameCoreOptions</key>
+	<dict>
+		<key>openemu.system.c64</key>
+		<dict>
+			<key>OEGameCoreSupportsRewinding</key>
+			<false/>
+		</dict>
+	</dict>
+</dict>
+</plist>

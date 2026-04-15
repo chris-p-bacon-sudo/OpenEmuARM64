@@ -74,6 +74,7 @@
 			dependencies = (
 				87F077B023B68C64001FFC9B /* PBXTargetDependency */,
 				873A363E1FE233BA0004D81D /* PBXTargetDependency */,
+				87FBC0C21BFC7A0000AECF5A /* PBXTargetDependency */,
 				87BD9E231C2A6652006722DF /* PBXTargetDependency */,
 				87BD9E211C2A663B006722DF /* PBXTargetDependency */,
 				87BD9E1F1C2A662D006722DF /* PBXTargetDependency */,
@@ -370,6 +371,7 @@
 		8763A38F1D5694E90089C30B /* OEArcadeSystemController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8763A38E1D5694E90089C30B /* OEArcadeSystemController.swift */; };
 		877EDD191E24BC63004D68E7 /* Controller-Preferences-JAP.plist in Resources */ = {isa = PBXBuildFile; fileRef = 877EDD141E24BC63004D68E7 /* Controller-Preferences-JAP.plist */; };
 		877EDD231E24BEE0004D68E7 /* Controller-Preferences-JAP.plist in Resources */ = {isa = PBXBuildFile; fileRef = 877EDD1E1E24BEE0004D68E7 /* Controller-Preferences-JAP.plist */; };
+		87FBC0C01BFC7A0000AECF5A /* Commodore 64.oesystemplugin in Copy System Plugins to App Plugins */ = {isa = PBXBuildFile; fileRef = 87FBC06D1BFC70FE00AECF5A /* Commodore 64.oesystemplugin */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		87BD9E241C2A66B1006722DF /* Atari 5200.oesystemplugin in Copy System Plugins to App Plugins */ = {isa = PBXBuildFile; fileRef = 94A224B31707544100098DA0 /* Atari 5200.oesystemplugin */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		87BD9E251C2A66BC006722DF /* Atari 7800.oesystemplugin in Copy System Plugins to App Plugins */ = {isa = PBXBuildFile; fileRef = 941F5A0117A785AD0005D7EA /* Atari 7800.oesystemplugin */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		87BD9E261C2A66CE006722DF /* Lynx.oesystemplugin in Copy System Plugins to App Plugins */ = {isa = PBXBuildFile; fileRef = 94A22453170753C800098DA0 /* Lynx.oesystemplugin */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
@@ -1045,6 +1047,13 @@
 			remoteGlobalIDString = 943F998A1707D51100270E89;
 			remoteInfo = Vectrex;
 		};
+		87FBC0C11BFC7A0000AECF5A /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 2A37F4A9FDCFA73011CA2CEA /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 87FBC06C1BFC70FE00AECF5A;
+			remoteInfo = "Commodore 64";
+		};
 		87BD9E221C2A6652006722DF /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 2A37F4A9FDCFA73011CA2CEA /* Project object */;
@@ -1224,6 +1233,7 @@
 				87BD9E261C2A66CE006722DF /* Lynx.oesystemplugin in Copy System Plugins to App Plugins */,
 				87BD9E251C2A66BC006722DF /* Atari 7800.oesystemplugin in Copy System Plugins to App Plugins */,
 				87BD9E241C2A66B1006722DF /* Atari 5200.oesystemplugin in Copy System Plugins to App Plugins */,
+				87FBC0C01BFC7A0000AECF5A /* Commodore 64.oesystemplugin in Copy System Plugins to App Plugins */,
 				946C7ABB19EE4AF4000F9466 /* Atari 2600.oesystemplugin in Copy System Plugins to App Plugins */,
 				94CEB29C17A8D507005A2107 /* Sega 32X.oesystemplugin in Copy System Plugins to App Plugins */,
 				940553B917A35FB4009B505D /* PC Engine.oesystemplugin in Copy System Plugins to App Plugins */,
@@ -7129,6 +7139,11 @@
 			isa = PBXTargetDependency;
 			target = 943F998A1707D51100270E89 /* Vectrex */;
 			targetProxy = 87BD9E201C2A663B006722DF /* PBXContainerItemProxy */;
+		};
+		87FBC0C21BFC7A0000AECF5A /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 87FBC06C1BFC70FE00AECF5A /* Commodore 64 */;
+			targetProxy = 87FBC0C11BFC7A0000AECF5A /* PBXContainerItemProxy */;
 		};
 		87BD9E231C2A6652006722DF /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
