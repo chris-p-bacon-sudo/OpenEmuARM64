@@ -5,7 +5,65 @@
     <link>https://github.com/nickybmon/OpenEmu-Silicon/releases</link>
     <description>Most recent changes with links to updates.</description>
     <language>en</language>
-            <item>
+                <item>
+      <title>OpenEmu-Silicon 1.0.5</title>
+      <description>
+        <![CDATA[
+        <h2>OpenEmu-Silicon 1.0.5</h2>
+        <h3>What's New in 1.0.5</h3>
+        <p>### GameCube is here</p>
+        <p>The Dolphin core is now available for download from Preferences → Cores. GameCube games load and run natively on Apple Silicon with full Metal rendering and save state support. Wii support is included but has not been fully tested — treat it as experimental for now.</p>
+        <p>**Migrating from original OpenEmu?** Dolphin save states from the original app are not compatible due to the x86 → arm64 architecture change and different Dolphin version. You'll see a recovery dialog on first launch — choose "Reopen without loading state" to continue. Your memory card saves are not affected.</p>
+        <p>### Dreamcast — semi-working</p>
+        <p>Flycast is available and most games are playable. There is a known cold-boot issue on some titles where the first launch shows a black screen — close the game and relaunch and it will work. Full details and ongoing investigation in [issue #169](https://github.com/nickybmon/OpenEmu-Silicon/issues/169).</p>
+        <p>### 3DO now available</p>
+        <p>The 4DO core builds natively on arm64 and is now downloadable from Preferences → Cores. Requires the `panafz10.bin` BIOS file in `~/Library/Application Support/OpenEmu/BIOS/`.</p>
+        <p>### Coming soon — libretro bridge</p>
+        <p>We're building a translation layer that will allow libretro cores to run inside OpenEmu without being rewritten from scratch. This opens the door to systems that were previously impossible to support — MAME/Arcade, Commodore 64 (VICE), Nintendo 3DS, and others. The first proof of concept (Game Boy via Gambatte) is working. This will ship in a future release.</p>
+        <h3>Bug Fixes</h3>
+        <p>**GameCube / Dolphin**</p>
+        <ul>
+        <li>Fixed crash when autoloading a save state before the Metal renderer is fully initialized</li>
+        <li>Fixed save state completion timing — states now save and restore reliably</li>
+        <li>Fixed audio routing through the OE pull model, resolving volume and buffer issues</li>
+        <li>Fixed Classic Controller trigger and Nunchuk axis mappings</li>
+        <li>Fixed Wii system plugin header paths and missing controller images</li>
+        <li>Replaced placeholder Wii controller image with Wiimote + Nunchuk artwork</li>
+        <li>Added Wii system plugin so Dolphin handles both GameCube and Wii games from the same core</li>
+        </ul>
+        <p>**Dreamcast / Flycast**</p>
+        <ul>
+        <li>Fixed cold-launch black screen on ARM64</li>
+        <li>Fixed game loop hang on quit</li>
+        <li>Restored audio back-pressure to prevent 3–5× speed gameplay on warm boot</li>
+        <li>Fixed save state race condition on ARM64</li>
+        <li>Prevented duplicate game windows when relaunching a running game</li>
+        </ul>
+        <p>**Game Boy / Gambatte**</p>
+        <ul>
+        <li>Fixed white screen on launch caused by unallocated video buffer</li>
+        </ul>
+        <p>**General**</p>
+        <ul>
+        <li>Fixed crash when a system plugin had a nil controller description</li>
+        <li>Fixed keyboard remapping being blocked when HID access status was unknown</li>
+        <li>Fixed Sentry consent dialog hanging the main thread on first launch</li>
+        <li>Fixed a warning that now appears before deleting an incompatible save state (instead of silently deleting)</li>
+        <li>Fixed box art lookup — libretro-thumbnails is now used as a third-tier fallback when OpenVGDB and ScreenScraper return nothing</li>
+        </ul>
+        ]]>
+      </description>
+      <pubDate>Thu, 16 Apr 2026 01:43:34 +0000</pubDate>
+      <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
+      <enclosure
+        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/v1.0.5/OpenEmu-Silicon.dmg"
+        sparkle:version="6"
+        sparkle:shortVersionString="1.0.5"
+        sparkle:edSignature="3onQH2WjUCWQshqoDf8e7vKhP84aRo8g2M6W0JOvrB8/sD5Jb3iDY4pNTgEIYXlRtxWCyIDuXFGUVgHaQrFjDg=="
+        length="46195374"
+        type="application/octet-stream"/>
+    </item>
+<item>
       <title>OpenEmu-Silicon 1.0.4</title>
       <description>
         <![CDATA[
