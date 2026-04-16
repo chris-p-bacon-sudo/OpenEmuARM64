@@ -546,12 +546,26 @@ static bool libretro_environment_cb(unsigned cmd, void *data) {
                         var->value = "1280x960";
                         return true;
                     }
-                    // Disable threaded rendering — our bridge provides a single GL context;
-                    // Flycast's threaded renderer spawns a second thread that needs a shared
-                    // context we don't provide, which causes black screens on Apple Silicon.
+                    // Enable threaded rendering — matches the native Flycast fix in v1.0.5
+                    // (commit 7e0a0021). Disabling it caused black screens on some hardware,
+                    // but re-enabling it paired with the SH4 interpreter path is stable.
                     if (strcmp(var->key, "reicast_threaded_rendering") == 0 ||
                         strcmp(var->key, "flycast_threaded_rendering") == 0) {
+                        var->value = "enabled";
+                        return true;
+                    }
+                    // Force interpreter — JIT/dynarec is broken on ARM64 macOS.
+                    // This matches the native Flycast behavior post-v1.0.5.
+                    if (strcmp(var->key, "reicast_dynarec") == 0 ||
+                        strcmp(var->key, "flycast_dynarec") == 0) {
                         var->value = "disabled";
+                        return true;
+                    }
+                    // Fast GD-ROM load — critical for interpreter speed without dynarec.
+                    // Matches native fix (commit fc2151e3).
+                    if (strcmp(var->key, "reicast_fast_gd_rom_load") == 0 ||
+                        strcmp(var->key, "flycast_fast_gd_rom_load") == 0) {
+                        var->value = "enabled";
                         return true;
                     }
                     // Disable frame-swap delay — this variable makes retro_run block waiting
