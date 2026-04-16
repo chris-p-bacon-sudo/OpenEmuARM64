@@ -233,7 +233,8 @@ The script does everything in one shot:
 4. Runs `sign_update` on that exact DMG to get the EdDSA signature
 5. Prepends a new entry to `appcast.xml` with the correct signature and length
 6. Creates a **draft** GitHub Release and uploads the DMG
-7. Commits and pushes the updated `appcast.xml`
+7. Updates `Casks/openemu-silicon.rb` with the new version and DMG SHA256
+8. Commits and pushes the updated `appcast.xml` and Homebrew cask together
 
 ### After the script finishes
 

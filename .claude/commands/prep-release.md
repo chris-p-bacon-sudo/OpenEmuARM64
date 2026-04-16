@@ -136,10 +136,11 @@ The script will:
 1. Archive the app (Release config, Developer ID signed, hardened runtime)
 2. Re-sign all binaries, notarize with Apple, staple the ticket
 3. Create a DMG from the stapled `.app`
-4. Run `sign_update` to get the EdDSA signature
-5. Prepend a new entry to `appcast.xml` with the correct signature and length
-6. Create a **draft** GitHub Release and upload the DMG
-7. Commit and push the updated `appcast.xml`
+4. Update `Casks/openemu-silicon.rb` with the new version and DMG SHA256
+5. Run `sign_update` to get the EdDSA signature
+6. Prepend a new entry to `appcast.xml` with the correct signature and length
+7. Create a **draft** GitHub Release and upload the DMG
+8. Commit and push the updated `appcast.xml` and Homebrew cask together
 
 ## Step 9 — Report and hand off
 
