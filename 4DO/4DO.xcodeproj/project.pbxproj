@@ -526,10 +526,7 @@
 					"$(OTHER_CFLAGS)",
 					"-g",
 				);
-				FRAMEWORK_SEARCH_PATHS = (
-					"$(inherited)",
-					"$(BUILT_PRODUCTS_DIR)",
-				);
+				FRAMEWORK_SEARCH_PATHS = "$(BUILT_PRODUCTS_DIR)";
 				PRODUCT_BUNDLE_IDENTIFIER = "org.openemu.${PRODUCT_NAME:rfc1034identifier}";
 				PRODUCT_NAME = 4DO;
 				USER_HEADER_SEARCH_PATHS = "\"$(PROJECT_DIR)/core/\" \"$(PROJECT_DIR)/libcue/\"/** \"$(PROJECT_DIR)/libfreedo/\"";
@@ -564,10 +561,7 @@
 					"$(OTHER_CFLAGS)",
 					"-g",
 				);
-				FRAMEWORK_SEARCH_PATHS = (
-					"$(inherited)",
-					"$(BUILT_PRODUCTS_DIR)",
-				);
+				FRAMEWORK_SEARCH_PATHS = "$(BUILT_PRODUCTS_DIR)";
 				PRODUCT_BUNDLE_IDENTIFIER = "org.openemu.${PRODUCT_NAME:rfc1034identifier}";
 				PRODUCT_NAME = 4DO;
 				USER_HEADER_SEARCH_PATHS = "\"$(PROJECT_DIR)/core/\" \"$(PROJECT_DIR)/libcue/\"/** \"$(PROJECT_DIR)/libfreedo/\"";

@@ -10,7 +10,7 @@
   2. ARM64 native builds — appcast hosted in this repo (Appcasts/*.xml),
      download assets hosted on the cores-v1.0.0 GitHub Release.
 
-  BSNES excluded: experimental, not yet ready.
+  BSNES and Dolphin excluded: BSNES is experimental; Dolphin is in-progress.
   Arcade (MAME) excluded: no emulation core exists yet — see issue #25.
 -->
 <cores>
@@ -108,20 +108,8 @@
 
 
   <!-- ═══════════════════════════════════════════════════════════════════ -->
-  <!-- ARM64 native — appcast hosted in this repo, assets on cores-v1.1.0 -->
+  <!-- ARM64 native — appcast hosted in this repo, assets on cores-v1.0.0 -->
   <!-- ═══════════════════════════════════════════════════════════════════ -->
-
-  <!-- ✅ ARM64 native -->
-  <core
-    id="org.openemu.Dolphin"
-    name="Dolphin"
-    appcastURL="https://raw.githubusercontent.com/nickybmon/OpenEmu-Silicon/main/Appcasts/dolphin.xml">
-    <description>GameCube and Wii emulator</description>
-    <systems>
-      <system id="openemu.system.gc">GameCube</system>
-      <system id="openemu.system.wii">Wii</system>
-    </systems>
-  </core>
 
   <!-- ✅ ARM64 native -->
   <core

@@ -4,15 +4,6 @@
   xmlns:dc="http://purl.org/dc/elements/1.1/">
   <channel>
     <title>4DO</title>
-    <item>
-      <title>4DO 2.3.0</title>
-      <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
-      <enclosure
-        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.1.0/4DO.oecoreplugin.zip"
-        sparkle:version="2.3.0"
-        sparkle:shortVersionString="2.3.0"
-        length="68515"
-        type="application/octet-stream" />
-    </item>
+    <!-- No item: build not yet available for ARM64 -->
   </channel>
 </rss>

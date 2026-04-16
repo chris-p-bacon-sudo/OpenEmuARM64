@@ -62,7 +62,6 @@ Recent highlights from active development:
 - **Sony PSP** — PPSSPP-Core fully rebuilt and integrated. PSP emulation now works natively on Apple Silicon.
 - **Nintendo 64** — Mupen64Plus revived and working. N64 emulation is back.
 - **Sega Dreamcast** — Migrated from Reicast to Flycast. Dreamcast emulation is significantly more stable.
-- **Gamecube** - Gamecube is playable via Dolphin and should be stable
 - **ScreenScraper cover art** — The library now automatically fetches box art from [ScreenScraper](https://www.screenscraper.fr), replacing the old manual cover art workflow entirely. Enter your credentials in Preferences → Cover Art and your library fills in automatically.
 - **Core updates** — SNES9x updated to 1.63, mGBA updated to 0.10.5.
 - **Pokémon Mini** — PokeMini and Potator (Watara Supervision) workspace integration fixed; both now build and run.
@@ -72,7 +71,7 @@ Recent highlights from active development:
 
 ## Supported Systems
 
-> **Full details — working status, known issues, in-progress cores, and what’s planned — are on the [Supported Systems](https://github.com/nickybmon/OpenEmu-Silicon/wiki/Supported-Systems) wiki page.**
+> **Full details — working status, known issues, in-progress cores, and what's planned — are on the [`docs/cores.md`](docs/cores.md) page.**
 
 Quick summary: 30+ systems work today, including NES, SNES, Game Boy, GBA, N64, PlayStation, Dreamcast, and more. A handful have known issues (PSP, Saturn registration, Game Boy Color categorization). GameCube/Wii (Dolphin) and a new Nintendo DS core (melonDS) are actively in progress. Commodore 64, Arcade/MAME, and PS2 have no core yet.
 
@@ -121,8 +120,8 @@ I'm transparent about this because honesty with the community matters more than 
 | Doc | What's in it |
 |-----|-------------|
 | [Wiki](https://github.com/nickybmon/OpenEmu-Silicon/wiki) | User guides: getting started, BIOS files, importing, CD games, controllers, troubleshooting |
-| [Migrating from OpenEmu](https://github.com/nickybmon/OpenEmu-Silicon/wiki/Migrating-from-OpenEmu) | Switching from the original OpenEmu: what carries over, what doesn't, and how to back up |
-| [Supported Systems](https://github.com/nickybmon/OpenEmu-Silicon/wiki/Supported-Systems) | Every system: working status, known issues, in-progress cores, what's planned, and BIOS requirements |
+| [`docs/migrating-from-openemu.md`](docs/migrating-from-openemu.md) | Switching from the original OpenEmu: what carries over, what doesn't, and how to back up |
+| [`docs/cores.md`](docs/cores.md) | Supported systems: working status, known issues, in-progress cores, what’s planned, and developer reference |
 | [`CREDITS.md`](CREDITS.md) | Everyone who contributed — original OpenEmu team, ARM64 port, core sources, illustrators, and this repo's contributors |
 
 ---
