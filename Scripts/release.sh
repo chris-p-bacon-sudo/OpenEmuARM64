@@ -159,6 +159,18 @@ step "2/5  Re-signing, notarizing, and creating DMG"
 
 [ -f "$DMG" ] || die "DMG not found at $DMG after notarize.sh. Check notarize.sh output above."
 
+# ── 2.5. Update Homebrew cask ─────────────────────────────────────────────────
+step "2.5/5  Updating Homebrew cask (Casks/openemu-silicon.rb)"
+
+CASK_FILE="$REPO_ROOT/Casks/openemu-silicon.rb"
+DMG_SHA256=$(shasum -a 256 "$DMG" | awk '{print $1}')
+echo "DMG SHA256: $DMG_SHA256"
+
+# Update version and sha256 in the cask file
+sed -i '' "s/version \"[^\"]*\"/version \"$VERSION\"/" "$CASK_FILE"
+sed -i '' "s/sha256 \"[^\"]*\"/sha256 \"$DMG_SHA256\"/" "$CASK_FILE"
+echo "Updated $CASK_FILE → version $VERSION, sha256 $DMG_SHA256"
+
 # ── 3. Sign for Sparkle ───────────────────────────────────────────────────────
 step "3/5  Generating Sparkle EdDSA signature"
 
@@ -298,9 +310,9 @@ fi
 
 echo "DMG uploaded to draft release $TAG."
 
-# Commit and push appcast
-git -C "$REPO_ROOT" add "$APPCAST"
-git -C "$REPO_ROOT" commit -m "chore: add v$VERSION appcast entry"
+# Commit and push appcast + cask
+git -C "$REPO_ROOT" add "$APPCAST" "$CASK_FILE"
+git -C "$REPO_ROOT" commit -m "chore: release v$VERSION — update appcast and Homebrew cask"
 git -C "$REPO_ROOT" push origin main
 
 echo ""
