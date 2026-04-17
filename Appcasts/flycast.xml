@@ -5,6 +5,16 @@
   <channel>
     <title>Flycast</title>
     <item>
+      <title>Flycast 2.4</title>
+      <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
+      <enclosure
+        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.1.1/Flycast.oecoreplugin.zip"
+        sparkle:version="2.4"
+        sparkle:shortVersionString="2.4"
+        length="3093872"
+        type="application/octet-stream" />
+    </item>
+    <item>
       <title>Flycast 2.3</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure

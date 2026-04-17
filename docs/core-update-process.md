@@ -1,8 +1,17 @@
 # Core Update Process — OpenEmu-Silicon
 
-_Last updated: 2026-04-14_
+_Last updated: 2026-04-17_
 
 This document explains how core updates work in this project: where binaries come from, how to evaluate whether a given build is safe to ship, and how to publish an update.
+
+There are two kinds of core updates, and they use different processes:
+
+| Type | Cores | Process |
+|------|-------|---------|
+| **In-repo built** | Flycast, Dolphin, 4DO, DeSmuME, and other cores whose source lives in this repo | Use the `/release-core` command (see `.claude/commands/release-core.md`) |
+| **Buildbot-sourced** | mGBA, Nestopia, Genesis Plus GX, Mednafen, SNES9x, and other cores pulled as pre-built binaries | Follow the process in this document |
+
+The rest of this document covers **buildbot-sourced cores only**.
 
 ---
 
@@ -174,3 +183,60 @@ Do **not** update cores on a fixed schedule just to stay "current." Every update
 - **Do not update a core without testing.** Even a minor-looking upstream change can break a specific game or system.
 - **Do not batch multiple core updates into one PR.** If something breaks, you need to be able to isolate which core caused it.
 - **Do not delete or replace a working core without a verified replacement ready.** A broken core is worse than an old one.
+
+---
+
+## Release Infrastructure Reference
+
+This section applies to all core updates regardless of type.
+
+### How the update pipeline works
+
+```
+oecores.xml (in repo, on main)
+  └── lists each core with an appcastURL
+        └── Appcasts/<corename>.xml (in repo, on main)
+              └── enclosure url → GitHub Release asset (.oecoreplugin.zip)
+```
+
+The app fetches `oecores.xml` to discover cores, then fetches each core's appcast to check for updates. The appcast's `sparkle:version` is compared against the installed core's `CFBundleVersion`. If the appcast version is higher, an update is offered.
+
+**Key point:** The appcast goes live the moment the PR merges to `main`. The GitHub Release asset must already exist before the PR merges — you upload the binary first, then update the appcast to point at it.
+
+### Appcast format
+
+Each `Appcasts/<corename>.xml` is a minimal RSS feed. Keep all previous items — do not delete old ones. New items go at the top. Sparkle reads top-to-bottom and uses the first item whose `sparkle:version` is higher than what's installed.
+
+```xml
+<item>
+  <title>CoreName X.Y</title>
+  <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
+  <enclosure
+    url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-vX.Y.Z/CoreName.oecoreplugin.zip"
+    sparkle:version="X.Y"
+    sparkle:shortVersionString="X.Y"
+    length="<byte count of zip>"
+    type="application/octet-stream" />
+</item>
+```
+
+The `length` field must be exact — get it with `wc -c < CoreName.oecoreplugin.zip | tr -d ' '`.
+
+### GitHub Release conventions
+
+- Core releases use the tag format `cores-vX.Y.Z`
+- They are always created as `--prerelease` — this hides them from the main releases page while keeping the asset URLs accessible to the appcast
+- One release can contain multiple core zips if updating several cores at once
+- Patch bumps (`cores-v1.0.0` → `cores-v1.0.1`) for single-core hotfixes; minor bumps (`cores-v1.1.0` → `cores-v1.2.0`) for batch updates with new cores or significant changes
+
+### Version numbers
+
+Core `CFBundleVersion` values are simple decimals (e.g. `2.3`, `2.4`). They do not need to match the upstream core's version — they just need to increase monotonically so Sparkle knows there's something newer. When in doubt, increment the minor number.
+
+### Rollback
+
+If a core update causes a regression, rollback is straightforward:
+1. Add a new appcast item pointing back at the previous release asset with a higher `sparkle:version`
+2. Users will receive it on their next update check and the older binary will be re-installed
+
+You do not need to delete the bad release or change any previously shipped version numbers.
