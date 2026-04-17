@@ -95,7 +95,9 @@ final class CoreUpdater: NSObject {
     }
     
     private func checkForUpdateInformation(url: URL, plugin: OECorePlugin, handler: @escaping (CoreAppcastItem) -> Void) {
-        let task = URLSession.shared.dataTask(with: url) { data, response, error in
+        var request = URLRequest(url: url)
+        request.cachePolicy = .reloadIgnoringLocalCacheData
+        let task = URLSession.shared.dataTask(with: request) { data, response, error in
             if let error {
                 if #available(macOS 11.0, *) {
                     Logger.download.error("Failed to download \(url, privacy: .public): \(error, privacy: .public)")
@@ -159,7 +161,9 @@ final class CoreUpdater: NSObject {
         
         let coreListURL = URL(string: Bundle.main.infoDictionary!["OECoreListURL"] as! String)!
         
-        lastCoreListURLTask = URLSession.shared.dataTask(with: coreListURL) { data, response, error in
+        var coreListRequest = URLRequest(url: coreListURL)
+        coreListRequest.cachePolicy = .reloadIgnoringLocalCacheData
+        lastCoreListURLTask = URLSession.shared.dataTask(with: coreListRequest) { data, response, error in
             defer {
                 DispatchQueue.main.async {
                     if error == nil {
@@ -558,7 +562,9 @@ private final class CoreAppcast {
     
     func fetch(completionHandler handler: (() -> Void)? = nil) {
         let url = url
-        let task = URLSession.shared.dataTask(with: url) { data, response, error in
+        var request = URLRequest(url: url)
+        request.cachePolicy = .reloadIgnoringLocalCacheData
+        let task = URLSession.shared.dataTask(with: request) { data, response, error in
             defer { handler?() }
             
             guard let data else { return }
