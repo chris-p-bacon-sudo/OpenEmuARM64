@@ -64,6 +64,16 @@
 					<key>Size</key>
 					<integer>131072</integer>
 				</dict>
+				<dict>
+					<key>Description</key>
+					<string>Dreamcast Flash ROM (Alt)</string>
+					<key>MD5</key>
+					<string>9338b10ee6f13fbc8bfcd6276e156fad</string>
+					<key>Name</key>
+					<string>dc_flash.bin</string>
+					<key>Size</key>
+					<integer>131072</integer>
+				</dict>
 			</array>
 		</dict>
 	</dict>

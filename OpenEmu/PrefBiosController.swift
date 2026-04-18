@@ -27,6 +27,23 @@ import OpenEmuKit
 
 private var PrefBiosCoreListKVOContext = 0
 
+/// A single row in the System Files list — represents one required file,
+/// potentially with multiple valid hash variants (e.g. regional dc_flash.bin dumps).
+private struct BIOSFileGroup: Hashable {
+    let name: String
+    let description: String
+    let size: Int
+    let variants: [[String: Any]]
+
+    /// True if the file exists on disk with any of the registered hashes.
+    var isAvailable: Bool {
+        variants.contains { BIOSFile.isBIOSFileAvailable(withFileInfo: $0) }
+    }
+
+    func hash(into hasher: inout Hasher) { hasher.combine(name) }
+    static func == (lhs: BIOSFileGroup, rhs: BIOSFileGroup) -> Bool { lhs.name == rhs.name }
+}
+
 private extension NSUserInterfaceItemIdentifier {
     static let infoCell = NSUserInterfaceItemIdentifier("InfoCell")
     static let coreCell = NSUserInterfaceItemIdentifier("CoreCell")
@@ -78,30 +95,43 @@ final class PrefBiosController: NSViewController {
     
     private func reloadData() {
         var items: [AnyHashable] = []
-        
+
         for core in OECorePlugin.allPlugins {
-            if core.requiredFiles.isEmpty { continue }
-            
-            let requiredFiles = (core.requiredFiles as NSArray).sortedArray(using: [NSSortDescriptor(key: "Description", ascending: true)])
-            if requiredFiles.count > 0,
-               let requiredFiles = requiredFiles as? [AnyHashable] {
-                items.append(core)
-                items.append(contentsOf: requiredFiles)
+            guard !core.requiredFiles.isEmpty,
+                  let entries = core.requiredFiles as? [[String: Any]] else { continue }
+
+            // Group entries by filename — multiple entries for the same filename are alternate hashes.
+            var groups: [String: BIOSFileGroup] = [:]
+            var order: [String] = []
+            for entry in entries {
+                let name = entry["Name"] as? String ?? ""
+                if groups[name] == nil {
+                    let desc = entry["Description"] as? String ?? name
+                    let size = entry["Size"] as? Int ?? 0
+                    groups[name] = BIOSFileGroup(name: name, description: desc, size: size, variants: [entry])
+                    order.append(name)
+                } else {
+                    let existing = groups[name]!
+                    groups[name] = BIOSFileGroup(name: name,
+                                                 description: existing.description,
+                                                 size: existing.size,
+                                                 variants: existing.variants + [entry])
+                }
             }
+
+            let sorted = order.sorted { $0.caseInsensitiveCompare($1) == .orderedAscending }
+            items.append(core)
+            items.append(contentsOf: sorted.compactMap { groups[$0] })
         }
-        
+
         self.items = items
-        
         tableView.reloadData()
     }
     
     @objc private func deleteBIOSFile(_ sender: Any?) {
-        guard
-            let file = items[tableView.clickedRow - 1] as? [String : Any],
-            let fileName = file["Name"] as? String
-        else { return }
-            
-        if BIOSFile.deleteBIOSFile(withFileName: fileName),
+        guard let group = items[tableView.clickedRow - 1] as? BIOSFileGroup else { return }
+
+        if BIOSFile.deleteBIOSFile(withFileName: group.name),
            let view = tableView.view(atColumn: 0, row: tableView.clickedRow, makeIfNecessary: false),
            view.identifier == .fileCell,
            let availabilityIndicator = view.viewWithTag(3) as? NSImageView {
@@ -109,19 +139,18 @@ final class PrefBiosController: NSViewController {
             availabilityIndicator.contentTintColor = .systemOrange
         }
     }
-    
+
     @objc private func biosFileWasImported(_ notification: Notification) {
         let md5 = notification.userInfo?["MD5"] as! String
         for (index, item) in items.enumerated() {
             guard
-                let file = item as? [String : Any],
-                let fileMD5 = file["MD5"] as? String,
-                fileMD5.caseInsensitiveCompare(md5) == .orderedSame,
+                let group = item as? BIOSFileGroup,
+                group.variants.contains(where: { ($0["MD5"] as? String)?.caseInsensitiveCompare(md5) == .orderedSame }),
                 let view = tableView.view(atColumn: 0, row: index + 1, makeIfNecessary: false),
                 view.identifier == .fileCell,
                 let availabilityIndicator = view.viewWithTag(3) as? NSImageView
             else { continue }
-            
+
             availabilityIndicator.image = NSImage(named: "bios_found")
             availabilityIndicator.contentTintColor = .systemGreen
             break
@@ -210,36 +239,33 @@ extension PrefBiosController: NSTableViewDelegate {
         if self.tableView(tableView, isGroupRow: row) {
             let core = item as? OECorePlugin
             let groupCell = tableView.makeView(withIdentifier: .coreCell, owner: self) as? NSTableCellView
-            groupCell?.textField?.stringValue = core?.displayName ?? ""
+            // CFBundleName may be an unresolved Xcode build variable like "${PRODUCT_NAME}".
+            // Fall back to the system name from the core's system identifiers in that case.
+            var name = core?.displayName ?? ""
+            if name.hasPrefix("${") {
+                name = core?.systemIdentifiers.first.flatMap { OESystemPlugin.systemPlugin(forIdentifier: $0)?.systemName } ?? core?.bundleIdentifier ?? name
+            }
+            groupCell?.textField?.stringValue = name
             return groupCell
         }
         else {
-            guard let file = item as? [String : Any] else { return nil }
-            
+            guard let group = item as? BIOSFileGroup else { return nil }
+
             let fileCell = tableView.makeView(withIdentifier: .fileCell, owner: self) as? NSTableCellView
-            
             let descriptionField = fileCell?.textField
             let fileNameField = fileCell?.viewWithTag(1) as? NSTextField
             let availabilityIndicator = fileCell?.viewWithTag(3) as? NSImageView
-            
-            let description = file["Description"] as? String ?? ""
-            let md5 = file["MD5"] as? String ?? ""
-            let name = file["Name"] as? String ?? ""
-            let size = file["Size"] as AnyObject
-            
-            let available = BIOSFile.isBIOSFileAvailable(withFileInfo: file)
-            let imageName = available ? "bios_found" : "bios_missing"
-            let image = NSImage(named: imageName)
-            
-            descriptionField?.stringValue = description
-            
-            let sizeString = ByteCountFormatter.string(fromByteCount: size.int64Value ?? 0, countStyle: .file)
-            fileNameField?.stringValue = "\(name) (\(sizeString))"
-            fileNameField?.toolTip = "MD5: \(md5)"
-            
-            availabilityIndicator?.image = image
+
+            let available = group.isAvailable
+            let sizeString = ByteCountFormatter.string(fromByteCount: Int64(group.size), countStyle: .file)
+
+            descriptionField?.stringValue = group.description
+            fileNameField?.stringValue = "\(group.name) (\(sizeString))"
+            fileNameField?.toolTip = nil
+
+            availabilityIndicator?.image = NSImage(named: available ? "bios_found" : "bios_missing")
             availabilityIndicator?.contentTintColor = available ? .systemGreen : .systemOrange
-            
+
             return fileCell
         }
     }
@@ -273,12 +299,11 @@ extension PrefBiosController: NSMenuDelegate {
             !tableView(tableView, isGroupRow: tableView.clickedRow)
         else { return }
         
-        if let file = items[tableView.clickedRow - 1] as? [String : Any] {
-            let available = BIOSFile.isBIOSFileAvailable(withFileInfo: file)
+        if let group = items[tableView.clickedRow - 1] as? BIOSFileGroup {
             let item = NSMenuItem()
             item.title = NSLocalizedString("Delete", comment: "")
             item.action = #selector(deleteBIOSFile(_:))
-            item.isEnabled = available ? true : false
+            item.isEnabled = group.isAvailable
             menu.addItem(item)
         }
     }
