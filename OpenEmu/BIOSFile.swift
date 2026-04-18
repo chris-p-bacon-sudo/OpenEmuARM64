@@ -46,29 +46,18 @@ enum BIOSFile {
     /// - Parameter fileInfo: Dictionary containing "Name" and "MD5" keys.
     /// - Returns: Returns `true` if file exists with correct MD5.
     static func isBIOSFileAvailable(withFileInfo fileInfo: [String: Any]) -> Bool {
-        
+
         let biosSystemFilename = fileInfo["Name"] as! String
         let biosSystemMD5 = fileInfo["MD5"] as! String
-        
+
         let destinationURL = biosFolderURL.appendingPathComponent(biosSystemFilename, isDirectory: false)
-        
+
         let isReachable = (try? destinationURL.checkResourceIsReachable()) ?? false
-        
+        guard isReachable else { return false }
+
         do {
             let md5 = try FileManager.default.hashFile(at: destinationURL)
-            
-            if isReachable {
-                
-                if md5.caseInsensitiveCompare(biosSystemMD5) == .orderedSame {
-                    return true
-                } else {
-                    DLog("Incorrect MD5, deleting \(destinationURL)")
-                    try? FileManager.default.removeItem(at: destinationURL)
-                }
-            }
-            
-            return false
-            
+            return md5.caseInsensitiveCompare(biosSystemMD5) == .orderedSame
         } catch {
             return false
         }
@@ -104,36 +93,58 @@ enum BIOSFile {
     ///     * "Optional"
     /// - Returns: Returns `true` if all required files exist. Otherwise, returns `false` and displays a user alert.
     static func requiredFilesAvailable(forSystemIdentifier systemIdentifier: [[String: Any]]) -> Bool {
-        
+
+        // Group entries by filename. Multiple entries with the same name represent alternate valid
+        // hashes — the user only needs one matching variant, not one per entry.
+        var fileGroups: [String: [[String: Any]]] = [:]
+        for entry in systemIdentifier {
+            let name = entry["Name"] as! String
+            fileGroups[name, default: []].append(entry)
+        }
+
         var missingFileStatus = false
-        
-        let validRequiredFiles = systemIdentifier.sorted { ($0["Name"] as! String).compare($1["Name"] as! String, options: .caseInsensitive) == .orderedAscending }
-        
         var missingFilesList = ""
-        
-        for validRequiredFile in validRequiredFiles {
-            
-            let biosFilename = validRequiredFile["Name"] as! String
-            let biosDescription = validRequiredFile["Description"] as! String
-            let biosOptional = (validRequiredFile["Optional"] as? Bool) ?? false
-            
-            // Check if the required files exist and are optional.
-            if !isBIOSFileAvailable(withFileInfo: validRequiredFile) && !biosOptional {
-                missingFileStatus = true
-                missingFilesList += "\(biosDescription)\n\t\"\(biosFilename)\"\n\n"
+
+        let sortedFilenames = fileGroups.keys.sorted { $0.compare($1, options: .caseInsensitive) == .orderedAscending }
+
+        for filename in sortedFilenames {
+            let entries = fileGroups[filename]!
+            let biosDescription = entries.first!["Description"] as! String
+            let biosOptional = entries.contains { ($0["Optional"] as? Bool) == true }
+
+            let destinationURL = biosFolderURL.appendingPathComponent(filename, isDirectory: false)
+            let isReachable = (try? destinationURL.checkResourceIsReachable()) ?? false
+
+            guard isReachable, let md5 = try? FileManager.default.hashFile(at: destinationURL) else {
+                if !biosOptional {
+                    missingFileStatus = true
+                    missingFilesList += "\(biosDescription)\n\t\"\(filename)\"\n\n"
+                }
+                continue
+            }
+
+            let matchesAny = entries.contains { entry in
+                let hash = entry["MD5"] as! String
+                return md5.caseInsensitiveCompare(hash) == .orderedSame
+            }
+
+            if !matchesAny {
+                DLog("Incorrect MD5 for \(filename), deleting \(destinationURL)")
+                try? FileManager.default.removeItem(at: destinationURL)
+                if !biosOptional {
+                    missingFileStatus = true
+                    missingFilesList += "\(biosDescription)\n\t\"\(filename)\"\n\n"
+                }
             }
         }
-        
+
         guard !missingFileStatus else {
-            
-            // Alert the user of missing BIOS/system files that are required for the core.
             if OEAlert.missingBIOSFiles(missingFilesList).runModal() == .alertSecondButtonReturn {
                 NSWorkspace.shared.open(.userGuideBIOSFiles)
             }
-            
             return false
         }
-        
+
         return true
     }
     
