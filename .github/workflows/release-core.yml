@@ -32,9 +32,6 @@ jobs:
     runs-on: self-hosted
     timeout-minutes: 30
 
-    env:
-      DERIVED_DATA_PATH: ${{ runner.temp }}/DerivedData-${{ inputs.core_name }}
-
     steps:
       # ── Checkout ────────────────────────────────────────────────────────────
       - name: Checkout repository
@@ -42,6 +39,12 @@ jobs:
         with:
           fetch-depth: 0
           token: ${{ secrets.GH_PAT }}
+
+      # ── Set path variables ──────────────────────────────────────────────────
+      # runner.temp is only available inside steps, not at job-level env scope.
+      - name: Set path variables
+        run: |
+          echo "DERIVED_DATA_PATH=$RUNNER_TEMP/DerivedData-${{ inputs.core_name }}" >> $GITHUB_ENV
 
       # ── Validate inputs ─────────────────────────────────────────────────────
       - name: Validate inputs

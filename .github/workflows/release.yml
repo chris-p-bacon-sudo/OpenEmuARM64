@@ -18,17 +18,13 @@ name: Release
 on:
   push:
     tags:
-      - 'v[0-9]+.[0-9]+.[0-9]+'
+      - 'v[0-9]*.[0-9]*.[0-9]*'
 
 jobs:
   release:
     name: Build, sign, notarize, and publish
     runs-on: self-hosted
     timeout-minutes: 90
-
-    env:
-      DERIVED_DATA_PATH: ${{ runner.temp }}/DerivedData
-      DMG: ${{ github.workspace }}/Releases/OpenEmu-Silicon.dmg
 
     steps:
       # ── Checkout ────────────────────────────────────────────────────────────
@@ -37,6 +33,13 @@ jobs:
         with:
           fetch-depth: 0
           token: ${{ secrets.GH_PAT }}
+
+      # ── Set path variables ──────────────────────────────────────────────────
+      # runner.temp is only available inside steps, not at job-level env scope.
+      - name: Set path variables
+        run: |
+          echo "DERIVED_DATA_PATH=$RUNNER_TEMP/DerivedData" >> $GITHUB_ENV
+          echo "DMG=${{ github.workspace }}/Releases/OpenEmu-Silicon.dmg" >> $GITHUB_ENV
 
       # ── Parse and validate version ──────────────────────────────────────────
       - name: Parse version from tag
