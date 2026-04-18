@@ -11,9 +11,6 @@ name: Release Core
 #
 # After it runs, users see the update on next app launch via CoreUpdater.
 #
-# Runner note: runs-on: self-hosted uses your Mac (right Xcode version, existing
-# keychain). Same story as release.yml — migrate to macos-15 when Xcode 26 ships.
-
 on:
   workflow_dispatch:
     inputs:
@@ -29,7 +26,7 @@ on:
 jobs:
   release-core:
     name: Build and release ${{ inputs.core_name }} ${{ inputs.version }}
-    runs-on: self-hosted
+    runs-on: macos-26
     timeout-minutes: 30
 
     steps:
@@ -39,6 +36,37 @@ jobs:
         with:
           fetch-depth: 0
           token: ${{ secrets.GH_PAT }}
+
+      # ── Import signing certificate ──────────────────────────────────────────
+      - name: Import Developer ID certificate
+        env:
+          CERT_BASE64: ${{ secrets.DEVELOPER_ID_CERT_BASE64 }}
+          CERT_PASSWORD: ${{ secrets.DEVELOPER_ID_CERT_PASSWORD }}
+        run: |
+          KEYCHAIN_PATH=$RUNNER_TEMP/signing.keychain-db
+          KEYCHAIN_PASSWORD=$(openssl rand -hex 16)
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          echo "$CERT_BASE64" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security import "$RUNNER_TEMP/cert.p12" \
+            -k "$KEYCHAIN_PATH" -P "$CERT_PASSWORD" \
+            -A -t cert -f pkcs12
+          security list-keychain -d user -s "$KEYCHAIN_PATH" $(security list-keychain -d user | tr -d '"')
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          rm "$RUNNER_TEMP/cert.p12"
+
+      # ── Store notarytool keychain profile ───────────────────────────────────
+      - name: Store notarytool credentials
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          xcrun notarytool store-credentials "OpenEmu" \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_ID_PASSWORD" \
+            --team-id "$APPLE_TEAM_ID"
 
       # ── Set path variables ──────────────────────────────────────────────────
       # runner.temp is only available inside steps, not at job-level env scope.

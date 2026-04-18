@@ -10,11 +10,6 @@ name: Release
 # After the workflow completes, review and publish the draft:
 #   gh release edit v1.0.7 --draft=false --repo nickybmon/OpenEmu-Silicon
 #
-# Runner notes:
-#   runs-on: self-hosted  — uses your local Mac (right Xcode version, existing keychain)
-#   When GitHub ships Xcode 26 on macos-15 runners, change to: macos-15
-#   and add the hosted-runner secrets (DEVELOPER_ID_CERT_P12, NOTARYTOOL_API_KEY_*)
-
 on:
   push:
     tags:
@@ -23,7 +18,7 @@ on:
 jobs:
   release:
     name: Build, sign, notarize, and publish
-    runs-on: self-hosted
+    runs-on: macos-26
     timeout-minutes: 90
 
     steps:
@@ -33,6 +28,48 @@ jobs:
         with:
           fetch-depth: 0
           token: ${{ secrets.GH_PAT }}
+
+      # ── Import signing certificate ──────────────────────────────────────────
+      - name: Import Developer ID certificate
+        env:
+          CERT_BASE64: ${{ secrets.DEVELOPER_ID_CERT_BASE64 }}
+          CERT_PASSWORD: ${{ secrets.DEVELOPER_ID_CERT_PASSWORD }}
+        run: |
+          KEYCHAIN_PATH=$RUNNER_TEMP/signing.keychain-db
+          KEYCHAIN_PASSWORD=$(openssl rand -hex 16)
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          echo "$CERT_BASE64" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security import "$RUNNER_TEMP/cert.p12" \
+            -k "$KEYCHAIN_PATH" -P "$CERT_PASSWORD" \
+            -A -t cert -f pkcs12
+          security list-keychain -d user -s "$KEYCHAIN_PATH" $(security list-keychain -d user | tr -d '"')
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          rm "$RUNNER_TEMP/cert.p12"
+          echo "KEYCHAIN_PATH=$KEYCHAIN_PATH" >> $GITHUB_ENV
+
+      # ── Store notarytool keychain profile ───────────────────────────────────
+      - name: Store notarytool credentials
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          xcrun notarytool store-credentials "OpenEmu" \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_ID_PASSWORD" \
+            --team-id "$APPLE_TEAM_ID"
+
+      # ── Restore Sparkle private key ─────────────────────────────────────────
+      - name: Restore Sparkle private key
+        env:
+          SPARKLE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+        run: |
+          PREFS_DIR="$HOME/Library/Preferences/Sparkle"
+          mkdir -p "$PREFS_DIR"
+          echo "$SPARKLE_KEY" > "$PREFS_DIR/private_ed25519_key"
+          chmod 600 "$PREFS_DIR/private_ed25519_key"
 
       # ── Set path variables ──────────────────────────────────────────────────
       # runner.temp is only available inside steps, not at job-level env scope.
