@@ -1,0 +1,262 @@
+name: Release
+
+# Triggered by pushing a version tag, e.g.:
+#   git tag v1.0.7 && git push origin v1.0.7
+#
+# Runs the full release pipeline unattended:
+#   archive → re-sign → notarize → DMG → Sparkle signature →
+#   appcast update → Homebrew cask update → draft GitHub Release
+#
+# After the workflow completes, review and publish the draft:
+#   gh release edit v1.0.7 --draft=false --repo nickybmon/OpenEmu-Silicon
+#
+# Runner notes:
+#   runs-on: self-hosted  — uses your local Mac (right Xcode version, existing keychain)
+#   When GitHub ships Xcode 26 on macos-15 runners, change to: macos-15
+#   and add the hosted-runner secrets (DEVELOPER_ID_CERT_P12, NOTARYTOOL_API_KEY_*)
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+
+jobs:
+  release:
+    name: Build, sign, notarize, and publish
+    runs-on: self-hosted
+    timeout-minutes: 90
+
+    env:
+      DERIVED_DATA_PATH: ${{ runner.temp }}/DerivedData
+      DMG: ${{ github.workspace }}/Releases/OpenEmu-Silicon.dmg
+
+    steps:
+      # ── Checkout ────────────────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GH_PAT }}
+
+      # ── Parse and validate version ──────────────────────────────────────────
+      - name: Parse version from tag
+        run: |
+          TAG="${{ github.ref_name }}"
+          VERSION="${TAG#v}"
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] \
+            || { echo "ERROR: Tag '$TAG' is not in vX.Y.Z format."; exit 1; }
+
+      - name: Validate Info.plist version matches tag
+        run: |
+          PLIST="OpenEmu/OpenEmu-Info.plist"
+          PLIST_VERSION=$(/usr/libexec/PlistBuddy -c \
+            "Print CFBundleShortVersionString" "$PLIST")
+          if [ "$PLIST_VERSION" != "${{ env.VERSION }}" ]; then
+            echo "ERROR: Tag says ${{ env.VERSION }} but Info.plist says $PLIST_VERSION"
+            echo "Bump CFBundleShortVersionString in OpenEmu-Info.plist before tagging."
+            exit 1
+          fi
+          echo "OK: Info.plist version matches tag (${{ env.VERSION }})"
+
+      # ── Compute next Sparkle integer build version ──────────────────────────
+      - name: Compute next Sparkle build version
+        run: |
+          CURRENT_MAX=$(grep -o 'sparkle:version="[0-9]*"' appcast.xml \
+            | grep -o '[0-9]*' | sort -n | tail -1)
+          NEXT_BUILD=$((CURRENT_MAX + 1))
+          echo "NEXT_BUILD=$NEXT_BUILD" >> $GITHUB_ENV
+          /usr/libexec/PlistBuddy -c \
+            "Set :CFBundleVersion $NEXT_BUILD" OpenEmu/OpenEmu-Info.plist
+          echo "Set CFBundleVersion = $NEXT_BUILD (was: $CURRENT_MAX)"
+
+      # ── Credential stubs ────────────────────────────────────────────────────
+      - name: Generate credential stubs
+        run: |
+          cp OpenEmu/ScreenScraperDevCredentials.template.swift \
+             OpenEmu/ScreenScraperDevCredentials.swift
+
+      # ── Sparkle private key ─────────────────────────────────────────────────
+      # On self-hosted runner this key is already in the keychain.
+      # When migrating to GitHub-hosted runners: store the key extracted via
+      #   security find-generic-password -s "https://sparkle-project.org" -a "ed25519" -w
+      # as secret SPARKLE_PRIVATE_KEY, then uncomment this step.
+      #
+      # - name: Restore Sparkle private key
+      #   env:
+      #     SPARKLE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+      #   run: |
+      #     PREFS_DIR="$HOME/Library/Preferences/Sparkle"
+      #     mkdir -p "$PREFS_DIR"
+      #     echo "$SPARKLE_KEY" > "$PREFS_DIR/private_ed25519_key"
+      #     chmod 600 "$PREFS_DIR/private_ed25519_key"
+
+      # ── Archive ─────────────────────────────────────────────────────────────
+      - name: Archive OpenEmu (Release, Developer ID signed)
+        run: |
+          ARCHIVE_PATH="${{ runner.temp }}/OpenEmu-Silicon-${{ env.VERSION }}.xcarchive"
+          echo "ARCHIVE_PATH=$ARCHIVE_PATH" >> $GITHUB_ENV
+
+          set -o pipefail
+          xcodebuild archive \
+            -workspace OpenEmu-metal.xcworkspace \
+            -scheme OpenEmu \
+            -configuration Release \
+            -destination generic/platform=macOS \
+            -archivePath "$ARCHIVE_PATH" \
+            -derivedDataPath "${{ env.DERIVED_DATA_PATH }}" \
+            CODE_SIGN_IDENTITY="Developer ID Application" \
+            CODE_SIGN_STYLE=Manual \
+            DEVELOPMENT_TEAM=AJC82Q6789 \
+            ENABLE_HARDENED_RUNTIME=YES \
+            2>&1 | grep -E "^(Archive|error:|warning: |BUILD)" | tail -30
+
+          [ -d "$ARCHIVE_PATH" ] \
+            || { echo "ERROR: Archive not found at $ARCHIVE_PATH"; exit 1; }
+          echo "Archive complete: $ARCHIVE_PATH"
+
+      # ── Upload dSYMs to Sentry (non-fatal) ──────────────────────────────────
+      - name: Upload dSYMs to Sentry
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+        run: |
+          if command -v sentry-cli &>/dev/null && [ -n "${SENTRY_AUTH_TOKEN:-}" ]; then
+            sentry-cli upload-dif \
+              --org openemu-silicon \
+              --project openemu-silicon \
+              "${{ env.ARCHIVE_PATH }}/dSYMs/" \
+            || echo "WARNING: Sentry dSYM upload failed (non-fatal)"
+          else
+            echo "sentry-cli not available or SENTRY_AUTH_TOKEN not set — skipping dSYM upload"
+          fi
+        continue-on-error: true
+
+      # ── Locate sign_update ──────────────────────────────────────────────────
+      - name: Locate sign_update binary
+        run: |
+          SIGN_UPDATE=$(find "${{ env.DERIVED_DATA_PATH }}" \
+            -path "*/artifacts/sparkle/Sparkle/bin/sign_update" \
+            -not -path "*/old_dsa_scripts/*" \
+            2>/dev/null | head -1)
+
+          # Fallback: search ~/Library/Developer/Xcode/DerivedData (self-hosted)
+          if [ -z "$SIGN_UPDATE" ]; then
+            SIGN_UPDATE=$(find ~/Library/Developer/Xcode/DerivedData \
+              -path "*/artifacts/sparkle/Sparkle/bin/sign_update" \
+              -not -path "*/old_dsa_scripts/*" \
+              2>/dev/null | head -1)
+          fi
+
+          [ -n "$SIGN_UPDATE" ] || {
+            echo "ERROR: sign_update not found. Build results:"
+            find "${{ env.DERIVED_DATA_PATH }}" -name "sign_update" 2>/dev/null || true
+            exit 1
+          }
+          echo "SIGN_UPDATE=$SIGN_UPDATE" >> $GITHUB_ENV
+          echo "Found sign_update at: $SIGN_UPDATE"
+
+      # ── Re-sign, notarize, create DMG ───────────────────────────────────────
+      # notarize.sh detects CI_NOTARYTOOL_KEY_PATH to switch from keychain-profile
+      # to API key auth. On self-hosted runner, leave these unset so it uses the
+      # existing keychain profile "OpenEmu". Uncomment for GitHub-hosted runners:
+      #
+      # env:
+      #   CI_NOTARYTOOL_KEY_PATH: ${{ runner.temp }}/asc_keys/AuthKey.p8
+      #   CI_NOTARYTOOL_KEY_ID: ${{ secrets.NOTARYTOOL_API_KEY_ID }}
+      #   CI_NOTARYTOOL_ISSUER: ${{ secrets.NOTARYTOOL_API_KEY_ISSUER_ID }}
+      - name: Re-sign, notarize, and create DMG
+        run: |
+          ./Scripts/notarize.sh "${{ env.ARCHIVE_PATH }}"
+          [ -f "${{ env.DMG }}" ] \
+            || { echo "ERROR: DMG not found after notarize.sh"; exit 1; }
+
+      # ── Sparkle EdDSA signature ─────────────────────────────────────────────
+      - name: Generate Sparkle EdDSA signature
+        run: |
+          SIGN_OUTPUT=$("${{ env.SIGN_UPDATE }}" "${{ env.DMG }}" 2>&1)
+          echo "$SIGN_OUTPUT"
+
+          ED_SIG=$(echo "$SIGN_OUTPUT" \
+            | grep -o 'sparkle:edSignature="[^"]*"' | cut -d'"' -f2)
+          DMG_LENGTH=$(echo "$SIGN_OUTPUT" \
+            | grep -o 'length="[0-9]*"' | cut -d'"' -f2)
+
+          [ -n "$ED_SIG" ]     || { echo "ERROR: Could not parse edSignature"; exit 1; }
+          [ -n "$DMG_LENGTH" ] || { echo "ERROR: Could not parse length"; exit 1; }
+
+          echo "ED_SIG=$ED_SIG"         >> $GITHUB_ENV
+          echo "DMG_LENGTH=$DMG_LENGTH" >> $GITHUB_ENV
+
+      # ── Homebrew cask ───────────────────────────────────────────────────────
+      - name: Update Homebrew cask
+        run: |
+          DMG_SHA256=$(shasum -a 256 "${{ env.DMG }}" | awk '{print $1}')
+          echo "DMG_SHA256=$DMG_SHA256" >> $GITHUB_ENV
+
+          sed -i '' \
+            "s/version \"[^\"]*\"/version \"${{ env.VERSION }}\"/" \
+            Casks/openemu-silicon.rb
+          sed -i '' \
+            "s/sha256 \"[^\"]*\"/sha256 \"$DMG_SHA256\"/" \
+            Casks/openemu-silicon.rb
+          echo "Updated cask: version=${{ env.VERSION }} sha256=$DMG_SHA256"
+
+      # ── appcast.xml ─────────────────────────────────────────────────────────
+      - name: Update appcast.xml
+        run: |
+          PUB_DATE=$(date -u "+%a, %d %b %Y %H:%M:%S +0000")
+          python3 Scripts/update_appcast.py \
+            appcast.xml \
+            "${{ env.VERSION }}" \
+            "${{ env.NEXT_BUILD }}" \
+            "$PUB_DATE" \
+            "${{ env.ED_SIG }}" \
+            "${{ env.DMG_LENGTH }}"
+
+      # ── Create draft GitHub Release ─────────────────────────────────────────
+      - name: Create draft GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          TAG="v${{ env.VERSION }}"
+
+          if gh release view "$TAG" --repo nickybmon/OpenEmu-Silicon &>/dev/null; then
+            gh release upload "$TAG" "${{ env.DMG }}" \
+              --repo nickybmon/OpenEmu-Silicon --clobber
+            gh release edit "$TAG" \
+              --repo nickybmon/OpenEmu-Silicon \
+              --notes "Release notes — edit before publishing."
+          else
+            gh release create "$TAG" "${{ env.DMG }}" \
+              --repo nickybmon/OpenEmu-Silicon \
+              --title "OpenEmu-Silicon ${{ env.VERSION }}" \
+              --draft \
+              --notes "Release notes — edit before publishing."
+          fi
+
+      # ── Commit appcast + cask + Info.plist back to main ─────────────────────
+      - name: Commit and push release artifacts
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add appcast.xml Casks/openemu-silicon.rb OpenEmu/OpenEmu-Info.plist
+          git commit -m \
+            "chore: release v${{ env.VERSION }} — update appcast and Homebrew cask"
+
+          git pull --rebase origin main
+          git push origin HEAD:main
+
+      # ── Summary ─────────────────────────────────────────────────────────────
+      - name: Print release summary
+        run: |
+          echo ""
+          echo "╔══════════════════════════════════════════════════════╗"
+          echo "║  Release ${{ env.VERSION }} prepared — draft is ready to review  ║"
+          echo "╚══════════════════════════════════════════════════════╝"
+          echo ""
+          echo "  Draft: https://github.com/nickybmon/OpenEmu-Silicon/releases/tag/v${{ env.VERSION }}"
+          echo ""
+          echo "  When ready to publish:"
+          echo "  → gh release edit v${{ env.VERSION }} --draft=false --repo nickybmon/OpenEmu-Silicon"
+          echo ""

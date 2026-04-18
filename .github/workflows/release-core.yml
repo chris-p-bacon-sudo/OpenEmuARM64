@@ -1,0 +1,235 @@
+name: Release Core
+
+# Releases a single emulator core as a .oecoreplugin.zip without going through
+# the full app release process. No notarization needed — the main app's
+# disable-library-validation entitlement allows loading unsigned core plugins.
+#
+# Trigger: GitHub Actions UI → Release Core → Run workflow
+# Inputs:
+#   core_name  — scheme name in the core's Xcode project (e.g. Flycast, mGBA, SNES9x)
+#   version    — new version string (e.g. 2.5) — also used as sparkle:version
+#
+# After it runs, users see the update on next app launch via CoreUpdater.
+#
+# Runner note: runs-on: self-hosted uses your Mac (right Xcode version, existing
+# keychain). Same story as release.yml — migrate to macos-15 when Xcode 26 ships.
+
+on:
+  workflow_dispatch:
+    inputs:
+      core_name:
+        description: 'Core scheme name (e.g. Flycast, mGBA, SNES9x, Mupen64Plus)'
+        required: true
+        type: string
+      version:
+        description: 'New version string (e.g. 2.5) — must be higher than current'
+        required: true
+        type: string
+
+jobs:
+  release-core:
+    name: Build and release ${{ inputs.core_name }} ${{ inputs.version }}
+    runs-on: self-hosted
+    timeout-minutes: 30
+
+    env:
+      DERIVED_DATA_PATH: ${{ runner.temp }}/DerivedData-${{ inputs.core_name }}
+
+    steps:
+      # ── Checkout ────────────────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GH_PAT }}
+
+      # ── Validate inputs ─────────────────────────────────────────────────────
+      - name: Validate inputs
+        run: |
+          CORE="${{ inputs.core_name }}"
+          VERSION="${{ inputs.version }}"
+
+          # Validate version format
+          [[ "$VERSION" =~ ^[0-9]+(\.[0-9]+)*$ ]] \
+            || { echo "ERROR: Version '$VERSION' must be numeric (e.g. 2.5)"; exit 1; }
+
+          # Check core project exists
+          CORE_PROJ="${CORE}/${CORE}.xcodeproj"
+          [ -d "$CORE_PROJ" ] \
+            || { echo "ERROR: Core project not found at $CORE_PROJ"; exit 1; }
+
+          # Check appcast exists — file uses lowercase core name
+          APPCAST_FILE="Appcasts/${CORE,,}.xml"
+          [ -f "$APPCAST_FILE" ] \
+            || { echo "ERROR: Appcast not found at $APPCAST_FILE"; exit 1; }
+
+          echo "CORE=$CORE"                 >> $GITHUB_ENV
+          echo "VERSION=$VERSION"           >> $GITHUB_ENV
+          echo "CORE_PROJ=$CORE_PROJ"       >> $GITHUB_ENV
+          echo "APPCAST_FILE=$APPCAST_FILE" >> $GITHUB_ENV
+
+          echo "Validated: core=$CORE version=$VERSION appcast=$APPCAST_FILE"
+
+      # ── Validate version is higher than current ─────────────────────────────
+      - name: Check version is higher than current appcast entry
+        run: |
+          CURRENT=$(grep -o 'sparkle:version="[^"]*"' "${{ env.APPCAST_FILE }}" \
+            | head -1 | cut -d'"' -f2)
+          echo "Current appcast version: $CURRENT"
+          echo "New version:             ${{ env.VERSION }}"
+          # Simple numeric comparison via Python for version strings like 2.4, 2.10
+          python3 -c "
+          from packaging.version import Version
+          cur = Version('${CURRENT:-0}')
+          new = Version('${{ env.VERSION }}')
+          if new <= cur:
+              print(f'ERROR: {new} is not higher than current {cur}')
+              exit(1)
+          print(f'OK: {new} > {cur}')
+          " 2>/dev/null || python3 -c "
+          # Fallback without packaging module — split on dots and compare
+          cur = list(map(int, '${CURRENT:-0}'.split('.')))
+          new = list(map(int, '${{ env.VERSION }}'.split('.')))
+          if new <= cur:
+              print(f'ERROR: new version is not higher than current {cur}')
+              exit(1)
+          print(f'OK: new version {new} > current {cur}')
+          "
+
+      # ── Build core ──────────────────────────────────────────────────────────
+      - name: Build ${{ inputs.core_name }} (Release, arm64)
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project "${{ env.CORE_PROJ }}" \
+            -scheme "${{ env.CORE }}" \
+            -configuration Release \
+            -destination 'generic/platform=macOS' \
+            -derivedDataPath "${{ env.DERIVED_DATA_PATH }}" \
+            ONLY_ACTIVE_ARCH=YES \
+            FRAMEWORK_SEARCH_PATHS="$(xcodebuild -workspace OpenEmu-metal.xcworkspace \
+              -scheme OpenEmu -configuration Release \
+              -showBuildSettings 2>/dev/null | grep ' BUILT_PRODUCTS_DIR ' | awk '{print $3}' \
+              || echo '')" \
+            2>&1 | grep -E "^(Build|error:|warning: |FAILED|succeeded)" | tail -20
+
+      # ── Locate built plugin ─────────────────────────────────────────────────
+      - name: Locate built .oecoreplugin
+        run: |
+          PLUGIN=$(find "${{ env.DERIVED_DATA_PATH }}" \
+            -name "${{ env.CORE }}.oecoreplugin" \
+            -not -path "*/Index.noindex/*" \
+            2>/dev/null | head -1)
+
+          [ -n "$PLUGIN" ] || {
+            echo "ERROR: ${{ env.CORE }}.oecoreplugin not found in DerivedData"
+            find "${{ env.DERIVED_DATA_PATH }}" -name "*.oecoreplugin" 2>/dev/null || true
+            exit 1
+          }
+          echo "PLUGIN=$PLUGIN" >> $GITHUB_ENV
+          echo "Found plugin: $PLUGIN"
+
+      # ── Sign plugin ─────────────────────────────────────────────────────────
+      - name: Sign ${{ inputs.core_name }}.oecoreplugin
+        run: |
+          codesign --force --sign "Developer ID Application" \
+            --options runtime --timestamp \
+            "${{ env.PLUGIN }}"
+          codesign --verify -v "${{ env.PLUGIN }}"
+          echo "Signed: ${{ env.PLUGIN }}"
+
+      # ── Zip plugin ──────────────────────────────────────────────────────────
+      - name: Create .oecoreplugin.zip
+        run: |
+          ZIP_PATH="${{ runner.temp }}/${{ env.CORE }}.oecoreplugin.zip"
+          echo "ZIP_PATH=$ZIP_PATH" >> $GITHUB_ENV
+
+          cd "$(dirname "${{ env.PLUGIN }}")"
+          zip -r "$ZIP_PATH" "${{ env.CORE }}.oecoreplugin"
+          ZIP_SIZE=$(stat -f%z "$ZIP_PATH")
+          echo "ZIP_SIZE=$ZIP_SIZE" >> $GITHUB_ENV
+          echo "Zip created: $ZIP_PATH ($ZIP_SIZE bytes)"
+
+      # ── Find or create cores-v* tag ─────────────────────────────────────────
+      - name: Compute next cores release tag
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          # Find the latest cores-v* tag
+          LATEST_CORES_TAG=$(git tag -l "cores-v*" \
+            | sort -V | tail -1)
+
+          if [ -z "$LATEST_CORES_TAG" ]; then
+            NEXT_TAG="cores-v1.0.0"
+          else
+            # Increment patch version
+            BASE="${LATEST_CORES_TAG#cores-v}"
+            MAJOR="${BASE%%.*}"; REST="${BASE#*.}"
+            MINOR="${REST%%.*}"; PATCH="${REST##*.}"
+            NEXT_TAG="cores-v${MAJOR}.${MINOR}.$((PATCH + 1))"
+          fi
+
+          echo "CORES_TAG=$NEXT_TAG" >> $GITHUB_ENV
+          echo "Next cores tag: $NEXT_TAG (from: ${LATEST_CORES_TAG:-none})"
+
+      # ── Create GitHub prerelease and upload zip ─────────────────────────────
+      - name: Upload to GitHub prerelease
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          TAG="${{ env.CORES_TAG }}"
+
+          if ! gh release view "$TAG" --repo nickybmon/OpenEmu-Silicon &>/dev/null; then
+            git tag "$TAG"
+            git push origin "$TAG"
+            gh release create "$TAG" \
+              --repo nickybmon/OpenEmu-Silicon \
+              --title "Core Updates $TAG" \
+              --notes "Core plugin update: ${{ env.CORE }} ${{ env.VERSION }}" \
+              --prerelease
+          fi
+
+          gh release upload "$TAG" "${{ env.ZIP_PATH }}" \
+            --repo nickybmon/OpenEmu-Silicon \
+            --clobber
+
+          DOWNLOAD_URL="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/${TAG}/${{ env.CORE }}.oecoreplugin.zip"
+          echo "DOWNLOAD_URL=$DOWNLOAD_URL" >> $GITHUB_ENV
+          echo "Uploaded: $DOWNLOAD_URL"
+
+      # ── Update core appcast ─────────────────────────────────────────────────
+      - name: Update ${{ env.APPCAST_FILE }}
+        run: |
+          python3 Scripts/update_core_appcast.py \
+            "${{ env.APPCAST_FILE }}" \
+            "${{ env.CORE }}" \
+            "${{ env.VERSION }}" \
+            "${{ env.DOWNLOAD_URL }}" \
+            "${{ env.ZIP_SIZE }}"
+
+      # ── Commit appcast back to main ─────────────────────────────────────────
+      - name: Commit and push updated appcast
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add "${{ env.APPCAST_FILE }}"
+          git commit -m \
+            "chore: update ${{ env.CORE }} to ${{ env.VERSION }} (${{ env.CORES_TAG }})"
+
+          git pull --rebase origin main
+          git push origin HEAD:main
+
+      # ── Summary ─────────────────────────────────────────────────────────────
+      - name: Print summary
+        run: |
+          echo ""
+          echo "╔══════════════════════════════════════════════════════╗"
+          echo "║  ${{ env.CORE }} ${{ env.VERSION }} released successfully        ║"
+          echo "╚══════════════════════════════════════════════════════╝"
+          echo ""
+          echo "  Download: ${{ env.DOWNLOAD_URL }}"
+          echo "  Appcast:  ${{ env.APPCAST_FILE }} (committed to main)"
+          echo ""
+          echo "  Users running the app will be offered this update on next launch."
+          echo ""

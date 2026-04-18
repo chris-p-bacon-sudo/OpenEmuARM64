@@ -14,6 +14,17 @@ HELPER_ENTITLEMENTS="$REPO_ROOT/OpenEmu/OpenEmuHelperApp/OpenEmuHelperApp.entitl
 
 die() { echo "ERROR: $*" >&2; [ -n "${WORK_DIR:-}" ] && rm -rf "$WORK_DIR"; exit 1; }
 
+# Produce notarytool credential flags.
+# In CI: set CI_NOTARYTOOL_KEY_PATH, CI_NOTARYTOOL_KEY_ID, CI_NOTARYTOOL_ISSUER
+# to use App Store Connect API key auth. Locally: falls back to keychain profile.
+notarytool_auth_flags() {
+  if [ -n "${CI_NOTARYTOOL_KEY_PATH:-}" ]; then
+    echo "--key $CI_NOTARYTOOL_KEY_PATH --key-id $CI_NOTARYTOOL_KEY_ID --issuer $CI_NOTARYTOOL_ISSUER"
+  else
+    echo "--keychain-profile $PROFILE_NAME"
+  fi
+}
+
 # ── 1. Find archive ──────────────────────────────────────────────────────────
 if [ $# -ge 1 ]; then
   ARCHIVE="$1"
@@ -39,14 +50,20 @@ cp -R "$APP_SRC" "$APP" || die "Failed to copy app."
 # ── 3. Credential check ──────────────────────────────────────────────────────
 echo ""
 echo "=== Credential check ==="
-if ! xcrun notarytool history --keychain-profile "$PROFILE_NAME" &>/dev/null; then
-  echo ""
-  echo "ERROR: No keychain profile '$PROFILE_NAME' found."
-  echo "Run this once in Terminal: xcrun notarytool store-credentials OpenEmu"
-  echo "  Apple ID:              nick.r.blackmon@gmail.com"
-  echo "  App-specific password: from appleid.apple.com → Security → App-Specific Passwords"
-  echo "  Team ID:               AJC82Q6789"
-  rm -rf "$WORK_DIR"; exit 1
+if [ -n "${CI_NOTARYTOOL_KEY_PATH:-}" ]; then
+  [ -f "$CI_NOTARYTOOL_KEY_PATH" ] || { rm -rf "$WORK_DIR"; die "CI_NOTARYTOOL_KEY_PATH not found: $CI_NOTARYTOOL_KEY_PATH"; }
+  echo "Using API key auth (CI mode): key-id=$CI_NOTARYTOOL_KEY_ID"
+else
+  if ! xcrun notarytool history --keychain-profile "$PROFILE_NAME" &>/dev/null; then
+    echo ""
+    echo "ERROR: No keychain profile '$PROFILE_NAME' found."
+    echo "Run this once in Terminal: xcrun notarytool store-credentials OpenEmu"
+    echo "  Apple ID:              nick.r.blackmon@gmail.com"
+    echo "  App-specific password: from appleid.apple.com → Security → App-Specific Passwords"
+    echo "  Team ID:               AJC82Q6789"
+    rm -rf "$WORK_DIR"; exit 1
+  fi
+  echo "Using keychain profile: $PROFILE_NAME"
 fi
 echo "Credentials OK."
 
@@ -192,8 +209,9 @@ ZIP="$WORK_DIR/OpenEmu-notarize.zip"
 ditto -c -k --keepParent "$APP" "$ZIP" || die "Failed to create zip."
 
 NOTARIZE_LOG="$WORK_DIR/notarize.log"
+# shellcheck disable=SC2046
 xcrun notarytool submit "$ZIP" \
-  --keychain-profile "$PROFILE_NAME" \
+  $(notarytool_auth_flags) \
   --wait 2>&1 | tee "$NOTARIZE_LOG"
 
 if grep -q "status: Accepted" "$NOTARIZE_LOG"; then
@@ -220,8 +238,9 @@ if grep -q "status: Accepted" "$NOTARIZE_LOG"; then
 
   echo "Notarizing DMG..."
   DMG_NOTARIZE_LOG="$WORK_DIR/notarize-dmg.log"
+  # shellcheck disable=SC2046
   xcrun notarytool submit "$DMG" \
-    --keychain-profile "$PROFILE_NAME" \
+    $(notarytool_auth_flags) \
     --wait 2>&1 | tee "$DMG_NOTARIZE_LOG"
   grep -q "status: Accepted" "$DMG_NOTARIZE_LOG" || die "DMG notarization was not accepted."
   xcrun stapler staple "$DMG" || die "DMG stapling failed."
@@ -246,7 +265,8 @@ else
   echo "=== Notarization was NOT accepted. ==="
   if [ -n "$SUBID" ]; then
     echo "Fetching rejection log for $SUBID ..."
-    xcrun notarytool log "$SUBID" --keychain-profile "$PROFILE_NAME" || true
+    # shellcheck disable=SC2046
+    xcrun notarytool log "$SUBID" $(notarytool_auth_flags) || true
   fi
   rm -rf "$WORK_DIR"; exit 1
 fi
