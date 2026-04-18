@@ -19,6 +19,9 @@ jobs:
         with:
           xcode-version: latest-stable
 
+      - name: Clear SPM binary artifact cache
+        run: rm -rf ~/Library/Caches/org.swift.swiftpm/artifacts/
+
       - name: Generate credentials stubs
         run: |
           cp OpenEmu/ScreenScraperDevCredentials.template.swift OpenEmu/ScreenScraperDevCredentials.swift
