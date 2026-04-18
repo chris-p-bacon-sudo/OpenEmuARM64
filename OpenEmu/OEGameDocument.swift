@@ -1787,7 +1787,24 @@ final class OEGameDocument: NSDocument {
         }
         
         if coreIdentifier == state.coreIdentifier {
-            loadState()
+            // Same core — guard against version mismatch before loading.
+            // Save states are raw memory dumps; loading one created on a different
+            // core version can corrupt internal state and crash the helper process.
+            if let savedVersion = state.coreVersion,
+               !savedVersion.isEmpty,
+               savedVersion != corePlugin.version {
+                let alert = OEAlert.coreVersionMismatch(
+                    coreName: corePlugin.displayName,
+                    savedVersion: savedVersion,
+                    installedVersion: corePlugin.version)
+                if alert.runModal() == .alertFirstButtonReturn {
+                    loadState()
+                } else {
+                    startEmulation()
+                }
+            } else {
+                loadState()
+            }
             return
         }
         

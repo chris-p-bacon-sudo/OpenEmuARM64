@@ -231,6 +231,19 @@ extension OEAlert {
         return alert
     }
     
+    final class func coreVersionMismatch(coreName: String, savedVersion: String, installedVersion: String) -> OEAlert {
+
+        let alert = OEAlert()
+        alert.messageText = NSLocalizedString("Save State Version Mismatch", comment: "")
+        alert.informativeText = .localizedStringWithFormat(
+            NSLocalizedString("This save state was created with %@ version %@, but version %@ is installed. Loading it may cause a crash.", comment: ""),
+            coreName, savedVersion, installedVersion)
+        alert.defaultButtonTitle = NSLocalizedString("Load Anyway", comment: "")
+        alert.alternateButtonTitle = NSLocalizedString("Cancel", comment: "")
+
+        return alert
+    }
+
     final class func missingBIOSFiles(_ missingFilesList: String) -> OEAlert {
         
         let alert = OEAlert()
