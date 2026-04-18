@@ -226,9 +226,12 @@ if grep -q "status: Accepted" "$NOTARIZE_LOG"; then
   echo "=== Creating DMG ==="
   # Copy the stapled app to the Releases/ folder so hdiutil can access it
   # from a non-temp path (temp dirs under /var/folders are blocked by TCC).
+  # Use ditto (not cp -R) — ditto preserves extended attributes, resource forks,
+  # and the exact bundle structure that macOS code signing relies on.
+  # cp -R silently drops xattrs and corrupts the code seal.
   STAGED_APP="$REPO_ROOT/Releases/OpenEmu.app"
   rm -rf "$STAGED_APP"
-  cp -R "$APP" "$STAGED_APP"
+  ditto "$APP" "$STAGED_APP"
   hdiutil create \
     -volname "OpenEmu-Silicon" \
     -srcfolder "$STAGED_APP" \
