@@ -1077,7 +1077,7 @@ bool Emulator::render()
 		return false;
 	if (state != Running)
 		return false;
-	return rend_single_frame(true, 14); // 14ms: return quickly if no frame ready so OE game loop stays responsive
+	return rend_single_frame(true); // use default timeout (20ms NTSC / 23ms PAL)
 }
 
 void Emulator::vblank()

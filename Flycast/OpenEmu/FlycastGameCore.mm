@@ -65,10 +65,22 @@ public:
 
     u32 push(const void *data, u32 frames, bool wait) override
     {
-        if (_current) {
-            [[_current audioBufferAtIndex:0] write:(const uint8_t *)data
-             maxLength:frames * 4]; // stereo s16 = 4 bytes per frame
+        if (!_current) return frames;
+
+        OERingBuffer *buf = [_current audioBufferAtIndex:0];
+        NSUInteger byteCount = frames * 4; // stereo s16 = 4 bytes per frame
+
+        if (wait) {
+            // Block until there's room in the ring buffer. This is the primary
+            // real-time throttle: config::LimitFPS is constexpr true, so push()
+            // is always called with wait=true. Spinning here paces the SH4 thread
+            // to OE's audio consumption rate, fixing games running too fast (#202).
+            // 200 × 100µs = 20ms max (one PAL frame), preventing infinite spin if
+            // the emulator stops while the SH4 thread is mid-flight.
+            for (int i = 0; i < 200 && [buf freeBytes] < byteCount; i++)
+                usleep(100);
         }
+        [buf write:(const uint8_t *)data maxLength:byteCount];
         return frames;
     }
 
