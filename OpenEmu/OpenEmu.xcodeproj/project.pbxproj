@@ -447,6 +447,7 @@
 		8F93FDDA27374F2000B59F3E /* GameInfoHelperTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F93FDD927374F2000B59F3E /* GameInfoHelperTests.swift */; };
 		8F93FDE02737506900B59F3E /* ROMImporterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F93FDDF2737506900B59F3E /* ROMImporterTests.swift */; };
 		8F9410C0273A0167004C47CC /* CoreUpdater.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8375E14E1477FC0D0018DA1F /* CoreUpdater.swift */; };
+		14FEB8870D5948A1BCD26EEF /* OELibretroMetadata.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62C735BCE1E9487EA5A79659 /* OELibretroMetadata.swift */; };
 		8F94B44D25566FE00058AA94 /* NSShadow+OEAdditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F94B44C25566FE00058AA94 /* NSShadow+OEAdditions.swift */; };
 		8F94DEC1250EC701003A1F33 /* ThumbnailProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F94DEC0250EC701003A1F33 /* ThumbnailProvider.swift */; };
 		8F94DED4250ED838003A1F33 /* PreviewViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F94DED3250ED838003A1F33 /* PreviewViewController.swift */; };
@@ -1554,6 +1555,9 @@
 		83753F1614F537C400D708A7 /* PrefDebugController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PrefDebugController.swift; sourceTree = "<group>"; };
 		83753F1914F5383F00D708A7 /* PrefDebugController.xib */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.xib; path = PrefDebugController.xib; sourceTree = "<group>"; };
 		8375E14E1477FC0D0018DA1F /* CoreUpdater.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = CoreUpdater.swift; sourceTree = "<group>"; };
+		8F22765129D30551001FB9F9 /* curate-core.sh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; name = "curate-core.sh"; path = "Scripts/curate-core.sh"; sourceTree = "<group>"; };
+		8F22765129D30551001FB9FA /* Core-Curation.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = "Core-Curation.md"; path = "Documentation/Core-Curation.md"; sourceTree = "<group>"; };
+		62C735BCE1E9487EA5A79659 /* OELibretroMetadata.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = OELibretroMetadata.swift; sourceTree = "<group>"; };
 		837820B71907FADB0043593F /* IKRenderer.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = IKRenderer.h; sourceTree = "<group>"; };
 		837820B81907FB2D0043593F /* IKImageWrapper.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = IKImageWrapper.h; sourceTree = "<group>"; };
 		837820BA1907FB6E0043593F /* IKImageBrowserView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = IKImageBrowserView.h; sourceTree = "<group>"; };
@@ -3230,6 +3234,8 @@
 			children = (
 				83CACEC7196D6D1300999E70 /* Download.swift */,
 				8375E14E1477FC0D0018DA1F /* CoreUpdater.swift */,
+				62C735BCE1E9487EA5A79659 /* OELibretroMetadata.swift */,
+				8F22765129D30551001FB9FA /* Core-Curation.md */,
 				6FAD47F297164AD6B87C99DF /* OECoreMigration.swift */,
 				839310BB147802380020058E /* CoreDownload.swift */,
 			);
@@ -6571,6 +6577,7 @@
 				94A4E98D179F9A4D00AD8C7D /* OEDBSaveStatesMedia.swift in Sources */,
 				56ECCDC1488945C2A09403D7 /* OECoreMigration.swift in Sources */,
 				8F9410C0273A0167004C47CC /* CoreUpdater.swift in Sources */,
+				14FEB8870D5948A1BCD26EEF /* OELibretroMetadata.swift in Sources */,
 				94A4E992179F9D0400AD8C7D /* OEDBScreenshotsMedia.swift in Sources */,
 				94A4E996179FAB9F00AD8C7D /* OEMediaViewController.m in Sources */,
 				8F4AEAC1273594E6005C6246 /* OpenVGDB.swift in Sources */,

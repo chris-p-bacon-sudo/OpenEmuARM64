@@ -26,8 +26,16 @@
 
 #import "OEN64SystemResponder.h"
 #import "OEN64SystemResponderClient.h"
+#import <OpenEmuBase/OELibretroCoreTranslator.h>
 
 @implementation OEN64SystemResponder
+// OEN64Button enum → RETRO_DEVICE_ID_JOYPAD mapping:
+//   0 DPadUp→UP(4), 1 DPadDown→DOWN(5), 2 DPadLeft→LEFT(6), 3 DPadRight→RIGHT(7),
+//   4 CUp→X(9),     5 CDown→A(8),       6 CLeft→Y(1),       7 CRight→B(0) [C-pad as face],
+//   8 A→A(8),        9 B→B(0),           10 L→L(10),         11 R→R(11),
+//   12 Z→L2(12),     13 Start→START(3)
+// NOTE: must stay in sync with translator-side tables if any exist.
+static const uint8_t kN64LibretroMap[] = { 4, 5, 6, 7, 9, 8, 1, 0, 8, 0, 10, 11, 12, 3 };
 @dynamic client;
 
 + (Protocol *)gameSystemResponderClientProtocol;
@@ -37,17 +45,43 @@
 
 - (void)changeAnalogEmulatorKey:(OESystemKey *)aKey value:(CGFloat)value
 {
-    [self.client didMoveN64JoystickDirection:(OEN64Button)aKey.key withValue:value forPlayer:aKey.player];
+    NSUInteger k = aKey.key;
+    id client = (id)self.client;
+    if ([client conformsToProtocol:@protocol(OEBridgeInputTranslation)]) {
+        int16_t val = (int16_t)round(value * 32767.0);
+        switch (k) {
+            case OEN64AnalogUp:    [(id<OEBridgeInputTranslation>)client receiveLibretroAnalogIndex:0 axis:1 value:-val forPort:aKey.player - 1]; break;
+            case OEN64AnalogDown:  [(id<OEBridgeInputTranslation>)client receiveLibretroAnalogIndex:0 axis:1 value:val  forPort:aKey.player - 1]; break;
+            case OEN64AnalogLeft:  [(id<OEBridgeInputTranslation>)client receiveLibretroAnalogIndex:0 axis:0 value:-val forPort:aKey.player - 1]; break;
+            case OEN64AnalogRight: [(id<OEBridgeInputTranslation>)client receiveLibretroAnalogIndex:0 axis:0 value:val  forPort:aKey.player - 1]; break;
+        }
+        return;
+    }
+    [client didMoveN64JoystickDirection:(OEN64Button)k withValue:value forPlayer:aKey.player];
 }
 
 - (void)pressEmulatorKey:(OESystemKey *)aKey
 {
-    [self.client didPushN64Button:(OEN64Button)aKey.key forPlayer:aKey.player];
+    id client = (id)self.client;
+    NSUInteger k = aKey.key;
+    if ([client conformsToProtocol:@protocol(OEBridgeInputTranslation)]) {
+        uint8_t btn = (k < sizeof(kN64LibretroMap)) ? kN64LibretroMap[k] : 0xFF;
+        [(id<OEBridgeInputTranslation>)client receiveLibretroButton:btn forPort:aKey.player - 1 pressed:YES];
+        return;
+    }
+    [client didPushN64Button:(OEN64Button)k forPlayer:aKey.player];
 }
 
 - (void)releaseEmulatorKey:(OESystemKey *)aKey
 {
-    [self.client didReleaseN64Button:(OEN64Button)aKey.key forPlayer:aKey.player];
+    id client = (id)self.client;
+    NSUInteger k = aKey.key;
+    if ([client conformsToProtocol:@protocol(OEBridgeInputTranslation)]) {
+        uint8_t btn = (k < sizeof(kN64LibretroMap)) ? kN64LibretroMap[k] : 0xFF;
+        [(id<OEBridgeInputTranslation>)client receiveLibretroButton:btn forPort:aKey.player - 1 pressed:NO];
+        return;
+    }
+    [client didReleaseN64Button:(OEN64Button)k forPlayer:aKey.player];
 }
 
 @end
