@@ -30,11 +30,20 @@
 #if TARGET_OS_OSX
 #import <Cocoa/Cocoa.h>
 #endif
+#import <OpenEmuBase/OEGameCoreController.h>
 #import <OpenEmuBase/OESystemResponderClient.h>
 #import <OpenEmuBase/OEGeometry.h>
 #import <OpenEmuBase/OEDiffQueue.h>
 
-@class OEGameCoreController, OEGameCore;
+/// Primary bridge input protocol — used by all system responders.
+@protocol OEBridgeInputTranslation <NSObject>
+- (void)receiveLibretroButton:(uint8_t)buttonID forPort:(NSUInteger)port pressed:(BOOL)pressed;
+- (void)receiveLibretroAnalogIndex:(uint8_t)index axis:(uint8_t)axis value:(int16_t)value forPort:(NSUInteger)port;
+@end
+
+/// Preferred alias for new code — extends OEBridgeInputTranslation.
+@protocol OELibretroInputReceiver <OEBridgeInputTranslation>
+@end
 
 #ifndef DLog
 
