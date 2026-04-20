@@ -97,7 +97,7 @@ static Class GameCoreClass = Nil;
         ringBuffers[i] = nil;
 
     free(ringBuffers);
-    _stopEmulationHandler = nil;
+    _stopEmulationHandler = nil; // Break retain cycles
     _frameCallback = nil;
 }
 
@@ -255,7 +255,7 @@ static Class GameCoreClass = Nil;
             double expectedRate = [self audioSampleRateForBuffer:0];
             NSUInteger audioSamplesGenerated = audioBytesGenerated/(2*[self channelCount]);
             double realRate = audioSamplesGenerated/gameTime;
-            NSLog(@"AUDIO STATS: sample rate %f, real rate %f", expectedRate, realRate);
+
             wasZero = 0;
         }
 #endif
@@ -323,7 +323,7 @@ static Class GameCoreClass = Nil;
         NSTimeInterval timeOver = realTime - nextFrameTime;
         if(timeOver >= 1.0)
         {
-            os_log_debug(OE_LOG_DEFAULT, "Synchronizing because we are %g seconds behind", timeOver);
+
             nextFrameTime = realTime;
         }
 
@@ -333,7 +333,7 @@ static Class GameCoreClass = Nil;
             _frameCallback(1.0 / frameRate);
 
         if (!executing) {
-            [NSThread sleepForTimeInterval:0.016];
+            CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.5, true);
             nextFrameTime = OEMonotonicTime() + advance;
         }
         
@@ -348,7 +348,7 @@ static Class GameCoreClass = Nil;
 {
     [_renderDelegate suspendFPSLimiting];
     shouldStop = YES;
-    os_log_debug(OE_LOG_DEFAULT, "Ending thread");
+
     [self didStopEmulation];
 }
 
@@ -647,7 +647,7 @@ static Class GameCoreClass = Nil;
 
 - (void)setRate:(float)rate
 {
-    os_log_debug(OE_LOG_DEFAULT, "Rate change %f -> %f", _rate, rate);
+
 
     _rate = rate;
     if (_rate > 0.001)
@@ -691,12 +691,13 @@ static Class GameCoreClass = Nil;
     os_unfair_lock_lock(&_ringBufferLock);
     OERingBuffer *result = ringBuffers[index];
     if(result == nil) {
-        /* ring buffer is 0.1 seconds
-         * the larger the buffer, the higher the maximum possible audio lag */
+        /* ring buffer is 0.075 seconds (75ms).
+         * 50ms was prone to crackling on high-load cores; 100ms added too much lag.
+         * 75ms is the "Goldilocks" zone for stability vs. latency. */
         double sampleRate = [self audioSampleRateForBuffer:index];
         NSAssert(sampleRate > 0, @"Sample rate must be greater than 0 for buffer %lu", index);
-        
-        double frameSampleCount = sampleRate * 0.1;
+
+        double frameSampleCount = sampleRate * 0.075;
         NSUInteger channelCount = [self channelCountForBuffer:index];
         NSUInteger bytesPerSample = [self audioBitDepth] / 8;
         NSAssert(frameSampleCount, @"frameSampleCount is 0");
@@ -749,7 +750,9 @@ static Class GameCoreClass = Nil;
 {
     if(buffer == 0) return [self channelCount];
 
+#if DEBUG
     os_log_error(OE_LOG_DEFAULT, "Buffer count is greater than 1, must implement %{public}@", NSStringFromSelector(_cmd));
+#endif
 
     [self doesNotImplementSelector:_cmd];
     return 0;
@@ -768,7 +771,9 @@ static Class GameCoreClass = Nil;
 {
     if(buffer == 0) return [self audioSampleRate];
 
+#if DEBUG
     os_log_error(OE_LOG_DEFAULT, "Buffer count is greater than 1, must implement %{public}@", NSStringFromSelector(_cmd));
+#endif
 
     [self doesNotImplementSelector:_cmd];
     return 0;
