@@ -73,6 +73,7 @@
 			);
 			dependencies = (
 				87F077B023B68C64001FFC9B /* PBXTargetDependency */,
+				87FBC0C21BFC7A0000AECF5A /* PBXTargetDependency */,
 				873A363E1FE233BA0004D81D /* PBXTargetDependency */,
 				87BD9E231C2A6652006722DF /* PBXTargetDependency */,
 				87BD9E211C2A663B006722DF /* PBXTargetDependency */,
@@ -393,6 +394,7 @@
 		87DF05291BCE302F0060E2C2 /* OEDCSystemResponder.m in Sources */ = {isa = PBXBuildFile; fileRef = 87DF05171BCE302F0060E2C2 /* OEDCSystemResponder.m */; };
 		87DF05411BCE3CEA0060E2C2 /* Dreamcast.oesystemplugin in CopyFiles */ = {isa = PBXBuildFile; fileRef = 87DF04FE1BCE2D100060E2C2 /* Dreamcast.oesystemplugin */; };
 		87F077B423B68D02001FFC9B /* GameCube.oesystemplugin in Copy System Plugins to App Plugins */ = {isa = PBXBuildFile; fileRef = 94CEB26D17A84809005A2107 /* GameCube.oesystemplugin */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		87FBC0C01BFC7A0000AECF5A /* Commodore 64.oesystemplugin in Copy System Plugins to App Plugins */ = {isa = PBXBuildFile; fileRef = 87FBC06D1BFC70FE00AECF5A /* Commodore 64.oesystemplugin */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		87FB253B1BBC572E00E739CE /* Controller-Preferences-JAP.plist in Resources */ = {isa = PBXBuildFile; fileRef = 87FB25391BBC572E00E739CE /* Controller-Preferences-JAP.plist */; };
 		87FB253C1BBC572E00E739CE /* Controller-Preferences-NA.plist in Resources */ = {isa = PBXBuildFile; fileRef = 87FB253A1BBC572E00E739CE /* Controller-Preferences-NA.plist */; };
 		87FBC0771BFC764F00AECF5A /* OEC64SystemResponder.m in Sources */ = {isa = PBXBuildFile; fileRef = 87FBC0751BFC764F00AECF5A /* OEC64SystemResponder.m */; };
@@ -1060,6 +1062,13 @@
 			remoteGlobalIDString = 94CEB26C17A84809005A2107;
 			remoteInfo = GameCube;
 		};
+		87FBC0C11BFC7A0000AECF5A /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 2A37F4A9FDCFA73011CA2CEA /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 87FBC06C1BFC70FE00AECF5A;
+			remoteInfo = "Commodore 64";
+		};
 		8F94DEC4250EC701003A1F33 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 2A37F4A9FDCFA73011CA2CEA /* Project object */;
@@ -1206,6 +1215,7 @@
 			dstSubfolderSpec = 13;
 			files = (
 				87F077B423B68D02001FFC9B /* GameCube.oesystemplugin in Copy System Plugins to App Plugins */,
+				87FBC0C01BFC7A0000AECF5A /* Commodore 64.oesystemplugin in Copy System Plugins to App Plugins */,
 				0E026D7220704B74B7A5E66C /* Wii.oesystemplugin in Copy System Plugins to App Plugins */,
 				873A36421FE233E00004D81D /* Saturn.oesystemplugin in Copy System Plugins to App Plugins */,
 				DEAAB8E598494A97A260F43C84A6B563 /* Dreamcast.oesystemplugin in Copy System Plugins to App Plugins */,
@@ -7146,6 +7156,11 @@
 			isa = PBXTargetDependency;
 			target = 94CEB26C17A84809005A2107 /* GameCube */;
 			targetProxy = 87F077AF23B68C64001FFC9B /* PBXContainerItemProxy */;
+		};
+		87FBC0C21BFC7A0000AECF5A /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 87FBC06C1BFC70FE00AECF5A /* Commodore 64 */;
+			targetProxy = 87FBC0C11BFC7A0000AECF5A /* PBXContainerItemProxy */;
 		};
 		8F94DEC5250EC701003A1F33 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;

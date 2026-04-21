@@ -57,6 +57,8 @@
 @property (nonatomic, assign) BOOL isNDS;
 @property (nonatomic, assign) BOOL isDC;
 @property (nonatomic, assign) BOOL isSaturn;
+@property (nonatomic, assign) BOOL isC64;
+@property (nonatomic, assign) retro_keyboard_event_t retroKeyboardEvent;
 @property (nonatomic, assign) BOOL isN64;
 
 // Persistent path storage — NSString ivars keep the ObjC objects alive,
@@ -514,6 +516,30 @@ static bool libretro_environment_cb(unsigned cmd, void *data) {
                     }
                 }
 
+                // VICE (Commodore 64) Defaults
+                if (_current->_isC64) {
+                    // C64C model — better compatibility with late-era software
+                    if (strcmp(var->key, "vice_c64_model") == 0) {
+                        var->value = "C64C PAL";
+                        return true;
+                    }
+                    // Disable true drive emulation — faster loading, sufficient for most games
+                    if (strcmp(var->key, "vice_drive_true_emulation") == 0) {
+                        var->value = "disabled";
+                        return true;
+                    }
+                    // Joystick port 2 is standard for most C64 games
+                    if (strcmp(var->key, "vice_joyport") == 0) {
+                        var->value = "2";
+                        return true;
+                    }
+                    // Auto-start ROMs immediately
+                    if (strcmp(var->key, "vice_autostart") == 0) {
+                        var->value = "enabled";
+                        return true;
+                    }
+                }
+
                 // PPSSPP Defaults
                 if ([systemID containsString:@"psp"]) {
                     if (strcmp(var->key, "ppsspp_backend") == 0) {
@@ -562,6 +588,13 @@ static bool libretro_environment_cb(unsigned cmd, void *data) {
         case RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE:
             if (data) *(bool *)data = false;
             return true;
+        case RETRO_ENVIRONMENT_SET_KEYBOARD_CALLBACK:
+            if (data && _current) {
+                struct retro_keyboard_callback *kb = (struct retro_keyboard_callback *)data;
+                _current->_retroKeyboardEvent = kb->callback;
+                return true;
+            }
+            return false;
         case RETRO_ENVIRONMENT_SET_SERIALIZATION_QUIRKS:
             // Cores write a uint64_t bitmask declaring how their save-state
             // serialization deviates from the spec. We acknowledge it and
@@ -910,6 +943,7 @@ static void* bridge_dlsym(void *handle, const char *symbol) {
     _isNDS    = [systemID containsString:@"nds"];
     _isDC     = [systemID containsString:@"dc"];
     _isSaturn = [systemID containsString:@"saturn"];
+    _isC64    = [systemID containsString:@"c64"];
     _isN64    = [systemID containsString:@"n64"];
     _isHW     = NO;  // Reset — core will re-request via SET_HW_RENDER if needed
 
@@ -1410,6 +1444,47 @@ static void* bridge_dlsym(void *handle, const char *symbol) {
         case 10: return RETRO_DEVICE_ID_JOYPAD_START;
         case 11: return RETRO_DEVICE_ID_JOYPAD_SELECT;
         default: return 0xFF;
+    }
+}
+
+#pragma mark - OEC64SystemResponderClient
+
+// OEC64Button enum values must match OEC64SystemResponderClient.h:
+// OEC64JoystickUp=0, Down=1, Left=2, Right=3, Fire=4, Jump=5, SwapJoysticks=6
+static const uint8_t OEC64ButtonToLibretro[] = {
+    RETRO_DEVICE_ID_JOYPAD_UP,    // OEC64JoystickUp    = 0
+    RETRO_DEVICE_ID_JOYPAD_DOWN,  // OEC64JoystickDown  = 1
+    RETRO_DEVICE_ID_JOYPAD_LEFT,  // OEC64JoystickLeft  = 2
+    RETRO_DEVICE_ID_JOYPAD_RIGHT, // OEC64JoystickRight = 3
+    RETRO_DEVICE_ID_JOYPAD_B,     // OEC64Fire          = 4
+    RETRO_DEVICE_ID_JOYPAD_A,     // OEC64Jump          = 5
+};
+
+- (void)didPushC64Button:(NSInteger)button forPlayer:(NSUInteger)player {
+    NSUInteger port = player > 0 ? player - 1 : 0;
+    if (port >= 4 || (NSUInteger)button >= sizeof(OEC64ButtonToLibretro)) return;
+    uint8_t btn = OEC64ButtonToLibretro[button];
+    if (btn == 0xFF) return;
+    atomic_store_explicit(&_buttonStates[port][btn], 1, memory_order_relaxed);
+}
+
+- (void)didReleaseC64Button:(NSInteger)button forPlayer:(NSUInteger)player {
+    NSUInteger port = player > 0 ? player - 1 : 0;
+    if (port >= 4 || (NSUInteger)button >= sizeof(OEC64ButtonToLibretro)) return;
+    uint8_t btn = OEC64ButtonToLibretro[button];
+    if (btn == 0xFF) return;
+    atomic_store_explicit(&_buttonStates[port][btn], 0, memory_order_relaxed);
+}
+
+- (void)didPressKey:(NSInteger)keycode forPlayer:(NSUInteger)player {
+    if (_retroKeyboardEvent) {
+        _retroKeyboardEvent(true, (unsigned)keycode, 0, 0);
+    }
+}
+
+- (void)didReleaseKey:(NSInteger)keycode forPlayer:(NSUInteger)player {
+    if (_retroKeyboardEvent) {
+        _retroKeyboardEvent(false, (unsigned)keycode, 0, 0);
     }
 }
 

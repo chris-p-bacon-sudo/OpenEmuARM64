@@ -53,6 +53,7 @@ extern "C" {
 #define RETRO_ENVIRONMENT_GET_SYSTEM_DIRECTORY                         9
 #define RETRO_ENVIRONMENT_SET_PIXEL_FORMAT                             10
 #define RETRO_ENVIRONMENT_SET_INPUT_DESCRIPTORS                        11
+#define RETRO_ENVIRONMENT_SET_KEYBOARD_CALLBACK                        12
 #define RETRO_ENVIRONMENT_SET_HW_RENDER                                14
 #define RETRO_ENVIRONMENT_GET_VARIABLE                                 15
 #define RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE                          17
@@ -144,6 +145,9 @@ enum retro_log_level {
 
 typedef void (*retro_log_printf_t)(enum retro_log_level level, const char *fmt, ...);
 struct retro_log_callback { retro_log_printf_t log; };
+
+typedef void (*retro_keyboard_event_t)(bool down, unsigned keycode, uint32_t character, uint16_t key_modifiers);
+struct retro_keyboard_callback { retro_keyboard_event_t callback; };
 
 enum retro_hw_context_type {
     RETRO_HW_CONTEXT_NONE         = 0,
