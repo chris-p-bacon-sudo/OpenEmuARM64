@@ -77,7 +77,7 @@ public:
             // to OE's audio consumption rate, fixing games running too fast (#202).
             // 200 × 100µs = 20ms max (one PAL frame), preventing infinite spin if
             // the emulator stops while the SH4 thread is mid-flight.
-            for (int i = 0; i < 200 && [buf freeBytes] < byteCount; i++)
+            for (int i = 0; i < 200 && _current && [buf freeBytes] < byteCount; i++)
                 usleep(100);
         }
         [buf write:(const uint8_t *)data maxLength:byteCount];
