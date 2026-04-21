@@ -1,0 +1,65 @@
+app-id: org.DolphinEmu.dolphin-emu
+runtime: org.kde.Platform
+runtime-version: '6.10'
+sdk: org.kde.Sdk
+command: dolphin-emu-wrapper
+rename-desktop-file: dolphin-emu.desktop
+rename-icon: dolphin-emu
+finish-args:
+  - --device=all
+  - --socket=pulseaudio
+  - --socket=x11
+  - --share=network
+  - --share=ipc
+  # required for the emulated bluetooth adapter feature to work.
+  - --allow=bluetooth
+  - --filesystem=xdg-run/app/com.discordapp.Discord:create
+  - --filesystem=xdg-run/discord-ipc-0:create
+  # required to disable the screensaver in various desktops
+  - --talk-name=org.freedesktop.ScreenSaver
+  - --talk-name=org.xfce.ScreenSaver
+  - --talk-name=org.mate.ScreenSaver
+  # required for Gamescope on Steam Deck
+  - --filesystem=xdg-run/gamescope-0:ro
+modules:
+  # enables motion controls on non-wii controllers (switch, ps4, etc)
+  # requires a udev rule enabling Motion Sensors access
+  - name: libevdev
+    buildsystem: meson
+    config-opts:
+      - -Dtests=disabled
+      - -Ddocumentation=disabled
+    sources:
+      - type: archive
+        url: https://www.freedesktop.org/software/libevdev/libevdev-1.13.3.tar.xz
+        sha256: abf1aace86208eebdd5d3550ffded4c8d73bb405b796d51c389c9d0604cbcfbf
+        x-checker-data:
+          type: anitya
+          project-id: 20540
+          stable-only: true
+          url-template: https://www.freedesktop.org/software/libevdev/libevdev-$version.tar.xz
+  - name: dolphin-emu
+    buildsystem: cmake-ninja
+    builddir: true
+    build-options:
+      # don't use any default flags provided by the SDK
+      cflags: ""
+      cflags-override: true
+      cxxflags: ""
+      cxxflags-override: true
+    config-opts:
+      - -DCMAKE_BUILD_TYPE=Release
+      - -DENABLE_ALSA=OFF
+      - -DENABLE_SDL=ON
+      - -DENABLE_EVDEV=ON
+      - -DDISTRIBUTOR=dolphin-emu.org
+    cleanup:
+      - /share/man
+    post-install:
+      - install -Dm755 -t ${FLATPAK_DEST}/bin/ ../Flatpak/dolphin-emu-wrapper
+      - install -Dm644 -t ${FLATPAK_DEST}/share/metainfo/ Flatpak/org.DolphinEmu.dolphin-emu.metainfo.xml
+      - desktop-file-edit --set-key=Exec --set-value='/app/bin/dolphin-emu-wrapper'
+        /app/share/applications/dolphin-emu.desktop
+    sources:
+      - type: dir
+        path: ..
