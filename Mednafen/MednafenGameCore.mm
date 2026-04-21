@@ -3395,6 +3395,24 @@ static __weak MednafenGameCore *_current;
     }
     _videoHeight  = spec.DisplayRect.h;
 
+    // PSX reports a non-zero DisplayRect.x when the GPU's horizontal start register
+    // shifts mid-game (e.g. after the BIOS splash). The host compositor renders the
+    // active rect left-aligned in the window, leaving a blank strip on the right equal
+    // to the offset. Zero out the X offset and expand the width to fill the framebuffer
+    // so the image stays centered. Log on first occurrence per session to aid diagnosis.
+    if ([_mednafenCoreModule isEqualToString:@"psx"] && _videoOffsetX != 0) {
+        static int psxOffsetLogCount = 0;
+        if (psxOffsetLogCount < 5) {
+            NSLog(@"[Mednafen] PSX DisplayRect x=%d y=%d w=%d h=%d fb_w=%d (centering)",
+                  spec.DisplayRect.x, spec.DisplayRect.y, _videoWidth, _videoHeight, game->fb_width);
+            psxOffsetLogCount++;
+        }
+        // Expand width to cover the offset so the active area fills the full framebuffer
+        // width, then zero the offset so the compositor centers it correctly.
+        _videoWidth  = MIN(_videoWidth + _videoOffsetX, (int)game->fb_width);
+        _videoOffsetX = 0;
+    }
+
     [[self ringBufferAtIndex:0] write:spec.SoundBuf maxLength:spec.SoundBufSize * self.channelCount * 2];
 }
 
