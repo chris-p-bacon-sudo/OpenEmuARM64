@@ -96,4 +96,4 @@
 	url = ../../OpenEmu/VirtualC64-Core.git
 [submodule "Dolphin/dolphin"]
 	path = Dolphin/dolphin
-	url = git@github.com:nickybmon/Dolphin-Core.git
+	url = https://github.com/dolphin-emu/dolphin
