@@ -168,6 +168,30 @@ Do **not** update cores on a fixed schedule just to stay "current." Every update
 
 ---
 
+## Advanced: Manual Dylib Replacement (Power User Path)
+
+This applies to **bridge cores only** (Gambatte-Bridge, Flycast-Bridge, VICE-Bridge). Native cores use compiled plugin binaries and cannot be updated by replacing a single file.
+
+Bridge plugin bundles expose their dylib as a single replaceable file. A power user who wants to test a newer buildbot dylib before it's been curated can replace it themselves:
+
+```bash
+# Example: replace Gambatte-Bridge with a fresh buildbot build
+PLUGIN=~/Library/Application\ Support/OpenEmu/Cores/Gambatte-Bridge.oecoreplugin
+cp ~/Downloads/gambatte_libretro.dylib "$PLUGIN/Contents/MacOS/gambatte_libretro.dylib"
+codesign --force --sign - "$PLUGIN"
+```
+
+Substitute the plugin name and dylib filename for other bridge cores.
+
+**Important caveats:**
+- The replaced dylib is not verified by the maintainer — use at your own risk
+- An app update that ships a new curated `.oecoreplugin` will overwrite the manual replacement
+- If the replacement causes crashes, delete the plugin and reinstall from the app's Core Preferences pane
+
+This path is not exposed in the app UI — it is a documented escape hatch for users who know what they're doing.
+
+---
+
 ## What NOT to Do
 
 - **Do not point users directly at the buildbot.** A live feed from an external server means users get whatever was compiled this morning, with no testing and no rollback.

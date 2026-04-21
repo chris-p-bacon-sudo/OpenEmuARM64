@@ -1,0 +1,5 @@
+# The flycast_libretro.dylib is not committed — it must be downloaded separately.
+# Download from: https://buildbot.libretro.com/nightly/apple/osx/arm64/latest/flycast_libretro.dylib.zip
+# Place at: Flycast-Bridge/Flycast-Bridge.oecoreplugin/Contents/MacOS/flycast_libretro.dylib
+*.dylib
+*.zip

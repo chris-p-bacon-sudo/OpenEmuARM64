@@ -3,15 +3,15 @@
   xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle"
   xmlns:dc="http://purl.org/dc/elements/1.1/">
   <channel>
-    <title>4DO</title>
+    <title>Dolphin</title>
     <item>
-      <title>4DO 2.3.0</title>
+      <title>Dolphin 2412</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.1.0/4DO.oecoreplugin.zip"
-        sparkle:version="2.3.0"
-        sparkle:shortVersionString="2.3.0"
-        length="68515"
+        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.1.0/Dolphin.oecoreplugin.zip"
+        sparkle:version="2412"
+        sparkle:shortVersionString="2412"
+        length="8950726"
         type="application/octet-stream" />
     </item>
   </channel>

@@ -13706,6 +13706,11 @@
 					$SRCROOT/dolphin/Source/Core,
 					$SRCROOT/dolphin/Source/Core/Common/Compat,
 					$SRCROOT/dolphin/Externals/fmt/fmt/include,
+					$SRCROOT/dolphin/Externals/spirv_cross/SPIRV-Cross,
+					$SRCROOT/dolphin/Externals/mbedtls/include,
+					$SRCROOT/dolphin/Externals,
+					$SRCROOT/dolphin/Externals/libpng,
+					$SRCROOT/dolphin/Externals/glslang/glslang,
 				);
 				INSTALL_PATH = "";
 				LIBRARY_STYLE = STATIC;
@@ -14776,6 +14781,7 @@
 					$SRCROOT/dolphin/Externals/cpp-ipc/cpp-ipc/include,
 					$SRCROOT/dolphin/Externals/tinygltf,
 					$SRCROOT/dolphin/Externals/glslang/glslang,
+					$SRCROOT/dolphin/Externals/FatFs,
 				);
 				INSTALL_PATH = "";
 				LIBRARY_STYLE = STATIC;
