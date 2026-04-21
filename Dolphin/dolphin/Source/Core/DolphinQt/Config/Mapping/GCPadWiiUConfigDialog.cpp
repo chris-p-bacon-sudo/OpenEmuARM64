@@ -1,0 +1,99 @@
+// Copyright 2017 Dolphin Emulator Project
+// SPDX-License-Identifier: GPL-2.0-or-later
+
+#include "DolphinQt/Config/Mapping/GCPadWiiUConfigDialog.h"
+
+#include <QCheckBox>
+#include <QDialogButtonBox>
+#include <QLabel>
+#include <QTimer>
+#include <QVBoxLayout>
+
+#include "Core/Config/MainSettings.h"
+
+#include "InputCommon/GCAdapter.h"
+
+GCPadWiiUConfigDialog::GCPadWiiUConfigDialog(int port, QWidget* parent)
+    : QDialog(parent), m_port{port}
+{
+  CreateLayout();
+
+  LoadSettings();
+  ConnectWidgets();
+}
+
+void GCPadWiiUConfigDialog::CreateLayout()
+{
+  setWindowTitle(tr("GameCube Controller Adapter at Port %1").arg(m_port + 1));
+
+  m_layout = new QVBoxLayout();
+  m_status_label = new QLabel();
+  m_poll_rate_label = new QLabel;
+  m_rumble = new QCheckBox(tr("Enable Rumble"));
+  m_simulate_bongos = new QCheckBox(tr("Simulate DK Bongos"));
+  m_button_box = new QDialogButtonBox(QDialogButtonBox::Ok);
+
+  UpdateAdapterStatus();
+
+  auto* const timer = new QTimer{this};
+  connect(timer, &QTimer::timeout, this, &GCPadWiiUConfigDialog::UpdateAdapterStatus);
+  timer->start(std::chrono::milliseconds{500});
+
+  m_layout->addWidget(m_status_label);
+  m_layout->addWidget(m_poll_rate_label);
+  m_layout->addWidget(m_rumble);
+  m_layout->addWidget(m_simulate_bongos);
+  m_layout->addWidget(m_button_box);
+
+  setLayout(m_layout);
+}
+
+void GCPadWiiUConfigDialog::ConnectWidgets()
+{
+  connect(m_rumble, &QCheckBox::toggled, this, &GCPadWiiUConfigDialog::SaveSettings);
+  connect(m_simulate_bongos, &QCheckBox::toggled, this, &GCPadWiiUConfigDialog::SaveSettings);
+  connect(m_button_box, &QDialogButtonBox::accepted, this, &GCPadWiiUConfigDialog::accept);
+}
+
+void GCPadWiiUConfigDialog::UpdateAdapterStatus()
+{
+  const char* error_message = nullptr;
+  const bool detected = GCAdapter::IsDetected(&error_message);
+  QString status_text;
+
+  if (detected)
+  {
+    status_text = tr("Adapter Detected");
+  }
+  else if (error_message)
+  {
+    status_text = tr("Error Opening Adapter: %1").arg(QString::fromUtf8(error_message));
+  }
+  else
+  {
+    status_text = tr("No Adapter Detected");
+  }
+
+  m_status_label->setText(status_text);
+
+  const auto poll_rate = GCAdapter::GetCurrentPollRate();
+  if (poll_rate != 0)
+    m_poll_rate_label->setText(tr("Poll Rate: %1 Hz").arg(poll_rate, 0, 'f', 2));
+  else
+    m_poll_rate_label->clear();
+
+  m_rumble->setEnabled(detected);
+  m_simulate_bongos->setEnabled(detected);
+}
+
+void GCPadWiiUConfigDialog::LoadSettings()
+{
+  m_rumble->setChecked(Config::Get(Config::GetInfoForAdapterRumble(m_port)));
+  m_simulate_bongos->setChecked(Config::Get(Config::GetInfoForSimulateKonga(m_port)));
+}
+
+void GCPadWiiUConfigDialog::SaveSettings()
+{
+  Config::SetBaseOrCurrent(Config::GetInfoForAdapterRumble(m_port), m_rumble->isChecked());
+  Config::SetBaseOrCurrent(Config::GetInfoForSimulateKonga(m_port), m_simulate_bongos->isChecked());
+}

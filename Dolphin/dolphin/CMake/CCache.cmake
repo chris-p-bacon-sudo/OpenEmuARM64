@@ -1,0 +1,13 @@
+find_program(CCACHE_BIN NAMES ccache sccache)
+if(CCACHE_BIN)
+  set(_CCACHE_SUPPORTED_LAUCHERS C CXX OBJC OBJCXX)
+  foreach(LAUNCHER ${_CCACHE_SUPPORTED_LAUCHERS})
+    if (NOT CMAKE_${LAUNCHER}_COMPILER_LAUNCHER MATCHES "ccache")
+      list(INSERT CMAKE_${LAUNCHER}_COMPILER_LAUNCHER 0 ${CCACHE_BIN})
+    endif()
+    # ccache uses -I when compiling without preprocessor, which makes clang complain.
+    if("${CMAKE_${LAUNCHER}_COMPILER_ID}" MATCHES "Clang")
+      set(CMAKE_${LAUNCHER}_FLAGS "${CMAKE_${LAUNCHER}_FLAGS} -Qunused-arguments -fcolor-diagnostics")
+    endif()
+  endforeach()
+endif()

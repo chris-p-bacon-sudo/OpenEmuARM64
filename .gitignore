@@ -70,5 +70,3 @@ build.log
 *-Bridge/**/*.dylib
 *-Bridge/**/MacOS/*-Bridge
 
-# Dolphin nested submodule untracked content (glslang, tinygltf — not part of this repo)
-Dolphin/dolphin/

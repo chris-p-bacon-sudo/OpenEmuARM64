@@ -1,0 +1,22 @@
+project(hidapi)
+
+add_library(hidapi STATIC hidapi-src/hidapi/hidapi.h)
+dolphin_disable_warnings(hidapi)
+target_include_directories(hidapi PUBLIC hidapi-src/hidapi)
+
+if(APPLE)
+  target_sources(hidapi PRIVATE hidapi-src/mac/hid.c)
+elseif(WIN32)
+  target_sources(hidapi PRIVATE hidapi-src/windows/hid.c)
+else()
+  find_package(LIBUDEV)
+  if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND LIBUDEV_FOUND)
+    target_sources(hidapi PRIVATE hidapi-src/linux/hid.c)
+    target_link_libraries(hidapi PRIVATE udev)
+  else()
+    target_sources(hidapi PRIVATE hidapi-src/libusb/hid.c)
+    target_link_libraries(hidapi PRIVATE LibUSB::LibUSB)
+  endif()
+endif()
+
+add_library(Hidapi::Hidapi ALIAS hidapi)

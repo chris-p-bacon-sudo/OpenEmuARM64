@@ -94,7 +94,3 @@
 [submodule "VirtualC64-Core"]
 	path = VirtualC64-Core
 	url = ../../OpenEmu/VirtualC64-Core.git
-[submodule "Dolphin/dolphin"]
-	path = Dolphin/dolphin
-	url = https://github.com/dolphin-emu/dolphin
-	ignore = untracked
