@@ -847,9 +847,12 @@ static void libretro_video_refresh_cb(const void *data, unsigned width, unsigned
                     break;
             }
 
-            if (handler) {
+            if (handler && width <= 4096) {
                 // Copy to (0,0) and let OpenEmu Metal handle centring the viewport.
                 handler((const uint8_t *)data, dst, width, height, pitch, destRowWords);
+            } else if (handler) {
+                // Fallback for extreme resolutions (> 4K) to avoid SIMD overflows
+                OEVideoCopyXRGB8888((const uint8_t *)data, dst, width, height, pitch, destRowWords);
             }
         }
     }
@@ -973,6 +976,13 @@ static void* bridge_dlsym(void *handle, const char *symbol) {
 
 - (BOOL)loadFileAtPath:(NSString *)path error:(NSError **)error {
     _current = self;
+
+    // ABI Sanity Check: Ensure our compiled layout matches the Libretro spec requirements
+    // for Apple Silicon (64-byte hw_render_callback, 16-byte aligned pointers).
+    if (sizeof(struct retro_hw_render_callback) != 64) {
+        os_log_error(OE_LOG_DEFAULT, "[OELibretro] FATAL: ABI Mismatch detected! hw_render_callback size: %zu (Expected 64)", sizeof(struct retro_hw_render_callback));
+    }
+
     self.coreBundle = [[self owner] bundle];
 
     // Fallback: if owner didn't provide a bundle, scan all loaded bundles
@@ -1424,7 +1434,7 @@ static void* bridge_dlsym(void *handle, const char *symbol) {
 
 - (void)receiveLibretroButton:(uint8_t)buttonID forPort:(NSUInteger)port pressed:(BOOL)pressed {
     if (port < 4 && buttonID < 16) {
-        atomic_store_explicit(&_buttonStates[port][buttonID], pressed ? 1 : 0, memory_order_relaxed);
+        atomic_store_explicit(&_buttonStates[port][buttonID], pressed ? 1 : 0, memory_order_release);
     }
 }
 
@@ -1883,16 +1893,16 @@ static const NSUInteger OEDCButtonCount = sizeof(OEDCButtonToLibretro) / sizeof(
 
     switch (button) {
         case 13: // OEDCAnalogLeft  -> X axis
-            atomic_store_explicit(&_analogStates[port][RETRO_DEVICE_INDEX_ANALOG_LEFT][RETRO_DEVICE_ID_ANALOG_X], scaled, memory_order_relaxed);
+            atomic_store_explicit(&_analogStates[port][RETRO_DEVICE_INDEX_ANALOG_LEFT][RETRO_DEVICE_ID_ANALOG_X], scaled, memory_order_release);
             break;
         case 14: // OEDCAnalogRight -> X axis (right stick)
-            atomic_store_explicit(&_analogStates[port][RETRO_DEVICE_INDEX_ANALOG_RIGHT][RETRO_DEVICE_ID_ANALOG_X], scaled, memory_order_relaxed);
+            atomic_store_explicit(&_analogStates[port][RETRO_DEVICE_INDEX_ANALOG_RIGHT][RETRO_DEVICE_ID_ANALOG_X], scaled, memory_order_release);
             break;
         case 11: // OEDCAnalogUp    -> Y axis
-            atomic_store_explicit(&_analogStates[port][RETRO_DEVICE_INDEX_ANALOG_LEFT][RETRO_DEVICE_ID_ANALOG_Y], scaled, memory_order_relaxed);
+            atomic_store_explicit(&_analogStates[port][RETRO_DEVICE_INDEX_ANALOG_LEFT][RETRO_DEVICE_ID_ANALOG_Y], scaled, memory_order_release);
             break;
         case 12: // OEDCAnalogDown  -> Y axis
-            atomic_store_explicit(&_analogStates[port][RETRO_DEVICE_INDEX_ANALOG_LEFT][RETRO_DEVICE_ID_ANALOG_Y], scaled, memory_order_relaxed);
+            atomic_store_explicit(&_analogStates[port][RETRO_DEVICE_INDEX_ANALOG_LEFT][RETRO_DEVICE_ID_ANALOG_Y], scaled, memory_order_release);
             break;
         // Analog triggers — Flycast's libretro core actually supports true analog
         // L2/R2 via RETRO_DEVICE_ANALOG index 2, but our _analogStates array is
