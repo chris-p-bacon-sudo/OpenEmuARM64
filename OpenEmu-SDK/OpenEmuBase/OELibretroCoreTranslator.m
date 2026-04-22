@@ -233,6 +233,8 @@ static void libretro_log_cb(enum retro_log_level level, const char *fmt, ...) {
     // Logging: Resolution tracking
     unsigned _lastWidth;
     unsigned _lastHeight;
+
+    os_unfair_lock _avInfoLock;
 }
 
 + (NSString *)libraryVersionForCoreAtURL:(NSURL *)url {
@@ -333,9 +335,9 @@ static bool libretro_environment_cb(unsigned cmd, void *data) {
         case RETRO_ENVIRONMENT_SET_GEOMETRY:
             if (data && _current) {
                 const struct retro_game_geometry *geom = (const struct retro_game_geometry *)data;
-                @synchronized(_current) {
-                    _current->_avInfo.geometry = *geom;
-                }
+                os_unfair_lock_lock(&_current->_avInfoLock);
+                _current->_avInfo.geometry = *geom;
+                os_unfair_lock_unlock(&_current->_avInfoLock);
                 _current.didClearSaturnBuffer = NO; 
 #if DEBUG
                 NSLog(@"[OELibretro] Geometry updated: %dx%d (Aspect: %.2f)", geom->base_width, geom->base_height, geom->aspect_ratio);
@@ -346,9 +348,9 @@ static bool libretro_environment_cb(unsigned cmd, void *data) {
         case RETRO_ENVIRONMENT_SET_SYSTEM_AV_INFO:
             if (data && _current) {
                 const struct retro_system_av_info *info = (const struct retro_system_av_info *)data;
-                @synchronized(_current) {
-                    _current->_avInfo = *info;
-                }
+                os_unfair_lock_lock(&_current->_avInfoLock);
+                _current->_avInfo = *info;
+                os_unfair_lock_unlock(&_current->_avInfoLock);
 #if DEBUG
                 NSLog(@"[OELibretro] AV Info updated: %dx%d @ %.2f fps", info->geometry.base_width, info->geometry.base_height, info->timing.fps);
 #endif
@@ -1134,83 +1136,75 @@ static void* bridge_dlsym(void *handle, const char *symbol) {
 }
 
 - (OEIntSize)bufferSize {
-    @synchronized(self) {
-        // High-Stability Strategy: Always return the core's reported maximum resolution.
-        // This provides a stable canvas that prevents zooming/cropping artifacts (like in PSP).
-        size_t width  = _avInfo.geometry.max_width ?: 1024;
-        size_t height = _avInfo.geometry.max_height ?: 1024;
-        
-        // Final protection: OpenEmu needs non-zero dimensions
-        if (width == 0) width = 1024;
-        if (height == 0) height = 1024;
-        
-        return OEIntSizeMake((int)width, (int)height);
-    }
+    // High-Stability Strategy: Always return the core's reported maximum resolution.
+    // This provides a stable canvas that prevents zooming/cropping artifacts (like in PSP).
+    os_unfair_lock_lock(&_avInfoLock);
+    size_t width  = _avInfo.geometry.max_width  ?: 1024;
+    size_t height = _avInfo.geometry.max_height ?: 1024;
+    os_unfair_lock_unlock(&_avInfoLock);
+    // Final protection: OpenEmu needs non-zero dimensions
+    if (width == 0)  width  = 1024;
+    if (height == 0) height = 1024;
+    return OEIntSizeMake((int)width, (int)height);
 }
 
 - (OEIntRect)screenRect {
-    @synchronized(self) {
-        int width  = _avInfo.geometry.base_width;
-        int height = _avInfo.geometry.base_height;
-        
-        // Fallback to max dimensions if base is invalid
-        if (width <= 0) width = 320;
-        if (height <= 0) height = 240;
-        
-        // Always return from (0,0). OpenEmu's Metal renderer extracts the game from our Max-Canvas.
-        return OEIntRectMake(0, 0, width, height);
-    }
+    os_unfair_lock_lock(&_avInfoLock);
+    int width  = _avInfo.geometry.base_width;
+    int height = _avInfo.geometry.base_height;
+    os_unfair_lock_unlock(&_avInfoLock);
+    // Fallback to max dimensions if base is invalid
+    if (width <= 0)  width  = 320;
+    if (height <= 0) height = 240;
+    // Always return from (0,0). OpenEmu's Metal renderer extracts the game from our Max-Canvas.
+    return OEIntRectMake(0, 0, width, height);
 }
 
 - (OEIntSize)aspectSize {
-    @synchronized(self) {
-        // OEGameCore.aspectSize is the *aspect ratio expressed as a size*
-        // (e.g. (8,7) for NES, (4,3) for SNES) — not the pixel resolution.
-        // Returning base_width × base_height directly produces incorrect
-        // aspect on any system with non-square pixels.
-        //
-        // Prefer the core-reported aspect_ratio and snap to a small integer
-        // pair via continued-fraction approximation. Fall back to base
-        // dimensions only when aspect_ratio is unset (0 or NaN).
-        float aspect = _avInfo.geometry.aspect_ratio;
-        int baseW = (int)_avInfo.geometry.base_width;
-        int baseH = (int)_avInfo.geometry.base_height;
-
-        if (!isfinite(aspect) || aspect <= 0.0f) {
-            if (baseW > 0 && baseH > 0) {
-                aspect = (float)baseW / (float)baseH;
-            } else {
-                return OEIntSizeMake(4, 3);
-            }
+    // OEGameCore.aspectSize is the *aspect ratio expressed as a size*
+    // (e.g. (8,7) for NES, (4,3) for SNES) — not the pixel resolution.
+    // Returning base_width × base_height directly produces incorrect
+    // aspect on any system with non-square pixels.
+    //
+    // Prefer the core-reported aspect_ratio and snap to a small integer
+    // pair via continued-fraction approximation. Fall back to base
+    // dimensions only when aspect_ratio is unset (0 or NaN).
+    os_unfair_lock_lock(&_avInfoLock);
+    float aspect = _avInfo.geometry.aspect_ratio;
+    int baseW = (int)_avInfo.geometry.base_width;
+    int baseH = (int)_avInfo.geometry.base_height;
+    os_unfair_lock_unlock(&_avInfoLock);
+    if (!isfinite(aspect) || aspect <= 0.0f) {
+        if (baseW > 0 && baseH > 0) {
+            aspect = (float)baseW / (float)baseH;
+        } else {
+            return OEIntSizeMake(4, 3);
         }
-
-        // Snap aspect to a small (num, den) pair with denominator ≤ 16.
-        int bestNum = 4, bestDen = 3;
-        float bestErr = FLT_MAX;
-        for (int den = 1; den <= 16; den++) {
-            int num = (int)lroundf(aspect * den);
-            if (num <= 0) continue;
-            float err = fabsf((float)num / (float)den - aspect);
-            if (err < bestErr) {
-                bestErr = err;
-                bestNum = num;
-                bestDen = den;
-            }
-        }
-        return OEIntSizeMake(bestNum, bestDen);
     }
+    // Snap aspect to a small (num, den) pair with denominator ≤ 16.
+    int bestNum = 4, bestDen = 3;
+    float bestErr = FLT_MAX;
+    for (int den = 1; den <= 16; den++) {
+        int num = (int)lroundf(aspect * den);
+        if (num <= 0) continue;
+        float err = fabsf((float)num / (float)den - aspect);
+        if (err < bestErr) { bestErr = err; bestNum = num; bestDen = den; }
+    }
+    return OEIntSizeMake(bestNum, bestDen);
 }
 
 - (double)audioSampleRate {
-    @synchronized(self) {
-        return _avInfo.timing.sample_rate ?: 44100.0;
-    }
+    os_unfair_lock_lock(&_avInfoLock);
+    double rate = _avInfo.timing.sample_rate ?: 44100.0;
+    os_unfair_lock_unlock(&_avInfoLock);
+    return rate;
 }
 
 - (double)frameDuration {
-    @synchronized(self) {
-        return _avInfo.timing.fps > 0 ? 1.0 / _avInfo.timing.fps : 1.0 / 60.0;
-    }
+    os_unfair_lock_lock(&_avInfoLock);
+    double fps = _avInfo.timing.fps;
+    os_unfair_lock_unlock(&_avInfoLock);
+    return fps > 0 ? 1.0 / fps : 1.0 / 60.0;
 }
 
 #pragma mark - Save States
