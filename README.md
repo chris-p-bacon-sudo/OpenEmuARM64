@@ -123,6 +123,7 @@ I'm transparent about this because honesty with the community matters more than 
 | [Wiki](https://github.com/nickybmon/OpenEmu-Silicon/wiki) | User guides: getting started, BIOS files, importing, CD games, controllers, troubleshooting |
 | [Migrating from OpenEmu](https://github.com/nickybmon/OpenEmu-Silicon/wiki/Migrating-from-OpenEmu) | Switching from the original OpenEmu: what carries over, what doesn't, and how to back up |
 | [Supported Systems](https://github.com/nickybmon/OpenEmu-Silicon/wiki/Supported-Systems) | Every system: working status, known issues, in-progress cores, what's planned, and BIOS requirements |
+| [The Libretro Bridge](https://github.com/nickybmon/OpenEmu-Silicon/wiki/The-Libretro-Bridge) | What the libretro bridge is, what it changes for you as a player, and why this fork uses it |
 | [`CREDITS.md`](CREDITS.md) | Everyone who contributed — original OpenEmu team, ARM64 port, core sources, illustrators, and this repo's contributors |
 
 ---
