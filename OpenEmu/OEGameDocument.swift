@@ -27,6 +27,7 @@ import IOKit.pwr_mgt
 import OpenEmuBase
 import OpenEmuSystem
 import OpenEmuKit
+import UserNotifications
 
 let OEGameVolumeKey = "volume"
 let OEGameCoreDisplayModeKeyFormat = "displayMode.%@"
@@ -146,7 +147,8 @@ final class OEGameDocument: NSDocument {
     private(set) var displayModes: [[String: Any]] = []
     
     private var gameCoreManager: GameCoreManager?
-    
+    private var raCredentialObserver: Any?
+
     private var displaySleepAssertionID: IOPMAssertionID = 0
     
     private var emulationStatus: EmulationStatus = .notSetup
@@ -570,6 +572,11 @@ final class OEGameDocument: NSDocument {
                 SentryService.clearGameContext()
                 OEBindingsController.default.systemBindings(for: self.systemPlugin.controller).remove(self)
 
+                if let observer = self.raCredentialObserver {
+                    NotificationCenter.default.removeObserver(observer)
+                    self.raCredentialObserver = nil
+                }
+
                 self.emulationStatus = .notSetup
                 
                 self.gameCoreManager = nil
@@ -641,7 +648,26 @@ final class OEGameDocument: NSDocument {
                 
                 self.gameCoreManager?.setHandleEvents(self.handleEvents)
                 self.gameCoreManager?.setHandleKeyboardEvents(self.handleKeyboardEvents)
-                
+
+                // Pass stored RA credentials so the core can log in at launch
+                let raUsername = UserDefaults.standard.string(forKey: "RAUsername")
+                let raToken    = RetroAchievementsCredentials.storedToken()
+                if let username = raUsername, let token = raToken {
+                    self.gameCoreManager?.setRetroAchievementsToken(token, username: username)
+                }
+
+                // Forward mid-session credential changes (e.g. user signs in while a game is running)
+                self.raCredentialObserver = NotificationCenter.default.addObserver(
+                    forName: .OERACredentialsDidChange,
+                    object: nil,
+                    queue: .main
+                ) { [weak self] note in
+                    guard let self = self else { return }
+                    let token    = note.userInfo?[RACredentialsTokenKey]    as? String
+                    let username = note.userInfo?[RACredentialsUsernameKey] as? String
+                    self.gameCoreManager?.setRetroAchievementsToken(token, username: username)
+                }
+
                 handler(true, nil)
             }
         }, errorHandler: { error in
@@ -2036,6 +2062,30 @@ extension OEGameDocument: OESystemBindingsObserver {
         }
         coreDidTerminateSuddenly = true
         stopEmulation(self)
+    }
+
+    func achievementUnlocked(id: UInt32, title: String, description: String, badgeURL: String, points: UInt32) {
+        DispatchQueue.main.async {
+            // HUD overlay — respects the "Show notifications" user preference
+            self.gameViewController?.showAchievementUnlockedNotification()
+
+            // macOS system notification — visible even in full-screen
+            let content = UNMutableNotificationContent()
+            content.title = title
+            content.body  = description
+            content.sound = .default
+
+            let request = UNNotificationRequest(
+                identifier: "ra.achievement.\(id)",
+                content: content,
+                trigger: nil
+            )
+
+            UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { granted, _ in
+                guard granted else { return }
+                UNUserNotificationCenter.current().add(request)
+            }
+        }
     }
 }
 

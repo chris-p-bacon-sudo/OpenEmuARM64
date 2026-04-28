@@ -331,4 +331,8 @@ extension GameViewController {
     func showStepBackwardNotification() {
         notificationView.showStepBackward()
     }
+
+    func showAchievementUnlockedNotification() {
+        notificationView.showAchievementUnlocked()
+    }
 }

@@ -99,6 +99,12 @@ final class OEGameLayerNotificationView: NSImageView {
         performShowHideNotification(img: stepBackwardImage)
         postAccessibilityNotification(announcement: NSLocalizedString("Step Backward", tableName: "ControlLabels", comment: ""))
     }
+
+    @objc public func showAchievementUnlocked() {
+        let img = NSImage(systemSymbolName: "trophy.fill", accessibilityDescription: "Achievement Unlocked")
+        performShowHideNotification(img: img)
+        postAccessibilityNotification(announcement: NSLocalizedString("Achievement Unlocked", tableName: "ControlLabels", comment: ""))
+    }
     
     // MARK: - Animation
     
