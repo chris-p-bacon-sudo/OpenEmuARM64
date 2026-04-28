@@ -41,6 +41,10 @@
 #import "OEGBASystemResponderClient.h"
 #import <OpenGL/gl.h>
 
+#define RC_CLIENT_SUPPORTS_HASH 1
+#include <rc_client.h>
+#import "OERetroAchievementsTransport.h"
+
 #define SAMPLES 1024
 
 #ifdef DEBUG
@@ -56,8 +60,19 @@ const char* projectVersion;
 	struct mCore* core;
 	void* outputBuffer;
 	NSMutableDictionary *cheatSets;
+	rc_client_t *_rcClient;
 }
 @end
+
+static uint32_t mGBA_rc_read_memory(uint32_t address, uint8_t *buffer,
+                                     uint32_t num_bytes, rc_client_t *client)
+{
+    mGBAGameCore *c = (__bridge mGBAGameCore *)rc_client_get_userdata(client);
+    for (uint32_t i = 0; i < num_bytes; i++) {
+        buffer[i] = c->core->busRead8(c->core, address + i);
+    }
+    return num_bytes;
+}
 
 static void _log(struct mLogger* log,
                  int category,
@@ -132,12 +147,27 @@ static struct mLogger logger = { .log = _log };
 	mCoreAutoloadSave(core);
 
 	core->reset(core);
+
+    _rcClient = rc_client_create(mGBA_rc_read_memory, oeRetroAchievementsServerCall);
+    if (_rcClient) {
+        rc_client_set_userdata(_rcClient, (__bridge void *)self);
+        rc_client_begin_identify_and_load_game(_rcClient,
+                                               RC_CONSOLE_GAMEBOY_ADVANCE,
+                                               [path fileSystemRepresentation],
+                                               NULL, 0,
+                                               NULL, NULL);
+    }
+
 	return YES;
 }
 
 - (void)executeFrame
 {
 	core->runFrame(core);
+
+	if (_rcClient) {
+        rc_client_do_frame(_rcClient);
+    }
 
 	int16_t samples[SAMPLES * 2];
 	size_t available = 0;
@@ -147,8 +177,21 @@ static struct mLogger logger = { .log = _log };
 	[[self audioBufferAtIndex:0] write:samples maxLength:available * 4];
 }
 
+- (void)stopEmulation
+{
+	if (_rcClient) {
+        rc_client_unload_game(_rcClient);
+        rc_client_destroy(_rcClient);
+        _rcClient = NULL;
+    }
+    [super stopEmulation];
+}
+
 - (void)resetEmulation
 {
+	if (_rcClient) {
+        rc_client_reset(_rcClient);
+    }
 	core->reset(core);
 }
 

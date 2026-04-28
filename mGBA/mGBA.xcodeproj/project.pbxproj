@@ -117,6 +117,8 @@
 		8D5B49B0048680CD000E48DA /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 089C167DFE841241C02AAC07 /* InfoPlist.strings */; };
 		8D5B49B4048680CD000E48DA /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1058C7ADFEA557BF11CA2CBB /* Cocoa.framework */; };
 		94AE2EFA17B0C1330018DFBB /* OpenEmuBase.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 94AE2EF917B0C1330018DFBB /* OpenEmuBase.framework */; };
+		OE0MGBA0BUILDFILE000000001 /* rcheevos_build.c in Sources */ = {isa = PBXBuildFile; fileRef = OE0MGBA0FILEREF000000001 /* rcheevos_build.c */; settings = {COMPILER_FLAGS = "-DRC_NO_THREADS=1 -DRC_CLIENT_SUPPORTS_HASH=1"; }; };
+		OE0MGBA0BUILDFILE000000002 /* OERetroAchievementsTransport.m in Sources */ = {isa = PBXBuildFile; fileRef = OE0MGBA0FILEREF000000002 /* OERetroAchievementsTransport.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -273,6 +275,8 @@
 		8D5B49B7048680CD000E48DA /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		94AE2EF917B0C1330018DFBB /* OpenEmuBase.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = OpenEmuBase.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		D2F7E65807B2D6F200F64583 /* CoreData.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreData.framework; path = System/Library/Frameworks/CoreData.framework; sourceTree = SDKROOT; };
+		OE0MGBA0FILEREF000000001 /* rcheevos_build.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = rcheevos_build.c; path = ../../Vendor/rcheevos/rcheevos_build.c; sourceTree = SOURCE_ROOT; };
+		OE0MGBA0FILEREF000000002 /* OERetroAchievementsTransport.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = OERetroAchievementsTransport.m; path = ../../OpenEmuKit/Source/OERetroAchievementsTransport.m; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -815,6 +819,8 @@
 				8701D7191D19E79D00E8A7D8 /* vfs-mem.c in Sources */,
 				8701D7181D19E75700E8A7D8 /* vfs.c in Sources */,
 				87D380E01D92536600FC657D /* audio.c in Sources */,
+				OE0MGBA0BUILDFILE000000001 /* rcheevos_build.c in Sources */,
+				OE0MGBA0BUILDFILE000000002 /* OERetroAchievementsTransport.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -856,6 +862,9 @@
 				HEADER_SEARCH_PATHS = (
 					"\"$(SRCROOT)/src\"",
 					"\"$(SRCROOT)/include\"",
+					"$(SRCROOT)/../../Vendor/rcheevos/include",
+					"$(SRCROOT)/../../Vendor/rcheevos/src",
+					"$(SRCROOT)/../../OpenEmuKit/Source",
 				);
 				INFOPLIST_FILE = Info.plist;
 				INSTALL_PATH = "\"$(USER_LIBRARY_DIR)/Application Support/OpenEmu/Cores\"";
@@ -892,6 +901,9 @@
 				HEADER_SEARCH_PATHS = (
 					"\"$(SRCROOT)/src\"",
 					"\"$(SRCROOT)/include\"",
+					"$(SRCROOT)/../../Vendor/rcheevos/include",
+					"$(SRCROOT)/../../Vendor/rcheevos/src",
+					"$(SRCROOT)/../../OpenEmuKit/Source",
 				);
 				INFOPLIST_FILE = Info.plist;
 				INSTALL_PATH = "\"$(USER_LIBRARY_DIR)/Application Support/OpenEmu/Cores\"";
