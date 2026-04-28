@@ -569,6 +569,12 @@ void WritePalette(void)
 	for(x=unvaried;x<256;x++)
 		FCEUD_SetPalette(x,205,205,205);
 
+	//sets palette entries 0–63 with the 64 selected main colors so the PPU's
+	//0–63 pixel values map to real colors (non-MSVC platforms need this explicit write;
+	//MSVC's malloc happened to fill these with correct values before 2.6.6 made it deterministic)
+	for(x=0;x<64;x++)
+		FCEUD_SetPalette(x,palo[x].r,palo[x].g,palo[x].b);
+
 	//sets palette entries >= 128 with the 64 selected main colors
 	for(x=0;x<64;x++)
 		FCEUD_SetPalette(128+x,palo[x].r,palo[x].g,palo[x].b);
