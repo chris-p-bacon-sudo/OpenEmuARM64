@@ -728,6 +728,7 @@
 		FEB6627B187B812800D14713 /* Controller-Preferences.plist in Resources */ = {isa = PBXBuildFile; fileRef = FEB66278187B812800D14713 /* Controller-Preferences.plist */; };
 		FEB6627C187B812800D14713 /* Keyboard-Mappings.plist in Resources */ = {isa = PBXBuildFile; fileRef = FEB66279187B812800D14713 /* Keyboard-Mappings.plist */; };
 		OE0RC0BUILDFILE0000000001 /* rcheevos_build.c in Sources */ = {isa = PBXBuildFile; fileRef = OE0RC0FILEREF00000000001 /* rcheevos_build.c */; settings = {COMPILER_FLAGS = "-DRC_NO_THREADS=1"; }; };
+		OE0RA0BUILDFILE0000000001 /* OERetroAchievementsTransport.m in Sources */ = {isa = PBXBuildFile; fileRef = OE0RA0FILEREF00000000001 /* OERetroAchievementsTransport.m */; };
 		/* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -2087,6 +2088,8 @@
 		FEB66278187B812800D14713 /* Controller-Preferences.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "Controller-Preferences.plist"; sourceTree = "<group>"; };
 		FEB66279187B812800D14713 /* Keyboard-Mappings.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "Keyboard-Mappings.plist"; sourceTree = "<group>"; };
 		OE0RC0FILEREF00000000001 /* rcheevos_build.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = rcheevos_build.c; path = ../Vendor/rcheevos/rcheevos_build.c; sourceTree = SOURCE_ROOT; };
+		OE0RA0FILEREF00000000001 /* OERetroAchievementsTransport.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = OERetroAchievementsTransport.m; path = ../OpenEmuKit/Source/OERetroAchievementsTransport.m; sourceTree = SOURCE_ROOT; };
+		OE0RA0FILEREF00000000002 /* OERetroAchievementsTransport.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = OERetroAchievementsTransport.h; path = ../OpenEmuKit/Source/OERetroAchievementsTransport.h; sourceTree = SOURCE_ROOT; };
 		/* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -6337,6 +6340,7 @@
 			files = (
 				0572A40E2877F92300AC32F8 /* main.swift in Sources */,
 				OE0RC0BUILDFILE0000000001 /* rcheevos_build.c in Sources */,
+				OE0RA0BUILDFILE0000000001 /* OERetroAchievementsTransport.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -7686,6 +7690,7 @@
 				);
 				HEADER_SEARCH_PATHS = (
 					"$(SRCROOT)/../OpenEmuKit/Source/OpenEmuKitPrivate/**",
+					"$(SRCROOT)/../OpenEmuKit/Source",
 					"$(SRCROOT)/../Vendor/rcheevos/include",
 					"$(SRCROOT)/../Vendor/rcheevos/src",
 				);
@@ -7722,6 +7727,7 @@
 				);
 				HEADER_SEARCH_PATHS = (
 					"$(SRCROOT)/../OpenEmuKit/Source/OpenEmuKitPrivate/**",
+					"$(SRCROOT)/../OpenEmuKit/Source",
 					"$(SRCROOT)/../Vendor/rcheevos/include",
 					"$(SRCROOT)/../Vendor/rcheevos/src",
 				);
