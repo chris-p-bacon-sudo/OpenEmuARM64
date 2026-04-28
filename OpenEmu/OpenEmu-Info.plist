@@ -133,6 +133,14 @@
 				<string>com.openemu.OpenEmu</string>
 			</array>
 		</dict>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.openemu.openemu.oauth</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.openemu.openemu</string>
+			</array>
+		</dict>
 	</array>
 	<key>CFBundleVersion</key>
 	<string>7</string>

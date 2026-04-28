@@ -29,6 +29,11 @@ enum OEGoogleDriveConfig {
     
     // MARK: - OAuth Credentials
     
+    // TODO: Inject real credentials before Cloud Sync can function.
+    // Strategy options: (a) CI secret → OEGoogleDriveSecrets.swift at build time,
+    //                   (b) runtime user-provided credentials in Preferences.
+    // See: OEGoogleDriveSecrets.template.swift for the secrets-file pattern.
+    // Tracked in: https://github.com/nickybmon/OpenEmu-Silicon/issues/129
     /// Your Google API OAuth 2.0 Client ID.
     static let clientID     = "YOUR_CLIENT_ID_HERE"
     

@@ -529,7 +529,20 @@ final class OESaveSyncManager: NSObject {
         do {
             let listener = try NWListener(using: .tcp, on: .any)
             self.oauthListener = listener
-            
+
+            // Capture the assigned port when the listener becomes ready so we can pass
+            // the exact same redirect URI in both the auth request and the token exchange.
+            // listener.port is reliable here; by the time newConnectionHandler fires and
+            // the listener is cancelled, it may already be nil.
+            var capturedRedirectURI: String = OEGoogleDriveConfig.redirectURI
+
+            listener.stateUpdateHandler = { state in
+                if case .ready = state, let port = listener.port {
+                    capturedRedirectURI = "http://127.0.0.1:\(port.rawValue)"
+                    self.openAuthPage(with: capturedRedirectURI)
+                }
+            }
+
             listener.newConnectionHandler = { connection in
                 connection.start(queue: .main)
                 self.receiveOAuthRequest(on: connection) { code in
@@ -537,23 +550,13 @@ final class OESaveSyncManager: NSObject {
                     connection.send(content: response.data(using: .utf8), completion: .contentProcessed({ _ in
                         connection.cancel()
                         listener.cancel()
-                        
-                        if let port = listener.port {
-                            completion(code, "http://127.0.0.1:\(port.rawValue)")
-                        } else {
-                            completion(code, OEGoogleDriveConfig.redirectURI)
-                        }
+                        // Use the URI captured at listener-ready time, not listener.port
+                        // (which may be nil after cancel()).
+                        completion(code, capturedRedirectURI)
                     }))
                 }
             }
-            
-            listener.stateUpdateHandler = { state in
-                if case .ready = state, let port = listener.port {
-                    let redirectURI = "http://127.0.0.1:\(port.rawValue)"
-                    self.openAuthPage(with: redirectURI)
-                }
-            }
-            
+
             listener.start(queue: .main)
         } catch {
             os_log(.error, log: log, "Failed to start OAuth listener: %{public}@", error.localizedDescription)
