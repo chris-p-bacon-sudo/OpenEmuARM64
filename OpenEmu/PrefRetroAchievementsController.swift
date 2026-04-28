@@ -352,19 +352,23 @@ private enum RetroAchievementsAPI {
         }
     }
 
-    /// POST login credentials and return the RA token on success.
+    /// GET login credentials and return the RA token on success.
     static func login(username: String, password: String,
                       completion: @escaping (Result<String, LoginError>) -> Void) {
-        guard let url = URL(string: "https://retroachievements.org/dorequest.php") else {
+        var components = URLComponents(string: "https://retroachievements.org/dorequest.php")!
+        components.queryItems = [
+            URLQueryItem(name: "r", value: "login2"),
+            URLQueryItem(name: "u", value: username),
+            URLQueryItem(name: "p", value: password),
+        ]
+        guard let url = components.url else {
             completion(.failure(.invalidResponse))
             return
         }
 
         var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        let body = "r=login2&u=\(username.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? username)&p=\(password.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? password)"
-        request.httpBody = body.data(using: .utf8)
-        request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+        request.httpMethod = "GET"
+        request.setValue("OpenEmu-Silicon/1.0 (macOS)", forHTTPHeaderField: "User-Agent")
 
         URLSession.shared.dataTask(with: request) { data, _, error in
             if let error = error {
