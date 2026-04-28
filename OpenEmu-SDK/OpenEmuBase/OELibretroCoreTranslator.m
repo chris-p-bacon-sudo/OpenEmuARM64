@@ -634,24 +634,55 @@ static void OEVideoCopy0RGB1555(const uint8_t *src, uint32_t *dst, unsigned widt
         uint32_t *d = d_row;
         unsigned x = 0;
 
-        // NEON path: process 8 pixels at a time.
-        // Source layout 0RGB1555:  0RRRRRGGGGGBBBBB
+        // NEON path: process 32 pixels at a time (128 bytes of output).
+        // Source layout 0RGB1555: 0RRRRRGGGGGBBBBB
         // Destination BGRA in little-endian memory: B, G, R, A
 #if __arm64__
-        for (; x + 7 < width; x += 8) {
-            uint16x8_t pixels = vld1q_u16(s + x);
+        uint16x8_t r_mask = vdupq_n_u16(0x7C00);
+        uint16x8_t g_mask = vdupq_n_u16(0x03E0);
+        uint16x8_t b_mask = vdupq_n_u16(0x001F);
+        uint8x16_t a_vec  = vdupq_n_u8(0xFF);
 
-            uint16x8_t r_16 = vandq_u16(vshrq_n_u16(pixels, 10), vdupq_n_u16(0x1F));
-            uint16x8_t g_16 = vandq_u16(vshrq_n_u16(pixels, 5),  vdupq_n_u16(0x1F));
-            uint16x8_t b_16 = vandq_u16(pixels,                  vdupq_n_u16(0x1F));
+        for (; x + 31 < width; x += 32) {
+            // Load 32 pixels (64 bytes)
+            uint16x8x4_t pixels = vld1q_u16_x4(s + x);
+
+            // Process each 8-pixel chunk
+            for (int i = 0; i < 4; i++) {
+                uint16x8_t pix = pixels.val[i];
+                uint16x8_t r_16 = vshrq_n_u16(vandq_u16(pix, r_mask), 10);
+                uint16x8_t g_16 = vshrq_n_u16(vandq_u16(pix, g_mask), 5);
+                uint16x8_t b_16 = vandq_u16(pix, b_mask);
+
+                uint8x8_t r = vmovn_u16(vorrq_u16(vshlq_n_u16(r_16, 3), vshrq_n_u16(r_16, 2)));
+                uint8x8_t g = vmovn_u16(vorrq_u16(vshlq_n_u16(g_16, 3), vshrq_n_u16(g_16, 2)));
+                uint8x8_t b = vmovn_u16(vorrq_u16(vshlq_n_u16(b_16, 3), vshrq_n_u16(b_16, 2)));
+
+                // Interleave to BGRA
+                uint8x8x2_t bg = vzip_u8(b, g);
+                uint8x8x2_t ra = vzip_u8(r, vget_low_u8(a_vec));
+
+                uint16x4x2_t bgra0 = vzip_u16(vreinterpret_u16_u8(bg.val[0]), vreinterpret_u16_u8(ra.val[0]));
+                uint16x4x2_t bgra1 = vzip_u16(vreinterpret_u16_u8(bg.val[1]), vreinterpret_u16_u8(ra.val[1]));
+
+                vst1q_u32(d + x + (i * 8) + 0, vreinterpretq_u32_u16(vcombine_u16(bgra0.val[0], bgra0.val[1])));
+                vst1q_u32(d + x + (i * 8) + 4, vreinterpretq_u32_u16(vcombine_u16(bgra1.val[0], bgra1.val[1])));
+            }
+        }
+
+        // Remaining 8-pixel chunks (if any)
+        for (; x + 7 < width; x += 8) {
+            uint16x8_t pix = vld1q_u16(s + x);
+            uint16x8_t r_16 = vshrq_n_u16(vandq_u16(pix, r_mask), 10);
+            uint16x8_t g_16 = vshrq_n_u16(vandq_u16(pix, g_mask), 5);
+            uint16x8_t b_16 = vandq_u16(pix, b_mask);
 
             uint8x8_t r = vmovn_u16(vorrq_u16(vshlq_n_u16(r_16, 3), vshrq_n_u16(r_16, 2)));
             uint8x8_t g = vmovn_u16(vorrq_u16(vshlq_n_u16(g_16, 3), vshrq_n_u16(g_16, 2)));
             uint8x8_t b = vmovn_u16(vorrq_u16(vshlq_n_u16(b_16, 3), vshrq_n_u16(b_16, 2)));
-            uint8x8_t a = vdup_n_u8(0xFF);
 
             uint8x8x2_t bg = vzip_u8(b, g);
-            uint8x8x2_t ra = vzip_u8(r, a);
+            uint8x8x2_t ra = vzip_u8(r, vget_low_u8(a_vec));
 
             uint16x4x2_t bgra0 = vzip_u16(vreinterpret_u16_u8(bg.val[0]), vreinterpret_u16_u8(ra.val[0]));
             uint16x4x2_t bgra1 = vzip_u16(vreinterpret_u16_u8(bg.val[1]), vreinterpret_u16_u8(ra.val[1]));
@@ -687,22 +718,55 @@ static void OEVideoCopyRGB565(const uint8_t *src, uint32_t *dst, unsigned width,
         uint32_t *d = d_line;
         unsigned x = 0;
 
+        // NEON path: process 32 pixels at a time (128 bytes of output).
         // Source layout RGB565: RRRRRGGGGGGBBBBB
+        // Destination BGRA in little-endian memory: B, G, R, A
 #if __arm64__
-        for (; x + 7 < width; x += 8) {
-            uint16x8_t pixels = vld1q_u16(s + x);
+        uint16x8_t r_mask = vdupq_n_u16(0xF800);
+        uint16x8_t g_mask = vdupq_n_u16(0x07E0);
+        uint16x8_t b_mask = vdupq_n_u16(0x001F);
+        uint8x16_t a_vec  = vdupq_n_u8(0xFF);
 
-            uint16x8_t r_16 = vandq_u16(vshrq_n_u16(pixels, 11), vdupq_n_u16(0x1F));
-            uint16x8_t g_16 = vandq_u16(vshrq_n_u16(pixels, 5),  vdupq_n_u16(0x3F));
-            uint16x8_t b_16 = vandq_u16(pixels,                  vdupq_n_u16(0x1F));
+        for (; x + 31 < width; x += 32) {
+            // Load 32 pixels (64 bytes)
+            uint16x8x4_t pixels = vld1q_u16_x4(s + x);
+
+            // Process each 8-pixel chunk
+            for (int i = 0; i < 4; i++) {
+                uint16x8_t pix = pixels.val[i];
+                uint16x8_t r_16 = vshrq_n_u16(vandq_u16(pix, r_mask), 11);
+                uint16x8_t g_16 = vshrq_n_u16(vandq_u16(pix, g_mask), 5);
+                uint16x8_t b_16 = vandq_u16(pix, b_mask);
+
+                uint8x8_t r = vmovn_u16(vorrq_u16(vshlq_n_u16(r_16, 3), vshrq_n_u16(r_16, 2)));
+                uint8x8_t g = vmovn_u16(vorrq_u16(vshlq_n_u16(g_16, 2), vshrq_n_u16(g_16, 4)));
+                uint8x8_t b = vmovn_u16(vorrq_u16(vshlq_n_u16(b_16, 3), vshrq_n_u16(b_16, 2)));
+
+                // Interleave to BGRA
+                uint8x8x2_t bg = vzip_u8(b, g);
+                uint8x8x2_t ra = vzip_u8(r, vget_low_u8(a_vec));
+
+                uint16x4x2_t bgra0 = vzip_u16(vreinterpret_u16_u8(bg.val[0]), vreinterpret_u16_u8(ra.val[0]));
+                uint16x4x2_t bgra1 = vzip_u16(vreinterpret_u16_u8(bg.val[1]), vreinterpret_u16_u8(ra.val[1]));
+
+                vst1q_u32(d + x + (i * 8) + 0, vreinterpretq_u32_u16(vcombine_u16(bgra0.val[0], bgra0.val[1])));
+                vst1q_u32(d + x + (i * 8) + 4, vreinterpretq_u32_u16(vcombine_u16(bgra1.val[0], bgra1.val[1])));
+            }
+        }
+
+        // Remaining 8-pixel chunks (if any)
+        for (; x + 7 < width; x += 8) {
+            uint16x8_t pix = vld1q_u16(s + x);
+            uint16x8_t r_16 = vshrq_n_u16(vandq_u16(pix, r_mask), 11);
+            uint16x8_t g_16 = vshrq_n_u16(vandq_u16(pix, g_mask), 5);
+            uint16x8_t b_16 = vandq_u16(pix, b_mask);
 
             uint8x8_t r = vmovn_u16(vorrq_u16(vshlq_n_u16(r_16, 3), vshrq_n_u16(r_16, 2)));
             uint8x8_t g = vmovn_u16(vorrq_u16(vshlq_n_u16(g_16, 2), vshrq_n_u16(g_16, 4)));
             uint8x8_t b = vmovn_u16(vorrq_u16(vshlq_n_u16(b_16, 3), vshrq_n_u16(b_16, 2)));
-            uint8x8_t a = vdup_n_u8(0xFF);
 
             uint8x8x2_t bg = vzip_u8(b, g);
-            uint8x8x2_t ra = vzip_u8(r, a);
+            uint8x8x2_t ra = vzip_u8(r, vget_low_u8(a_vec));
 
             uint16x4x2_t bgra0 = vzip_u16(vreinterpret_u16_u8(bg.val[0]), vreinterpret_u16_u8(ra.val[0]));
             uint16x4x2_t bgra1 = vzip_u16(vreinterpret_u16_u8(bg.val[1]), vreinterpret_u16_u8(ra.val[1]));
@@ -783,9 +847,12 @@ static void libretro_video_refresh_cb(const void *data, unsigned width, unsigned
                     break;
             }
 
-            if (handler) {
+            if (handler && width <= 4096) {
                 // Copy to (0,0) and let OpenEmu Metal handle centring the viewport.
                 handler((const uint8_t *)data, dst, width, height, pitch, destRowWords);
+            } else if (handler) {
+                // Fallback for extreme resolutions (> 4K) to avoid SIMD overflows
+                OEVideoCopyXRGB8888((const uint8_t *)data, dst, width, height, pitch, destRowWords);
             }
         }
     }
@@ -909,6 +976,13 @@ static void* bridge_dlsym(void *handle, const char *symbol) {
 
 - (BOOL)loadFileAtPath:(NSString *)path error:(NSError **)error {
     _current = self;
+
+    // ABI Sanity Check: Ensure our compiled layout matches the Libretro spec requirements
+    // for Apple Silicon (64-byte hw_render_callback, 16-byte aligned pointers).
+    if (sizeof(struct retro_hw_render_callback) != 64) {
+        os_log_error(OE_LOG_DEFAULT, "[OELibretro] FATAL: ABI Mismatch detected! hw_render_callback size: %zu (Expected 64)", sizeof(struct retro_hw_render_callback));
+    }
+
     self.coreBundle = [[self owner] bundle];
 
     // Fallback: if owner didn't provide a bundle, scan all loaded bundles
@@ -1360,7 +1434,7 @@ static void* bridge_dlsym(void *handle, const char *symbol) {
 
 - (void)receiveLibretroButton:(uint8_t)buttonID forPort:(NSUInteger)port pressed:(BOOL)pressed {
     if (port < 4 && buttonID < 16) {
-        atomic_store_explicit(&_buttonStates[port][buttonID], pressed ? 1 : 0, memory_order_relaxed);
+        atomic_store_explicit(&_buttonStates[port][buttonID], pressed ? 1 : 0, memory_order_release);
     }
 }
 
@@ -1819,16 +1893,16 @@ static const NSUInteger OEDCButtonCount = sizeof(OEDCButtonToLibretro) / sizeof(
 
     switch (button) {
         case 13: // OEDCAnalogLeft  -> X axis
-            atomic_store_explicit(&_analogStates[port][RETRO_DEVICE_INDEX_ANALOG_LEFT][RETRO_DEVICE_ID_ANALOG_X], scaled, memory_order_relaxed);
+            atomic_store_explicit(&_analogStates[port][RETRO_DEVICE_INDEX_ANALOG_LEFT][RETRO_DEVICE_ID_ANALOG_X], scaled, memory_order_release);
             break;
         case 14: // OEDCAnalogRight -> X axis (right stick)
-            atomic_store_explicit(&_analogStates[port][RETRO_DEVICE_INDEX_ANALOG_RIGHT][RETRO_DEVICE_ID_ANALOG_X], scaled, memory_order_relaxed);
+            atomic_store_explicit(&_analogStates[port][RETRO_DEVICE_INDEX_ANALOG_RIGHT][RETRO_DEVICE_ID_ANALOG_X], scaled, memory_order_release);
             break;
         case 11: // OEDCAnalogUp    -> Y axis
-            atomic_store_explicit(&_analogStates[port][RETRO_DEVICE_INDEX_ANALOG_LEFT][RETRO_DEVICE_ID_ANALOG_Y], scaled, memory_order_relaxed);
+            atomic_store_explicit(&_analogStates[port][RETRO_DEVICE_INDEX_ANALOG_LEFT][RETRO_DEVICE_ID_ANALOG_Y], scaled, memory_order_release);
             break;
         case 12: // OEDCAnalogDown  -> Y axis
-            atomic_store_explicit(&_analogStates[port][RETRO_DEVICE_INDEX_ANALOG_LEFT][RETRO_DEVICE_ID_ANALOG_Y], scaled, memory_order_relaxed);
+            atomic_store_explicit(&_analogStates[port][RETRO_DEVICE_INDEX_ANALOG_LEFT][RETRO_DEVICE_ID_ANALOG_Y], scaled, memory_order_release);
             break;
         // Analog triggers — Flycast's libretro core actually supports true analog
         // L2/R2 via RETRO_DEVICE_ANALOG index 2, but our _analogStates array is
