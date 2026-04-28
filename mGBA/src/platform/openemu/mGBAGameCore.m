@@ -61,6 +61,7 @@ const char* projectVersion;
 	void* outputBuffer;
 	NSMutableDictionary *cheatSets;
 	rc_client_t *_rcClient;
+    id _raTokenObserver;
 }
 @end
 
@@ -72,6 +73,31 @@ static uint32_t mGBA_rc_read_memory(uint32_t address, uint8_t *buffer,
         buffer[i] = c->core->busRead8(c->core, address + i);
     }
     return num_bytes;
+}
+
+static void mGBA_rc_event_handler(const rc_client_event_t *event, rc_client_t *client)
+{
+    if (event->type != RC_CLIENT_EVENT_ACHIEVEMENT_TRIGGERED) { return; }
+    const rc_client_achievement_t *ach = event->achievement;
+    if (!ach) { return; }
+
+    NSString *title       = [NSString stringWithUTF8String:ach->title       ?: ""];
+    NSString *desc        = [NSString stringWithUTF8String:ach->description  ?: ""];
+    NSString *badge       = [NSString stringWithUTF8String:ach->badge_name   ?: ""];
+    NSNumber *achId       = @(ach->id);
+    NSNumber *points      = @(ach->points);
+
+    NSDictionary *info = @{
+        OEAchievementIDKey:          achId,
+        OEAchievementTitleKey:       title,
+        OEAchievementDescriptionKey: desc,
+        OEAchievementBadgeURLKey:    badge,
+        OEAchievementPointsKey:      points,
+    };
+    [[NSNotificationCenter defaultCenter]
+        postNotificationName:OEAchievementUnlockedNotification
+                      object:nil
+                    userInfo:info];
 }
 
 static void _log(struct mLogger* log,
@@ -151,11 +177,32 @@ static struct mLogger logger = { .log = _log };
     _rcClient = rc_client_create(mGBA_rc_read_memory, oeRetroAchievementsServerCall);
     if (_rcClient) {
         rc_client_set_userdata(_rcClient, (__bridge void *)self);
+        rc_client_set_event_handler(_rcClient, mGBA_rc_event_handler);
         rc_client_begin_identify_and_load_game(_rcClient,
                                                RC_CONSOLE_GAMEBOY_ADVANCE,
                                                [path fileSystemRepresentation],
                                                NULL, 0,
                                                NULL, NULL);
+
+        __weak mGBAGameCore *weakSelf = self;
+        _raTokenObserver = [[NSNotificationCenter defaultCenter]
+            addObserverForName:OERetroAchievementsTokenDidChangeNotification
+                        object:nil
+                         queue:nil
+                    usingBlock:^(NSNotification *note) {
+            mGBAGameCore *s = weakSelf;
+            if (!s || !s->_rcClient) { return; }
+            NSString *token    = note.userInfo[OERetroAchievementsTokenKey];
+            NSString *username = note.userInfo[OERetroAchievementsUsernameKey];
+            if (token && username) {
+                rc_client_begin_login_with_token(s->_rcClient,
+                                                 username.UTF8String,
+                                                 token.UTF8String,
+                                                 NULL, NULL);
+            } else {
+                rc_client_logout(s->_rcClient);
+            }
+        }];
     }
 
 	return YES;
@@ -179,6 +226,10 @@ static struct mLogger logger = { .log = _log };
 
 - (void)stopEmulation
 {
+    if (_raTokenObserver) {
+        [[NSNotificationCenter defaultCenter] removeObserver:_raTokenObserver];
+        _raTokenObserver = nil;
+    }
 	if (_rcClient) {
         rc_client_unload_game(_rcClient);
         rc_client_destroy(_rcClient);

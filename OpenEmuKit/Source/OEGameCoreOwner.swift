@@ -73,4 +73,17 @@ public typealias OEContextID = UInt32
     /// when the core manager is deallocated right after the game core is
     /// stopped).
     @objc optional func gameCoreDidTerminate()
+
+    /// Invoked by the helper process when an achievement is earned.
+    ///
+    /// Called on whatever thread the XPC message arrives on; implementations
+    /// should dispatch to the main thread before updating the UI.
+    ///
+    /// - Parameters:
+    ///   - id: The RetroAchievements achievement ID
+    ///   - title: Display name of the achievement
+    ///   - description: Description text shown in the notification
+    ///   - badgeURL: URL string for the achievement badge image
+    ///   - points: Points value of the achievement
+    @objc optional func achievementUnlocked(id: UInt32, title: String, description: String, badgeURL: String, points: UInt32)
 }

@@ -83,6 +83,7 @@
 		05EEF1082707D2ED008A03DC /* Nimble in Frameworks */ = {isa = PBXBuildFile; productRef = 05EEF1072707D2ED008A03DC /* Nimble */; };
 		8F3A1837285C9F88008A7AC9 /* NSBundle+CacheFlushing.m in Sources */ = {isa = PBXBuildFile; fileRef = 8F3A1836285C9F0E008A7AC9 /* NSBundle+CacheFlushing.m */; };
 		DD75EE5D298976C60056B3BA /* MTL3DGameRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD75EE5C298976C60056B3BA /* MTL3DGameRenderer.swift */; };
+		OE0RA0KITBUILDFILE000000001 /* OERetroAchievementsConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = OE0RA0KITFILEREF000000001 /* OERetroAchievementsConstants.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -195,6 +196,7 @@
 		8F3A1836285C9F0E008A7AC9 /* NSBundle+CacheFlushing.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "NSBundle+CacheFlushing.m"; sourceTree = "<group>"; };
 		8F4AEABF27354776005C6246 /* NSBundle+CacheFlushing.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "NSBundle+CacheFlushing.h"; sourceTree = "<group>"; };
 		DD75EE5C298976C60056B3BA /* MTL3DGameRenderer.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = MTL3DGameRenderer.swift; sourceTree = "<group>"; };
+		OE0RA0KITFILEREF000000001 /* OERetroAchievementsConstants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OERetroAchievementsConstants.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -373,6 +375,7 @@
 				0572A427287BAF9300AC32F8 /* OEGameCoreHelper.swift */,
 				0572A425287B969500AC32F8 /* OEGameCoreOwner.swift */,
 				0572A429287BB0B000AC32F8 /* OEXPCGameCoreHelper.swift */,
+				OE0RA0KITFILEREF000000001 /* OERetroAchievementsConstants.swift */,
 			);
 			name = "Game Core Helper Protocols";
 			sourceTree = "<group>";
@@ -699,6 +702,7 @@
 				05ED1CF9259D1FB200A2D400 /* FileManager+ExtendedAttributes.swift in Sources */,
 				05B0781927371B2200F1E302 /* GameAudio.swift in Sources */,
 				0518D6E824F32DD10037101D /* NSEvent+Combine.swift in Sources */,
+				OE0RA0KITBUILDFILE000000001 /* OERetroAchievementsConstants.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

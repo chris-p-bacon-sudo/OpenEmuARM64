@@ -89,7 +89,14 @@ extension OSLog {
     var _handleKeyboardEvents: Bool = false
     
     var loadedRom = false
-    
+
+    // RetroAchievements token received from the main app via XPC.
+    // Stored here so the core can pick it up at load time and on mid-session token delivery.
+    var _retroAchievementsToken: String?
+
+    // Observer for achievement unlock notifications posted by the active core plugin.
+    var _achievementObserver: Any?
+
     // frame rate debugging
     var previous    = CFTimeInterval()
     var frameRate   = CFTimeInterval()
@@ -315,6 +322,27 @@ extension OSLog {
                                         NSUnderlyingErrorKey: error
                                        ])
         }
+
+        _achievementObserver = NotificationCenter.default.addObserver(
+            forName: .OEAchievementUnlocked,
+            object: nil,
+            queue: nil
+        ) { [weak self] note in
+            guard let self = self,
+                  let owner = self.gameCoreOwner,
+                  let info = note.userInfo,
+                  let idNum     = info[OEAchievementIDKey]          as? NSNumber,
+                  let title     = info[OEAchievementTitleKey]        as? String,
+                  let desc      = info[OEAchievementDescriptionKey]  as? String,
+                  let badge     = info[OEAchievementBadgeURLKey]     as? String,
+                  let ptsNum    = info[OEAchievementPointsKey]       as? NSNumber
+            else { return }
+            owner.achievementUnlocked?(id: idNum.uint32Value,
+                                        title: title,
+                                        description: desc,
+                                        badgeURL: badge,
+                                        points: ptsNum.uint32Value)
+        }
     }
     
     // MARK: - OEGameCoreOwner subclass handles
@@ -434,7 +462,12 @@ extension OSLog {
     
     public func stopEmulation(completionHandler handler: @escaping () -> Void) {
         guard let gameCore = gameCore else { return }
-        
+
+        if let observer = _achievementObserver {
+            NotificationCenter.default.removeObserver(observer)
+            _achievementObserver = nil
+        }
+
         gameCore.stopEmulation {
             self._gameAudio.stopAudio()
             gameCore.renderDelegate = nil
@@ -445,6 +478,20 @@ extension OSLog {
             
             handler()
         }
+    }
+
+    public func setRetroAchievementsToken(_ token: String?, username: String?) {
+        _retroAchievementsToken = token
+        var userInfo: [String: Any]? = nil
+        if let token = token, let username = username {
+            userInfo = [OERetroAchievementsTokenKey: token,
+                        OERetroAchievementsUsernameKey: username]
+        }
+        NotificationCenter.default.post(
+            name: .OERetroAchievementsTokenDidChange,
+            object: nil,
+            userInfo: userInfo
+        )
     }
     
     public func saveStateToFile(at fileURL: URL, completionHandler block: @escaping (Bool, Error?) -> Void) {

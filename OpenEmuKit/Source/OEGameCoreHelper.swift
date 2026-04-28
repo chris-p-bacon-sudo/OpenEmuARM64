@@ -90,4 +90,15 @@ import AudioToolbox
     
     /// Capture an image of the core's raw video display buffer with no effects.
     func captureSourceImage(completionHandler block: @escaping (NSBitmapImageRep) -> Void)
+
+    /// Pass stored RetroAchievements credentials to the helper process.
+    ///
+    /// The helper posts a notification received by active cores, which call
+    /// `rc_client_begin_login_with_token` to link to the player's RA account.
+    /// Pass `nil` for both parameters to log out.
+    ///
+    /// - Parameters:
+    ///   - token: The stored RA token, or `nil` to log out.
+    ///   - username: The RA username associated with the token.
+    func setRetroAchievementsToken(_ token: String?, username: String?)
 }

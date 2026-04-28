@@ -224,6 +224,10 @@ extension GameCoreManager: OEGameCoreHelper {
     public func systemBindingsDidUnsetEvent(_ event: OEHIDEvent, forBinding bindingDescription: OEBindingDescription, playerNumber: UInt) {
         gameCoreHelper?.systemBindingsDidUnsetEvent(event, forBinding: bindingDescription, playerNumber: playerNumber)
     }
+
+    public func setRetroAchievementsToken(_ token: String?, username: String?) {
+        gameCoreHelper?.setRetroAchievementsToken(token, username: username)
+    }
 }
 
 // MARK: - Synchronous image capture APIs

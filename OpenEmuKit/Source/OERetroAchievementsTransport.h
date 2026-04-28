@@ -28,6 +28,24 @@
 
 #include <rc_client.h>
 
+/// NSNotificationCenter name posted by OpenEmuHelperApp when the RA token changes.
+/// userInfo keys: `OERetroAchievementsTokenKey` (NSString token) and
+/// `OERetroAchievementsUsernameKey` (NSString username), or absent on logout.
+#define OERetroAchievementsTokenDidChangeNotification @"OERetroAchievementsTokenDidChange"
+#define OERetroAchievementsTokenKey                   @"token"
+#define OERetroAchievementsUsernameKey                @"username"
+
+/// NSNotificationCenter name posted by a core plugin when an achievement is unlocked.
+/// userInfo keys: `OEAchievementIDKey` (NSNumber UInt32), `OEAchievementTitleKey` (NSString),
+/// `OEAchievementDescriptionKey` (NSString), `OEAchievementBadgeURLKey` (NSString),
+/// `OEAchievementPointsKey` (NSNumber UInt32).
+#define OEAchievementUnlockedNotification   @"OEAchievementUnlocked"
+#define OEAchievementIDKey                  @"id"
+#define OEAchievementTitleKey               @"title"
+#define OEAchievementDescriptionKey         @"description"
+#define OEAchievementBadgeURLKey            @"badgeURL"
+#define OEAchievementPointsKey              @"points"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
