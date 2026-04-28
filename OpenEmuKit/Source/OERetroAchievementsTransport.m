@@ -49,6 +49,11 @@ void oeRetroAchievementsServerCall(const rc_api_request_t *request,
 
     NSMutableURLRequest *urlRequest = [NSMutableURLRequest requestWithURL:url];
 
+    char rcClause[64] = {0};
+    rc_client_get_user_agent_clause(client, rcClause, sizeof(rcClause));
+    NSString *userAgent = [NSString stringWithFormat:@"OpenEmu %@", [NSString stringWithUTF8String:rcClause]];
+    [urlRequest setValue:userAgent forHTTPHeaderField:@"User-Agent"];
+
     if (request->post_data) {
         urlRequest.HTTPMethod = @"POST";
         urlRequest.HTTPBody   = [NSData dataWithBytes:request->post_data

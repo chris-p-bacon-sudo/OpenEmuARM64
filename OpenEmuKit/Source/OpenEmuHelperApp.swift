@@ -310,7 +310,6 @@ extension OSLog {
             if let displayModes = gameCore.displayModes {
                 gameCoreOwner.setDisplayModes(displayModes)
             }
-            
             loadedRom = true
         } catch {
             gameCore = nil

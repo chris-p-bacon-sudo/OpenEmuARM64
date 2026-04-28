@@ -24,6 +24,7 @@
 
 #import "mGBAGameCore.h"
 
+
 #include <mgba-util/common.h>
 
 #include <mgba/core/blip_buf.h>
@@ -43,6 +44,7 @@
 
 #define RC_CLIENT_SUPPORTS_HASH 1
 #include <rc_client.h>
+#include <rc_consoles.h>
 #import "OERetroAchievementsTransport.h"
 
 #define SAMPLES 1024
@@ -62,17 +64,55 @@ const char* projectVersion;
 	NSMutableDictionary *cheatSets;
 	rc_client_t *_rcClient;
     id _raTokenObserver;
+    NSString *_romPath;
 }
+- (struct mCore *)mCore;
+- (void)_beginLoadGame;
 @end
+
+// rcheevos GBA address space → hardware bus address:
+//   0x000000–0x007FFF  →  IWRAM  0x03000000
+//   0x008000–0x047FFF  →  EWRAM  0x02000000
+//   0x048000–0x057FFF  →  SRAM   0x0E000000
+static uint32_t gba_rc_to_hw(uint32_t addr) {
+    if (addr < 0x008000) return 0x03000000 + addr;
+    if (addr < 0x048000) return 0x02000000 + (addr - 0x008000);
+    if (addr < 0x058000) return 0x0E000000 + (addr - 0x048000);
+    return addr;
+}
 
 static uint32_t mGBA_rc_read_memory(uint32_t address, uint8_t *buffer,
                                      uint32_t num_bytes, rc_client_t *client)
 {
     mGBAGameCore *c = (__bridge mGBAGameCore *)rc_client_get_userdata(client);
+    struct mCore *mcore = [c mCore];
+    if (!mcore) { return 0; }
     for (uint32_t i = 0; i < num_bytes; i++) {
-        buffer[i] = c->core->busRead8(c->core, address + i);
+        buffer[i] = mcore->busRead8(mcore, gba_rc_to_hw(address + i));
     }
     return num_bytes;
+}
+
+
+static void mGBA_rc_load_game_callback(int result, const char *error_message,
+                                        rc_client_t *client, void *userdata)
+{
+    mGBAGameCore *self = (__bridge mGBAGameCore *)userdata;
+    if (result != RC_OK) {
+        NSLog(@"[RA-mGBA] game load failed — result=%d error=%s", result, error_message ?: "(none)");
+    }
+    (void)self;
+}
+
+static void mGBA_rc_login_callback(int result, const char *error_message,
+                                    rc_client_t *client, void *userdata)
+{
+    mGBAGameCore *self = (__bridge mGBAGameCore *)userdata;
+    if (result == RC_OK) {
+        [self _beginLoadGame];
+    } else {
+        NSLog(@"[RA-mGBA] login failed — result=%d error=%s", result, error_message ?: "(none)");
+    }
 }
 
 static void mGBA_rc_event_handler(const rc_client_event_t *event, rc_client_t *client)
@@ -110,6 +150,20 @@ static void _log(struct mLogger* log,
 static struct mLogger logger = { .log = _log };
 
 @implementation mGBAGameCore
+
+- (struct mCore *)mCore { return core; }
+
+- (void)_beginLoadGame
+{
+    if (!_rcClient || !_romPath) { return; }
+    rc_client_begin_identify_and_load_game(_rcClient,
+                                           RC_CONSOLE_GAMEBOY_ADVANCE,
+                                           [_romPath fileSystemRepresentation],
+                                           NULL, 0,
+                                           mGBA_rc_load_game_callback,
+                                           (__bridge void *)self);
+}
+
 
 - (id)init
 {
@@ -152,6 +206,7 @@ static struct mLogger logger = { .log = _log };
 
 - (BOOL)loadFileAtPath:(NSString *)path error:(NSError **)error
 {
+    RALog(@"[RA-mGBA] loadFileAtPath entered: %@", path);
     projectVersion = [self.owner.bundle.infoDictionary[@"CFBundleVersion"] UTF8String];
 
 	NSString *batterySavesDirectory = [self batterySavesDirectoryPath];
@@ -176,14 +231,14 @@ static struct mLogger logger = { .log = _log };
 
     _rcClient = rc_client_create(mGBA_rc_read_memory, oeRetroAchievementsServerCall);
     if (_rcClient) {
+        _romPath = path;
         rc_client_set_userdata(_rcClient, (__bridge void *)self);
         rc_client_set_event_handler(_rcClient, mGBA_rc_event_handler);
-        rc_client_begin_identify_and_load_game(_rcClient,
-                                               RC_CONSOLE_GAMEBOY_ADVANCE,
-                                               [path fileSystemRepresentation],
-                                               NULL, 0,
-                                               NULL, NULL);
+        rc_client_set_hardcore_enabled(_rcClient, 0);
 
+        // Register token observer before game identification so we don't miss
+        // the notification that fires immediately after setRetroAchievementsToken.
+        // Login happens first; game identification runs in the login callback.
         __weak mGBAGameCore *weakSelf = self;
         _raTokenObserver = [[NSNotificationCenter defaultCenter]
             addObserverForName:OERetroAchievementsTokenDidChangeNotification
@@ -198,7 +253,8 @@ static struct mLogger logger = { .log = _log };
                 rc_client_begin_login_with_token(s->_rcClient,
                                                  username.UTF8String,
                                                  token.UTF8String,
-                                                 NULL, NULL);
+                                                 mGBA_rc_login_callback,
+                                                 (__bridge void *)s);
             } else {
                 rc_client_logout(s->_rcClient);
             }
@@ -359,8 +415,12 @@ static struct mLogger logger = { .log = _log };
 - (void)loadStateFromFileAtPath:(NSString *)fileName completionHandler:(void (^)(BOOL, NSError *))block
 {
 	struct VFile* vf = VFileOpen([fileName fileSystemRepresentation], O_RDONLY);
-	block(mCoreLoadStateNamed(core, vf, 0), nil);
+	BOOL ok = mCoreLoadStateNamed(core, vf, 0);
 	vf->close(vf);
+	if (ok && _rcClient) {
+		rc_client_reset(_rcClient);
+	}
+	block(ok, nil);
 }
 
 #pragma mark - Input

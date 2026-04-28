@@ -370,11 +370,13 @@ private enum RetroAchievementsAPI {
         request.httpMethod = "GET"
         request.setValue("OpenEmu-Silicon/1.0 (macOS)", forHTTPHeaderField: "User-Agent")
 
-        URLSession.shared.dataTask(with: request) { data, _, error in
+        URLSession.shared.dataTask(with: request) { data, response, error in
             if let error = error {
+                NSLog("[RA] Network error: %@", error.localizedDescription)
                 DispatchQueue.main.async { completion(.failure(.networkError(error))) }
                 return
             }
+            if let raw = data { NSLog("[RA] Raw response: %@", String(data: raw, encoding: .utf8) ?? "<non-utf8>") }
             guard let data = data,
                   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
             else {
@@ -386,6 +388,7 @@ private enum RetroAchievementsAPI {
                 DispatchQueue.main.async { completion(.success(token)) }
             } else {
                 let message = (json["Error"] as? String) ?? "Login failed. Check username and password."
+                NSLog("[RA] Auth failed: %@", message)
                 DispatchQueue.main.async { completion(.failure(.authFailed(message))) }
             }
         }.resume()
