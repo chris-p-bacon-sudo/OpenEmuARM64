@@ -68,6 +68,7 @@ final class PrefDebugController: NSViewController {
         
         Group(label: "HUD Bar / Gameplay"),
         Checkbox(key: OEGameLayerNotificationView.OEShowNotificationsKey, label: "Show notifications during gameplay"),
+        Button(label: "Preview achievement banner", action: #selector(previewAchievementBanner(_:))),
         Checkbox(key: OEDBSaveState.useQuickSaveSlotsKey, label: "Use quicksave slots"),
         Checkbox(key: GameControlsBar.showsQuickSaveStateKey, label: "Show quicksave in menu"),
         Checkbox(key: GameControlsBar.showsAutoSaveStateKey, label: "Show autosave in menu"),
@@ -390,6 +391,14 @@ final class PrefDebugController: NSViewController {
         UserDefaults.standard.set(color, forKey: sender.stringValue)
     }
     
+    // MARK: - HUD Bar / Gameplay
+
+    func previewAchievementBanner(_ sender: Any?) {
+        let docs = NSDocumentController.shared.documents.compactMap { $0 as? OEGameDocument }
+        guard let doc = docs.first else { return }
+        doc.achievementUnlocked(id: 0, title: "A New Quest", description: "Obtain the Broken Picori Blade", badgeURL: "", points: 10)
+    }
+
     // MARK: - Library Window
     
     func resetMainWindow(_ sender: Any?) {

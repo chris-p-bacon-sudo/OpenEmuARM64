@@ -24,6 +24,106 @@
 
 import Cocoa
 
+// MARK: - Achievement Banner
+
+final class OEAchievementBannerView: NSView {
+
+    static let bannerWidth:  CGFloat = 310
+    static let bannerHeight: CGFloat = 66
+
+    private let headerLabel = NSTextField(labelWithString: "Achievement Unlocked!")
+    private let titleLabel  = NSTextField(labelWithString: "")
+    private let ptsLabel    = NSTextField(labelWithString: "")
+    private let iconView    = NSImageView()
+
+    private var hideWorkItem: DispatchWorkItem?
+
+    override init(frame: NSRect) {
+        super.init(frame: frame)
+        setup()
+    }
+
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        setup()
+    }
+
+    private func setup() {
+        wantsLayer = true
+        layer?.cornerRadius = 12
+        layer?.backgroundColor = NSColor(white: 0.08, alpha: 0.88).cgColor
+        alphaValue = 0
+
+        let iconConfig = NSImage.SymbolConfiguration(pointSize: 26, weight: .semibold)
+        iconView.image = NSImage(systemSymbolName: "trophy.fill", accessibilityDescription: nil)?
+            .withSymbolConfiguration(iconConfig)
+        iconView.contentTintColor = .systemYellow
+        iconView.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(iconView)
+
+        headerLabel.font = .systemFont(ofSize: 10, weight: .semibold)
+        headerLabel.textColor = .systemYellow
+        headerLabel.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(headerLabel)
+
+        titleLabel.font = .systemFont(ofSize: 13, weight: .bold)
+        titleLabel.textColor = .white
+        titleLabel.lineBreakMode = .byTruncatingTail
+        titleLabel.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(titleLabel)
+
+        ptsLabel.font = .monospacedDigitSystemFont(ofSize: 11, weight: .regular)
+        ptsLabel.textColor = NSColor(white: 0.75, alpha: 1)
+        ptsLabel.alignment = .right
+        ptsLabel.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(ptsLabel)
+
+        NSLayoutConstraint.activate([
+            iconView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 14),
+            iconView.centerYAnchor.constraint(equalTo: centerYAnchor),
+            iconView.widthAnchor.constraint(equalToConstant: 30),
+            iconView.heightAnchor.constraint(equalToConstant: 30),
+
+            ptsLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -14),
+            ptsLabel.centerYAnchor.constraint(equalTo: centerYAnchor),
+            ptsLabel.widthAnchor.constraint(greaterThanOrEqualToConstant: 44),
+
+            headerLabel.leadingAnchor.constraint(equalTo: iconView.trailingAnchor, constant: 10),
+            headerLabel.trailingAnchor.constraint(lessThanOrEqualTo: ptsLabel.leadingAnchor, constant: -8),
+            headerLabel.topAnchor.constraint(equalTo: topAnchor, constant: 13),
+
+            titleLabel.leadingAnchor.constraint(equalTo: headerLabel.leadingAnchor),
+            titleLabel.trailingAnchor.constraint(lessThanOrEqualTo: ptsLabel.leadingAnchor, constant: -8),
+            titleLabel.topAnchor.constraint(equalTo: headerLabel.bottomAnchor, constant: 3),
+        ])
+    }
+
+    func show(title: String, points: UInt32) {
+        titleLabel.stringValue = title
+        ptsLabel.stringValue   = points > 0 ? "+\(points) pts" : ""
+
+        hideWorkItem?.cancel()
+
+        NSAnimationContext.runAnimationGroup { ctx in
+            ctx.duration = 0.3
+            ctx.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            animator().alphaValue = 1
+        }
+
+        let item = DispatchWorkItem { [weak self] in
+            NSAnimationContext.runAnimationGroup { ctx in
+                ctx.duration = 0.5
+                ctx.timingFunction = CAMediaTimingFunction(name: .easeIn)
+                self?.animator().alphaValue = 0
+            }
+        }
+        hideWorkItem = item
+        DispatchQueue.main.asyncAfter(deadline: .now() + 4.5, execute: item)
+    }
+}
+
+// MARK: - HUD Icon Notification
+
 @IBDesignable
 final class OEGameLayerNotificationView: NSImageView {
     
@@ -101,7 +201,9 @@ final class OEGameLayerNotificationView: NSImageView {
     }
 
     @objc public func showAchievementUnlocked() {
-        let img = NSImage(systemSymbolName: "trophy.fill", accessibilityDescription: "Achievement Unlocked")
+        let config = NSImage.SymbolConfiguration(pointSize: 64, weight: .regular)
+        let img = NSImage(systemSymbolName: "trophy.fill", accessibilityDescription: "Achievement Unlocked")?
+            .withSymbolConfiguration(config)
         performShowHideNotification(img: img)
         postAccessibilityNotification(announcement: NSLocalizedString("Achievement Unlocked", tableName: "ControlLabels", comment: ""))
     }

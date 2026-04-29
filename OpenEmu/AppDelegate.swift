@@ -27,6 +27,7 @@
 import Cocoa
 import OpenEmuSystem
 import OpenEmuKit
+import UserNotifications
 
 private var appearancePrefChangedKVOContext = 0
 
@@ -887,7 +888,9 @@ extension AppDelegate: NSMenuDelegate {
         notificationCenter.addObserver(self, selector: #selector(openPreferencePane), name: PreferencesWindowController.openPaneNotificationName, object: nil)
         
         NSDocumentController.shared.clearRecentDocuments(nil)
-        
+
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in }
+
         validateDefaultPluginAssignments()
         
         DispatchQueue.main.async {

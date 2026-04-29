@@ -48,7 +48,8 @@ final class GameViewController: NSViewController {
     private var scaledView: OEScaledGameLayerView!
     private(set) var gameView: OEGameLayerView!
     private var notificationView: OEGameLayerNotificationView!
-    
+    private var achievementBannerView: OEAchievementBannerView!
+
     // Save Sync status badge
     private var syncStatusOverlay: OESyncStatusOverlayView!
     private var syncStatusToken: NSObjectProtocol?
@@ -108,6 +109,17 @@ final class GameViewController: NSViewController {
             syncStatusOverlay.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 60)
         ])
         
+        achievementBannerView = OEAchievementBannerView(frame: .zero)
+        achievementBannerView.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(achievementBannerView)
+
+        NSLayoutConstraint.activate([
+            achievementBannerView.widthAnchor.constraint(equalToConstant: OEAchievementBannerView.bannerWidth),
+            achievementBannerView.heightAnchor.constraint(equalToConstant: OEAchievementBannerView.bannerHeight),
+            achievementBannerView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            achievementBannerView.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -24),
+        ])
+
         syncStatusToken = NotificationCenter.default.addObserver(forName: .OESaveSyncStatusDidChange, object: nil, queue: .main) { [weak self] notification in
             guard let self = self, let obj = notification.object as? OESaveSyncManager else { return }
             self.syncStatusOverlay.show(status: obj.syncStatus, message: obj.syncStatusMessage)
@@ -332,7 +344,7 @@ extension GameViewController {
         notificationView.showStepBackward()
     }
 
-    func showAchievementUnlockedNotification() {
-        notificationView.showAchievementUnlocked()
+    func showAchievementUnlocked(title: String, points: UInt32) {
+        achievementBannerView.show(title: title, points: points)
     }
 }

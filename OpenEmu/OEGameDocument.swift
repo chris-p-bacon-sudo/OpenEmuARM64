@@ -2066,10 +2066,10 @@ extension OEGameDocument: OESystemBindingsObserver {
 
     func achievementUnlocked(id: UInt32, title: String, description: String, badgeURL: String, points: UInt32) {
         DispatchQueue.main.async {
-            // HUD overlay — respects the "Show notifications" user preference
-            self.gameViewController?.showAchievementUnlockedNotification()
+            // In-app banner — always visible regardless of Focus mode or notification settings
+            self.gameViewController?.showAchievementUnlocked(title: title, points: points)
 
-            // macOS system notification — visible even in full-screen
+            // macOS system notification — timeSensitive breaks through Focus/DND
             let content = UNMutableNotificationContent()
             content.title = title
             content.body  = description
@@ -2080,11 +2080,7 @@ extension OEGameDocument: OESystemBindingsObserver {
                 content: content,
                 trigger: nil
             )
-
-            UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { granted, _ in
-                guard granted else { return }
-                UNUserNotificationCenter.current().add(request)
-            }
+            UNUserNotificationCenter.current().add(request)
         }
     }
 }
