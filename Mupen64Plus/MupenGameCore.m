@@ -714,20 +714,22 @@ static void MupenSetAudioSpeed(int percent)
         }
     }
     
-    // Update address directly if code needs GS button pressed
-//    if ((gsCode[0].address & 0xFF000000) == 0x88000000 || (gsCode[0].address & 0xFF000000) == 0xA8000000)
-//    {
-//        *(unsigned char *)((rdram->dram + ((gsCode[0].address & 0xFFFFFF)^S8))) = (unsigned char)gsCode[0].value; // Update 8-bit address
-//    }
-//    else if ((gsCode[0].address & 0xFF000000) == 0x89000000 || (gsCode[0].address & 0xFF000000) == 0xA9000000)
-//    {
-//        *(unsigned short *)((rdram->dram + ((gsCode[0].address & 0xFFFFFF)^S16))) = (unsigned short)gsCode[0].value; // Update 16-bit address
-//    }
-//    // Else add code as normal
-//    else
-//    {
-//        enabled ? CoreAddCheat(code.UTF8String, gsCode, codeCounter+1) : CoreCheatEnabled(code.UTF8String, 0);
-//    }
+    // Remap button-activated GS codes (require physical GS button) to always-on
+    // equivalents — OpenEmu has no GS button so they would never fire otherwise.
+    for (int i = 0; i < codeCounter; i++) {
+        uint32_t addrType = gsCode[i].address & 0xFF000000;
+        if (addrType == 0x88000000 || addrType == 0xA8000000)
+            gsCode[i].address = (gsCode[i].address & 0x00FFFFFF) | 0x80000000;
+        else if (addrType == 0x89000000 || addrType == 0xA9000000)
+            gsCode[i].address = (gsCode[i].address & 0x00FFFFFF) | 0x81000000;
+    }
+
+    if (codeCounter > 0) {
+        if (enabled)
+            CoreAddCheat(code.UTF8String, gsCode, codeCounter);
+        else
+            CoreCheatEnabled(code.UTF8String, 0);
+    }
 
     free(gsCode);
 }

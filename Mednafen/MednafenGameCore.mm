@@ -3395,6 +3395,13 @@ static __weak MednafenGameCore *_current;
     }
     _videoHeight  = spec.DisplayRect.h;
 
+    // psx.h_overscan=0 crops the active area to ~264-330px but fb_width stays
+    // at 768. Left-aligning screenRect inside the wider buffer leaves a black
+    // strip on the right. Center the active rect to distribute the gap evenly.
+    if ([_mednafenCoreModule isEqualToString:@"psx"] && _videoWidth < (int)game->fb_width) {
+        _videoOffsetX = ((int)game->fb_width - _videoWidth) / 2;
+    }
+
     [[self ringBufferAtIndex:0] write:spec.SoundBuf maxLength:spec.SoundBufSize * self.channelCount * 2];
 }
 
