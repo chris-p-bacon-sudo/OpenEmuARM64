@@ -94,6 +94,11 @@ static uint32_t mGBA_rc_read_memory(uint32_t address, uint8_t *buffer,
 }
 
 
+static void mGBA_rc_log(const char *message, const rc_client_t *client)
+{
+    NSLog(@"[rcheevos] %s", message);
+}
+
 static void mGBA_rc_load_game_callback(int result, const char *error_message,
                                         rc_client_t *client, void *userdata)
 {
@@ -126,6 +131,8 @@ static void mGBA_rc_event_handler(const rc_client_event_t *event, rc_client_t *c
     NSString *badge       = [NSString stringWithUTF8String:ach->badge_name   ?: ""];
     NSNumber *achId       = @(ach->id);
     NSNumber *points      = @(ach->points);
+
+    NSLog(@"[RA-mGBA] achievement triggered: id=%u title=%s", ach->id, ach->title ?: "(nil)");
 
     NSDictionary *info = @{
         OEAchievementIDKey:          achId,
@@ -206,7 +213,6 @@ static struct mLogger logger = { .log = _log };
 
 - (BOOL)loadFileAtPath:(NSString *)path error:(NSError **)error
 {
-    RALog(@"[RA-mGBA] loadFileAtPath entered: %@", path);
     projectVersion = [self.owner.bundle.infoDictionary[@"CFBundleVersion"] UTF8String];
 
 	NSString *batterySavesDirectory = [self batterySavesDirectoryPath];
@@ -235,6 +241,7 @@ static struct mLogger logger = { .log = _log };
         rc_client_set_userdata(_rcClient, (__bridge void *)self);
         rc_client_set_event_handler(_rcClient, mGBA_rc_event_handler);
         rc_client_set_hardcore_enabled(_rcClient, 0);
+        rc_client_enable_logging(_rcClient, RC_CLIENT_LOG_LEVEL_INFO, mGBA_rc_log);
 
         // Register token observer before game identification so we don't miss
         // the notification that fires immediately after setRetroAchievementsToken.

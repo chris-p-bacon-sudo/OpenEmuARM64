@@ -35,6 +35,11 @@
 
 #include "shared.h"
 
+#define RC_CLIENT_SUPPORTS_HASH 1
+#include <rc_client.h>
+#include <rc_consoles.h>
+#import "OERetroAchievementsTransport.h"
+
 #define OptionDefault(_NAME_, _PREFKEY_) @{ OEGameCoreDisplayModeNameKey : _NAME_, OEGameCoreDisplayModePrefKeyNameKey : _PREFKEY_, OEGameCoreDisplayModeStateKey : @YES, }
 #define Option(_NAME_, _PREFKEY_) @{ OEGameCoreDisplayModeNameKey : _NAME_, OEGameCoreDisplayModePrefKeyNameKey : _PREFKEY_, OEGameCoreDisplayModeStateKey : @NO, }
 #define OptionIndented(_NAME_, _PREFKEY_) @{ OEGameCoreDisplayModeNameKey : _NAME_, OEGameCoreDisplayModePrefKeyNameKey : _PREFKEY_, OEGameCoreDisplayModeStateKey : @NO, OEGameCoreDisplayModeIndentationLevelKey : @(1), }
@@ -115,16 +120,101 @@ typedef NS_ENUM(NSInteger, MultiTapType)
     NSMutableArray <NSMutableDictionary <NSString *, id> *> *_availableDisplayModes;
     NSURL *_romFile;
     MultiTapType _multiTapType;
+    rc_client_t *_rcClient;
+    id _raTokenObserver;
+    int _rcConsole;
 }
 - (void)applyCheat:(NSString *)code;
 - (void)resetCheats;
 - (void)configureOptions;
 - (void)configureInput;
+- (void)_beginLoadGame;
 @end
+
+// rcheevos memory callback.
+//
+// rcheevos uses a normalized address space, not the 68000/Z80 bus addresses.
+// Mapping (from Vendor/rcheevos/src/rcheevos/consoleinfo.c):
+//
+//   Genesis / Mega CD  — RC 0x000000–0x00FFFF → work_ram[] (64 KB 68K RAM)
+//   SMS / GG / SG-1000 — RC 0x000000–0x001FFF → work_ram[] (8 KB RAM at real C000)
+//
+static uint32_t genplus_rc_read_memory(uint32_t address, uint8_t *buffer,
+                                        uint32_t num_bytes, rc_client_t *client)
+{
+    for (uint32_t i = 0; i < num_bytes; i++) {
+        uint32_t addr = address + i;
+        if ((system_hw & SYSTEM_PBC) == SYSTEM_MD || system_hw == SYSTEM_MCD) {
+            if (addr <= 0x00FFFF)
+                buffer[i] = work_ram[addr];
+            else
+                return i;
+        } else {
+            if (addr <= 0x001FFF)
+                buffer[i] = work_ram[addr];
+            else
+                return i;
+        }
+    }
+    return num_bytes;
+}
+
+static void genplus_rc_log(const char *message, const rc_client_t *client)
+{
+    NSLog(@"[rcheevos] %s", message);
+}
+
+static void genplus_rc_load_game_callback(int result, const char *error_message,
+                                           rc_client_t *client, void *userdata)
+{
+    if (result != RC_OK)
+        NSLog(@"[RA-GenPlus] game load failed — result=%d error=%s", result, error_message ?: "(none)");
+}
+
+static void genplus_rc_login_callback(int result, const char *error_message,
+                                       rc_client_t *client, void *userdata)
+{
+    GenPlusGameCore *s = (__bridge GenPlusGameCore *)userdata;
+    if (result == RC_OK) {
+        [s _beginLoadGame];
+    } else {
+        NSLog(@"[RA-GenPlus] login failed — result=%d error=%s", result, error_message ?: "(none)");
+    }
+}
+
+static void genplus_rc_event_handler(const rc_client_event_t *event, rc_client_t *client)
+{
+    if (event->type != RC_CLIENT_EVENT_ACHIEVEMENT_TRIGGERED) { return; }
+    const rc_client_achievement_t *ach = event->achievement;
+    if (!ach) { return; }
+
+    NSDictionary *info = @{
+        OEAchievementIDKey:          @(ach->id),
+        OEAchievementTitleKey:       @(ach->title       ?: ""),
+        OEAchievementDescriptionKey: @(ach->description  ?: ""),
+        OEAchievementBadgeURLKey:    @(ach->badge_name   ?: ""),
+        OEAchievementPointsKey:      @(ach->points),
+    };
+    [[NSNotificationCenter defaultCenter]
+        postNotificationName:OEAchievementUnlockedNotification
+                      object:nil
+                    userInfo:info];
+}
 
 @implementation GenPlusGameCore
 
 static __weak GenPlusGameCore *_current;
+
+- (void)_beginLoadGame
+{
+    if (!_rcClient || !_romFile) { return; }
+    rc_client_begin_identify_and_load_game(_rcClient,
+                                           (uint32_t)_rcConsole,
+                                           _romFile.fileSystemRepresentation,
+                                           NULL, 0,
+                                           genplus_rc_load_game_callback,
+                                           (__bridge void *)self);
+}
 
 - (id)init
 {
@@ -191,6 +281,47 @@ static __weak GenPlusGameCore *_current;
     if (system_hw == SYSTEM_MCD)
         bram_load();
 
+    // Determine RA console from the system this ROM was identified as.
+    if ([self.systemIdentifier isEqualToString:@"openemu.system.sms"])
+        _rcConsole = RC_CONSOLE_MASTER_SYSTEM;
+    else if ([self.systemIdentifier isEqualToString:@"openemu.system.gg"])
+        _rcConsole = RC_CONSOLE_GAME_GEAR;
+    else if ([self.systemIdentifier isEqualToString:@"openemu.system.sg"])
+        _rcConsole = RC_CONSOLE_SG1000;
+    else if ([self.systemIdentifier isEqualToString:@"openemu.system.scd"])
+        _rcConsole = RC_CONSOLE_SEGA_CD;
+    else
+        _rcConsole = RC_CONSOLE_MEGA_DRIVE;
+
+    _rcClient = rc_client_create(genplus_rc_read_memory, oeRetroAchievementsServerCall);
+    if (_rcClient) {
+        rc_client_set_userdata(_rcClient, (__bridge void *)self);
+        rc_client_set_event_handler(_rcClient, genplus_rc_event_handler);
+        rc_client_set_hardcore_enabled(_rcClient, 0);
+        rc_client_enable_logging(_rcClient, RC_CLIENT_LOG_LEVEL_INFO, genplus_rc_log);
+
+        __weak GenPlusGameCore *weakSelf = self;
+        _raTokenObserver = [[NSNotificationCenter defaultCenter]
+            addObserverForName:OERetroAchievementsTokenDidChangeNotification
+                        object:nil
+                         queue:nil
+                    usingBlock:^(NSNotification *note) {
+            GenPlusGameCore *s = weakSelf;
+            if (!s || !s->_rcClient) { return; }
+            NSString *token    = note.userInfo[OERetroAchievementsTokenKey];
+            NSString *username = note.userInfo[OERetroAchievementsUsernameKey];
+            if (token && username) {
+                rc_client_begin_login_with_token(s->_rcClient,
+                                                 username.UTF8String,
+                                                 token.UTF8String,
+                                                 genplus_rc_login_callback,
+                                                 (__bridge void *)s);
+            } else {
+                rc_client_logout(s->_rcClient);
+            }
+        }];
+    }
+
     // Set battery saves dir and load sram
     NSString *extensionlessFilename = _romFile.lastPathComponent.stringByDeletingPathExtension;
     NSURL *batterySavesDirectory = [NSURL fileURLWithPath:self.batterySavesDirectoryPath];
@@ -224,12 +355,17 @@ static __weak GenPlusGameCore *_current;
     else
         system_frame_sms(0);
 
+    if (_rcClient)
+        rc_client_do_frame(_rcClient);
+
     int samples = audio_update(_soundBuffer);
     [[self audioBufferAtIndex:0] write:_soundBuffer maxLength:samples << 2];
 }
 
 - (void)resetEmulation
 {
+    if (_rcClient)
+        rc_client_reset(_rcClient);
     system_reset();
 }
 
@@ -274,6 +410,16 @@ static __weak GenPlusGameCore *_current;
         bram_save();
 
     audio_shutdown();
+
+    if (_raTokenObserver) {
+        [[NSNotificationCenter defaultCenter] removeObserver:_raTokenObserver];
+        _raTokenObserver = nil;
+    }
+    if (_rcClient) {
+        rc_client_unload_game(_rcClient);
+        rc_client_destroy(_rcClient);
+        _rcClient = NULL;
+    }
 
     [super stopEmulation];
 }
@@ -405,6 +551,9 @@ static __weak GenPlusGameCore *_current;
         block(NO, error);
         return;
     }
+
+    if (_rcClient)
+        rc_client_reset(_rcClient);
 
     block(YES, nil);
 }

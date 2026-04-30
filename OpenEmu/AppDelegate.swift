@@ -38,7 +38,7 @@ extension OEDBRom: CachedLastPlayedInfoItem {}
 @NSApplicationMain
 @objc(OEApplicationDelegate)
 @objcMembers
-class AppDelegate: NSObject {
+class AppDelegate: NSObject, UNUserNotificationCenterDelegate {
     
     static let websiteAddress = "https://github.com/nickybmon/OpenEmu-Silicon"
     static let userGuideAddress = "https://github.com/nickybmon/OpenEmu-Silicon/wiki"
@@ -889,6 +889,7 @@ extension AppDelegate: NSMenuDelegate {
         
         NSDocumentController.shared.clearRecentDocuments(nil)
 
+        UNUserNotificationCenter.current().delegate = self
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in }
 
         validateDefaultPluginAssignments()
@@ -1150,5 +1151,15 @@ extension AppDelegate: NSMenuDelegate {
         } else {
             block()
         }
+    }
+
+    // MARK: - UNUserNotificationCenterDelegate
+
+    func userNotificationCenter(_ center: UNUserNotificationCenter,
+                                 willPresent notification: UNNotification,
+                                 withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+        // macOS suppresses banners for foreground apps by default; opt back in so
+        // achievement notifications pop up while a game is running.
+        completionHandler([.banner, .sound])
     }
 }
