@@ -234,7 +234,11 @@ final class MainWindowController: NSWindowController {
 extension MainWindowController: LibraryControllerDelegate {
     
     func libraryController(_ controller: LibraryController, didSelectGame game: OEDBGame) {
-        openGameDocument(with: game, saveState: nil)
+        openGameDocument(with: game, core: nil, saveState: nil)
+    }
+    
+    func libraryController(_ controller: LibraryController, didSelectGame game: OEDBGame, withCore core: OECorePlugin) {
+        openGameDocument(with: game, core: core, saveState: nil)
     }
     
     func libraryController(_ controller: LibraryController, didSelectSaveState saveState: OEDBSaveState) {
@@ -242,7 +246,7 @@ extension MainWindowController: LibraryControllerDelegate {
     }
     
     @available(macOS, deprecated: 10.15, message: "Remove 'or \"User Reports\"' from alert (~line 392) and localizations, the term is not used in Catalina and above.")
-    private func openGameDocument(with game: OEDBGame?, saveState state: OEDBSaveState?, secondAttempt retry: Bool = false, disableAutoReload noAutoReload: Bool = false) {
+    private func openGameDocument(with game: OEDBGame?, core: OECorePlugin? = nil, saveState state: OEDBSaveState?, secondAttempt retry: Bool = false, disableAutoReload noAutoReload: Bool = false) {
         
         guard let window = window else { return assertionFailure("MainWindow is nil") }
         
@@ -385,6 +389,8 @@ extension MainWindowController: LibraryControllerDelegate {
         
         if openWithSaveState {
             NSDocumentController.shared.openGameDocument(with: state!, display: openInSeparateWindow, fullScreen: fullScreen, completionHandler: openDocument)
+        } else if let core {
+            NSDocumentController.shared.openGameDocument(with: game!, core: core, display: openInSeparateWindow, fullScreen: fullScreen, completionHandler: openDocument)
         } else {
             NSDocumentController.shared.openGameDocument(with: game!, display: openInSeparateWindow, fullScreen: fullScreen, completionHandler: openDocument)
         }

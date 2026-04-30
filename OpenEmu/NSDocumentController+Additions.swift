@@ -25,6 +25,7 @@
  */
 
 import Foundation
+import OpenEmuKit
 
 extension NSDocumentController {
     
@@ -45,6 +46,10 @@ extension NSDocumentController {
     
     @objc(openGameDocumentWithGame:display:fullScreen:completionHandler:)
     func openGameDocument(with game: OEDBGame, display displayDocument: Bool, fullScreen: Bool, completionHandler: @escaping (OEGameDocument?, Error?) -> Void) {
+        fatalError("Method must be implemented by a subclass.")
+    }
+    
+    @objc func openGameDocument(with game: OEDBGame, core: OECorePlugin, display displayDocument: Bool, fullScreen: Bool, completionHandler: @escaping (OEGameDocument?, Error?) -> Void) {
         fatalError("Method must be implemented by a subclass.")
     }
     

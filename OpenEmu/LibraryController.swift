@@ -23,6 +23,7 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import Cocoa
+import OpenEmuKit
 
 final class LibraryController: NSTabViewController, NSMenuItemValidation {
     
@@ -431,6 +432,16 @@ final class LibraryController: NSTabViewController, NSMenuItemValidation {
         delegate?.libraryController?(self, didSelectSaveState: saveState)
     }
     
+    @objc(startSelectedGameWithCore:)
+    @IBAction func startSelectedGame(withCore sender: NSMenuItem) {
+        guard let core = sender.representedObject as? OECorePlugin else { return }
+        guard
+            let ctl = tabView.selectedTabViewItem?.viewController as? LibrarySubviewControllerGameSelection,
+            let game = ctl.selectedGames.first
+        else { return }
+        delegate?.libraryController?(self, didSelectGame: game, withCore: core)
+    }
+    
     @objc(startSelectedGameWithSaveState:)
     @IBAction func startSelectedGame(saveState sender: NSMenuItem) {
         guard let saveState = sender.representedObject as? OEDBSaveState else {
@@ -469,6 +480,7 @@ extension LibraryController {
 @objc(OELibraryControllerDelegate)
 protocol LibraryControllerDelegate {
     @objc optional func libraryController(_ controller: LibraryController, didSelectGame: OEDBGame)
+    @objc optional func libraryController(_ controller: LibraryController, didSelectGame: OEDBGame, withCore: OECorePlugin)
     @objc optional func libraryController(_ controller: LibraryController, didSelectRom: OEDBRom)
     @objc optional func libraryController(_ controller: LibraryController, didSelectSaveState: OEDBSaveState)
 }

@@ -98,6 +98,13 @@ extension GameCollectionViewController: CollectionViewExtendedDelegate, NSMenuIt
                          action: #selector(LibraryController.startSelectedGame(_:)),
                          keyEquivalent: "")
             
+            if let coreSubmenu = coreMenu(for: game) {
+                item = NSMenuItem()
+                item.title = NSLocalizedString("Play With…", comment: "Submenu listing available cores for this system")
+                item.submenu = coreSubmenu
+                menu.addItem(item)
+            }
+            
             item = NSMenuItem()
             item.title = NSLocalizedString("Play Save State", comment: "")
             item.submenu = saveStateMenu(for: game)
@@ -219,6 +226,22 @@ extension GameCollectionViewController: CollectionViewExtendedDelegate, NSMenuIt
                          keyEquivalent: "")
         }
         
+        return menu
+    }
+    
+    private func coreMenu(for game: OEDBGame) -> NSMenu? {
+        guard let systemID = game.system?.systemIdentifier else { return nil }
+        var plugins = OECorePlugin.corePlugins(forSystemIdentifier: systemID)
+        guard plugins.count > 1 else { return nil }
+        plugins.sort { $0.displayName.localizedStandardCompare($1.displayName) == .orderedAscending }
+        let menu = NSMenu()
+        for plugin in plugins {
+            let item = NSMenuItem(title: plugin.displayName,
+                                  action: #selector(LibraryController.startSelectedGame(withCore:)),
+                                  keyEquivalent: "")
+            item.representedObject = plugin
+            menu.addItem(item)
+        }
         return menu
     }
     
