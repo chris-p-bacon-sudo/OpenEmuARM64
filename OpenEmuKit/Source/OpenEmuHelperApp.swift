@@ -327,6 +327,7 @@ extension OSLog {
             object: nil,
             queue: nil
         ) { [weak self] note in
+            NSLog("[RA-Helper] OEAchievementUnlocked notification received, gameCoreOwner=%@", self?.gameCoreOwner != nil ? "set" : "nil")
             guard let self = self,
                   let owner = self.gameCoreOwner,
                   let info = note.userInfo,
@@ -335,7 +336,14 @@ extension OSLog {
                   let desc      = info[OEAchievementDescriptionKey]  as? String,
                   let badge     = info[OEAchievementBadgeURLKey]     as? String,
                   let ptsNum    = info[OEAchievementPointsKey]       as? NSNumber
-            else { return }
+            else {
+                NSLog("[RA-Helper] guard failed — self=%@ owner=%@ info=%@",
+                      self != nil ? "ok" : "nil",
+                      self?.gameCoreOwner != nil ? "ok" : "nil",
+                      note.userInfo != nil ? "ok" : "nil")
+                return
+            }
+            NSLog("[RA-Helper] calling achievementUnlocked id=%u title=%@", idNum.uint32Value, title)
             owner.achievementUnlocked?(id: idNum.uint32Value,
                                         title: title,
                                         description: desc,
