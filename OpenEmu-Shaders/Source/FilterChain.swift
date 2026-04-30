@@ -509,7 +509,10 @@ public final class FilterChain {
         } else {
             let texture = fetchNextHistoryTexture()
             
-            let orig = MTLOrigin(x: Int(sourceRect.origin.x), y: Int(sourceRect.origin.y), z: 0)
+            // The source texture is pre-cropped to sourceRect.size with content
+            // at origin (0,0) — PixelBuffer always blits to destinationOrigin zero.
+            // Using sourceRect.origin as an offset would over-index the texture.
+            let orig = MTLOrigin()
             let size = MTLSize(width: Int(sourceRect.width), height: Int(sourceRect.height), depth: 1)
             let zero = MTLOrigin()
             
@@ -522,13 +525,10 @@ public final class FilterChain {
                 rpd.colorAttachments[0].storeAction = .store
                 
                 if let rce = commandBuffer.makeRenderCommandEncoder(descriptor: rpd) {
-                    // ── Calculate UVs to match sourceRect ─────────────────
-                    let tw = Float(sourceTexture.width)
-                    let th = Float(sourceTexture.height)
-                    let u0 = Float(sourceRect.origin.x) / tw
-                    let v0 = Float(sourceRect.origin.y) / th
-                    let u1 = Float(sourceRect.origin.x + sourceRect.size.width) / tw
-                    let v1 = Float(sourceRect.origin.y + sourceRect.size.height) / th
+                    // Source texture is pre-cropped to sourceRect.size; content is at (0,0).
+                    // UV covers the full texture — do not add sourceRect.origin as offset.
+                    let u0: Float = 0, v0: Float = 0
+                    let u1: Float = 1, v1: Float = 1
                     
                     let prepVertex = [
                         Vertex(position: .init(0, 1, 0, 1), texCoord: .init(u0, v1)),
