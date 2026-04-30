@@ -57,7 +57,7 @@ public class OECorePlugin: OEPlugin {
         })
     }
     
-    public static func corePlugins(forSystemIdentifier identifier: String) -> [OECorePlugin] {
+    @objc public static func corePlugins(forSystemIdentifier identifier: String) -> [OECorePlugin] {
         return allPlugins.filter { $0.systemIdentifiers.contains(identifier) }
     }
     

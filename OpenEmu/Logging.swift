@@ -25,6 +25,7 @@
  */
 
 import Foundation
+import os.log
 
 extension OSLog {
     static let `default` = OSLog(subsystem: "org.openemu.OpenEmu", category: "default")
@@ -41,7 +42,8 @@ extension OSLog {
 func DLog(_ message: @autoclosure () -> String, fileID: String = #fileID, function: String = #function, line: Int = #line)
 {
 #if DEBUG
-    NSLog("\(fileID):\(line): \(function): \(message())")
+    let formatted = "\(fileID):\(line): \(function): \(message())"
+    os_log(.debug, "%{public}s", formatted)
 #endif
 }
 

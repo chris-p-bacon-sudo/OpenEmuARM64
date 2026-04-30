@@ -286,6 +286,7 @@
 		5A575DFD1E92D23600491B0D /* Cheats.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A575DFC1E92D23600491B0D /* Cheats.swift */; };
 		5A6C157C1DC96C3700839986 /* OEMediaViewController+TouchBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A6C157B1DC96C3700839986 /* OEMediaViewController+TouchBar.swift */; };
 		5A6E80A71DCA6B210022F2AE /* OEGameCollectionViewController+TouchBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A6E80A61DCA6B210022F2AE /* OEGameCollectionViewController+TouchBar.swift */; };
+		OE0001AA0001AA0001AA0001 /* OEGameCollectionViewController+CoreMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = OE0001AA0001BB0001AA0001 /* OEGameCollectionViewController+CoreMenu.swift */; };
 		5A79F7951C15F542003124D5 /* PreferencesWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A79F7941C15F542003124D5 /* PreferencesWindowController.swift */; };
 		5A9606D21C0A5A570089B494 /* NSManagedObjectContext+LibraryDatabase.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A9606D11C0A5A570089B494 /* NSManagedObjectContext+LibraryDatabase.swift */; };
 		5A9606D41C0A63740089B494 /* NSMutableDictionary+Pop.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A9606D31C0A63740089B494 /* NSMutableDictionary+Pop.swift */; };
@@ -1471,6 +1472,7 @@
 		5A575DFC1E92D23600491B0D /* Cheats.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Cheats.swift; sourceTree = "<group>"; };
 		5A6C157B1DC96C3700839986 /* OEMediaViewController+TouchBar.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "OEMediaViewController+TouchBar.swift"; sourceTree = "<group>"; };
 		5A6E80A61DCA6B210022F2AE /* OEGameCollectionViewController+TouchBar.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "OEGameCollectionViewController+TouchBar.swift"; sourceTree = "<group>"; };
+		OE0001AA0001BB0001AA0001 /* OEGameCollectionViewController+CoreMenu.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "OEGameCollectionViewController+CoreMenu.swift"; sourceTree = "<group>"; };
 		5A79F7941C15F542003124D5 /* PreferencesWindowController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PreferencesWindowController.swift; sourceTree = "<group>"; };
 		5A9606D11C0A5A570089B494 /* NSManagedObjectContext+LibraryDatabase.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "NSManagedObjectContext+LibraryDatabase.swift"; sourceTree = "<group>"; };
 		5A9606D31C0A63740089B494 /* NSMutableDictionary+Pop.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "NSMutableDictionary+Pop.swift"; sourceTree = "<group>"; };
@@ -3251,6 +3253,7 @@
 				8306CD3B1BD3DB180025BC6C /* OEGameCollectionViewController.h */,
 				8306CD3C1BD3DB180025BC6C /* OEGameCollectionViewController.m */,
 				5A6E80A61DCA6B210022F2AE /* OEGameCollectionViewController+TouchBar.swift */,
+				OE0001AA0001BB0001AA0001 /* OEGameCollectionViewController+CoreMenu.swift */,
 				8306CD3D1BD3DB180025BC6C /* OEGameCollectionViewItemProtocol.h */,
 				5AFD06BC2058893B00DFE765 /* GameScannerViewController.swift */,
 				8F40EB811C1072B200683055 /* GameScanner.xib */,
@@ -6566,6 +6569,7 @@
 				8FEC1BA024F7D37700DBBF72 /* TextButton.swift in Sources */,
 				83CB0C7A1A3F000700409FB2 /* BlankSlateSpinnerView.swift in Sources */,
 				5A6E80A71DCA6B210022F2AE /* OEGameCollectionViewController+TouchBar.swift in Sources */,
+				OE0001AA0001AA0001AA0001 /* OEGameCollectionViewController+CoreMenu.swift in Sources */,
 				14F6A926168180D00071386D /* GameWindowController.swift in Sources */,
 				8F957B4225227175008A9BC9 /* GlossButton.swift in Sources */,
 				0519A89F25AA4CD800D71C21 /* ShaderControl.swift in Sources */,

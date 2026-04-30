@@ -614,6 +614,14 @@ static NSString * const OEGameTableSortDescriptorsKey = @"OEGameTableSortDescrip
         [menu addItemWithTitle:NSLocalizedString(@"Play Game", @"") action:@selector(startSelectedGame:) keyEquivalent:@""];
         OEDBGame  *game = [[gamesController arrangedObjects] objectAtIndex:index];
 
+        // Play With… — only shown when more than one core supports this system
+        NSMenu *coreSubmenu = [self oe_coreMenuFor:game];
+        if(coreSubmenu != nil) {
+            NSMenuItem *coreMenuItem = [[NSMenuItem alloc] initWithTitle:NSLocalizedString(@"Play With\u2026", @"Submenu listing available cores for this system") action:NULL keyEquivalent:@""];
+            [coreMenuItem setSubmenu:coreSubmenu];
+            [menu addItem:coreMenuItem];
+        }
+
         // Create Save State Menu
         menuItem = [[NSMenuItem alloc] initWithTitle:NSLocalizedString(@"Play Save State", @"") action:NULL keyEquivalent:@""];
         [menuItem setSubmenu:[self OE_saveStateMenuForGame:game]];
@@ -710,6 +718,7 @@ static NSString * const OEGameTableSortDescriptorsKey = @"OEGameTableSortDescrip
     [menu setAutoenablesItems:YES];
     return menu;
 }
+
 
 - (NSMenu *)OE_saveStateMenuForGame:(OEDBGame *)game
 {
