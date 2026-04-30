@@ -219,24 +219,18 @@ if grep -q "status: Accepted" "$NOTARIZE_LOG"; then
   echo "=== Notarization accepted! Stapling... ==="
   xcrun stapler staple "$APP" || die "Stapling failed."
 
-  # ── 8. Create DMG ───────────────────────────────────────────────────────
+  # ── 8. Create DMG with custom background ────────────────────────────────
   DMG="$REPO_ROOT/Releases/OpenEmu-Silicon.dmg"
   mkdir -p "$REPO_ROOT/Releases"
   echo ""
-  echo "=== Creating DMG ==="
-  # Copy the stapled app to the Releases/ folder so hdiutil can access it
-  # from a non-temp path (temp dirs under /var/folders are blocked by TCC).
-  # Use ditto (not cp -R) — ditto preserves extended attributes, resource forks,
-  # and the exact bundle structure that macOS code signing relies on.
-  # cp -R silently drops xattrs and corrupts the code seal.
+  echo "=== Creating styled DMG ==="
+  # Stage the stapled app to a non-temp path so hdiutil is not blocked by TCC.
+  # Use ditto (not cp -R) to preserve extended attributes and code-seal xattrs.
   STAGED_APP="$REPO_ROOT/Releases/OpenEmu.app"
   rm -rf "$STAGED_APP"
   ditto "$APP" "$STAGED_APP"
-  hdiutil create \
-    -volname "OpenEmu-Silicon" \
-    -srcfolder "$STAGED_APP" \
-    -ov -format UDZO \
-    "$DMG" || { rm -rf "$STAGED_APP"; die "hdiutil failed."; }
+  "$SCRIPT_DIR/make-dmg.sh" "$STAGED_APP" "$DMG" \
+    || { rm -rf "$STAGED_APP"; die "make-dmg.sh failed."; }
   rm -rf "$STAGED_APP"
 
   echo "Notarizing DMG..."
