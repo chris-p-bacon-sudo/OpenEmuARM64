@@ -131,24 +131,27 @@ typedef NS_ENUM(NSInteger, MultiTapType)
 - (void)_beginLoadGame;
 @end
 
-// rcheevos memory callback — dispatches on system_hw to serve the correct RAM region.
-// Genesis/CD: 68K work RAM at 0xFF0000–0xFFFFFF; Z80 RAM at 0xA00000–0xA01FFF.
-// SMS/GG/SG: 8 KB work RAM at 0xC000–0xDFFF.
+// rcheevos memory callback.
+//
+// rcheevos uses a normalized address space, not the 68000/Z80 bus addresses.
+// Mapping (from Vendor/rcheevos/src/rcheevos/consoleinfo.c):
+//
+//   Genesis / Mega CD  — RC 0x000000–0x00FFFF → work_ram[] (64 KB 68K RAM)
+//   SMS / GG / SG-1000 — RC 0x000000–0x001FFF → work_ram[] (8 KB RAM at real C000)
+//
 static uint32_t genplus_rc_read_memory(uint32_t address, uint8_t *buffer,
                                         uint32_t num_bytes, rc_client_t *client)
 {
     for (uint32_t i = 0; i < num_bytes; i++) {
         uint32_t addr = address + i;
         if ((system_hw & SYSTEM_PBC) == SYSTEM_MD || system_hw == SYSTEM_MCD) {
-            if (addr >= 0xFF0000 && addr <= 0xFFFFFF)
-                buffer[i] = work_ram[addr & 0xFFFF];
-            else if (addr >= 0xA00000 && addr <= 0xA01FFF)
-                buffer[i] = zram[addr - 0xA00000];
+            if (addr <= 0x00FFFF)
+                buffer[i] = work_ram[addr];
             else
                 return i;
         } else {
-            if (addr >= 0xC000 && addr <= 0xDFFF)
-                buffer[i] = work_ram[addr & 0x1FFF];
+            if (addr <= 0x001FFF)
+                buffer[i] = work_ram[addr];
             else
                 return i;
         }
