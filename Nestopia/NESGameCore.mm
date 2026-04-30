@@ -31,6 +31,11 @@
 #import "OEFDSSystemResponderClient.h"
 #import <OpenGL/gl.h>
 
+#define RC_CLIENT_SUPPORTS_HASH 1
+#include <rc_client.h>
+#include <rc_consoles.h>
+#import "OERetroAchievementsTransport.h"
+
 #include <NstBase.hpp>
 #include <NstApiEmulator.hpp>
 #include <NstApiMachine.hpp>
@@ -82,11 +87,79 @@ static void NST_CALLBACK doEvent(void *userData, Nes::Api::Machine::Event event,
 
     NSMutableDictionary<NSString *, NSNumber *> *_cheatList;
     NSMutableArray <NSMutableDictionary <NSString *, id> *> *_availableDisplayModes;
+    rc_client_t *_rcClient;
+    id _raTokenObserver;
+    int _rcConsole;
 }
 
 - (void)loadDisplayModeOptions;
+- (void)_beginLoadGame;
+- (const uint8_t *)_nesRamBytesForRC;
 
 @end
+
+// rcheevos memory callback.
+//
+// rcheevos NES/FDS address space (consoleinfo.c):
+//   0x0000–0x07FF → 2 KB NES work RAM
+//
+static uint32_t nestopia_rc_read_memory(uint32_t address, uint8_t *buffer,
+                                         uint32_t num_bytes, rc_client_t *client)
+{
+    NESGameCore *s = (__bridge NESGameCore *)rc_client_get_userdata(client);
+    const uint8_t *ram = [s _nesRamBytesForRC];
+    if (!ram) { return 0; }
+    for (uint32_t i = 0; i < num_bytes; i++) {
+        uint32_t addr = address + i;
+        if (addr <= 0x07FF)
+            buffer[i] = ram[addr];
+        else
+            return i;
+    }
+    return num_bytes;
+}
+
+static void nestopia_rc_log(const char *message, const rc_client_t *client)
+{
+    NSLog(@"[rcheevos] %s", message);
+}
+
+static void nestopia_rc_load_game_callback(int result, const char *error_message,
+                                            rc_client_t *client, void *userdata)
+{
+    if (result != RC_OK)
+        NSLog(@"[RA-Nestopia] game load failed — result=%d error=%s", result, error_message ?: "(none)");
+}
+
+static void nestopia_rc_login_callback(int result, const char *error_message,
+                                        rc_client_t *client, void *userdata)
+{
+    NESGameCore *s = (__bridge NESGameCore *)userdata;
+    if (result == RC_OK) {
+        [s _beginLoadGame];
+    } else {
+        NSLog(@"[RA-Nestopia] login failed — result=%d error=%s", result, error_message ?: "(none)");
+    }
+}
+
+static void nestopia_rc_event_handler(const rc_client_event_t *event, rc_client_t *client)
+{
+    if (event->type != RC_CLIENT_EVENT_ACHIEVEMENT_TRIGGERED) { return; }
+    const rc_client_achievement_t *ach = event->achievement;
+    if (!ach) { return; }
+
+    NSDictionary *info = @{
+        OEAchievementIDKey:          @(ach->id),
+        OEAchievementTitleKey:       @(ach->title       ?: ""),
+        OEAchievementDescriptionKey: @(ach->description  ?: ""),
+        OEAchievementBadgeURLKey:    @(ach->badge_name   ?: ""),
+        OEAchievementPointsKey:      @(ach->points),
+    };
+    [[NSNotificationCenter defaultCenter]
+        postNotificationName:OEAchievementUnlockedNotification
+                      object:nil
+                    userInfo:info];
+}
 
 @implementation NESGameCore
 
@@ -104,6 +177,23 @@ static __weak NESGameCore *_current;
     }
 
     return self;
+}
+
+- (const uint8_t *)_nesRamBytesForRC
+{
+    Nes::Core::Machine &machine = _emu;
+    return (const uint8_t *)machine.cpu.GetRam();
+}
+
+- (void)_beginLoadGame
+{
+    if (!_rcClient || !_romURL) { return; }
+    rc_client_begin_identify_and_load_game(_rcClient,
+                                           (uint32_t)_rcConsole,
+                                           _romURL.fileSystemRepresentation,
+                                           NULL, 0,
+                                           nestopia_rc_load_game_callback,
+                                           (__bridge void *)self);
 }
 
 - (void)dealloc
@@ -207,6 +297,39 @@ static __weak NESGameCore *_current;
         [self loadDisplayModeOptions];
     }
 
+    _rcConsole = [self.systemIdentifier isEqualToString:@"openemu.system.fds"]
+        ? RC_CONSOLE_FAMICOM_DISK_SYSTEM
+        : RC_CONSOLE_NINTENDO;
+
+    _rcClient = rc_client_create(nestopia_rc_read_memory, oeRetroAchievementsServerCall);
+    if (_rcClient) {
+        rc_client_set_userdata(_rcClient, (__bridge void *)self);
+        rc_client_set_event_handler(_rcClient, nestopia_rc_event_handler);
+        rc_client_set_hardcore_enabled(_rcClient, 0);
+        rc_client_enable_logging(_rcClient, RC_CLIENT_LOG_LEVEL_INFO, nestopia_rc_log);
+
+        __weak NESGameCore *weakSelf = self;
+        _raTokenObserver = [[NSNotificationCenter defaultCenter]
+            addObserverForName:OERetroAchievementsTokenDidChangeNotification
+                        object:nil
+                         queue:nil
+                    usingBlock:^(NSNotification *note) {
+            NESGameCore *s = weakSelf;
+            if (!s || !s->_rcClient) { return; }
+            NSString *token    = note.userInfo[OERetroAchievementsTokenKey];
+            NSString *username = note.userInfo[OERetroAchievementsUsernameKey];
+            if (token && username) {
+                rc_client_begin_login_with_token(s->_rcClient,
+                                                 username.UTF8String,
+                                                 token.UTF8String,
+                                                 nestopia_rc_login_callback,
+                                                 (__bridge void *)s);
+            } else {
+                rc_client_logout(s->_rcClient);
+            }
+        }];
+    }
+
     return YES;
 }
 
@@ -270,11 +393,17 @@ static __weak NESGameCore *_current;
 {
     _emu.Execute(_nesVideo, _nesSound, _controls);
 
+    if (_rcClient)
+        rc_client_do_frame(_rcClient);
+
     [[self audioBufferAtIndex:0] write:_soundBuffer maxLength:self.channelCount * _bufFrameSize * sizeof(int16_t)];
 }
 
 - (void)resetEmulation
 {
+    if (_rcClient)
+        rc_client_reset(_rcClient);
+
     Nes::Api::Machine machine(_emu);
     machine.Reset(true);
 
@@ -289,6 +418,16 @@ static __weak NESGameCore *_current;
 
 - (void)stopEmulation
 {
+    if (_raTokenObserver) {
+        [[NSNotificationCenter defaultCenter] removeObserver:_raTokenObserver];
+        _raTokenObserver = nil;
+    }
+    if (_rcClient) {
+        rc_client_unload_game(_rcClient);
+        rc_client_destroy(_rcClient);
+        _rcClient = NULL;
+    }
+
     Nes::Api::Machine machine(_emu);
     //machine.Power(false);
     machine.Unload(); // this allows FDS to save
@@ -551,6 +690,9 @@ static __weak NESGameCore *_current;
 
         return NO;
     }
+
+    if (_rcClient)
+        rc_client_reset(_rcClient);
 
     return YES;
 }

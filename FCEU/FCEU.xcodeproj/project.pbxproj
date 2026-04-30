@@ -275,6 +275,8 @@
 		949BBB521A9EFF4B007B49CC /* wave.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 949BBA351A9EED5B007B49CC /* wave.cpp */; };
 		949BBB531A9EFF4B007B49CC /* x6502.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 949BBA371A9EED5B007B49CC /* x6502.cpp */; };
 		C62301A61712264100576081 /* OpenEmuBase.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C6D120EF171130A200E868A8 /* OpenEmuBase.framework */; };
+		OE0FCEU0BUILDFILE000000001 /* rcheevos_build.c in Sources */ = {isa = PBXBuildFile; fileRef = OE0FCEU0FILEREF000000001 /* rcheevos_build.c */; settings = {COMPILER_FLAGS = "-DRC_NO_THREADS=1 -DRC_CLIENT_SUPPORTS_HASH=1"; }; };
+		OE0FCEU0BUILDFILE000000002 /* OERetroAchievementsTransport.m in Sources */ = {isa = PBXBuildFile; fileRef = OE0FCEU0FILEREF000000002 /* OERetroAchievementsTransport.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -677,6 +679,8 @@
 		B5008DAE0E8BFB3E005AECAF /* FCEUGameCore.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = FCEUGameCore.mm; sourceTree = "<group>"; };
 		C6D120EF171130A200E868A8 /* OpenEmuBase.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = OpenEmuBase.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		D2F7E65807B2D6F200F64583 /* CoreData.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreData.framework; path = System/Library/Frameworks/CoreData.framework; sourceTree = SDKROOT; };
+		OE0FCEU0FILEREF000000001 /* rcheevos_build.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = rcheevos_build.c; path = ../Vendor/rcheevos/rcheevos_build.c; sourceTree = SOURCE_ROOT; };
+		OE0FCEU0FILEREF000000002 /* OERetroAchievementsTransport.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = OERetroAchievementsTransport.m; path = ../OpenEmuKit/Source/OERetroAchievementsTransport.m; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -1301,6 +1305,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				82EC40A30FD9EC5A0017FC19 /* FCEUGameCore.mm in Sources */,
+				OE0FCEU0BUILDFILE000000001 /* rcheevos_build.c in Sources */,
+				OE0FCEU0BUILDFILE000000002 /* OERetroAchievementsTransport.m in Sources */,
 				949BBB381A9EFF4A007B49CC /* asm.cpp in Sources */,
 				8F28FD5129FD3E7D008FC4A9 /* coolgirl.cpp in Sources */,
 				949BBB391A9EFF4A007B49CC /* cart.cpp in Sources */,
@@ -1571,7 +1577,12 @@
 				CLANG_ENABLE_OBJC_ARC = YES;
 				COMBINE_HIDPI_IMAGES = YES;
 				DEAD_CODE_STRIPPING = YES;
-				HEADER_SEARCH_PATHS = "\"$(PROJECT_DIR)/src\"";
+				HEADER_SEARCH_PATHS = (
+					"\"$(PROJECT_DIR)/src\"",
+					"$(SRCROOT)/../Vendor/rcheevos/include",
+					"$(SRCROOT)/../Vendor/rcheevos/src",
+					"$(SRCROOT)/../OpenEmuKit/Source",
+				);
 				INFOPLIST_FILE = Info.plist;
 				INSTALL_PATH = "\"$(USER_LIBRARY_DIR)/Application Support/OpenEmu/Cores\"";
 				OTHER_CFLAGS = (
@@ -1593,7 +1604,12 @@
 			buildSettings = {
 				CLANG_ENABLE_OBJC_ARC = YES;
 				COMBINE_HIDPI_IMAGES = YES;
-				HEADER_SEARCH_PATHS = "\"$(PROJECT_DIR)/src\"";
+				HEADER_SEARCH_PATHS = (
+					"\"$(PROJECT_DIR)/src\"",
+					"$(SRCROOT)/../Vendor/rcheevos/include",
+					"$(SRCROOT)/../Vendor/rcheevos/src",
+					"$(SRCROOT)/../OpenEmuKit/Source",
+				);
 				INFOPLIST_FILE = Info.plist;
 				INSTALL_PATH = "\"$(USER_LIBRARY_DIR)/Application Support/OpenEmu/Cores\"";
 				OTHER_CFLAGS = (

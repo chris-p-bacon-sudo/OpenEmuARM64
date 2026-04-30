@@ -77,6 +77,8 @@
 		9499B6081AB242B300276D21 /* video.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9499B5D41AB242B200276D21 /* video.cpp */; };
 		94ABD7DA16534BE800035061 /* GBGameCore.mm in Sources */ = {isa = PBXBuildFile; fileRef = B5EC4D420E6312DF0046BD93 /* GBGameCore.mm */; };
 		C6D120EE1711308C00E868A8 /* OpenEmuBase.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C6D120ED1711308C00E868A8 /* OpenEmuBase.framework */; };
+		OE0GAMB0BUILDFILE000000001 /* rcheevos_build.c in Sources */ = {isa = PBXBuildFile; fileRef = OE0GAMB0FILEREF000000001 /* rcheevos_build.c */; settings = {COMPILER_FLAGS = "-DRC_NO_THREADS=1 -DRC_CLIENT_SUPPORTS_HASH=1"; }; };
+		OE0GAMB0BUILDFILE000000002 /* OERetroAchievementsTransport.m in Sources */ = {isa = PBXBuildFile; fileRef = OE0GAMB0FILEREF000000002 /* OERetroAchievementsTransport.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -225,6 +227,8 @@
 		B5F6D8A80E66914F001CA5D3 /* gameboy.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; path = gameboy.icns; sourceTree = "<group>"; };
 		C6B947DE1364FD0C00A425F0 /* OEGBSystemResponderClient.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = OEGBSystemResponderClient.h; path = ../OpenEmu/SystemPlugins/GameBoy/OEGBSystemResponderClient.h; sourceTree = "<group>"; };
 		C6D120ED1711308C00E868A8 /* OpenEmuBase.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = OpenEmuBase.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		OE0GAMB0FILEREF000000001 /* rcheevos_build.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = rcheevos_build.c; path = ../Vendor/rcheevos/rcheevos_build.c; sourceTree = SOURCE_ROOT; };
+		OE0GAMB0FILEREF000000002 /* OERetroAchievementsTransport.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = OERetroAchievementsTransport.m; path = ../OpenEmuKit/Source/OERetroAchievementsTransport.m; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -578,6 +582,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				94ABD7DA16534BE800035061 /* GBGameCore.mm in Sources */,
+				OE0GAMB0BUILDFILE000000001 /* rcheevos_build.c in Sources */,
+				OE0GAMB0BUILDFILE000000002 /* OERetroAchievementsTransport.m in Sources */,
 				9499B5D81AB242B200276D21 /* chainresampler.cpp in Sources */,
 				9499B5D91AB242B200276D21 /* i0.cpp in Sources */,
 				9499B5DA1AB242B200276D21 /* kaiser50sinc.cpp in Sources */,
@@ -655,6 +661,9 @@
 					"\"$(PROJECT_DIR)/gambatte\"",
 					"\"$(SRCROOT)/libgambatte/src\"",
 					"\"$(SRCROOT)/libgambatte/include\"",
+					"$(SRCROOT)/../Vendor/rcheevos/include",
+					"$(SRCROOT)/../Vendor/rcheevos/src",
+					"$(SRCROOT)/../OpenEmuKit/Source",
 				);
 				INFOPLIST_FILE = Info.plist;
 				INSTALL_PATH = "\"$(USER_LIBRARY_DIR)/Application Support/OpenEmu/Cores\"";
@@ -677,6 +686,9 @@
 					"\"$(PROJECT_DIR)/gambatte\"",
 					"\"$(SRCROOT)/libgambatte/src\"",
 					"\"$(SRCROOT)/libgambatte/include\"",
+					"$(SRCROOT)/../Vendor/rcheevos/include",
+					"$(SRCROOT)/../Vendor/rcheevos/src",
+					"$(SRCROOT)/../OpenEmuKit/Source",
 				);
 				INFOPLIST_FILE = Info.plist;
 				INSTALL_PATH = "\"$(USER_LIBRARY_DIR)/Application Support/OpenEmu/Cores\"";

@@ -182,6 +182,10 @@ bool GB::deserializeState(std::istream &stream) {
     return false;
 }
 
+uint8_t GB::busRead8(uint16_t address) const {
+    return p_->cpu.busRead8(address);
+}
+
 //< OpenEmu
 bool GB::loadState(std::string const &filepath) {
 	if (p_->cpu.loaded()) {

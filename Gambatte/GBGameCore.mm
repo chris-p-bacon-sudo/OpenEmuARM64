@@ -35,6 +35,11 @@
 #include "resamplerinfo.h"
 #include "resampler.h"
 
+#define RC_CLIENT_SUPPORTS_HASH 1
+#include <rc_client.h>
+#include <rc_consoles.h>
+#import "OERetroAchievementsTransport.h"
+
 #define OptionDefault(_NAME_, _PREFKEY_) @{ OEGameCoreDisplayModeNameKey : _NAME_, OEGameCoreDisplayModePrefKeyNameKey : _PREFKEY_, OEGameCoreDisplayModeStateKey : @YES, }
 #define Option(_NAME_, _PREFKEY_) @{ OEGameCoreDisplayModeNameKey : _NAME_, OEGameCoreDisplayModePrefKeyNameKey : _PREFKEY_, OEGameCoreDisplayModeStateKey : @NO, }
 #define OptionIndented(_NAME_, _PREFKEY_) @{ OEGameCoreDisplayModeNameKey : _NAME_, OEGameCoreDisplayModePrefKeyNameKey : _PREFKEY_, OEGameCoreDisplayModeStateKey : @NO, OEGameCoreDisplayModeIndentationLevelKey : @(1), }
@@ -64,6 +69,10 @@ public:
     double _sampleRate;
     NSMutableDictionary <NSString *, NSNumber *> *_cheatList;
     NSMutableArray <NSMutableDictionary <NSString *, id> *> *_availableDisplayModes;
+    rc_client_t *_rcClient;
+    id _raTokenObserver;
+    NSString *_romPath;
+    int _rcConsole;
 }
 
 - (void)applyCheat:(NSString *)code;
@@ -74,8 +83,71 @@ public:
 - (void)loadPalette;
 - (void)loadPaletteDefault;
 - (void)changePalette:(NSString *)palette;
+- (void)_beginLoadGame;
 
 @end
+
+// rcheevos memory callback.
+//
+// rcheevos GB/GBC address space (consoleinfo.c):
+//   0x0000–0xFFFF → full 16-bit Game Boy bus
+//
+// Reads via gambatte::GB::busRead8() — wraps Memory::read(addr, 0).
+//
+static uint32_t gambatte_rc_read_memory(uint32_t address, uint8_t *buffer,
+                                         uint32_t num_bytes, rc_client_t *client)
+{
+    for (uint32_t i = 0; i < num_bytes; i++) {
+        uint32_t addr = address + i;
+        if (addr <= 0xFFFF)
+            buffer[i] = gb.busRead8((uint16_t)addr);
+        else
+            return i;
+    }
+    return num_bytes;
+}
+
+static void gambatte_rc_log(const char *message, const rc_client_t *client)
+{
+    NSLog(@"[rcheevos] %s", message);
+}
+
+static void gambatte_rc_load_game_callback(int result, const char *error_message,
+                                            rc_client_t *client, void *userdata)
+{
+    if (result != RC_OK)
+        NSLog(@"[RA-Gambatte] game load failed — result=%d error=%s", result, error_message ?: "(none)");
+}
+
+static void gambatte_rc_login_callback(int result, const char *error_message,
+                                        rc_client_t *client, void *userdata)
+{
+    GBGameCore *s = (__bridge GBGameCore *)userdata;
+    if (result == RC_OK) {
+        [s _beginLoadGame];
+    } else {
+        NSLog(@"[RA-Gambatte] login failed — result=%d error=%s", result, error_message ?: "(none)");
+    }
+}
+
+static void gambatte_rc_event_handler(const rc_client_event_t *event, rc_client_t *client)
+{
+    if (event->type != RC_CLIENT_EVENT_ACHIEVEMENT_TRIGGERED) { return; }
+    const rc_client_achievement_t *ach = event->achievement;
+    if (!ach) { return; }
+
+    NSDictionary *info = @{
+        OEAchievementIDKey:          @(ach->id),
+        OEAchievementTitleKey:       @(ach->title       ?: ""),
+        OEAchievementDescriptionKey: @(ach->description  ?: ""),
+        OEAchievementBadgeURLKey:    @(ach->badge_name   ?: ""),
+        OEAchievementPointsKey:      @(ach->points),
+    };
+    [[NSNotificationCenter defaultCenter]
+        postNotificationName:OEAchievementUnlockedNotification
+                      object:nil
+                    userInfo:info];
+}
 
 @implementation GBGameCore
 
@@ -89,6 +161,17 @@ public:
     }
 
 	return self;
+}
+
+- (void)_beginLoadGame
+{
+    if (!_rcClient || !_romPath) { return; }
+    rc_client_begin_identify_and_load_game(_rcClient,
+                                           (uint32_t)_rcConsole,
+                                           _romPath.fileSystemRepresentation,
+                                           NULL, 0,
+                                           gambatte_rc_load_game_callback,
+                                           (__bridge void *)self);
 }
 
 - (void)dealloc
@@ -133,6 +216,38 @@ public:
 
     [self loadDisplayModeOptions];
 
+    _romPath = path;
+    _rcConsole = gb.isCgb() ? RC_CONSOLE_GAMEBOY_COLOR : RC_CONSOLE_GAMEBOY;
+
+    _rcClient = rc_client_create(gambatte_rc_read_memory, oeRetroAchievementsServerCall);
+    if (_rcClient) {
+        rc_client_set_userdata(_rcClient, (__bridge void *)self);
+        rc_client_set_event_handler(_rcClient, gambatte_rc_event_handler);
+        rc_client_set_hardcore_enabled(_rcClient, 0);
+        rc_client_enable_logging(_rcClient, RC_CLIENT_LOG_LEVEL_INFO, gambatte_rc_log);
+
+        __weak GBGameCore *weakSelf = self;
+        _raTokenObserver = [[NSNotificationCenter defaultCenter]
+            addObserverForName:OERetroAchievementsTokenDidChangeNotification
+                        object:nil
+                         queue:nil
+                    usingBlock:^(NSNotification *note) {
+            GBGameCore *s = weakSelf;
+            if (!s || !s->_rcClient) { return; }
+            NSString *token    = note.userInfo[OERetroAchievementsTokenKey];
+            NSString *username = note.userInfo[OERetroAchievementsUsernameKey];
+            if (token && username) {
+                rc_client_begin_login_with_token(s->_rcClient,
+                                                 username.UTF8String,
+                                                 token.UTF8String,
+                                                 gambatte_rc_login_callback,
+                                                 (__bridge void *)s);
+            } else {
+                rc_client_logout(s->_rcClient);
+            }
+        }];
+    }
+
     return YES;
 }
 
@@ -145,16 +260,31 @@ public:
         samples = 2064;
     }
 
+    if (_rcClient)
+        rc_client_do_frame(_rcClient);
+
     [self outputAudio:samples];
 }
 
 - (void)resetEmulation
 {
+    if (_rcClient)
+        rc_client_reset(_rcClient);
     gb.reset();
 }
 
 - (void)stopEmulation
 {
+    if (_raTokenObserver) {
+        [[NSNotificationCenter defaultCenter] removeObserver:_raTokenObserver];
+        _raTokenObserver = nil;
+    }
+    if (_rcClient) {
+        rc_client_unload_game(_rcClient);
+        rc_client_destroy(_rcClient);
+        _rcClient = NULL;
+    }
+
     gb.saveSavedata();
 
     delete resampler;
@@ -262,8 +392,11 @@ public:
     std::streamsize size = state.length;
     stream.write(bytes, size);
 
-    if(gb.deserializeState(stream))
+    if(gb.deserializeState(stream)) {
+        if (_rcClient)
+            rc_client_reset(_rcClient);
         return YES;
+    }
 
     if(outError) {
         *outError = [NSError errorWithDomain:OEGameCoreErrorDomain code:OEGameCoreCouldNotLoadStateError userInfo:@{

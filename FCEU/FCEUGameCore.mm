@@ -38,6 +38,11 @@
 #include "src/cheat.h"
 #include "zlib.h"
 
+#define RC_CLIENT_SUPPORTS_HASH 1
+#include <rc_client.h>
+#include <rc_consoles.h>
+#import "OERetroAchievementsTransport.h"
+
 extern uint8 *XBuf;
 static uint32_t palette[256];
 
@@ -68,11 +73,76 @@ static uint32_t palette[256];
     BOOL      _isVertOverscanCropped;
     NSMutableDictionary<NSString *, NSNumber *> *_cheatList;
     NSMutableArray <NSMutableDictionary <NSString *, id> *> *_availableDisplayModes;
+    rc_client_t *_rcClient;
+    id _raTokenObserver;
+    NSString *_romPath;
 }
 
 - (void)loadDisplayModeOptions;
+- (void)_beginLoadGame;
 
 @end
+
+// rcheevos memory callback.
+//
+// rcheevos NES address space (consoleinfo.c):
+//   0x0000–0x07FF → 2 KB NES work RAM (mirrored at 0x0800–0x1FFF on hardware,
+//                    but rcheevos only requests the base 2 KB range)
+//
+static uint32_t fceu_rc_read_memory(uint32_t address, uint8_t *buffer,
+                                     uint32_t num_bytes, rc_client_t *client)
+{
+    for (uint32_t i = 0; i < num_bytes; i++) {
+        uint32_t addr = address + i;
+        if (addr <= 0x07FF)
+            buffer[i] = RAM[addr];
+        else
+            return i;
+    }
+    return num_bytes;
+}
+
+static void fceu_rc_log(const char *message, const rc_client_t *client)
+{
+    NSLog(@"[rcheevos] %s", message);
+}
+
+static void fceu_rc_load_game_callback(int result, const char *error_message,
+                                        rc_client_t *client, void *userdata)
+{
+    if (result != RC_OK)
+        NSLog(@"[RA-FCEU] game load failed — result=%d error=%s", result, error_message ?: "(none)");
+}
+
+static void fceu_rc_login_callback(int result, const char *error_message,
+                                    rc_client_t *client, void *userdata)
+{
+    FCEUGameCore *s = (__bridge FCEUGameCore *)userdata;
+    if (result == RC_OK) {
+        [s _beginLoadGame];
+    } else {
+        NSLog(@"[RA-FCEU] login failed — result=%d error=%s", result, error_message ?: "(none)");
+    }
+}
+
+static void fceu_rc_event_handler(const rc_client_event_t *event, rc_client_t *client)
+{
+    if (event->type != RC_CLIENT_EVENT_ACHIEVEMENT_TRIGGERED) { return; }
+    const rc_client_achievement_t *ach = event->achievement;
+    if (!ach) { return; }
+
+    NSDictionary *info = @{
+        OEAchievementIDKey:          @(ach->id),
+        OEAchievementTitleKey:       @(ach->title       ?: ""),
+        OEAchievementDescriptionKey: @(ach->description  ?: ""),
+        OEAchievementBadgeURLKey:    @(ach->badge_name   ?: ""),
+        OEAchievementPointsKey:      @(ach->points),
+    };
+    [[NSNotificationCenter defaultCenter]
+        postNotificationName:OEAchievementUnlockedNotification
+                      object:nil
+                    userInfo:info];
+}
 
 @implementation FCEUGameCore
 
@@ -90,6 +160,17 @@ static __weak FCEUGameCore *_current;
 	return self;
 }
 
+- (void)_beginLoadGame
+{
+    if (!_rcClient || !_romPath) { return; }
+    rc_client_begin_identify_and_load_game(_rcClient,
+                                           RC_CONSOLE_NINTENDO,
+                                           _romPath.fileSystemRepresentation,
+                                           NULL, 0,
+                                           fceu_rc_load_game_callback,
+                                           (__bridge void *)self);
+}
+
 - (void)dealloc
 {
     free(_videoBuffer);
@@ -99,6 +180,7 @@ static __weak FCEUGameCore *_current;
 
 - (BOOL)loadFileAtPath:(NSString *)path error:(NSError **)error
 {
+    _romPath = path;
     _pad = 0;
     memset(_arkanoid, 0, sizeof(_arkanoid));
     memset(_zapper, 0, sizeof(_zapper));
@@ -220,6 +302,35 @@ static __weak FCEUGameCore *_current;
         [self loadDisplayModeOptions];
     }
 
+    _rcClient = rc_client_create(fceu_rc_read_memory, oeRetroAchievementsServerCall);
+    if (_rcClient) {
+        rc_client_set_userdata(_rcClient, (__bridge void *)self);
+        rc_client_set_event_handler(_rcClient, fceu_rc_event_handler);
+        rc_client_set_hardcore_enabled(_rcClient, 0);
+        rc_client_enable_logging(_rcClient, RC_CLIENT_LOG_LEVEL_INFO, fceu_rc_log);
+
+        __weak FCEUGameCore *weakSelf = self;
+        _raTokenObserver = [[NSNotificationCenter defaultCenter]
+            addObserverForName:OERetroAchievementsTokenDidChangeNotification
+                        object:nil
+                         queue:nil
+                    usingBlock:^(NSNotification *note) {
+            FCEUGameCore *s = weakSelf;
+            if (!s || !s->_rcClient) { return; }
+            NSString *token    = note.userInfo[OERetroAchievementsTokenKey];
+            NSString *username = note.userInfo[OERetroAchievementsUsernameKey];
+            if (token && username) {
+                rc_client_begin_login_with_token(s->_rcClient,
+                                                 username.UTF8String,
+                                                 token.UTF8String,
+                                                 fceu_rc_login_callback,
+                                                 (__bridge void *)s);
+            } else {
+                rc_client_logout(s->_rcClient);
+            }
+        }];
+    }
+
     return YES;
 }
 
@@ -230,6 +341,9 @@ static __weak FCEUGameCore *_current;
 
     FCEUI_Emulate(&pXBuf, &_soundBuffer, &_soundSize, 0);
 
+    if (_rcClient)
+        rc_client_do_frame(_rcClient);
+
     for (int i = 0; i < _soundSize; i++)
         _soundBuffer[i] = (_soundBuffer[i] << 16) | (_soundBuffer[i] & 0xffff);
 
@@ -238,11 +352,23 @@ static __weak FCEUGameCore *_current;
 
 - (void)resetEmulation
 {
+    if (_rcClient)
+        rc_client_reset(_rcClient);
     ResetNES();
 }
 
 - (void)stopEmulation
 {
+    if (_raTokenObserver) {
+        [[NSNotificationCenter defaultCenter] removeObserver:_raTokenObserver];
+        _raTokenObserver = nil;
+    }
+    if (_rcClient) {
+        rc_client_unload_game(_rcClient);
+        rc_client_destroy(_rcClient);
+        _rcClient = NULL;
+    }
+
     FCEUI_CloseGame();
     FCEUI_Kill();
 
@@ -358,7 +484,10 @@ static __weak FCEUGameCore *_current;
     BOOL result = FCEUSS_LoadFP(emuFile, SSLOADPARAM_NOBACKUP);
     
     delete emuFile;
-    
+
+    if (result && _rcClient)
+        rc_client_reset(_rcClient);
+
     return result;
 }
 

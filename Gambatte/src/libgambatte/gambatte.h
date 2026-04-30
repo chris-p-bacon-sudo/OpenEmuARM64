@@ -142,6 +142,12 @@ public:
      */
     bool deserializeState(std::istream &stream);
 
+    /**
+      * Reads a byte from the Game Boy memory bus at the given address.
+      * Used by RetroAchievements (rcheevos) to inspect emulator state.
+      */
+    uint8_t busRead8(uint16_t address) const;
+
 //< OpenEmu
 	/**
 	  * Saves emulator state to the state slot selected with selectState().

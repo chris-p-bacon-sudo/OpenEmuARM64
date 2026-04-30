@@ -79,6 +79,8 @@
 		C6D120EC1711307900E868A8 /* OpenEmuBase.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C6D120EB1711307900E868A8 /* OpenEmuBase.framework */; };
                 CC00000123B985A800F0B36E /* debugger.c in Sources */ = {isa = PBXBuildFile; fileRef = 0167A44C23B9843600F0B36E /* debugger.c */; };
                 CC00000223B985A800F0B36E /* sm83_disassembler.c in Sources */ = {isa = PBXBuildFile; fileRef = 0167A45B23B9843600F0B36E /* sm83_disassembler.c */; };
+		OE0BSNS0BUILDFILE000000001 /* rcheevos_build.c in Sources */ = {isa = PBXBuildFile; fileRef = OE0BSNS0FILEREF000000001 /* rcheevos_build.c */; settings = {COMPILER_FLAGS = "-DRC_NO_THREADS=1 -DRC_CLIENT_SUPPORTS_HASH=1"; }; };
+		OE0BSNS0BUILDFILE000000002 /* OERetroAchievementsTransport.m in Sources */ = {isa = PBXBuildFile; fileRef = OE0BSNS0FILEREF000000002 /* OERetroAchievementsTransport.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -754,6 +756,8 @@
 		C6480FFB1364B2E10094FA33 /* OESNESSystemResponderClient.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = OESNESSystemResponderClient.h; path = ../OpenEmu/SystemPlugins/SuperNES/OESNESSystemResponderClient.h; sourceTree = "<group>"; };
 		C6D120EB1711307900E868A8 /* OpenEmuBase.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = OpenEmuBase.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		D2F7E65807B2D6F200F64583 /* CoreData.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreData.framework; path = /System/Library/Frameworks/CoreData.framework; sourceTree = "<absolute>"; };
+		OE0BSNS0FILEREF000000001 /* rcheevos_build.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = rcheevos_build.c; path = ../Vendor/rcheevos/rcheevos_build.c; sourceTree = SOURCE_ROOT; };
+		OE0BSNS0FILEREF000000002 /* OERetroAchievementsTransport.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = OERetroAchievementsTransport.m; path = ../OpenEmuKit/Source/OERetroAchievementsTransport.m; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -2372,6 +2376,8 @@
 				0167A54B23B984E000F0B36E /* ppu.cpp in Sources */,
 				0167A54923B984D400F0B36E /* smp.cpp in Sources */,
 				94D9257314CA9879008F697D /* BSNESGameCore.mm in Sources */,
+				OE0BSNS0BUILDFILE000000001 /* rcheevos_build.c in Sources */,
+				OE0BSNS0BUILDFILE000000002 /* OERetroAchievementsTransport.m in Sources */,
 				0167A56023B985A800F0B36E /* printer.c in Sources */,
 				0167A55323B9856C00F0B36E /* wdc65816.cpp in Sources */,
 				0167A55F23B985A800F0B36E /* sgb.c in Sources */,
@@ -2440,7 +2446,12 @@
 				GCC_PREPROCESSOR_DEFINITIONS = "$(inherited)";
 				GCC_UNROLL_LOOPS = YES;
 				GCC_WARN_UNUSED_VARIABLE = NO;
-				HEADER_SEARCH_PATHS = "\"$(PROJECT_DIR)/bsnes\"";
+				HEADER_SEARCH_PATHS = (
+					"\"$(PROJECT_DIR)/bsnes\"",
+					"$(SRCROOT)/../Vendor/rcheevos/include",
+					"$(SRCROOT)/../Vendor/rcheevos/src",
+					"$(SRCROOT)/../OpenEmuKit/Source",
+				);
 				INFOPLIST_FILE = Info.plist;
 				INSTALL_PATH = "\"$(USER_LIBRARY_DIR)/Application Support/OpenEmu/Cores\"";
 				MARKETING_VERSION = 115;
@@ -2467,7 +2478,12 @@
 				GCC_OPTIMIZATION_LEVEL = fast;
 				GCC_UNROLL_LOOPS = YES;
 				GCC_WARN_UNUSED_VARIABLE = NO;
-				HEADER_SEARCH_PATHS = "\"$(PROJECT_DIR)/bsnes\"";
+				HEADER_SEARCH_PATHS = (
+					"\"$(PROJECT_DIR)/bsnes\"",
+					"$(SRCROOT)/../Vendor/rcheevos/include",
+					"$(SRCROOT)/../Vendor/rcheevos/src",
+					"$(SRCROOT)/../OpenEmuKit/Source",
+				);
 				INFOPLIST_FILE = Info.plist;
 				INSTALL_PATH = "\"$(USER_LIBRARY_DIR)/Application Support/OpenEmu/Cores\"";
 				MARKETING_VERSION = 115;

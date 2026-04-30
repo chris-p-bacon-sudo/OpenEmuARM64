@@ -31,6 +31,11 @@
 
 #include "snes9x.h"
 #include "memmap.h"
+
+#define RC_CLIENT_SUPPORTS_HASH 1
+#include <rc_client.h>
+#include <rc_consoles.h>
+#import "OERetroAchievementsTransport.h"
 #include "pixform.h"
 #include "gfx.h"
 #include "display.h"
@@ -57,12 +62,83 @@
     uint16_t *_soundBufferCurrent;
     NSURL    *_romURL;
     NSMutableDictionary<NSString *, NSNumber *> *_cheatList;
+    rc_client_t *_rcClient;
+    id _raTokenObserver;
 }
 
 - (void)finalizeAudioSamples;
 - (void)mapButtons;
+- (void)_beginLoadGame;
 
 @end
+
+// rcheevos memory callback.
+//
+// rcheevos SNES address space (consoleinfo.c):
+//   0x000000–0x01FFFF → 128 KB WRAM (Memory.RAM)
+//   0x020000–0x09FFFF → Cartridge SRAM (Memory.SRAM, up to 512 KB)
+//
+static uint32_t snes9x_rc_read_memory(uint32_t address, uint8_t *buffer,
+                                       uint32_t num_bytes, rc_client_t *client)
+{
+    for (uint32_t i = 0; i < num_bytes; i++) {
+        uint32_t addr = address + i;
+        if (addr <= 0x01FFFF) {
+            buffer[i] = Memory.RAM[addr];
+        } else if (addr <= 0x09FFFF && Memory.SRAM) {
+            uint32_t sramOffset = addr - 0x020000;
+            if (sramOffset <= Memory.SRAMMask)
+                buffer[i] = Memory.SRAM[sramOffset];
+            else
+                buffer[i] = 0;
+        } else {
+            return i;
+        }
+    }
+    return num_bytes;
+}
+
+static void snes9x_rc_log(const char *message, const rc_client_t *client)
+{
+    NSLog(@"[rcheevos] %s", message);
+}
+
+static void snes9x_rc_load_game_callback(int result, const char *error_message,
+                                          rc_client_t *client, void *userdata)
+{
+    if (result != RC_OK)
+        NSLog(@"[RA-SNES9x] game load failed — result=%d error=%s", result, error_message ?: "(none)");
+}
+
+static void snes9x_rc_login_callback(int result, const char *error_message,
+                                      rc_client_t *client, void *userdata)
+{
+    SNESGameCore *s = (__bridge SNESGameCore *)userdata;
+    if (result == RC_OK) {
+        [s _beginLoadGame];
+    } else {
+        NSLog(@"[RA-SNES9x] login failed — result=%d error=%s", result, error_message ?: "(none)");
+    }
+}
+
+static void snes9x_rc_event_handler(const rc_client_event_t *event, rc_client_t *client)
+{
+    if (event->type != RC_CLIENT_EVENT_ACHIEVEMENT_TRIGGERED) { return; }
+    const rc_client_achievement_t *ach = event->achievement;
+    if (!ach) { return; }
+
+    NSDictionary *info = @{
+        OEAchievementIDKey:          @(ach->id),
+        OEAchievementTitleKey:       @(ach->title       ?: ""),
+        OEAchievementDescriptionKey: @(ach->description  ?: ""),
+        OEAchievementBadgeURLKey:    @(ach->badge_name   ?: ""),
+        OEAchievementPointsKey:      @(ach->points),
+    };
+    [[NSNotificationCenter defaultCenter]
+        postNotificationName:OEAchievementUnlockedNotification
+                      object:nil
+                    userInfo:info];
+}
 
 @implementation SNESGameCore
 
@@ -140,6 +216,8 @@ static __weak SNESGameCore *_current;
         NSLog(@"[Snes9x] Couldn't init sound");
     
     S9xSetSamplesAvailableCallback(FinalizeSamplesAudioCallback, (__bridge void *)self);
+
+    _romURL = [NSURL fileURLWithPath:path];
 
     if(Memory.LoadROM(path.fileSystemRepresentation))
     {
@@ -633,10 +711,50 @@ static __weak SNESGameCore *_current;
             S9xSetController(1, CTL_JOYPAD, 1, 0, 0, 0);
         }
 
+        _rcClient = rc_client_create(snes9x_rc_read_memory, oeRetroAchievementsServerCall);
+        if (_rcClient) {
+            rc_client_set_userdata(_rcClient, (__bridge void *)self);
+            rc_client_set_event_handler(_rcClient, snes9x_rc_event_handler);
+            rc_client_set_hardcore_enabled(_rcClient, 0);
+            rc_client_enable_logging(_rcClient, RC_CLIENT_LOG_LEVEL_INFO, snes9x_rc_log);
+
+            __weak SNESGameCore *weakSelf = self;
+            _raTokenObserver = [[NSNotificationCenter defaultCenter]
+                addObserverForName:OERetroAchievementsTokenDidChangeNotification
+                            object:nil
+                             queue:nil
+                        usingBlock:^(NSNotification *note) {
+                SNESGameCore *s = weakSelf;
+                if (!s || !s->_rcClient) { return; }
+                NSString *token    = note.userInfo[OERetroAchievementsTokenKey];
+                NSString *username = note.userInfo[OERetroAchievementsUsernameKey];
+                if (token && username) {
+                    rc_client_begin_login_with_token(s->_rcClient,
+                                                     username.UTF8String,
+                                                     token.UTF8String,
+                                                     snes9x_rc_login_callback,
+                                                     (__bridge void *)s);
+                } else {
+                    rc_client_logout(s->_rcClient);
+                }
+            }];
+        }
+
         return YES;
     }
 
     return NO;
+}
+
+- (void)_beginLoadGame
+{
+    if (!_rcClient || !_romURL) { return; }
+    rc_client_begin_identify_and_load_game(_rcClient,
+                                           RC_CONSOLE_SUPER_NINTENDO,
+                                           _romURL.fileSystemRepresentation,
+                                           NULL, 0,
+                                           snes9x_rc_load_game_callback,
+                                           (__bridge void *)self);
 }
 
 - (void)executeFrame
@@ -644,6 +762,10 @@ static __weak SNESGameCore *_current;
     IPPU.RenderThisFrame = true;
     _soundBufferCurrent = _soundBuffer;
     S9xMainLoop();
+
+    if (_rcClient)
+        rc_client_do_frame(_rcClient);
+
     NSUInteger samples = _soundBufferCurrent - _soundBuffer;
     [[self audioBufferAtIndex:0] write:_soundBuffer maxLength:samples * 2];
 }
@@ -658,11 +780,23 @@ static __weak SNESGameCore *_current;
 
 - (void)resetEmulation
 {
+    if (_rcClient)
+        rc_client_reset(_rcClient);
     S9xSoftReset();
 }
 
 - (void)stopEmulation
 {
+    if (_raTokenObserver) {
+        [[NSNotificationCenter defaultCenter] removeObserver:_raTokenObserver];
+        _raTokenObserver = nil;
+    }
+    if (_rcClient) {
+        rc_client_unload_game(_rcClient);
+        rc_client_destroy(_rcClient);
+        _rcClient = NULL;
+    }
+
     // Save SRAM
     NSURL *url = [NSURL fileURLWithPath:@(Memory.ROMFilename.c_str())];
     NSString *extensionlessFilename = url.lastPathComponent.stringByDeletingPathExtension;
@@ -778,8 +912,11 @@ static void FinalizeSamplesAudioCallback(void *context)
     const uint8_t *stateBytes = (const uint8_t *)state.bytes;
     uint32 stateLength = (uint32)state.length;
 
-    if(S9xUnfreezeGameMem(stateBytes, stateLength) == SUCCESS)
+    if(S9xUnfreezeGameMem(stateBytes, stateLength) == SUCCESS) {
+        if (_rcClient)
+            rc_client_reset(_rcClient);
         return YES;
+    }
 
     if(outError) {
         *outError = [NSError errorWithDomain:OEGameCoreErrorDomain code:OEGameCoreCouldNotLoadStateError userInfo:@{

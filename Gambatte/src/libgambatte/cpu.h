@@ -77,6 +77,10 @@ public:
 	void setGameGenie(std::string const &codes) { mem_.setGameGenie(codes); }
 	void setGameShark(std::string const &codes) { mem_.setGameShark(codes); }
 
+	uint8_t busRead8(uint16_t addr) const {
+		return static_cast<uint8_t>(const_cast<Memory &>(mem_).read(addr, 0));
+	}
+
 private:
 	Memory mem_;
 	unsigned long cycleCounter_;
