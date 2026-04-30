@@ -31,6 +31,7 @@
 #import "OEFDSSystemResponderClient.h"
 #import <OpenGL/gl.h>
 
+#include <os/log.h>
 #define RC_CLIENT_SUPPORTS_HASH 1
 #include <rc_client.h>
 #include <rc_consoles.h>
@@ -121,7 +122,7 @@ static uint32_t nestopia_rc_read_memory(uint32_t address, uint8_t *buffer,
 
 static void nestopia_rc_log(const char *message, const rc_client_t *client)
 {
-    NSLog(@"[rcheevos] %s", message);
+    os_log(OS_LOG_DEFAULT, "[rcheevos] %{public}s", message);
 }
 
 static void nestopia_rc_load_game_callback(int result, const char *error_message,
