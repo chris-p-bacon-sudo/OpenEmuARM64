@@ -24,27 +24,5 @@
 
 import Cocoa
 
-final class GlossCheckboxCell: NSButtonCell {
-    
-    private var imageToDraw: NSImage? {
-        var imageName = "gloss_checkbox"
-        
-        if state == .on {
-            imageName += "_on"
-        }
-        
-        if isHighlighted {
-            imageName += "_highlighted"
-        }
-        else if !isEnabled {
-            imageName += "_disabled"
-        }
-        
-        return NSImage(named: imageName)
-    }
-    
-    override func drawImage(_ image: NSImage, withFrame frame: NSRect, in controlView: NSView) {
-        assert(imageToDraw != nil)
-        imageToDraw?.draw(in: frame)
-    }
-}
+/// Thin subclass retained for XIB compatibility — renders as a standard system checkbox.
+final class GlossCheckboxCell: NSButtonCell {}

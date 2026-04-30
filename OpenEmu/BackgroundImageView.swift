@@ -24,17 +24,45 @@
 
 import Cocoa
 
+/// Modern frosted-glass panel used as content cards in the setup assistant.
+/// Replaces the old nine-part stretched image approach with a system-native
+/// NSVisualEffectView embedded in a layer-backed container.
 final class BackgroundImageView: NSView {
-    
+
+    // Kept for XIB compatibility — no longer used for drawing
     @IBInspectable var background: NSImage?
     @IBInspectable var image: NSImage?
-    
-    override func draw(_ dirtyRect: NSRect) {
-        background?.draw(in: dirtyRect, from: .zero, operation: .sourceOver, fraction: 1, respectFlipped: isFlipped, hints: nil)
-        image?.draw(in: dirtyRect, from: dirtyRect, operation: .sourceOver, fraction: 1, respectFlipped: isFlipped, hints: nil)
+
+    private var didSetup = false
+
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        setup()
     }
-    
-    override var isFlipped: Bool {
-        return false
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        setup()
+    }
+
+    private func setup() {
+        wantsLayer = true
+        layer?.cornerRadius = 12
+        layer?.cornerCurve = .continuous
+        layer?.masksToBounds = true
+
+        let fx = NSVisualEffectView()
+        fx.material = .hudWindow
+        fx.blendingMode = .withinWindow
+        fx.state = .active
+        fx.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(fx, positioned: .below, relativeTo: nil)
+
+        NSLayoutConstraint.activate([
+            fx.leadingAnchor.constraint(equalTo: leadingAnchor),
+            fx.trailingAnchor.constraint(equalTo: trailingAnchor),
+            fx.topAnchor.constraint(equalTo: topAnchor),
+            fx.bottomAnchor.constraint(equalTo: bottomAnchor),
+        ])
     }
 }

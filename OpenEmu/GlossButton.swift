@@ -24,104 +24,49 @@
 
 import Cocoa
 
+/// Layer-backed button that renders clearly over the dark onboarding background.
+/// Primary buttons (keyEquivalent = Return) use the system accent colour.
+/// Secondary buttons use a subtle white-tinted pill.
 final class GlossButton: NSButton {
-    
-    private static let attributes: [NSAttributedString.Key : Any] = {
-        
-        let font = NSFont.boldSystemFont(ofSize: 11)
-        let color = NSColor(white: 0.91, alpha: 1)
-        
-        let shadow = NSShadow()
-        shadow.shadowColor = .black
-        shadow.shadowOffset = NSMakeSize(0, 1)
-        
-        let style = NSMutableParagraphStyle()
-        style.alignment = .center
-        
-        let attributes: [NSAttributedString.Key : Any] =
-                                          [.font: font,
-                                .foregroundColor: color,
-                                         .shadow: shadow,
-                                 .paragraphStyle: style]
-        
-        return attributes
-    }()
-    
-    private static let attributesHighlighted: [NSAttributedString.Key : Any] = {
-        
-        let font = NSFont.boldSystemFont(ofSize: 11)
-        let color = NSColor(white: 0.03, alpha: 1)
-        
-        let shadow = NSShadow()
-        shadow.shadowColor = .white.withAlphaComponent(0.4)
-        shadow.shadowOffset = NSMakeSize(0, -1)
-        
-        let style = NSMutableParagraphStyle()
-        style.alignment = .center
-        
-        let attributes: [NSAttributedString.Key : Any] =
-                                          [.font: font,
-                                .foregroundColor: color,
-                                         .shadow: shadow,
-                                 .paragraphStyle: style]
-        
-        return attributes
-    }()
-    
-    @IBInspectable var color: String? {
+
+    @IBInspectable var color: String?
+
+    override func awakeFromNib() {
+        super.awakeFromNib()
+        isBordered = false
+        wantsLayer = true
+        layer?.cornerRadius = 5
+        layer?.cornerCurve = .continuous
+        refreshAppearance()
+    }
+
+    private func refreshAppearance() {
+        let isPrimary = keyEquivalent == "\r"
+        let bg: NSColor = isPrimary ? .controlAccentColor : NSColor(white: 1, alpha: 0.20)
+        layer?.backgroundColor = bg.cgColor
+
+        let weight: NSFont.Weight = isPrimary ? .semibold : .regular
+        let attrs: [NSAttributedString.Key: Any] = [
+            .foregroundColor: NSColor.white,
+            .font: NSFont.systemFont(ofSize: 13, weight: weight),
+        ]
+        attributedTitle = NSAttributedString(string: title, attributes: attrs)
+    }
+
+    override var isHighlighted: Bool {
+        didSet { layer?.opacity = isHighlighted ? 0.7 : 1.0 }
+    }
+
+    override var isEnabled: Bool {
         didSet {
-            needsDisplay = true
+            layer?.opacity = isEnabled ? 1.0 : 0.4
+            refreshAppearance()
         }
     }
-    
-    override var isFlipped: Bool {
-        return false
-    }
-    
-    private var imageToDraw: NSImage? {
-        var imageName = "gloss_button"
-        
-        if isHighlighted {
-            imageName += "_highlighted"
-            return NSImage(named: imageName)
-        }
-        
-        if let color {
-            imageName += "_\(color)"
-        }
-        
-        if !isEnabled || window?.isMainWindow == false {
-            imageName += "_disabled"
-        }
-        
-        return NSImage(named: imageName)
-    }
-    
-    override func draw(_ dirtyRect: NSRect) {
-        assert(imageToDraw != nil)
-        imageToDraw?.draw(in: bounds)
-        
-        let attributes = isHighlighted ? Self.attributesHighlighted : Self.attributes
-        attributedTitle = NSAttributedString(string: title, attributes: attributes)
-        
-        super.draw(dirtyRect)
-    }
-    
-    override func viewWillMove(toWindow newWindow: NSWindow?) {
-        super.viewWillMove(toWindow: newWindow)
-        
-        if window != nil {
-            NotificationCenter.default.removeObserver(self, name: NSWindow.didBecomeMainNotification, object: window)
-            NotificationCenter.default.removeObserver(self, name: NSWindow.didResignMainNotification, object: window)
-        }
-        
-        if newWindow != nil {
-            NotificationCenter.default.addObserver(self, selector: #selector(windowKeyChanged), name: NSWindow.didBecomeMainNotification, object: newWindow)
-            NotificationCenter.default.addObserver(self, selector: #selector(windowKeyChanged), name: NSWindow.didResignMainNotification, object: newWindow)
-        }
-    }
-    
-    @objc func windowKeyChanged() {
-        needsDisplay = true
+
+    // Re-apply when the system accent colour changes
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        refreshAppearance()
     }
 }

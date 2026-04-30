@@ -27,7 +27,7 @@ import Security
 import Network
 import os.log
 
-private let log = OSLog(subsystem: "org.openemu.OpenEmuARM64", category: "SaveSync")
+private let log = OSLog(subsystem: "org.openemu.OpenEmu", category: "SaveSync")
 
 // MARK: - Sync Status
 
