@@ -3084,6 +3084,65 @@ static __weak MednafenGameCore *_current;
 
 # pragma mark - Execution
 
+// Look for sibling .cue/.ccd files in the same folder as `diskPath` and, if exactly `totalDiscs`
+// of them exist, write a sibling .m3u listing them in localized-standard order. Returns the .m3u
+// path on success, or nil if siblings can't be found / counts don't match / write fails.
+//
+// Naming for the generated .m3u strips a trailing "(Disc N)" / "Disc N" segment from the imported
+// file's basename so multiple discs in the same folder produce a stable, shared playlist name.
+- (NSString *)autogenerateMultiDiscM3UFromPath:(NSString *)diskPath totalDiscs:(NSUInteger)totalDiscs
+{
+    NSString *folder = diskPath.stringByDeletingLastPathComponent;
+    NSError *err = nil;
+    NSArray<NSString *> *folderContents = [NSFileManager.defaultManager contentsOfDirectoryAtPath:folder error:&err];
+    if (!folderContents) {
+        NSLog(@"[Mednafen] Could not read folder for auto-m3u: %@", err);
+        return nil;
+    }
+
+    NSMutableArray<NSString *> *cues = [NSMutableArray array];
+    for (NSString *name in folderContents) {
+        NSString *ext = name.pathExtension.lowercaseString;
+        if ([ext isEqualToString:@"cue"] || [ext isEqualToString:@"ccd"])
+            [cues addObject:name];
+    }
+    [cues sortUsingSelector:@selector(localizedStandardCompare:)];
+
+    if (cues.count != totalDiscs) {
+        NSLog(@"[Mednafen] Auto-m3u skipped: game expects %lu discs but folder has %lu .cue/.ccd files (%@)",
+              (unsigned long)totalDiscs, (unsigned long)cues.count, folder);
+        return nil;
+    }
+
+    NSString *baseName = [diskPath.lastPathComponent stringByDeletingPathExtension];
+    NSRegularExpression *cleanup = [NSRegularExpression regularExpressionWithPattern:@"\\s*\\(?\\s*Disc\\s*\\d+\\s*\\)?\\s*"
+                                                                             options:NSRegularExpressionCaseInsensitive
+                                                                               error:nil];
+    NSString *cleanedBase = [cleanup stringByReplacingMatchesInString:baseName
+                                                              options:0
+                                                                range:NSMakeRange(0, baseName.length)
+                                                         withTemplate:@""];
+    cleanedBase = [cleanedBase stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceCharacterSet];
+    if (cleanedBase.length == 0)
+        cleanedBase = baseName;
+    NSString *m3uPath = [folder stringByAppendingPathComponent:[cleanedBase stringByAppendingPathExtension:@"m3u"]];
+
+    if ([NSFileManager.defaultManager fileExistsAtPath:m3uPath]) {
+        NSLog(@"[Mednafen] Auto-m3u already exists, reusing: %@", m3uPath);
+        return m3uPath;
+    }
+
+    NSString *m3uContents = [[cues componentsJoinedByString:@"\n"] stringByAppendingString:@"\n"];
+    NSError *writeError = nil;
+    if (![m3uContents writeToFile:m3uPath atomically:YES encoding:NSUTF8StringEncoding error:&writeError]) {
+        NSLog(@"[Mednafen] Failed to write auto-m3u at %@: %@", m3uPath, writeError);
+        return nil;
+    }
+
+    NSLog(@"[Mednafen] Auto-generated %lu-disc m3u: %@", (unsigned long)cues.count, m3uPath);
+    return m3uPath;
+}
+
 - (BOOL)loadFileAtPath:(NSString *)path error:(NSError **)error
 {
     // Set the current system
@@ -3133,6 +3192,29 @@ static __weak MednafenGameCore *_current;
     }
 
     [self initializeMednafen];
+
+    // Auto-generate an .m3u for multi-disc PSX games loaded via a single .cue/.ccd, when all sibling
+    // discs are present in the same folder. Mednafen requires .m3u for multi-disc to keep save files
+    // and disc-swap state coherent (#294).
+    if ([_mednafenCoreModule isEqualToString:@"psx"]
+        && _isMultiDiscGame
+        && ![path.pathExtension.lowercaseString isEqualToString:@"m3u"])
+    {
+        NSString *autoM3UPath = [self autogenerateMultiDiscM3UFromPath:path totalDiscs:_multiDiscTotal];
+        if (autoM3UPath) {
+            path = autoM3UPath;
+            // Re-populate _allCueSheetFiles from the new .m3u so SBI handling below sees the cue list.
+            [_allCueSheetFiles removeAllObjects];
+            NSString *m3uString = [NSString stringWithContentsOfFile:path encoding:NSUTF8StringEncoding error:nil];
+            NSRegularExpression *cueRegex = [NSRegularExpression regularExpressionWithPattern:@".*\\.cue|.*\\.ccd" options:NSRegularExpressionCaseInsensitive error:nil];
+            [cueRegex enumerateMatchesInString:m3uString options:0 range:NSMakeRange(0, m3uString.length) usingBlock:^(NSTextCheckingResult *result, NSMatchingFlags flags, BOOL *stop) {
+                NSString *match = [m3uString substringWithRange:result.range];
+                if ([match containsString:@".cue"])
+                    [_allCueSheetFiles addObject:match];
+            }];
+            _maxDiscs = _multiDiscTotal;
+        }
+    }
 
     game = MDFNI_LoadGame(_mednafenCoreModule.UTF8String, &::Mednafen::NVFS, path.fileSystemRepresentation);
 
@@ -3204,12 +3286,12 @@ static __weak MednafenGameCore *_current;
     {
         NSLog(@"[Mednafen] PSX serial: %@ player count: %d", self.ROMSerial, _multiTapPlayerCount);
 
-        // Check if loading a multi-disc game without m3u
+        // Multi-disc safety net: auto-m3u above failed to find sibling discs.
         if(_isMultiDiscGame && ![path.pathExtension.lowercaseString isEqualToString:@"m3u"])
         {
             NSError *outErr = [NSError errorWithDomain:OEGameCoreErrorDomain code:OEGameCoreCouldNotLoadROMError userInfo:@{
-                NSLocalizedDescriptionKey : @"Required m3u file missing.",
-                NSLocalizedRecoverySuggestionErrorKey : [NSString stringWithFormat:@"This game requires multiple discs and must be loaded using a m3u file with all %lu discs.\n\nTo enable disc switching and ensure save files load across discs, it cannot be loaded as a single disc.\n\nFor more information, visit:\nhttps://github.com/OpenEmu/OpenEmu/wiki/User-guide:-CD-based-games#q-i-have-a-multi-disc-game", _multiDiscTotal],
+                NSLocalizedDescriptionKey : @"Multi-disc game requires all discs in the same folder.",
+                NSLocalizedRecoverySuggestionErrorKey : [NSString stringWithFormat:@"This game has %lu discs and needs an .m3u playlist so saves and disc-swap state stay coherent. OpenEmu can write the .m3u for you when every disc's .cue (and matching .bin) is in the same folder as the file you imported.\n\nMake sure all %lu discs are in the same folder, then re-import disc 1.\n\nMore info:\nhttps://github.com/OpenEmu/OpenEmu/wiki/User-guide:-CD-based-games#q-i-have-a-multi-disc-game", _multiDiscTotal, _multiDiscTotal],
                 }];
 
             *error = outErr;
