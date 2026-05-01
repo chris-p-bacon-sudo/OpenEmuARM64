@@ -1,7 +1,7 @@
 # OpenEmu-Silicon — Native Apple Silicon Port
 
 <p align="center">
-  <img src="docs/images/openemu-icon.png" width="128" alt="OpenEmu"/>
+  <img width="301" height="91" alt="logo" src="https://github.com/user-attachments/assets/e4c7ee8d-b526-4fa7-bf61-153dc1594372" />
 </p>
 
 <p align="center">

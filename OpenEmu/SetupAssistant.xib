@@ -77,13 +77,12 @@
                             <subviews>
                                 <textField verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="315">
                                     <rect key="frame" x="17" y="220" width="150" height="16"/>
-                                    <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" sendsActionOnEndEditing="YES" title="Welcome to OpenEmu!" id="316">
+                                    <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" sendsActionOnEndEditing="YES" title="Welcome to OpenEmu Silicon" id="316">
                                         <font key="font" metaFont="systemBold"/>
                                         <color key="textColor" name="labelColor" catalog="System" colorSpace="catalog"/>
                                         <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
                                     </textFieldCell>
                                     <userDefinedRuntimeAttributes>
-                                        <userDefinedRuntimeAttribute type="boolean" keyPath="localizeTitle" value="YES"/>
                                     </userDefinedRuntimeAttributes>
                                 </textField>
                                 <textField verticalHuggingPriority="750" horizontalCompressionResistancePriority="250" translatesAutoresizingMaskIntoConstraints="NO" id="317">
@@ -93,25 +92,23 @@
                                     </constraints>
                                     <textFieldCell key="cell" controlSize="small" sendsActionOnEndEditing="YES" state="on" id="318">
                                         <font key="font" metaFont="smallSystem"/>
-                                        <string key="title">An exciting world of video games is within your grasp. To help you get started, we’d like to ask you a few quick questions which will guide you through the following…
+                                        <string key="title">OpenEmu Silicon is a native Apple Silicon port of the original OpenEmu — rebuilt so every emulation core runs directly on your M-series Mac with no Rosetta translation layer required.
 
-• Ensure you are running the correct system plugins (cores).</string>
+This setup will install the system cores you need to start playing. Cores are modular plugins — one per system — and you can add or remove them anytime from Preferences.</string>
                                         <color key="textColor" name="labelColor" catalog="System" colorSpace="catalog"/>
                                         <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
                                     </textFieldCell>
                                     <userDefinedRuntimeAttributes>
-                                        <userDefinedRuntimeAttribute type="boolean" keyPath="localizeTitle" value="YES"/>
                                     </userDefinedRuntimeAttributes>
                                 </textField>
                                 <textField verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="319">
                                     <rect key="frame" x="17" y="90" width="216" height="16"/>
-                                    <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" sendsActionOnEndEditing="YES" title="Click on the ‘Next’ button to begin!" id="320">
+                                    <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" sendsActionOnEndEditing="YES" title="Click Next to choose your cores." id="320">
                                         <font key="font" metaFont="system"/>
                                         <color key="textColor" name="labelColor" catalog="System" colorSpace="catalog"/>
                                         <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
                                     </textFieldCell>
                                     <userDefinedRuntimeAttributes>
-                                        <userDefinedRuntimeAttribute type="boolean" keyPath="localizeTitle" value="YES"/>
                                     </userDefinedRuntimeAttributes>
                                 </textField>
                             </subviews>
@@ -123,20 +120,15 @@
                                 <constraint firstItem="317" firstAttribute="top" secondItem="315" secondAttribute="bottom" constant="8" id="lG2-v4-eqO"/>
                                 <constraint firstItem="315" firstAttribute="leading" secondItem="298" secondAttribute="leading" constant="19" id="uh2-p1-uFl"/>
                             </constraints>
-                            <userDefinedRuntimeAttributes>
-                                <userDefinedRuntimeAttribute type="image" keyPath="background" value="installer_dark_inset_box"/>
-                            </userDefinedRuntimeAttributes>
                         </customView>
                         <button verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="300" customClass="GlossButton" customModule="OpenEmu" customModuleProvider="target">
                             <rect key="frame" x="381" y="19" width="103" height="23"/>
                             <autoresizingMask key="autoresizingMask" flexibleMinX="YES" flexibleMaxY="YES"/>
-                            <buttonCell key="cell" type="smallSquare" title="Next" bezelStyle="smallSquare" imagePosition="overlaps" alignment="center" state="on" imageScaling="proportionallyDown" inset="2" id="301">
+                            <buttonCell key="cell" type="push" title="Next" bezelStyle="rounded" alignment="center" state="on" keyEquivalent="&#13;" id="301">
                                 <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
                                 <font key="font" metaFont="system"/>
                             </buttonCell>
                             <userDefinedRuntimeAttributes>
-                                <userDefinedRuntimeAttribute type="boolean" keyPath="localizeTitle" value="YES"/>
-                                <userDefinedRuntimeAttribute type="string" keyPath="color" value="blue"/>
                             </userDefinedRuntimeAttributes>
                             <connections>
                                 <action selector="nextEvent:" target="-2" id="UE6-nW-434"/>
@@ -154,7 +146,7 @@
                 </customView>
             </subviews>
             <constraints>
-                <constraint firstAttribute="centerY" secondItem="296" secondAttribute="centerY" multiplier="1.1919" constant="-32" id="6Bc-rJ-zy1"/>
+                <constraint firstAttribute="centerY" secondItem="296" secondAttribute="centerY" multiplier="0.87" constant="-32" id="6Bc-rJ-zy1"/>
                 <constraint firstItem="296" firstAttribute="centerX" secondItem="295" secondAttribute="centerX" constant="1" id="gmT-dF-pQx"/>
             </constraints>
             <point key="canvasLocation" x="139" y="-996"/>
@@ -169,12 +161,11 @@
                         <button verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="249" customClass="GlossButton" customModule="OpenEmu" customModuleProvider="target">
                             <rect key="frame" x="21" y="19" width="103" height="23"/>
                             <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
-                            <buttonCell key="cell" type="smallSquare" title="Back" bezelStyle="smallSquare" imagePosition="overlaps" alignment="center" state="on" imageScaling="proportionallyDown" inset="2" id="250">
+                            <buttonCell key="cell" type="push" title="Back" bezelStyle="rounded" alignment="center" state="on" id="250">
                                 <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
                                 <font key="font" metaFont="system"/>
                             </buttonCell>
                             <userDefinedRuntimeAttributes>
-                                <userDefinedRuntimeAttribute type="boolean" keyPath="localizeTitle" value="YES"/>
                             </userDefinedRuntimeAttributes>
                             <connections>
                                 <action selector="backEvent:" target="-2" id="MA8-F9-Izg"/>
@@ -191,7 +182,6 @@
                                         <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
                                     </textFieldCell>
                                     <userDefinedRuntimeAttributes>
-                                        <userDefinedRuntimeAttribute type="boolean" keyPath="localizeTitle" value="YES"/>
                                     </userDefinedRuntimeAttributes>
                                 </textField>
                                 <textField verticalHuggingPriority="750" horizontalCompressionResistancePriority="250" translatesAutoresizingMaskIntoConstraints="NO" id="327">
@@ -206,7 +196,6 @@
                                         <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
                                     </textFieldCell>
                                     <userDefinedRuntimeAttributes>
-                                        <userDefinedRuntimeAttribute type="boolean" keyPath="localizeTitle" value="YES"/>
                                     </userDefinedRuntimeAttributes>
                                 </textField>
                                 <imageView horizontalHuggingPriority="251" verticalHuggingPriority="251" translatesAutoresizingMaskIntoConstraints="NO" id="A5g-3z-11R">
@@ -294,20 +283,15 @@
                                 <constraint firstItem="327" firstAttribute="leading" secondItem="239" secondAttribute="leading" constant="19" id="xKa-7D-jsP"/>
                                 <constraint firstItem="282" firstAttribute="leading" secondItem="A5g-3z-11R" secondAttribute="leading" constant="2" id="xrR-zn-cW4"/>
                             </constraints>
-                            <userDefinedRuntimeAttributes>
-                                <userDefinedRuntimeAttribute type="image" keyPath="background" value="installer_dark_inset_box"/>
-                            </userDefinedRuntimeAttributes>
                         </customView>
                         <button verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="245" customClass="GlossButton" customModule="OpenEmu" customModuleProvider="target">
                             <rect key="frame" x="381" y="19" width="103" height="23"/>
                             <autoresizingMask key="autoresizingMask" flexibleMinX="YES" flexibleMaxY="YES"/>
-                            <buttonCell key="cell" type="smallSquare" title="Next" bezelStyle="smallSquare" imagePosition="overlaps" alignment="center" state="on" imageScaling="proportionallyDown" inset="2" id="246">
+                            <buttonCell key="cell" type="push" title="Next" bezelStyle="rounded" alignment="center" state="on" keyEquivalent="&#13;" id="246">
                                 <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
                                 <font key="font" metaFont="system"/>
                             </buttonCell>
                             <userDefinedRuntimeAttributes>
-                                <userDefinedRuntimeAttribute type="boolean" keyPath="localizeTitle" value="YES"/>
-                                <userDefinedRuntimeAttribute type="string" keyPath="color" value="blue"/>
                             </userDefinedRuntimeAttributes>
                             <connections>
                                 <action selector="nextEvent:" target="-2" id="C4D-2e-O6q"/>
@@ -326,7 +310,7 @@
             </subviews>
             <constraints>
                 <constraint firstItem="294" firstAttribute="centerX" secondItem="263" secondAttribute="centerX" constant="1" id="wbH-yu-Q0h"/>
-                <constraint firstAttribute="centerY" secondItem="294" secondAttribute="centerY" multiplier="1.1919" constant="-32" id="yV3-eo-11d"/>
+                <constraint firstAttribute="centerY" secondItem="294" secondAttribute="centerY" multiplier="0.87" constant="-32" id="yV3-eo-11d"/>
             </constraints>
             <point key="canvasLocation" x="139" y="1312"/>
         </customView>
@@ -342,38 +326,38 @@
                             <subviews>
                                 <textField verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="400">
                                     <rect key="frame" x="17" y="220" width="62" height="16"/>
-                                    <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" sendsActionOnEndEditing="YES" title="Let’s Go!" id="401">
+                                    <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" sendsActionOnEndEditing="YES" title="What’s New in OpenEmu Silicon" id="401">
                                         <font key="font" metaFont="systemBold"/>
                                         <color key="textColor" name="labelColor" catalog="System" colorSpace="catalog"/>
                                         <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
                                     </textFieldCell>
                                     <userDefinedRuntimeAttributes>
-                                        <userDefinedRuntimeAttribute type="boolean" keyPath="localizeTitle" value="YES"/>
                                     </userDefinedRuntimeAttributes>
                                 </textField>
                                 <textField verticalHuggingPriority="750" horizontalCompressionResistancePriority="250" translatesAutoresizingMaskIntoConstraints="NO" id="399">
                                     <rect key="frame" x="17" y="156" width="383" height="56"/>
                                     <textFieldCell key="cell" controlSize="small" sendsActionOnEndEditing="YES" state="on" id="402">
                                         <font key="font" metaFont="smallSystem"/>
-                                        <string key="title">Great! You are all setup now and ready to get gaming!
+                                        <string key="title">Beyond the cores you just installed, OpenEmu Silicon adds features not in the original:
 
-Remember you can change both your keyboard and gamepad controls for yourself and other players via the Preferences at any time.</string>
+• RetroAchievements — earn achievements as you play across NES, SNES, GBA, Genesis, and more. Sign in via Preferences → Achievements.
+• Cover Art — automatic box art via ScreenScraper. Add credentials in Preferences → Cover Art.
+• Play With… — right-click any game to choose which core runs it.
+• Controls — customise keyboard and gamepad bindings per player in Preferences.</string>
                                         <color key="textColor" name="labelColor" catalog="System" colorSpace="catalog"/>
                                         <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
                                     </textFieldCell>
                                     <userDefinedRuntimeAttributes>
-                                        <userDefinedRuntimeAttribute type="boolean" keyPath="localizeTitle" value="YES"/>
                                     </userDefinedRuntimeAttributes>
                                 </textField>
                                 <textField verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="398">
                                     <rect key="frame" x="17" y="132" width="280" height="16"/>
-                                    <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" sendsActionOnEndEditing="YES" title="Click the ‘Go’ button to begin your adventure." id="403">
+                                    <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" sendsActionOnEndEditing="YES" title="Click Go to open your library." id="403">
                                         <font key="font" metaFont="system"/>
                                         <color key="textColor" name="labelColor" catalog="System" colorSpace="catalog"/>
                                         <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
                                     </textFieldCell>
                                     <userDefinedRuntimeAttributes>
-                                        <userDefinedRuntimeAttribute type="boolean" keyPath="localizeTitle" value="YES"/>
                                     </userDefinedRuntimeAttributes>
                                 </textField>
                             </subviews>
@@ -386,20 +370,15 @@ Remember you can change both your keyboard and gamepad controls for yourself and
                                 <constraint firstItem="398" firstAttribute="leading" secondItem="397" secondAttribute="leading" constant="19" id="cdv-uS-b7E"/>
                                 <constraint firstItem="399" firstAttribute="leading" secondItem="397" secondAttribute="leading" constant="19" id="dxJ-V6-qdA"/>
                             </constraints>
-                            <userDefinedRuntimeAttributes>
-                                <userDefinedRuntimeAttribute type="image" keyPath="background" value="installer_dark_inset_box"/>
-                            </userDefinedRuntimeAttributes>
                         </customView>
                         <button verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="396" customClass="GlossButton" customModule="OpenEmu" customModuleProvider="target">
                             <rect key="frame" x="381" y="19" width="103" height="23"/>
                             <autoresizingMask key="autoresizingMask" flexibleMinX="YES" flexibleMaxY="YES"/>
-                            <buttonCell key="cell" type="smallSquare" title="Go" bezelStyle="smallSquare" imagePosition="overlaps" alignment="center" state="on" imageScaling="proportionallyDown" inset="2" id="404">
+                            <buttonCell key="cell" type="push" title="Go" bezelStyle="rounded" alignment="center" state="on" keyEquivalent="&#13;" id="404">
                                 <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
                                 <font key="font" metaFont="system"/>
                             </buttonCell>
                             <userDefinedRuntimeAttributes>
-                                <userDefinedRuntimeAttribute type="boolean" keyPath="localizeTitle" value="YES"/>
-                                <userDefinedRuntimeAttribute type="string" keyPath="color" value="green"/>
                             </userDefinedRuntimeAttributes>
                             <connections>
                                 <action selector="nextEvent:" target="-2" id="gHq-GH-thV"/>
@@ -408,12 +387,11 @@ Remember you can change both your keyboard and gamepad controls for yourself and
                         <button verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="412" customClass="GlossButton" customModule="OpenEmu" customModuleProvider="target">
                             <rect key="frame" x="20" y="19" width="103" height="23"/>
                             <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
-                            <buttonCell key="cell" type="smallSquare" title="Back" bezelStyle="smallSquare" imagePosition="overlaps" alignment="center" state="on" imageScaling="proportionallyDown" inset="2" id="413">
+                            <buttonCell key="cell" type="push" title="Back" bezelStyle="rounded" alignment="center" state="on" id="413">
                                 <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
                                 <font key="font" metaFont="system"/>
                             </buttonCell>
                             <userDefinedRuntimeAttributes>
-                                <userDefinedRuntimeAttribute type="boolean" keyPath="localizeTitle" value="YES"/>
                             </userDefinedRuntimeAttributes>
                             <connections>
                                 <action selector="backEvent:" target="-2" id="DmF-60-UR2"/>
@@ -432,7 +410,7 @@ Remember you can change both your keyboard and gamepad controls for yourself and
             </subviews>
             <constraints>
                 <constraint firstItem="395" firstAttribute="centerX" secondItem="394" secondAttribute="centerX" constant="1" id="8FT-db-VRw"/>
-                <constraint firstAttribute="centerY" secondItem="395" secondAttribute="centerY" multiplier="1.1919" constant="-32" id="gJQ-Qo-j14"/>
+                <constraint firstAttribute="centerY" secondItem="395" secondAttribute="centerY" multiplier="0.87" constant="-32" id="gJQ-Qo-j14"/>
             </constraints>
             <point key="canvasLocation" x="139" y="1891"/>
         </customView>

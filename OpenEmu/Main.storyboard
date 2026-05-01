@@ -120,7 +120,7 @@
                             <button focusRingType="none" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="cm1-gR-GtS" customClass="TextButton" customModule="OpenEmu" customModuleProvider="target">
                                 <rect key="frame" x="127" y="138" width="147" height="21"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
-                                <buttonCell key="cell" type="bevel" title="openemu.org" bezelStyle="rounded" alignment="center" focusRingType="none" imageScaling="proportionallyDown" inset="2" id="50H-ys-sAp">
+                                <buttonCell key="cell" type="bevel" title="github.com/nickybmon/OpenEmu-Silicon" bezelStyle="rounded" alignment="center" focusRingType="none" imageScaling="proportionallyDown" inset="2" id="50H-ys-sAp">
                                     <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
                                     <font key="font" metaFont="system"/>
                                 </buttonCell>
@@ -131,7 +131,7 @@
                             <button focusRingType="none" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="9lc-1E-ygn" customClass="TextButton" customModule="OpenEmu" customModuleProvider="target">
                                 <rect key="frame" x="113" y="17" width="176" height="32"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
-                                <buttonCell key="cell" type="bevel" title="github.com/openemu" bezelStyle="rounded" alignment="center" focusRingType="none" imageScaling="proportionallyDown" inset="2" id="y9C-BZ-tbY">
+                                <buttonCell key="cell" type="bevel" title="github.com/nickybmon/OpenEmu-Silicon/releases" bezelStyle="rounded" alignment="center" focusRingType="none" imageScaling="proportionallyDown" inset="2" id="y9C-BZ-tbY">
                                     <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
                                     <font key="font" metaFont="system"/>
                                 </buttonCell>
@@ -176,15 +176,6 @@
                                             </userDefinedRuntimeAttributes>
                                             <connections>
                                                 <action selector="checkForUpdates:" target="1179" id="1180"/>
-                                            </connections>
-                                        </menuItem>
-                                        <menuItem title="Send a Donation…" id="oKt-cF-ZgP">
-                                            <modifierMask key="keyEquivalentModifierMask"/>
-                                            <userDefinedRuntimeAttributes>
-                                                <userDefinedRuntimeAttribute type="boolean" keyPath="localizeTitle" value="YES"/>
-                                            </userDefinedRuntimeAttributes>
-                                            <connections>
-                                                <action selector="showDonationPage:" target="-1" id="F5A-7O-Vfa"/>
                                             </connections>
                                         </menuItem>
                                         <menuItem isSeparatorItem="YES" id="1023">

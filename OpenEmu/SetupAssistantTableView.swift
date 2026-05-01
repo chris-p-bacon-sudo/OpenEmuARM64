@@ -25,65 +25,22 @@
 import Cocoa
 
 final class SetupAssistantTableView: NSTableView {
-    
+
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
         commonInit()
     }
-    
+
     required init?(coder: NSCoder) {
         super.init(coder: coder)
         commonInit()
     }
-    
+
     private func commonInit() {
-        rowHeight = 23
+        rowHeight = 26
         backgroundColor = .clear
-    }
-    
-    // MARK: - Drawing
-    
-    override func highlightSelection(inClipRect clipRect: NSRect) {
-        guard let window = window else { return }
-        
-        let isActive = window.isMainWindow && window.firstResponder == self
-        
-        let fillColor: NSColor
-        if isActive {
-            fillColor = NSColor(red: 27/255, green: 49/255, blue: 139/255, alpha: 0.5)
-        } else {
-            fillColor = NSColor(white: 0.55, alpha: 0.5)
-        }
-        
-        fillColor.setFill()
-        
-        for index in selectedRowIndexes {
-            let frame = rect(ofRow: index)
-            frame.fill()
-        }
-    }
-    
-    override func drawBackground(inClipRect clipRect: NSRect) {
-        
-        let rowBackground = NSColor(white: 0, alpha: 0.1)
-        let alternateRowBackground = NSColor(white: 1, alpha: 0.01)
-        
-        let rowHeight = rowHeight + intercellSpacing.height
-        
-        rowBackground.setFill()
-        
-        var i = 0
-        while i < Int(bounds.maxY) {
-            NSRect(x: bounds.origin.x, y: CGFloat(i), width: bounds.size.width, height: rowHeight).fill()
-            i += 2 * Int(rowHeight)
-        }
-        
-        alternateRowBackground.setFill()
-        
-        i = Int(rowHeight)
-        while i < Int(bounds.maxY) {
-            NSRect(x: bounds.origin.x, y: CGFloat(i), width: bounds.size.width, height: rowHeight).fill()
-            i += 2 * Int(rowHeight)
-        }
+        usesAlternatingRowBackgroundColors = false
+        selectionHighlightStyle = .regular
+        gridStyleMask = []
     }
 }

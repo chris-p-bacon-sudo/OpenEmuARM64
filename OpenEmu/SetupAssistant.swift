@@ -32,8 +32,7 @@ final class SetupAssistant: NSViewController {
     }
     
     static let hasFinishedKey = "setupAssistantFinished"
-    private static let videoIntroductionDuration: TimeInterval = 10
-    
+
     @IBOutlet private var replaceView: NSView!
     @IBOutlet private var coreListDownloadView: NSView!
     @IBOutlet private var coreListDownloadProgress: NSProgressIndicator!
@@ -61,8 +60,6 @@ final class SetupAssistant: NSViewController {
         c.allow(from: .lastScreen, to: [.coreSelection, .end])
         c.allow(from: .end, to: .lastScreen)
     }
-    
-    private let startTimeOfSetupAssistant = Date()
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -170,15 +167,10 @@ final class SetupAssistant: NSViewController {
     
     private func initialCoreListUpdateDidComplete(error: Error?) {
         coreListDownloadProgress.stopAnimation(nil)
-        
+
         if error == nil {
             coreListDownloadView.isHidden = true
-            
-            let deltaT = Date().timeIntervalSince(startTimeOfSetupAssistant)
-            let timeLeft = Int(max(0, Self.videoIntroductionDuration - deltaT))
-            DispatchQueue.main.asyncAfter(deadline: .now() + .seconds(timeLeft)) {
-                self.nextEvent(nil)
-            }
+            nextEvent(nil)
             return
         }
         

@@ -148,7 +148,7 @@
 		<true/>
 	</dict>
 	<key>NSHumanReadableCopyright</key>
-	<string>Copyright © 2009–2023 OpenEmu Team. All rights reserved.</string>
+	<string>Copyright © 2009–2026 OpenEmu Team. All rights reserved.</string>
 	<key>NSInputMonitoringUsageDescription</key>
 	<string>OpenEmu requires input monitoring to capture keyboard and controller events while games are running.</string>
 	<key>NSMainStoryboardFile</key>
