@@ -36,9 +36,12 @@ xcodebuild \
   -destination 'platform=macOS,arch=arm64' \
   build 2>&1 | tail -20
 DEBUG_DIR=$(ls -dt ~/Library/Developer/Xcode/DerivedData/OpenEmu-*/Build/Products/Debug 2>/dev/null | head -1)
-codesign --force --deep --sign - "$DEBUG_DIR/OpenEmu.app"
+SIGN_ID=$(security find-identity -v -p codesigning | awk -F'"' '/Apple Development/ {print $2; exit}')
+codesign --force --deep --sign "${SIGN_ID:--}" "$DEBUG_DIR/OpenEmu.app"
 open "$DEBUG_DIR/OpenEmu.app"
 ```
+
+The `SIGN_ID` line auto-picks your local Apple Development identity so the binary gets a **stable** code signature across rebuilds. Without it, ad-hoc signing (`-`) would cause macOS to treat each rebuild as a new app and revoke Input Monitoring, Keychain ACLs, and other TCC permissions every time you test. Falls back to ad-hoc only if you have no Apple Development cert.
 
 If this PR touches a core, install it before the `open` line:
 
