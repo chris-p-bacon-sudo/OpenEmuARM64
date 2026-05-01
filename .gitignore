@@ -70,3 +70,6 @@ build.log
 *-Bridge/**/*.dylib
 *-Bridge/**/MacOS/*-Bridge
 
+
+# Claude Code runtime lock files
+.claude/scheduled_tasks.lock
