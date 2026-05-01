@@ -242,10 +242,13 @@ git push origin v1.0.7       # fires the workflow automatically
 The workflow does everything unattended:
 1. Archives (Release config, Developer ID signed, hardened runtime)
 2. Re-signs all binaries inside-out with entitlements, notarizes, staples
-3. Creates the DMG, generates the Sparkle EdDSA signature
-4. Updates `appcast.xml` and `Casks/openemu-silicon.rb`
-5. Commits those changes back to `main`
-6. Creates a **draft** GitHub Release with the DMG attached
+3. Creates the styled DMG (HTML → WebKit-rendered PNG → `dmgbuild`)
+4. Generates the Sparkle EdDSA signature
+5. Updates `appcast.xml` and `Casks/openemu-silicon.rb`
+6. Commits those changes back to `main`
+7. Creates a **draft** GitHub Release with the DMG attached
+
+**Editing the DMG installer (background, icon positions, window size, etc.):** read [`Scripts/dmg-assets/README.md`](../Scripts/dmg-assets/README.md) first. It documents the coordinate system, the macOS 26 quirks the pipeline works around, what NOT to put in the background HTML, and the visual verification checklist.
 
 When the workflow finishes (~20–30 min), review and publish the draft:
 ```bash
