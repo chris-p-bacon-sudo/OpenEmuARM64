@@ -214,6 +214,10 @@ __weak FlycastGameCore *_current;
             // loadGame calls reset()+load() which clears all settings — re-apply after it returns.
             config::DynarecEnabled.override(false); // keep interpreter; JIT unstable on ARM64 macOS
             config::AudioBackend.set("openemu");    // reset() clears this to "auto"; restore before InitAudio()
+            // loadGameSpecificSettings() runs load(true) which can flip UseReios=false from a per-game
+            // config. Without HLE BIOS the VBL-driven GD-ROM server is inert and games freeze on a
+            // black screen. Force HLE on for any user without a real Dreamcast BIOS installed.
+            config::UseReios.override(true);
             rend_init_renderer();
             emu.start();
             gui_setState(GuiState::Closed);
