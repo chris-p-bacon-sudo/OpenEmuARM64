@@ -113,7 +113,8 @@ final class Cheat: Codable {
     let type: String
     var name: String
     var isEnabled = false
-    
+    var isUserAdded = false
+
     init(code: String, type: String, name: String) {
         self.code = code
         self.type = type
