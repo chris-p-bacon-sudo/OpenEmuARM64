@@ -1,569 +1,116 @@
-# CLAUDE.md — OpenEmu-Silicon
+# CLAUDE.md — Claude-specific behavior for OpenEmu-Silicon
 
-This file is read at the start of every Claude Code session for this project. Follow everything here before doing any work.
-
----
-
-## Project Overview
-
-**OpenEmu-Silicon** is a native Apple Silicon port of [OpenEmu](https://openemu.org), the beloved macOS multi-system emulator. It was originally derived from `bazley82/OpenEmuARM64`, which did the foundational work of porting all 25 emulation cores to ARM64. This project has since diverged into its own independent line of development.
-
-**This repo:** `nickybmon/OpenEmu-Silicon` (primary, standalone)
-**Primary workspace:** `OpenEmu-metal.xcworkspace` (Metal renderer — use this, not the legacy `.xcworkspace`)
-
-**Lineage note:** Built on `bazley82/OpenEmuARM64` (Metal renderer, macOS 26 fixes) over `Azyzraissi/OpenEmu` (OpenGL, no UI changes). This project has diverged and is independently maintained.
+This file is read at the start of every Claude Code session. Keep it focused on **how Claude should behave** in this repo. Project facts (build commands, file layout, supported cores, branch rules, license, PR templates) live in `AGENTS.md`. Domain vocabulary lives in `CONTEXT.md`. Don't duplicate them here.
 
 ---
 
-## Never Do This
+## Read these first, in order
 
-- Never commit directly to `main` or `master` **unless** the direct-commit rule below applies
-- Never push a branch without opening a PR in the same step — a branch with no PR looks like abandoned work
-- Never reuse a merged branch — new commits on a merged branch have no PR and are invisible to reviewers
-- Never force-push to `main`
-- Never open a duplicate issue — run `gh issue list` first; if the problem is tracked, comment on it
-- Never write type prefixes (`fix:`, `feat:`, `note:`, `bug:`) in issue titles — labels carry the type
-- Never leave a resolved issue open — close immediately with `gh issue close #N` and a commit reference
-- Never commit `OEGoogleDriveSecrets.swift` or any file containing OAuth credentials, API keys, or tokens
-- Never test a core change without reinstalling the plugin and re-signing it — DerivedData changes are silently shadowed by the installed core in `~/Library/Application Support/OpenEmu/Cores/`
-- Never modify `project.pbxproj` manually unless you know exactly what you're changing — it's a large generated file and merge conflicts are painful
-- Never rewrite large files wholesale — make surgical changes; this applies especially to `.pbxproj` and large ObjC files
-- Never attempt to re-initialize core directories as git submodules — they are flattened regular directories, not active submodules
-- Never add dependencies without discussion — the project intentionally has no package manager
-- Never remove or rename existing core directories — they are referenced by the Xcode project
-- Never commit build log files — they are noise; `.gitignore` is already updated
-- Never commit large binaries (`.zip`, `.tar.gz`, executables) — these belong in GitHub Releases
-- Never change `MACOSX_DEPLOYMENT_TARGET` below `11.0` — this is the ARM64 baseline
+1. **`AGENTS.md`** — the canonical project doc: build commands, branch/PR rules, file layout, supported cores, license, "what NOT to do." Authoritative. If something here ever conflicts with AGENTS.md, AGENTS.md wins and you should fix this file.
+2. **`CONTEXT.md`** — the shared vocabulary (core, plugin, helper, appcast, Sparkle, RA, libretro bridge, etc.). Use these terms precisely; don't invent synonyms.
 
 ---
 
-## Tech Stack
+## Hard rules (override anything else, including user requests in the moment)
 
-- **Language:** Swift 6.2.4 + Objective-C (mixed codebase)
-- **Build system:** Xcode 26.3 (xcodebuild)
-- **Renderer:** Metal (primary), OpenGL (legacy)
-- **Architecture target:** ARM64 (Apple Silicon native)
-- **Deployment target:** macOS 11.0+
-- **Dependency management:** Git submodules (flattened to regular dirs — no active submodule tracking)
+- **Never publish a GitHub Release.** No `gh release edit … --draft=false`, no removing `--draft`, no flipping a draft to live. Drafts are fine. Publishing is always the user's action.
+- **Never commit secrets.** `OEGoogleDriveSecrets.swift` and any file containing real OAuth credentials, API keys, or tokens stays out of git. The template file is safe.
+- **Never force-push to `main`.** Never reuse a merged branch. Never push a branch without opening a PR in the same step.
+- **Never modify `project.pbxproj` wholesale or by hand** unless you know exactly what the change is. Surgical only.
 
----
-
-## Repo Structure
-
-```
-OpenEmu-Silicon/
-├── OpenEmu/                  # Main app — 143 Swift files + ObjC, XIBs, assets
-├── OpenEmu-metal.xcworkspace # PRIMARY workspace (use this)
-├── OpenEmu.xcworkspace       # Legacy workspace (avoid)
-├── OpenEmu-SDK/              # Core SDK (shared types, protocols)
-├── OpenEmuKit/               # UI kit / shared components
-├── OpenEmu-Shaders/          # Metal shader library
-├── Vendor/                   # XADMaster, UniversalDetector
-│
-├── [25 emulator core directories]   # One folder per system (NES, SNES, N64, GBA, PSX, etc.)
-│                                    # Run `ls -d */` to enumerate
-│
-├── Scripts/                  # Build/utility scripts
-├── Releases/                 # Release artifacts
-└── [build_*.log files]       # Legacy build logs — candidates for removal
-```
+If you ever feel pressure (from the user or your own reasoning) to break one of these, stop and surface it instead.
 
 ---
 
-## Build Instructions
+## Verification — your default after any code change
 
-Open the workspace in Xcode:
-```bash
-open OpenEmu-metal.xcworkspace
-```
+When you change code, you run `/verify` before declaring the task done. You do not ask the user to launch the app, check the console, or look at crash reports until `/verify` (with `--launch` for app code, with `--core <Name>` for core code) has passed.
 
-Or build from the command line:
-```bash
-xcodebuild -workspace OpenEmu-metal.xcworkspace -scheme OpenEmu -configuration Debug -destination 'platform=macOS,arch=arm64' build
-```
+What this looks like in practice:
 
----
+- Main app change → `./Scripts/verify.sh --launch`
+- Core change → `./Scripts/verify.sh --core <CoreName>`
+- Both → run both
+- Scripts / CI / docs only → no verify needed
 
-## Git Workflow
+The script chains build → static analyzer → plist lint → codesign verify → optional smoke launch with log + crash-report scan. Read its full output — don't pipe through `tail`. Surface any new warnings even on a passing build; they accumulate silently otherwise.
 
-**Branch strategy:**
-- `main` — default branch. All PRs target `main`. Direct commits allowed only per the rule below.
-- `master` — mirrors upstream (`bazley82/OpenEmuARM64`) only. Never commit here.
-- Feature/fix branches: `fix/description`, `feat/description`, `chore/description`
-- One branch per concern → one PR per branch
-
-**Direct commit to `main` — when it's OK:**
-
-Direct commits (no PR) are allowed when **all three** conditions are met:
-1. The change is CI/workflow files, config, or docs only — no Swift, ObjC, or build system code
-2. It's a single focused fix (not bundling multiple concerns)
-3. It's actively unblocking an in-progress task (e.g. iterating on a failing workflow run)
-
-Branch + PR is required for everything else: any app code change, build system edits, security/entitlement config, or anything worth a review record.
-
-**The full loop — every time, no exceptions:**
-
-```bash
-# 1. Sync before starting any new work
-git checkout main
-git fetch origin && git merge origin/main
-
-# 2. New branch — one per concern, always from main
-git checkout -b fix/your-description
-
-# 3. Do the work, commit — include Fixes #N in body when resolving an issue
-git add -p
-git commit -m "fix: short description
-
-Fixes #N"
-
-# 4. Push AND open a PR in the same step — never one without the other
-git push -u origin fix/your-description
-gh pr create --repo nickybmon/OpenEmu-Silicon \
-  --base main \
-  --title "fix: your-description" \
-  --body "..."
-
-# 5. After PR merges — sync and delete local branch
-# (origin branch auto-deletes on merge — repo setting is already enabled)
-git checkout main
-git fetch origin && git merge origin/main
-git branch -d fix/your-description
-```
-
-**Branch rules (non-negotiable for agents and humans):**
-
-| Rule | Why |
-|------|-----|
-| Always branch from `main` | Prevents tangled history |
-| One branch = one concern | Keeps PRs reviewable and focused |
-| Never reuse a merged branch | New commits on a merged branch have no PR — invisible to reviewer |
-| Push and open a PR in the same step | A branch with no PR looks like abandoned work |
-| Branch name must match its content | If scope changes mid-work, start a new branch |
-| Delete local branch after merge | Run `git branch -d` immediately after syncing |
-| Never force-push to `main` | Destructive; breaks history |
-
-**Commit message format:** `<type>: <description>`
-
-| Type | When |
-|------|------|
-| `fix:` | Bug fix |
-| `feat:` | New feature |
-| `chore:` | Cleanup, tooling, config |
-| `docs:` | Documentation only |
-| `refactor:` | Restructure with no behavior change |
-
-**Linking issues:**
-- `Fixes #N` in commit body — auto-closes issue on merge to `main`
-- `Related to #N` — soft link, issue stays open
-
-**Labels (apply directly — you own this repo):**
-
-| Change type | Label |
-|-------------|-------|
-| Bug fix | `bug` |
-| New feature | `enhancement` |
-| Docs only | `documentation` |
-| Needs discussion | `question` |
-
-**Automation in place:**
-- `.git/hooks/pre-push` — blocks accidental direct pushes to `upstream master`
-- `.git/hooks/prepare-commit-msg` — warns if on `main`, injects commit format guide
-- `.github/PULL_REQUEST_TEMPLATE.md` — pre-fills PR structure and checklist
-- GitHub repo setting: branches auto-delete after PR merge
-
-**If you re-clone:** git hooks are not committed. Recreate them or ask Claude to restore them from this file.
+Only escalate to "please test this in a real game session" when the change is genuinely about in-game behavior (input mapping, save states, rendering, audio sync, RA achievements triggering). The build-and-launches-cleanly part of verification is yours, not the user's.
 
 ---
 
-## Session Start Convention
+## Autonomy — run things yourself
 
-**Every coding session must start on a dedicated branch — never work directly on `main`.**
+Read-only observation commands are safe and you should run them rather than asking the user for the output. The settings.json `autoMode.allow` list is the durable record of what's expected to be unattended; consult it if you're unsure. The high-frequency ones:
 
-Run `/start` at the beginning of each session. It will:
-1. Sync `main` from origin
-2. Pull the live issue list and project board so you have full context
-3. Create the correct branch for the work at hand
+- `log show --predicate 'process == "OpenEmu"' --last Nm` — unified console log
+- `codesign --display` / `codesign --verify` — signature inspection
+- `plutil -lint` / `plutil -p` — plist validation/inspection
+- `find ~/Library/Logs/DiagnosticReports -name 'OpenEmu*' -mmin -N` — recent crash reports
+- `xcodebuild analyze` — static analyzer
+- `open <built-app-path>` — smoke launching the just-built debug binary
+- Sentry MCP — search Sentry first when triaging a user-reported crash
 
-If you already know the task before running `/start`, name the branch accordingly. If not, `/start` will ask.
+Pause and confirm before:
+- destructive operations (delete, force-push, branch -D, dropping data)
+- actions visible to others (PR open/merge/close, posting comments on issues, pushing tags that fire workflows)
+- killing OpenEmu when the user might be using it (only `pkill` if you launched it yourself this session)
 
-The only exception is the narrow "direct commit to `main`" rule documented in the Git Workflow section — CI/config/docs-only, single-concern, actively unblocking.
-
----
-
-## Slash Commands
-
-Custom commands live in `.claude/commands/`. Invoke with `/command-name`.
-
-| Command | What it does |
-|---------|--------------|
-| `/start` | Session kickoff: sync main, pull live issue/board state, create working branch |
-| `/ship` | Full git loop: sync main, create branch, commit with correct format, push, open PR, update project board |
-| `/review <PR_NUMBER>` | PR review flow: gh pr checkout, build check, list test behaviors from the PR description, report results |
-| `/new-issue` | Guided issue creation: search for duplicates first, select template, enforce title rules, apply labels |
-| `/triage-issue <N>` | Review a bug report or feature request: check completeness, post a comment asking for missing details/screenshots, apply labels |
-| `/prep-release [X.Y.Z]` | Full release prep: bump version, build check, commit version bump — then you push the tag to fire the CI workflow |
+If you find yourself about to write "could you check…" or "could you launch…" — stop and run it.
 
 ---
 
-## Versioning Policy
+## Session start
 
-This project uses **3-component semantic versioning** (`major.minor.patch`). Do not use 4-component versions (`1.0.5.1`) — they are non-standard for macOS apps, look odd in the About screen, and add no value since Sparkle compares by the integer build number anyway.
-
-| Type | When to use | Version bump | Example |
-|------|-------------|-------------|---------|
-| **Hotfix** | Critical crash or data-loss bug shipped immediately | `patch` | 1.0.5 → 1.0.6 |
-| **Patch release** | Batch of bug fixes or minor improvements | `patch` | 1.0.6 → 1.0.7 |
-| **Minor release** | New feature (new core, meaningful new capability) | `minor` | 1.0.7 → 1.1.0 |
-| **Major release** | Breaking change or architectural overhaul | `major` | 1.x → 2.0.0 |
-
-The difference between a hotfix and a patch release is **urgency and scope**, not numbering. Both bump the patch component. A hotfix ships immediately for a single critical fix; a patch release batches several improvements.
-
-**Build number** (`CFBundleVersion`) always increments by 1 regardless of version type. It is the authoritative number Sparkle uses for update ordering.
+Run `/start` before touching code. It syncs `main`, pulls the live issue list and project board, and creates the correctly named branch for the work.
 
 ---
 
-## Release Process
+## Slash commands
 
-Releases run on **GitHub Actions** (`macos-26` hosted runners, Xcode 26.3). Your Mac does not need to be involved. All signing credentials are stored as repo secrets.
+The harness shows you the full list. Quick mental map of the project-specific ones:
 
-There are two independent release workflows:
+| Use this | When |
+|---|---|
+| `/start` | Beginning of every session |
+| `/verify` | After any code change, before declaring done |
+| `/ship` | When the work is ready to push + open a PR |
+| `/review <N>` | Reviewing a contributor PR locally |
+| `/new-issue` | Filing a bug report or feature request |
+| `/triage-issue <N>` | Working through an inbound issue |
+| `/prep-release [X.Y.Z]` | Cutting a host-app release |
+| `/release-core <Name> <Ver>` | Cutting a core-only release |
 
-### Full app release (`release.yml`)
-
-Triggered by pushing a version tag. Use `/prep-release` first to bump the version and run a build check, then push the tag:
-
-```bash
-/prep-release 1.0.7          # bumps Info.plist, build check, commits version bump
-git tag v1.0.7
-git push origin v1.0.7       # fires the workflow automatically
-```
-
-The workflow does everything unattended:
-1. Archives (Release config, Developer ID signed, hardened runtime)
-2. Re-signs all binaries inside-out with entitlements, notarizes, staples
-3. Creates the styled DMG (HTML → WebKit-rendered PNG → `dmgbuild`)
-4. Generates the Sparkle EdDSA signature
-5. Updates `appcast.xml` and `Casks/openemu-silicon.rb`
-6. Commits those changes back to `main`
-7. Creates a **draft** GitHub Release with the DMG attached
-
-**Editing the DMG installer (background, icon positions, window size, etc.):** read [`Scripts/dmg-assets/README.md`](../Scripts/dmg-assets/README.md) first. It documents the coordinate system, the macOS 26 quirks the pipeline works around, what NOT to put in the background HTML, and the visual verification checklist.
-
-When the workflow finishes (~20–30 min), review and publish the draft:
-```bash
-gh release edit vX.Y.Z --draft=false --repo nickybmon/OpenEmu-Silicon
-```
-
-### Core release (`release-core.yml`)
-
-Ships a single emulator plugin independently of the app. No full app release needed. Triggered manually from the Actions UI or CLI:
-
-```bash
-gh workflow run release-core.yml \
-  --repo nickybmon/OpenEmu-Silicon \
-  -f core_name=Flycast \
-  -f version=2.5
-```
-
-Or use the `/release-core <CoreName> <Version>` slash command, which wraps the above.
-
-The workflow builds the core, signs it, zips it, uploads it to a `cores-vX.Y.Z` prerelease, and commits the updated `Appcasts/<core>.xml` back to `main`. Users see the update on next app launch via `CoreUpdater`.
-
-### Secrets in use
-
-| Secret | Purpose |
-|--------|---------|
-| `DEVELOPER_ID_CERT_BASE64` | Developer ID signing cert (p12, base64) |
-| `DEVELOPER_ID_CERT_PASSWORD` | Cert password |
-| `APPLE_ID` / `APPLE_ID_PASSWORD` / `APPLE_TEAM_ID` | notarytool credentials |
-| `SPARKLE_PRIVATE_KEY` | EdDSA key for Sparkle update signatures |
-| `GH_PAT` | Token for the workflow to push appcast/cask commits back to main |
-
-### Never do this manually
-
-- Never hand-edit `sparkle:edSignature` or `length` in any appcast — the workflow generates these from the actual artifact
-- Never publish a GitHub Release without confirming the appcast commit landed on `main` first — Sparkle update checks will fail otherwise
-- `Scripts/release.sh` still exists as a local fallback but is no longer the primary release path
+Pocock's planning skills are also installed globally (`/grill-me`, `/grill-with-docs`, `/to-prd`, `/to-issues`, `/tdd`, `/improve-codebase-architecture`). Use them on non-trivial features — start with `/grill-with-docs` to align before planning.
 
 ---
 
-## Testing PRs Locally Before Merging
+## Issue hygiene (the rules AI sessions have repeatedly broken)
 
-Always test PRs locally before merging. The standard flow:
+Detailed rules are in `AGENTS.md`. The short version, because these failures keep happening:
 
-### 1. Check out the PR branch
-
-```bash
-# Preferred — gh looks up the branch name for you
-gh pr checkout <PR_NUMBER> --repo nickybmon/OpenEmu-Silicon
-
-# Example
-gh pr checkout 54 --repo nickybmon/OpenEmu-Silicon
-```
-
-This fetches the branch if needed and checks it out. `git branch` will confirm you're on it.
-
-### 2. Build from terminal
-
-```bash
-xcodebuild \
-  -workspace OpenEmu-metal.xcworkspace \
-  -scheme OpenEmu \
-  -configuration Debug \
-  -destination 'platform=macOS,arch=arm64' \
-  build 2>&1 | tail -30
-```
-
-A clean build with no errors is the minimum bar before testing.
-
-### 3. Run the app from terminal
-
-```bash
-open ~/Library/Developer/Xcode/DerivedData/OpenEmu-*/Build/Products/Debug/OpenEmu.app
-```
-
-Or use Spotlight / your app launcher — after a Debug build, the app lives in DerivedData and can be launched like any app.
-
-### 4. Test multiple PRs in isolation (worktrees)
-
-To test two branches side by side without switching back and forth:
-
-```bash
-git worktree add ../openemu-pr54 fix/flycast-input-crash
-cd ../openemu-pr54
-xcodebuild -workspace OpenEmu-metal.xcworkspace -scheme OpenEmu \
-  -configuration Debug -destination 'platform=macOS,arch=arm64' build
-```
-
-Each worktree is a separate directory with its own build — no stashing needed.
-
-### 5. Return to main when done
-
-```bash
-git checkout main
-
-# If you used a worktree, clean it up
-git worktree remove ../openemu-pr54
-```
-
-### Core plugin builds (Flycast and others)
-
-Building the main `OpenEmu` scheme does **not** update emulator cores in
-`~/Library/Application Support/OpenEmu/Cores/`. Cores are loaded from there
-at runtime and **will silently shadow any changes in DerivedData**.
-
-After changing code in a core (e.g. Flycast), you must:
-
-1. Build the core-specific scheme (e.g. `OpenEmu + Flycast`)
-2. Manually replace the installed plugin and re-sign it:
-
-```bash
-DERIVED=$(find ~/Library/Developer/Xcode/DerivedData/OpenEmu-metal-*/Build/Products/Debug/Flycast.oecoreplugin -maxdepth 0 | head -1)
-DEST=~/Library/Application\ Support/OpenEmu/Cores/Flycast.oecoreplugin
-rm -rf "$DEST"
-cp -R "$DERIVED" "$DEST"
-codesign --force --sign - "$DEST"
-```
-
-Substitute the core name as needed. Without this step, the app always runs
-the previously installed (stale) core binary regardless of what was just built.
-
-### When Claude reviews a PR, it should always provide
-
-1. The exact `gh pr checkout` command for that PR number
-2. Any PR-specific build steps (e.g. BIOS files needed, core reinstall required)
-3. The specific behaviors to verify from the PR's test plan
+1. Search before opening: `gh issue list --repo nickybmon/OpenEmu-Silicon --state open` first.
+2. No type prefixes in titles (`fix:` / `note:` / `bug:` belong to labels, not titles).
+3. One concern per issue, per branch, per PR.
+4. Close on fix: `gh issue close #N --repo nickybmon/OpenEmu-Silicon --comment "Resolved in <sha>."` — same session as the fix lands.
+5. Always pass `--repo nickybmon/OpenEmu-Silicon` on every `gh` command.
+6. Note AI assistance in commit messages (e.g. `fix: thing (assisted by Claude)`).
 
 ---
 
-## Project Board
+## Memory discipline
 
-**OpenEmu-Silicon Project** — https://github.com/users/nickybmon/projects/3
+Memory under `~/.claude/projects/.../memory/` is read at session start. Two rules:
 
-Tracks the seven major open work items. Status rules:
-- When starting work on a board item → set status to `In Progress`
-- When closing an issue that's on the board → set status to `Done`
+- **Memory is for the WHY, not the WHAT.** Durable feedback (e.g. "always use `--repo` flag because there are forks", "never publish releases — user does it manually") belongs there. Point-in-time project state ("Dolphin 3a-1 done", "PR #X open") does not — it goes stale and misleads.
+- **When you recall something specific (a file, function, PR number, version), verify it against current state before acting on it.** Memory captures what was true when it was written. Things move.
 
-```bash
-# Update a board item's status
-gh project item-edit --id <PVTI_...> --project-id PVT_kwHODZJ49M4BSxR1 \
-  --field-id PVTSSF_lAHODZJ49M4BSxR1zhANP7Q \
-  --single-select-option-id <option-id>
-# Option IDs: Todo=f75ad846  In Progress=47fc9ee4  Done=98236657
-```
-
-To get item IDs: `gh project item-list 3 --owner nickybmon --format json`
+Before saving a new memory entry, ask yourself: will this still be true and useful in three months? If not, it doesn't belong in always-on context.
 
 ---
 
-## Issue Tracker Usage
+## When this file should change
 
-**Primary tracker** (`nickybmon/OpenEmu-Silicon/issues`) — the project's main issue tracker for bugs, build fixes, core integration work, feature requests, and release checklists.
+Edit CLAUDE.md when you discover a new pattern of how Claude should behave (a new check, a new safety rule, a new always-on workflow). Don't edit it to add facts about the project — those go in AGENTS.md or CONTEXT.md. Don't edit it to record decisions — those go in `docs/adr/` (create the directory if it's the first one).
 
-**Issue templates** (`.github/ISSUE_TEMPLATE/`):
-
-| Template | Use when |
-|----------|----------|
-| `bug_report` | Runtime crash, wrong behavior, build failure at runtime |
-| `feature_request` | New core, new capability, meaningful improvement |
-| `core_integration` | Core fails to build, missing from workspace, needs ARM64 porting |
-| `checklist` | Release checklist or multi-step milestone — one per milestone max |
-
-**Labels:**
-- `in-progress` — actively working on it
-- `needs-testing` — fix done, needs verification
-- `ready-to-pr` — work ready for PR review
-- `core: NES/C64/Atari/SNES/N64/Sega/other` — which system
-- `ui / shaders / cloud-sync / arm64` — which area
-
----
-
-## Issue Hygiene Rules (for agents and humans)
-
-These rules exist because previous AI-assisted sessions created messy, duplicate, and mislabeled issues. Follow them exactly.
-
-### Before opening an issue
-
-1. **Search first.** Run `gh issue list --repo nickybmon/OpenEmu-Silicon --state open` and check if the problem is already tracked. If it is, add a comment — do not open a duplicate.
-2. **One issue per concern.** If two cores have the same root cause and fix, open one issue covering both. Do not open one issue per core.
-3. **Only one checklist per milestone.** If a release checklist is already open, update it — never open a second one.
-
-### Titles
-
-- **No type prefixes in titles.** Never write `note:`, `fix:`, `feat:`, `bug:` etc. in the issue title. Labels carry the type. The title describes the problem.
-- Good: `PokeMini — OpenEmuBase header missing in standalone build`
-- Bad: `note: PokeMini — needs workspace integration for OpenEmuBase headers`
-
-### Closing issues
-
-- **Close resolved issues immediately.** The moment a fix is committed, close the issue with `gh issue close #N --repo nickybmon/OpenEmu-Silicon --comment "Resolved in commit <sha>. <one line summary>."` — do not leave it open for a later cleanup pass.
-- **Use closing keywords in commit messages.** Every commit that resolves an issue must include `Fixes #N` or `Closes #N` in the commit body (not just the subject line):
-  ```
-  fix: add Mupen64Plus to workspace and fix ARM64 dynarec build
-
-  Fixes #11
-  ```
-- **Close superseded issues immediately.** If you create a more comprehensive issue that replaces an older one, close the old one in the same session with a comment referencing the new issue number.
-
-### What does NOT belong as an issue
-
-- Observations or open questions that aren't actionable yet → put in a PR comment or a comment on a related issue
-- Things already documented in CLAUDE.md
-- Ephemeral session notes
-
----
-
-## Pre-Commit Checks
-
-Before every commit on Swift/ObjC changes:
-```bash
-# Build check (catches compile errors)
-xcodebuild -workspace OpenEmu-metal.xcworkspace -scheme OpenEmu -configuration Debug -destination 'platform=macOS,arch=arm64' build 2>&1 | tail -20
-```
-
-There is no lint/format CI configured yet — this is a contribution opportunity.
-
----
-
-## Verification
-
-**Before marking any task complete, verify your work. Verification is not optional.**
-
-For every change, run the build check and confirm it passes:
-```bash
-xcodebuild -workspace OpenEmu-metal.xcworkspace -scheme OpenEmu \
-  -configuration Debug -destination 'platform=macOS,arch=arm64' \
-  build 2>&1 | tail -20
-```
-
-For core changes, you must also reinstall and re-sign the plugin before testing:
-```bash
-DERIVED=$(find ~/Library/Developer/Xcode/DerivedData/OpenEmu-metal-*/Build/Products/Debug/[CoreName].oecoreplugin -maxdepth 0 | head -1)
-DEST=~/Library/Application\ Support/OpenEmu/Cores/[CoreName].oecoreplugin
-rm -rf "$DEST" && cp -R "$DERIVED" "$DEST" && codesign --force --sign - "$DEST"
-```
-Substitute the actual core name. Without this, the app always runs the previously installed binary.
-
-Before stating that a task is done, report:
-1. Build result — passed / failed / warnings
-2. Whether the plugin was reinstalled (for core changes)
-3. What was manually verified in the running app, or why manual verification was not possible
-
-If the build fails, fix it before closing the task. Do not hand off a broken build.
-
----
-
-## Key Files in the Main App
-
-| File | Purpose |
-|------|---------|
-| `OpenEmu/AppDelegate.swift` | App entry point |
-| `OpenEmu/GameDocument.swift` | Core game session management |
-| `OpenEmu/OEGameViewController.swift` | Game view controller |
-| `OpenEmu/LibraryController.swift` | Main library UI |
-| `OpenEmu/OECorePlugin.swift` | Core plugin loading |
-| `OpenEmu/OEGameCore.swift` | Base game core protocol |
-| `OpenEmu/broker/` | Core broker process (sandboxing) |
-
----
-
-## Current Work State
-
-Do not rely on a static snapshot in this file. At the start of any work session, pull live state:
-
-```bash
-# Open issues
-gh issue list --repo nickybmon/OpenEmu-Silicon --state open
-
-# Project board
-gh project item-list 3 --owner nickybmon --format json
-```
-
-Read the output before deciding what to work on. The board and issue tracker are the source of truth — this file is not.
-
----
-
-## macOS 26 (Tahoe) Compatibility
-
-All known macOS 26 compatibility fixes are applied in this repo (XIB binding crash, missing entitlement, core signing). If you install cores that predate the signing fix, sign them manually:
-```bash
-codesign --force --sign - ~/Library/Application\ Support/OpenEmu/Cores/*.oecoreplugin
-```
-Cores installed after the fix are signed automatically by `CoreUpdater`.
-
----
-
-## Security Notes
-
-- `OEGoogleDriveSecrets.swift` is gitignored — never commit it. The template is `OEGoogleDriveSecrets.template.swift`.
-- `OEGoogleDriveConfig.swift` uses `"YOUR_CLIENT_ID_HERE"` placeholders — safe to commit.
-- `fast_relink.sh`, `apply_icon.sh`, `process_icon.swift` are utility scripts that use env vars / CLI args — no hardcoded paths remain.
-- Do not commit any file containing real OAuth credentials, API keys, or tokens.
-
----
-
-## License Summary
-
-**Main app** (`OpenEmu/`, `OpenEmu-SDK/`, `OpenEmuKit/`, `OpenEmu-Shaders/`): **BSD 2-Clause**
-- Contribute freely; preserve copyright headers on all files you touch
-- Add this header to any new files: `// Copyright (c) 2026, OpenEmu Team` + standard BSD text
-
-**Emulator cores**: mixed open source licenses
-
-| Core(s) | License |
-|---------|---------|
-| mGBA | MPL 2.0 — file-level copyleft, compatible with BSD |
-| Gambatte, DeSmuME, Mupen64Plus, SNES9x, Reicast, picodrive | GPL v2 — modifications must stay GPL v2 |
-| Bliss, XADMaster | LGPL 2.1 |
-| JollyCV | BSD 2-Clause |
-
-**Critical:** `picodrive` has a **non-commercial clause** — the project cannot be sold or used in a commercial product. This is already satisfied (free community project), but never charge for a build that includes picodrive.
-
-No CLA exists. Contributions are covered by the license of the files you touch.
-
----
-
-## Context
-
-This is a community revival project. The original OpenEmu project went dormant. This ARM64 fork represents significant work to bring it back to life on modern Apple Silicon Macs. Contributions should be made with that spirit in mind — pragmatic, incremental, and focused on making the app actually usable for players.
+If this file grows past ~200 lines, something has been added that probably belongs elsewhere.
