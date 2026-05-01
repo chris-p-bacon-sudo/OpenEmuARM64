@@ -2,9 +2,15 @@
 # make-dmg.sh — Build the OpenEmu-Silicon styled DMG installer.
 #
 # Pipeline:
-#   1. Render Scripts/dmg-assets/background.html → background.png via offscreen WebKit
-#   2. Inject the app path into appdmg.json
-#   3. Run appdmg to produce the final UDZO DMG with correct background + icon positions
+#   1. Render Scripts/dmg-assets/background.html → background.png via offscreen WebKit.
+#      WebKit on a retina display takes a 2× snapshot, so the output PNG is 1920×1360
+#      pixels tagged 144 DPI (Finder reads this as a 960×680 logical @2× retina image).
+#
+#   2. Run dmgbuild with Scripts/dmg-assets/dmgbuild_settings.py.
+#      dmgbuild writes the .DS_Store binary directly via the mac_alias library —
+#      it does not call AppleScript or Finder, so it is immune to the macOS 26
+#      Finder/alias-bookmark regressions that broke earlier hdiutil+AppleScript
+#      and appdmg approaches.
 #
 # Usage:
 #   ./Scripts/make-dmg.sh <app-path> <output.dmg>
@@ -18,44 +24,46 @@ die() { echo "ERROR: $*" >&2; exit 1; }
 
 APP="$(cd "$(dirname "$1")" && pwd)/$(basename "$1")"
 OUTPUT="$2"
+VOLNAME="OpenEmu-Silicon"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ASSETS="$SCRIPT_DIR/dmg-assets"
 HTML="$ASSETS/background.html"
 BG_PNG="$ASSETS/background.png"
-APPDMG_TEMPLATE="$ASSETS/appdmg.json"
+SETTINGS="$ASSETS/dmgbuild_settings.py"
 RENDERER="$SCRIPT_DIR/render-html-background.swift"
 
-[ -d "$APP" ]              || die "App not found: $APP"
-[ -f "$HTML" ]             || die "background.html not found: $HTML"
-[ -f "$APPDMG_TEMPLATE" ]  || die "appdmg.json not found: $APPDMG_TEMPLATE"
-[ -f "$RENDERER" ]         || die "render-html-background.swift not found: $RENDERER"
-command -v appdmg &>/dev/null || die "appdmg not found — install with: npm install -g appdmg"
+[ -d "$APP" ]      || die "App not found: $APP"
+[ -f "$HTML" ]     || die "background.html not found: $HTML"
+[ -f "$SETTINGS" ] || die "dmgbuild_settings.py not found: $SETTINGS"
+[ -f "$RENDERER" ] || die "render-html-background.swift not found: $RENDERER"
+
+# Find dmgbuild — pipx installs it under ~/.local/bin which may not be in PATH yet
+DMGBUILD=""
+if command -v dmgbuild &>/dev/null; then
+    DMGBUILD="dmgbuild"
+elif [ -x "$HOME/.local/bin/dmgbuild" ]; then
+    DMGBUILD="$HOME/.local/bin/dmgbuild"
+else
+    die "dmgbuild not installed — run: pipx install dmgbuild  (or: pip3 install --user dmgbuild)"
+fi
 
 echo "=== make-dmg ==="
 echo "  app:    $APP"
 echo "  output: $OUTPUT"
 
 # ── 1. Render HTML → PNG ──────────────────────────────────────────────────────
-echo "--- 1/3  Rendering background.html → background.png (WebKit)"
+echo "--- 1/2  Rendering background.html → background.png (WebKit)"
 swift "$RENDERER" "$HTML" "$BG_PNG"
 [ -f "$BG_PNG" ] || die "Render failed — background.png not produced."
 
-# ── 2. Build appdmg.json with the real app path ───────────────────────────────
-echo "--- 2/3  Building appdmg config"
-WORK_DIR=$(mktemp -d)
-trap 'rm -rf "$WORK_DIR"' EXIT
-
-WORK_JSON="$WORK_DIR/appdmg.json"
-# Replace the {{APP_PATH}} placeholder and point background to the absolute PNG path
-sed \
-    -e "s|{{APP_PATH}}|$APP|g" \
-    -e "s|\"background\": \"background.png\"|\"background\": \"$BG_PNG\"|g" \
-    "$APPDMG_TEMPLATE" > "$WORK_JSON"
-
-# ── 3. Run appdmg ────────────────────────────────────────────────────────────
-echo "--- 3/3  Running appdmg"
+# ── 2. Build the DMG ──────────────────────────────────────────────────────────
+echo "--- 2/2  Building DMG with dmgbuild"
 mkdir -p "$(dirname "$OUTPUT")"
-appdmg "$WORK_JSON" "$OUTPUT"
+
+# dmgbuild fails if the output already exists — remove first
+rm -f "$OUTPUT"
+
+APP_PATH="$APP" BG_PATH="$BG_PNG" "$DMGBUILD" -s "$SETTINGS" "$VOLNAME" "$OUTPUT"
 
 echo "=== make-dmg: done → $OUTPUT"

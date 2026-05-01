@@ -1,11 +1,30 @@
 <!doctype html>
-<!-- DMG installer background — 1320 × 800 px (2× retina for a 660 × 400 logical window)
-     Icon centres in this coordinate space: left=330px (25%), right=990px (75%), y=400px (50%)
-     DO NOT add app filename or "Applications" text — Finder draws those automatically. -->
+<!--
+  DMG background image — 960 × 680 px (1×) / 1920 × 1360 px (2×).
+  This is the DECORATIVE LAYER ONLY.
+  macOS Finder draws its own title bar, status bar, real app icons, and filenames
+  on top of this image.  Everything macOS provides has been removed:
+    • No .window / .titlebar / .statusbar wrappers
+    • No .app-icon <img> (macOS draws OpenEmu.app at 25%, 50%)
+    • No .cartridge element (macOS draws the standard Applications folder icon at 75%, 50%)
+    • No .label / filename text (macOS draws "OpenEmu" and "Applications" below each icon)
+    • No <script> / drag-and-drop handlers
+
+  What remains: retro-grid base, gradient glows, scanlines, corner marks,
+  OpenEmu logo strip, "DRAG OPENEMU INTO APPLICATIONS" headline, the
+  connector arrow whose endpoints bracket the real icon positions, and
+  the drag hint at the bottom.
+
+  Icon positions (1× logical points, icon size 144 px, centre coords):
+    OpenEmu.app  — x=240, y=340
+    Applications — x=720, y=340
+  Arrow runs from x=332 (right of left icon + 20 px gap)
+              to x=628 (left of right icon − 20 px gap) at y=340.
+-->
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<title>OpenEmu — Install</title>
+<title>OpenEmu DMG Background</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
@@ -17,34 +36,33 @@
     --magenta: oklch(0.66 0.22 25);
     --magenta-soft: oklch(0.55 0.18 20);
     --blue: oklch(0.62 0.22 265);
-    --blue-soft: oklch(0.42 0.16 265);
     --cyan: oklch(0.86 0.15 200);
     --cyan-deep: oklch(0.72 0.15 205);
   }
 
   * { box-sizing: border-box; }
 
+  /* ── Root canvas: exactly matches the DMG window size ────────────────────── */
   html, body {
     margin: 0; padding: 0;
-    width: 1320px; height: 800px;
+    width: 960px; height: 680px;
     overflow: hidden;
-    background: var(--bg-0);
     font-family: "Inter", system-ui, sans-serif;
     color: var(--ink);
     -webkit-font-smoothing: antialiased;
   }
 
-  /* ── Stage ─────────────────────────────────────────────────────────────── */
+  /* ── Stage — full background layer ───────────────────────────────────────── */
   .stage {
     position: relative;
-    width: 1320px; height: 800px;
+    width: 960px; height: 680px;
     background:
       linear-gradient(180deg, rgba(7,6,13,.45) 0%, rgba(7,6,13,.85) 100%),
       url("retro-grid.jpg") center / cover no-repeat;
     overflow: hidden;
   }
 
-  /* top magenta + bottom blue glow blobs */
+  /* Radial glows (from reference .stage::before) */
   .stage::before {
     content: "";
     position: absolute; inset: 0;
@@ -52,246 +70,197 @@
       radial-gradient(ellipse 70% 60% at 50% 22%, oklch(0.55 0.22 25 / .45) 0%, transparent 65%),
       radial-gradient(ellipse 60% 40% at 50% 100%, oklch(0.45 0.22 265 / .35) 0%, transparent 70%);
     pointer-events: none;
+    z-index: 0;
   }
 
-  /* scanlines */
+  /* Scanlines (from reference .stage::after) */
   .stage::after {
     content: "";
     position: absolute; inset: 0;
     background: repeating-linear-gradient(
       to bottom,
-      rgba(255,255,255,.018) 0 2px, transparent 2px 6px
+      rgba(255,255,255,.018) 0 1px, transparent 1px 3px
     );
     mix-blend-mode: overlay;
     pointer-events: none;
+    z-index: 0;
   }
 
-  /* ── Corner marks ───────────────────────────────────────────────────────── */
-  .corner {
+  /* ── Corner marks (from reference .corner-mark) ──────────────────────────── */
+  .corner-mark {
     position: absolute;
     font-family: "Press Start 2P", "Courier New", monospace;
-    font-size: 16px;
+    font-size: 8px;
     color: var(--ink-dim);
-    letter-spacing: 4px;
+    letter-spacing: 2px;
     opacity: .55;
-    z-index: 5;
+    z-index: 3;
   }
-  .tl { top: 20px; left: 28px; }
-  .tr { top: 20px; right: 28px; }
-  .bl { bottom: 16px; left: 28px; }
-  .br { bottom: 16px; right: 28px; }
+  .tl { top: 10px; left: 14px; }
+  .tr { top: 10px; right: 14px; }
+  .bl { bottom: 32px; left: 14px; }
+  .br { bottom: 32px; right: 14px; }
 
-  /* ── Logo row — compact vertical stack ─────────────────────────────────── */
-  /* Logo at top:22px (original) → 44px at 2×.
-     Reduced img to 80px (original 56px → 72px fits better at this canvas height).
-     All text compacted so headline clears the icon row. */
+  /* ── Logo row (from reference .logo-row, top: 22px) ─────────────────────── */
   .logo-row {
     position: absolute;
-    top: 44px; left: 0; right: 0;
+    top: 22px; left: 0; right: 0;
     display: flex; flex-direction: column; align-items: center;
-    gap: 14px;
+    gap: 10px;
     z-index: 3;
   }
   .logo-row img {
-    height: 80px;
-    filter: drop-shadow(0 6px 28px oklch(0.55 0.22 25 / .7));
-  }
-  .badge {
-    font-family: "VT323", "Courier New", monospace;
-    font-size: 28px;
-    letter-spacing: 4px;
-    white-space: nowrap;
-    color: var(--cyan);
-    padding: 6px 22px;
-    border: 2px solid var(--cyan-deep);
-    border-radius: 999px;
-    background: rgba(0,0,0,.55);
-    text-shadow: 0 0 16px var(--cyan-deep);
-    box-shadow: 0 0 22px oklch(0.7 0.15 200 / .25), inset 0 0 20px oklch(0.7 0.15 200 / .18);
+    height: 56px;
+    filter: drop-shadow(0 4px 18px oklch(0.55 0.22 25 / .7));
   }
 
-  /* ── Headline ─────────────────────────────────────────────────────────────
-     logo 80px + gap 14px + badge ~36px = ~130px, logo-row starts at 44px → ends ~174px.
-     Headline starts at 196px (22px below badge). Headline h1 24px × 1.5 = 36px.
-     Sub at 196+36+18=250px. Target top (icon y=500−168) = 332px. Gap ≈ 82px. */
+  /* Badge (from reference .badge) */
+  .badge {
+    font-family: "VT323", "Courier New", monospace;
+    font-size: 18px;
+    letter-spacing: 2px;
+    white-space: nowrap;
+    color: var(--cyan);
+    padding: 4px 14px;
+    border: 1px solid var(--cyan-deep);
+    border-radius: 999px;
+    background: rgba(0,0,0,.55);
+    text-shadow: 0 0 10px var(--cyan-deep);
+    box-shadow: 0 0 14px oklch(0.7 0.15 200 / .25), inset 0 0 12px oklch(0.7 0.15 200 / .18);
+  }
+
+  /* ── Headline (from reference .headline, top: 150px) ────────────────────── */
+  /* Positioned ABOVE the icon row (icons at y≈340; headline at y=150 is clear) */
   .headline {
     position: absolute;
-    top: 196px; left: 0; right: 0;
+    top: 150px; left: 0; right: 0;
     text-align: center;
     z-index: 3;
   }
   .headline h1 {
     margin: 0;
     font-family: "Press Start 2P", "Courier New", monospace;
-    font-size: 24px;
+    font-size: 16px;
     line-height: 1.5;
-    letter-spacing: 2px;
+    letter-spacing: 1px;
     color: #fff;
     text-shadow:
-      3px 3px 0 oklch(0.45 0.22 25),
-      6px 6px 0 oklch(0.32 0.18 25),
-      0 0 36px oklch(0.6 0.22 25 / .8);
+      2px 2px 0 oklch(0.45 0.22 25),
+      4px 4px 0 oklch(0.32 0.18 25),
+      0 0 22px oklch(0.6 0.22 25 / .8);
   }
-  .headline p {
-    margin: 18px 0 0;
-    font-family: "VT323", "Courier New", monospace;
-    font-size: 32px;
-    color: var(--ink-dim);
-    letter-spacing: 2px;
-  }
-
-  /* ── Pedestal (left icon area, centre x=330 y=500 in 1320×800) ──────────── */
-  /* appdmg places the app icon at logical (165, 250) = 2× (330, 500).
-     We draw only the glow pedestal — no label text (Finder draws the filename). */
-  .pedestal-wrap {
+  /* ── Pedestals — visual frames that sit BEHIND the real macOS icons ─────── */
+  /* Same shape, size, and y-position for symmetry. The OpenEmu app icon at
+     (240, 340) sits over .pedestal-left; the Applications folder icon at
+     (720, 340) sits over .pedestal-right. Each pedestal is a square framed
+     glow tinted to match its side of the design (magenta / blue). */
+  .pedestal {
     position: absolute;
-    left: calc(25% - 168px);   /* 330 - 168 = 162px */
-    top: calc(500px - 168px);  /* 332px */
-    width: 336px; height: 336px;
-    display: grid; place-items: center;
+    top: 268px;        /* 340 − 72 → centred on icon at y=340 */
+    width: 144px; height: 144px;
+    border-radius: 28px;
+    z-index: 1;        /* below the arrow but above the stage gradients */
+    pointer-events: none;
   }
-  /* floor glow */
-  .pedestal-wrap::before {
-    content: "";
-    position: absolute;
-    bottom: -20px; left: 50%;
-    transform: translateX(-50%);
-    width: 280px; height: 48px;
-    background: radial-gradient(ellipse at center, oklch(0.65 0.22 25 / .70) 0%, transparent 70%);
-    filter: blur(4px);
-  }
-
-  /* Callout labels removed — headline already communicates the action,
-     and there is not enough vertical space at this canvas height. */
-
-  /* ── Cartridge (right icon area, centre x=990 y=500 in 1320×800) ───────── */
-  /* appdmg places the Applications link at logical (495, 250) = 2× (990, 500). */
-  .cartridge-wrap {
-    position: absolute;
-    left: calc(75% - 168px);   /* 990 - 168 = 822px */
-    top: calc(500px - 168px);  /* 332px */
-    width: 336px; height: 336px;
-  }
-  .cartridge {
-    width: 336px; height: 336px;
-    border-radius: 36px;
-    background: linear-gradient(180deg, #1a1530 0%, #0c0918 100%);
-    border: 4px solid var(--blue);
+  .pedestal-left {
+    left: 168px;       /* 240 − 72 */
+    border: 1px solid oklch(0.55 0.22 25 / .55);
+    background: radial-gradient(
+      ellipse at center,
+      oklch(0.55 0.22 25 / .25) 0%,
+      oklch(0.55 0.22 25 / .05) 60%,
+      transparent 100%
+    );
     box-shadow:
-      0 0 0 6px rgba(0,0,0,.5),
-      0 0 48px oklch(0.55 0.22 265 / .55),
-      inset 0 0 48px oklch(0.45 0.22 265 / .35),
-      inset 0 0 2px rgba(255,255,255,.4);
-    display: grid;
-    grid-template-rows: 1fr auto;
-    overflow: hidden;
+      0 0 32px oklch(0.55 0.22 25 / .45),
+      inset 0 0 24px oklch(0.55 0.22 25 / .25);
   }
-  .crt-screen {
-    position: relative;
-    margin: 28px 28px 0;
-    border-radius: 20px;
-    background: radial-gradient(ellipse at center, oklch(0.18 0.08 265) 0%, oklch(0.08 0.04 265) 80%);
-    border: 2px solid rgba(0,200,255,.25);
-    box-shadow: inset 0 0 36px oklch(0.55 0.18 240 / .4);
-    display: grid; place-items: center;
-    overflow: hidden;
-  }
-  /* scanlines */
-  .crt-screen::before {
-    content: "";
-    position: absolute; inset: 0;
-    background: repeating-linear-gradient(to bottom, transparent 0 4px, rgba(0,0,0,.35) 4px 6px);
-    pointer-events: none;
-  }
-  /* perspective grid */
-  .crt-screen::after {
-    content: "";
-    position: absolute;
-    left: -10%; right: -10%; bottom: 0; height: 60%;
-    background:
-      linear-gradient(to top, oklch(0.45 0.22 265 / .7), transparent),
-      repeating-linear-gradient(to right, oklch(0.65 0.22 265 / .7) 0 2px, transparent 2px 28px),
-      repeating-linear-gradient(to top,  oklch(0.65 0.22 265 / .7) 0 2px, transparent 2px 24px);
-    transform: perspective(160px) rotateX(45deg);
-    transform-origin: bottom;
-    opacity: .55;
-  }
-  .arrow-glyph {
-    position: relative; z-index: 2;
-    font-family: "Press Start 2P", "Courier New", monospace;
-    font-size: 88px;
-    color: var(--cyan);
-    text-shadow: 0 0 20px var(--cyan-deep), 0 0 44px oklch(0.7 0.15 200 / .6);
-    line-height: 1;
-    transform: translateY(-4px);
-  }
-  .cart-tab {
-    height: 52px;
-    background: linear-gradient(180deg, oklch(0.4 0.22 265) 0%, oklch(0.28 0.18 265) 100%);
-    border-top: 2px solid oklch(0.7 0.22 265);
-    display: flex; align-items: center; justify-content: center;
-    font-family: "Press Start 2P", "Courier New", monospace;
-    font-size: 18px;
-    letter-spacing: 5px;
-    color: #fff;
-    text-shadow: 0 2px 0 oklch(0.2 0.15 265), 0 0 16px oklch(0.7 0.22 265);
+  .pedestal-right {
+    left: 648px;       /* 720 − 72 */
+    border: 1px solid oklch(0.55 0.22 265 / .60);
+    background: radial-gradient(
+      ellipse at center,
+      oklch(0.55 0.22 265 / .25) 0%,
+      oklch(0.55 0.22 265 / .05) 60%,
+      transparent 100%
+    );
+    box-shadow:
+      0 0 32px oklch(0.55 0.22 265 / .50),
+      inset 0 0 24px oklch(0.55 0.22 265 / .30);
   }
 
-  /* ── Connector arrow (SVG overlay) ─────────────────────────────────────── */
-  /* Works in 1320×800 coords. Icon centres: left x=330, right x=990, y=400.
-     Pedestal right edge ≈ 330+168=498. Cartridge left edge ≈ 990-168=822.
-     Arrow shaft: 540→800, head tip: 840, y=400. */
-  .arrow-svg {
+  /* ── Applications folder icon inside the right pedestal ─────────────────── */
+  /* The real macOS system Applications folder icon, extracted from
+     /System/Library/CoreServices/CoreTypes.bundle/.../ApplicationsFolderIcon.icns.
+     Drawn into the background because Finder on macOS 26 / dmgbuild does not
+     render the system icon for direct-written symlinks. If a future Finder/OS
+     combo does render the real icon, it will simply overlay this image at the
+     same position with a pixel-perfect match. */
+  .folder-icon {
     position: absolute;
-    top: 0; left: 0;
-    width: 1320px; height: 800px;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 112px; height: 112px;
     pointer-events: none;
-    z-index: 4;
-  }
-  .arrow-shaft {
-    fill: none;
-    stroke: var(--cyan);
-    stroke-width: 8;
-    stroke-linecap: butt;
-    filter: drop-shadow(0 0 12px var(--cyan-deep)) drop-shadow(0 0 28px oklch(0.7 0.15 200 / .6));
-  }
-  .arrow-head-poly {
-    fill: var(--cyan);
-    filter: drop-shadow(0 0 16px var(--cyan-deep));
+    filter: drop-shadow(0 4px 12px oklch(0.45 0.20 265 / .55));
   }
 
-  /* ── Drag hint (bottom: 28px → 56px at 2×) ─────────────────────────────── */
+  /* ── Drag hint ──────────────────────────────────────────────────────────── */
+  /* Lifted from the reference's bottom:28px to 60px so it has clearance from
+     the bottom corner marks and stays visible inside the Finder content area
+     even with the macOS 26 status row taking some space. */
   .drag-hint {
     position: absolute;
     left: 50%; transform: translateX(-50%);
-    bottom: 56px;
+    bottom: 60px;
     font-family: "VT323", "Courier New", monospace;
-    font-size: 36px;
+    font-size: 18px;
     color: var(--ink-dim);
-    letter-spacing: 4px;
+    letter-spacing: 2px;
     white-space: nowrap;
     z-index: 3;
   }
   .drag-hint .key {
     display: inline-block;
-    padding: 2px 16px; margin: 0 4px;
-    border: 2px solid rgba(255,255,255,.18);
-    border-radius: 8px;
+    padding: 1px 8px; margin: 0 2px;
+    border: 1px solid rgba(255,255,255,.18);
+    border-radius: 4px;
     color: var(--ink);
-    font-family: "VT323", "Courier New", monospace;
-    font-size: 36px;
     background: rgba(255,255,255,.04);
+    font-family: "VT323", "Courier New", monospace;
+    font-size: 18px;
+    letter-spacing: 2px;
   }
+
+  /* ── Arrow SVG overlay ───────────────────────────────────────────────────── */
+  /* Drawn in the coordinate space of the 960×680 canvas.
+     Real icon centres: OpenEmu at (240, 340), Applications at (720, 340).
+     Icon radius: 72px (144px icon size / 2).
+     Arrow with 20px clearance: from (332, 340) to (628, 340). */
+  .arrow-svg {
+    position: absolute; top: 0; left: 0;
+    width: 960px; height: 680px;
+    pointer-events: none;
+    z-index: 4;
+  }
+  .arrow-path {
+    fill: none;
+    stroke: var(--cyan);
+    stroke-width: 4;
+    stroke-linecap: butt;
+    filter: drop-shadow(0 0 6px var(--cyan-deep)) drop-shadow(0 0 14px oklch(0.7 0.15 200 / .6));
+  }
+  .arrow-head { fill: var(--cyan); filter: drop-shadow(0 0 8px var(--cyan-deep)); }
 </style>
 </head>
 <body>
 <div class="stage">
 
   <!-- Corner marks -->
-  <span class="corner tl">SYS // DMG-01</span>
-  <span class="corner tr">PLAYER 1</span>
-  <span class="corner bl">© 2026 OPENEMU</span>
-  <span class="corner br">READY</span>
+  <span class="corner-mark tl">SYS // DMG-01</span>
+  <span class="corner-mark tr">PLAYER 1</span>
+  <span class="corner-mark bl">©  2026  OPENEMU</span>
+  <span class="corner-mark br">READY</span>
 
   <!-- Logo + badge -->
   <div class="logo-row">
@@ -302,28 +271,25 @@
   <!-- Headline -->
   <div class="headline">
     <h1>DRAG OPENEMU INTO APPLICATIONS</h1>
-    <p>Ready Player One</p>
   </div>
 
-  <!-- Left: pedestal glow (app icon placed here by appdmg at 25%, 50%) -->
-  <div class="pedestal-wrap"></div>
-
-  <!-- Right: cartridge (Applications symlink placed here at 75%, 50%) -->
-  <div class="cartridge-wrap">
-    <div class="cartridge">
-      <div class="crt-screen">
-        <span class="arrow-glyph">▼</span>
-      </div>
-      <div class="cart-tab">APPLICATIONS</div>
-    </div>
+  <!-- Pedestals — frame the real macOS icons (Finder draws the icons on top) -->
+  <div class="pedestal pedestal-left"></div>
+  <div class="pedestal pedestal-right">
+    <!-- Real macOS Applications folder icon, baked into the background.
+         macOS extracts this from CoreTypes.bundle and uses it on /Applications
+         system-wide; we use the same asset so the look is pixel-identical. -->
+    <img class="folder-icon" src="applications-folder-icon.png" alt="" aria-hidden="true" />
   </div>
 
-  <!-- Arrow SVG in 1320×800 absolute coords -->
-  <svg class="arrow-svg" viewBox="0 0 1320 800" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-    <!-- shaft: pedestal right edge ~498 + 50px gap → cartridge left edge ~822 - 50px gap -->
-    <line class="arrow-shaft" x1="548" y1="500" x2="752" y2="500" />
-    <!-- head tip at 820, back at 752 ± 24px -->
-    <polygon class="arrow-head-poly" points="820,500 752,476 752,524" />
+  <!-- Arrow SVG — absolute coords in 960×680 space.
+       Icon size 128, radius 64. Icon centres: app=(240,340), apps=(720,340).
+       Arrow: right of left icon (240+64=304) + 20px gap = x1=324
+              left of right icon (720-64=656) - 20px gap = x2=636 (shaft end before head)
+       Head tip at x=656, base at x=632, half-height 12px. -->
+  <svg class="arrow-svg" viewBox="0 0 960 680" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <line class="arrow-path" x1="324" y1="340" x2="632" y2="340" />
+    <polygon class="arrow-head" points="656,340 632,328 632,352" />
   </svg>
 
   <!-- Drag hint -->

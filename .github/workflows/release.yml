@@ -195,6 +195,14 @@ jobs:
           echo "SIGN_UPDATE=$SIGN_UPDATE" >> $GITHUB_ENV
           echo "Found sign_update at: $SIGN_UPDATE"
 
+      # ── Install dmgbuild (DMG creation tool used by make-dmg.sh) ────────────
+      # dmgbuild writes the .DS_Store binary directly via mac_alias, bypassing
+      # the macOS 26 Finder/AppleScript regressions that broke earlier approaches.
+      - name: Install dmgbuild
+        run: |
+          python3 -m pip install --user --break-system-packages dmgbuild
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
       # ── Re-sign, notarize, create DMG ───────────────────────────────────────
       # notarize.sh detects CI_NOTARYTOOL_KEY_PATH to switch from keychain-profile
       # to API key auth. On self-hosted runner, leave these unset so it uses the

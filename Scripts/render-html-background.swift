@@ -21,8 +21,11 @@ guard cliArgs.count >= 3 else {
 let htmlPath = cliArgs[1]
 let pngPath  = cliArgs[2]
 
-let viewportW: CGFloat = 1320
-let viewportH: CGFloat = 800
+// Render at the exact DMG window dimensions (1× logical points).
+// Finder maps background-PNG pixels to logical points 1:1 at 72 DPI —
+// no DPI tricks required; the PNG size must equal the window size exactly.
+let viewportW: CGFloat = 960
+let viewportH: CGFloat = 680
 
 // MARK: - Renderer
 
@@ -88,31 +91,43 @@ class Renderer: NSObject, WKNavigationDelegate {
     }
 
     func save(image: NSImage) {
-        guard let tiff = image.tiffRepresentation,
-              let rep  = NSBitmapImageRep(data: tiff)
+        // Get a CGImage from the snapshot
+        var rect = NSRect(x: 0, y: 0, width: viewportW, height: viewportH)
+        guard let cgImage = image.cgImage(forProposedRect: &rect, context: nil, hints: nil) else {
+            fputs("ERROR: cannot get CGImage from snapshot\n", stderr)
+            NSApp.terminate(nil)
+            return
+        }
+
+        let url = URL(fileURLWithPath: outputPath)
+        guard let dest = CGImageDestinationCreateWithURL(
+                url as CFURL, "public.png" as CFString, 1, nil)
         else {
-            fputs("ERROR: cannot create bitmap from snapshot\n", stderr)
+            fputs("ERROR: cannot create PNG destination at \(outputPath)\n", stderr)
             NSApp.terminate(nil)
             return
         }
 
-        // Tag as 144 DPI so macOS treats the PNG as @2x retina
-        rep.pixelsWide = Int(viewportW)
-        rep.pixelsHigh = Int(viewportH)
+        // 144 DPI — WebKit on a retina display takes a 2× snapshot, so a 960×680
+        // viewport produces a 1920×1360 PNG. Tagging it 144 DPI tells Finder this is
+        // a @2× retina image of a 960×680 logical canvas, which matches the DMG window.
+        // Without this tag Finder treats the 1920×1360 pixels as logical points and
+        // only the top-left 960×680 quarter is visible.
+        let props: [CFString: Any] = [
+            kCGImagePropertyDPIWidth:  144,
+            kCGImagePropertyDPIHeight: 144,
+        ]
+        CGImageDestinationAddImage(dest, cgImage, props as CFDictionary)
 
-        guard let png = rep.representation(using: .png, properties: [:]) else {
-            fputs("ERROR: cannot encode PNG\n", stderr)
+        guard CGImageDestinationFinalize(dest) else {
+            fputs("ERROR: CGImageDestinationFinalize failed\n", stderr)
             NSApp.terminate(nil)
             return
         }
 
-        do {
-            try png.write(to: URL(fileURLWithPath: outputPath))
-            print("Written \(Int(viewportW))×\(Int(viewportH)) @2x → \(outputPath)")
-        } catch {
-            fputs("ERROR: cannot write PNG — \(error.localizedDescription)\n", stderr)
-        }
-
+        // Report the actual file dimensions, not the viewport size
+        let pixelW = cgImage.width, pixelH = cgImage.height
+        print("Written \(pixelW)×\(pixelH) px @ 144 DPI (\(Int(viewportW))×\(Int(viewportH)) logical) → \(outputPath)")
         NSApp.terminate(nil)
     }
 }
