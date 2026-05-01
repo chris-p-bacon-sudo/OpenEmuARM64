@@ -24,30 +24,31 @@ Fixes #
 
 ## How to test locally
 
-```bash
-# 1. Check out this PR
-gh pr checkout <PR_NUMBER> --repo nickybmon/OpenEmu-Silicon
+Navigate to your local clone, then paste this block. Replace `<PR_NUMBER>` with this PR's number. For Flycast use `-scheme "OpenEmu + Flycast"` with `clean build`; for Mednafen use `-scheme "OpenEmu + Mednafen" -configuration Release` and replace `Debug` with `Release` in the `DEBUG_DIR` line.
 
-# 2. Build — use the scheme that covers the changed target.
-#    For main app changes: -scheme OpenEmu
-#    For Flycast core changes: -scheme "OpenEmu + Flycast" with 'clean build'
-#    (incremental builds will not recompile core C++ files)
+```bash
+cd ~/Documents/Cursor/Open\ Emu
+gh pr checkout <PR_NUMBER> --repo nickybmon/OpenEmu-Silicon
 xcodebuild \
   -workspace OpenEmu-metal.xcworkspace \
   -scheme OpenEmu \
   -configuration Debug \
   -destination 'platform=macOS,arch=arm64' \
   build 2>&1 | tail -20
-
-# 3. If this PR touches a core (Flycast, etc.), install the rebuilt binary:
-#    cp -f ~/Library/Developer/Xcode/DerivedData/OpenEmu-metal-*/Build/Products/Debug/<CoreName>.oecoreplugin/Contents/MacOS/<CoreName> \
-#      ~/Library/Application\ Support/OpenEmu/Cores/<CoreName>.oecoreplugin/Contents/MacOS/<CoreName>
-
-# 4. Launch
-open ~/Library/Developer/Xcode/DerivedData/OpenEmu-*/Build/Products/Debug/OpenEmu.app
+DEBUG_DIR=$(ls -dt ~/Library/Developer/Xcode/DerivedData/OpenEmu-metal-*/Build/Products/Debug 2>/dev/null | head -1)
+open "$DEBUG_DIR/OpenEmu.app"
 ```
 
-<!-- Replace <PR_NUMBER> with this PR's number. Add any PR-specific setup steps here (e.g. BIOS files needed, permissions to revoke first, specific ROM to test with). -->
+If this PR touches a core, install it before the `open` line:
+
+```bash
+cp -R "$DEBUG_DIR/<CoreName>.oecoreplugin" \
+  ~/Library/Application\ Support/OpenEmu/Cores/<CoreName>.oecoreplugin
+codesign --force --sign - \
+  ~/Library/Application\ Support/OpenEmu/Cores/<CoreName>.oecoreplugin
+```
+
+<!-- Add any PR-specific setup here (BIOS files, permissions to revoke, specific ROM to test with). -->
 
 ---
 
