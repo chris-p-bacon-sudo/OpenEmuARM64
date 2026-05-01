@@ -24,28 +24,21 @@
 
 import Cocoa
 
-/// Modern frosted-glass panel used as content cards in the setup assistant.
-/// Replaces the old nine-part stretched image approach with a system-native
-/// NSVisualEffectView embedded in a layer-backed container.
 final class BackgroundImageView: NSView {
 
-    // Kept for XIB compatibility — no longer used for drawing
     @IBInspectable var background: NSImage?
     @IBInspectable var image: NSImage?
 
-    private var didSetup = false
-
-    required init?(coder: NSCoder) {
-        super.init(coder: coder)
-        setup()
+    // After IB wires up IBInspectable properties: use image drawing when images
+    // are set (Controls panel wood texture), frosted glass otherwise (setup assistant).
+    override func awakeFromNib() {
+        super.awakeFromNib()
+        if background == nil && image == nil {
+            setupFrostedGlass()
+        }
     }
 
-    override init(frame frameRect: NSRect) {
-        super.init(frame: frameRect)
-        setup()
-    }
-
-    private func setup() {
+    private func setupFrostedGlass() {
         wantsLayer = true
         layer?.cornerRadius = 12
         layer?.cornerCurve = .continuous
@@ -65,4 +58,11 @@ final class BackgroundImageView: NSView {
             fx.bottomAnchor.constraint(equalTo: bottomAnchor),
         ])
     }
+
+    override func draw(_ dirtyRect: NSRect) {
+        background?.draw(in: dirtyRect, from: .zero, operation: .sourceOver, fraction: 1, respectFlipped: isFlipped, hints: nil)
+        image?.draw(in: dirtyRect, from: dirtyRect, operation: .sourceOver, fraction: 1, respectFlipped: isFlipped, hints: nil)
+    }
+
+    override var isFlipped: Bool { false }
 }
