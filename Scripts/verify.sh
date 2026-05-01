@@ -44,7 +44,15 @@ info() { echo "----  $1"; }
 # --- Build ---------------------------------------------------------------
 
 if [ -n "$CORE" ]; then
-  SCHEME="$CORE"
+  # Workspace schemes are named "OpenEmu + <Core>" for the combined host+core build.
+  # Some cores also have a bare scheme (e.g. "4DO", "BSNES") — prefer the combined one.
+  COMBINED_SCHEME="OpenEmu + $CORE"
+  AVAILABLE=$(xcodebuild -workspace "$WORKSPACE" -list 2>/dev/null | awk '/Schemes:/,0' | tail -n +2)
+  if echo "$AVAILABLE" | grep -qxF "        $COMBINED_SCHEME"; then
+    SCHEME="$COMBINED_SCHEME"
+  else
+    SCHEME="$CORE"
+  fi
   info "Building core scheme: $SCHEME"
 else
   SCHEME="OpenEmu"
@@ -88,7 +96,9 @@ if [ -z "$CORE" ]; then
   PLISTS=("$APP_PLIST" "$APP_ENTITLEMENTS")
 else
   # Each core has its own Info.plist somewhere in its directory.
-  mapfile -t PLISTS < <(find "$CORE" -maxdepth 3 -name 'Info.plist' 2>/dev/null)
+  # Use while-read instead of mapfile to stay compatible with macOS bash 3.x.
+  PLISTS=()
+  while IFS= read -r p; do PLISTS+=("$p"); done < <(find "$CORE" -maxdepth 3 -name 'Info.plist' 2>/dev/null)
 fi
 
 for p in "${PLISTS[@]:-}"; do
