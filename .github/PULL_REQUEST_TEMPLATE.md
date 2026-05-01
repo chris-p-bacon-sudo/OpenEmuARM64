@@ -24,20 +24,24 @@ Fixes #
 
 ## How to test locally
 
-Navigate to your local clone, then paste this block. Replace `<PR_NUMBER>` with this PR's number. For Flycast use `-scheme "OpenEmu + Flycast"` with `clean build`; for Mednafen use `-scheme "OpenEmu + Mednafen" -configuration Release` and replace `Debug` with `Release` in the `DEBUG_DIR` line.
+Replace `NUMBER` with this PR's number, then paste the whole block. For Flycast use `-scheme "OpenEmu + Flycast"` with `clean build`; for Mednafen use `-scheme "OpenEmu + Mednafen" -configuration Release`.
 
 ```bash
 cd ~/Documents/Cursor/Open\ Emu
-gh pr checkout <PR_NUMBER> --repo nickybmon/OpenEmu-Silicon
+gh pr checkout NUMBER --repo nickybmon/OpenEmu-Silicon
 xcodebuild \
-  -workspace OpenEmu-metal.xcworkspace \
+  -workspace OpenEmu.xcworkspace \
   -scheme OpenEmu \
   -configuration Debug \
   -destination 'platform=macOS,arch=arm64' \
   build 2>&1 | tail -20
-DEBUG_DIR=$(ls -dt ~/Library/Developer/Xcode/DerivedData/OpenEmu-metal-*/Build/Products/Debug 2>/dev/null | head -1)
+DEBUG_DIR=$(ls -dt ~/Library/Developer/Xcode/DerivedData/OpenEmu-*/Build/Products/Debug 2>/dev/null | head -1)
+SIGN_ID=$(security find-identity -v -p codesigning | awk -F'"' '/Apple Development/ {print $2; exit}')
+codesign --force --deep --sign "${SIGN_ID:--}" "$DEBUG_DIR/OpenEmu.app"
 open "$DEBUG_DIR/OpenEmu.app"
 ```
+
+The `SIGN_ID` line auto-picks your local Apple Development identity so the binary gets a **stable** code signature across rebuilds. Without it, ad-hoc signing (`-`) would cause macOS to treat each rebuild as a new app and revoke Input Monitoring, Keychain ACLs, and other TCC permissions every time you test. Falls back to ad-hoc only if you have no Apple Development cert.
 
 If this PR touches a core, install it before the `open` line:
 
@@ -55,7 +59,7 @@ codesign --force --sign - \
 ## PR checklist
 
 - [ ] Branched from an up-to-date `main` (ran `git fetch origin && git merge origin/main`)
-- [ ] Build passes: `xcodebuild -workspace OpenEmu-metal.xcworkspace -scheme OpenEmu -configuration Debug -destination 'platform=macOS,arch=arm64' build`
+- [ ] Build passes: `xcodebuild -workspace OpenEmu.xcworkspace -scheme OpenEmu -configuration Debug -destination 'platform=macOS,arch=arm64' build`
 - [ ] Tested on Apple Silicon (M1 / M2 / M3 / M4 Mac)
 - [ ] No build logs, binaries, or credentials committed
 - [ ] Copyright headers preserved on all modified files

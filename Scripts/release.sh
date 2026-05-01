@@ -141,7 +141,7 @@ echo "Archive: $ARCHIVE_PATH"
 step "Uploading dSYMs to Sentry (symbolicated crash reports)"
 
 if command -v sentry-cli &>/dev/null; then
-  sentry-cli upload-dif \
+  sentry-cli debug-files upload \
     --org openemu-silicon \
     --project openemu-silicon \
     "$ARCHIVE_PATH/dSYMs/" \

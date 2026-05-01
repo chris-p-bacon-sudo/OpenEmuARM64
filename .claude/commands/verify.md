@@ -7,6 +7,7 @@ This is the default check after any code change. Do not ask the user to test thi
 | Change touched | Command |
 |---|---|
 | Main app code (`OpenEmu/`, `OpenEmuKit/`, `OpenEmu-SDK/`, `OpenEmu-Shaders/`) | `./Scripts/verify.sh --launch` |
+| Code with coverage in `OpenEmu/OpenEmuTests/` | `./Scripts/verify.sh --launch --test` |
 | A core plugin (`Dolphin/`, `Flycast/`, `mGBA/`, etc.) | `./Scripts/verify.sh --core <CoreName>` |
 | Both | run both, in that order |
 | Scripts, CI, docs only | skip — no code to verify |

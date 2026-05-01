@@ -4,6 +4,7 @@
 # Usage:
 #   ./Scripts/verify.sh                        # build + analyze + plist + codesign on the main app
 #   ./Scripts/verify.sh --launch               # above, plus 5s smoke launch with log + crash check
+#   ./Scripts/verify.sh --test                 # above, plus run OpenEmuTests unit test target
 #   ./Scripts/verify.sh --core <CoreName>      # build a core scheme + install + verify the installed plugin
 #   ./Scripts/verify.sh --core <CoreName> --launch
 #
@@ -23,12 +24,14 @@ INSTALLED_APP_DEFAULT="$HOME/Library/Application Support/OpenEmu"
 
 LAUNCH=0
 CORE=""
+RUN_TESTS=0
 FAILURES=0
 
 while [ $# -gt 0 ]; do
   case "$1" in
     --launch) LAUNCH=1; shift ;;
     --core) CORE="${2:-}"; shift 2 ;;
+    --test) RUN_TESTS=1; shift ;;
     -h|--help) sed -n '2,12p' "$0"; exit 0 ;;
     *) echo "unknown flag: $1" >&2; exit 2 ;;
   esac
@@ -41,7 +44,15 @@ info() { echo "----  $1"; }
 # --- Build ---------------------------------------------------------------
 
 if [ -n "$CORE" ]; then
-  SCHEME="$CORE"
+  # Workspace schemes are named "OpenEmu + <Core>" for the combined host+core build.
+  # Some cores also have a bare scheme (e.g. "4DO", "BSNES") — prefer the combined one.
+  COMBINED_SCHEME="OpenEmu + $CORE"
+  AVAILABLE=$(xcodebuild -workspace "$WORKSPACE" -list 2>/dev/null | awk '/Schemes:/,0' | tail -n +2)
+  if echo "$AVAILABLE" | grep -qxF "        $COMBINED_SCHEME"; then
+    SCHEME="$COMBINED_SCHEME"
+  else
+    SCHEME="$CORE"
+  fi
   info "Building core scheme: $SCHEME"
 else
   SCHEME="OpenEmu"
@@ -85,7 +96,9 @@ if [ -z "$CORE" ]; then
   PLISTS=("$APP_PLIST" "$APP_ENTITLEMENTS")
 else
   # Each core has its own Info.plist somewhere in its directory.
-  mapfile -t PLISTS < <(find "$CORE" -maxdepth 3 -name 'Info.plist' 2>/dev/null)
+  # Use while-read instead of mapfile to stay compatible with macOS bash 3.x.
+  PLISTS=()
+  while IFS= read -r p; do PLISTS+=("$p"); done < <(find "$CORE" -maxdepth 3 -name 'Info.plist' 2>/dev/null)
 fi
 
 for p in "${PLISTS[@]:-}"; do
@@ -186,6 +199,25 @@ if [ "$LAUNCH" -eq 1 ] && [ -z "$CORE" ] && [ -n "${ARTIFACT:-}" ] && [ -e "$ART
     else
       pass "no new crash reports"
     fi
+  fi
+fi
+
+# --- Optional unit tests (OpenEmuTests target) ---------------------------
+
+if [ "$RUN_TESTS" -eq 1 ] && [ -z "$CORE" ]; then
+  info "running OpenEmuTests (xcodebuild test)"
+  TEST_LOG=$(mktemp -t verify_test.XXXXXX)
+  if xcodebuild test \
+       -workspace "$WORKSPACE" \
+       -scheme OpenEmu \
+       -configuration Debug \
+       -destination 'platform=macOS,arch=arm64' \
+       > "$TEST_LOG" 2>&1; then
+    PASS_COUNT=$(grep -c 'passed' "$TEST_LOG" 2>/dev/null || true)
+    pass "OpenEmuTests ($PASS_COUNT tests passed)"
+  else
+    fail "OpenEmuTests — see $TEST_LOG (last 30 lines below)"
+    tail -30 "$TEST_LOG"
   fi
 fi
 
