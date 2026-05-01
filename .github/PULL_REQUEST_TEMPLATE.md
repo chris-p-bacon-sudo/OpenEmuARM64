@@ -24,18 +24,19 @@ Fixes #
 
 ## How to test locally
 
-Navigate to your local clone, then paste this block. Replace `<PR_NUMBER>` with this PR's number. For Flycast use `-scheme "OpenEmu + Flycast"` with `clean build`; for Mednafen use `-scheme "OpenEmu + Mednafen" -configuration Release`.
+Replace `NUMBER` with this PR's number, then paste the whole block. For Flycast use `-scheme "OpenEmu + Flycast"` with `clean build`; for Mednafen use `-scheme "OpenEmu + Mednafen" -configuration Release`.
 
 ```bash
 cd ~/Documents/Cursor/Open\ Emu
-gh pr checkout <PR_NUMBER> --repo nickybmon/OpenEmu-Silicon
+gh pr checkout NUMBER --repo nickybmon/OpenEmu-Silicon
 xcodebuild \
-  -workspace OpenEmu-metal.xcworkspace \
+  -workspace OpenEmu.xcworkspace \
   -scheme OpenEmu \
   -configuration Debug \
   -destination 'platform=macOS,arch=arm64' \
   build 2>&1 | tail -20
-DEBUG_DIR=$(ls -dt ~/Library/Developer/Xcode/DerivedData/OpenEmu-metal-*/Build/Products/Debug 2>/dev/null | head -1)
+DEBUG_DIR=$(ls -dt ~/Library/Developer/Xcode/DerivedData/OpenEmu-*/Build/Products/Debug 2>/dev/null | head -1)
+codesign --force --deep --sign - "$DEBUG_DIR/OpenEmu.app"
 open "$DEBUG_DIR/OpenEmu.app"
 ```
 
@@ -55,7 +56,7 @@ codesign --force --sign - \
 ## PR checklist
 
 - [ ] Branched from an up-to-date `main` (ran `git fetch origin && git merge origin/main`)
-- [ ] Build passes: `xcodebuild -workspace OpenEmu-metal.xcworkspace -scheme OpenEmu -configuration Debug -destination 'platform=macOS,arch=arm64' build`
+- [ ] Build passes: `xcodebuild -workspace OpenEmu.xcworkspace -scheme OpenEmu -configuration Debug -destination 'platform=macOS,arch=arm64' build`
 - [ ] Tested on Apple Silicon (M1 / M2 / M3 / M4 Mac)
 - [ ] No build logs, binaries, or credentials committed
 - [ ] Copyright headers preserved on all modified files
