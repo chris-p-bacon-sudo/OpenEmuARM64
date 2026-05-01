@@ -14,6 +14,11 @@ on:
   push:
     tags:
       - 'v[0-9]*.[0-9]*.[0-9]*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g. 1.0.7) — must match CFBundleShortVersionString in Info.plist'
+        required: true
 
 jobs:
   release:
@@ -79,13 +84,17 @@ jobs:
           echo "DMG=${{ github.workspace }}/Releases/OpenEmu-Silicon.dmg" >> $GITHUB_ENV
 
       # ── Parse and validate version ──────────────────────────────────────────
-      - name: Parse version from tag
+      - name: Parse version from tag or input
         run: |
-          TAG="${{ github.ref_name }}"
-          VERSION="${TAG#v}"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            TAG="${{ github.ref_name }}"
+            VERSION="${TAG#v}"
+          fi
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] \
-            || { echo "ERROR: Tag '$TAG' is not in vX.Y.Z format."; exit 1; }
+            || { echo "ERROR: Version '$VERSION' is not in X.Y.Z format."; exit 1; }
 
       - name: Validate Info.plist version matches tag
         run: |
