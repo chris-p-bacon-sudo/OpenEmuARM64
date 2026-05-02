@@ -42,18 +42,20 @@ enum OEGoogleDriveConfig {
     static let redirectURI           = "http://127.0.0.1"
     
     // MARK: - API Scopes
-    
-    /// Requests access to the hidden App Data folder only.
-    static let scopes = ["https://www.googleapis.com/auth/drive.appdata"]
-    
+
+    /// Requests access to files created by this app only (user-visible in Drive).
+    static let scopes = ["https://www.googleapis.com/auth/drive.file"]
+
     // MARK: - API Endpoints
-    
+
     static let driveAPIBaseURL   = "https://www.googleapis.com/drive/v3"
     static let uploadAPIBaseURL  = "https://www.googleapis.com/upload/drive/v3"
-    
-    // MARK: - App Data Folder
-    
-    static let appDataFolderName = "appDataFolder"
+
+    // MARK: - Save Folder
+
+    /// Name of the folder created in the root of the user's Google Drive.
+    /// User-visible in the Drive web UI, browseable, and removable.
+    static let saveFolderName = "OpenEmu Saves"
     
     // MARK: - Keychain
     
