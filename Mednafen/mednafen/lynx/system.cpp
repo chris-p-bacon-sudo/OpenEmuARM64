@@ -493,3 +493,14 @@ MDFNGI EmulatedLynx =
  2,     // Number of output sound channels
 };
 
+// C-callable accessor for the active Lynx system RAM, used by the OpenEmu
+// RetroAchievements integration. The 64 KB buffer maps 1:1 to the rcheevos
+// Lynx address space (Vendor/rcheevos/src/rcheevos/consoleinfo.c, regions
+// "Zero Page" / "Stack" / "System RAM" / etc.). Returns NULL when no game
+// is loaded.
+extern "C" uint8 *MDFNLynx_GetRAMPointer(void)
+{
+ if (!lynxie) return NULL;
+ return lynxie->GetRamPointer();
+}
+

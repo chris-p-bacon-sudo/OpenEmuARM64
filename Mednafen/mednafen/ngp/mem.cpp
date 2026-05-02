@@ -677,4 +677,13 @@ void reset_memory(void)
 
 }
 
+// C-callable accessor for the NGP system RAM (CPUExRAM, 16 KB at hardware
+// 0x4000-0x7FFF). Used by the OpenEmu RetroAchievements integration. The
+// rcheevos NGP region exposes 0x0000-0x3FFF mapped to this buffer
+// (Vendor/rcheevos/src/rcheevos/consoleinfo.c, "System RAM").
+extern "C" uint8_t *MDFNNGP_GetRAMPointer(void)
+{
+ return MDFN_IEN_NGP::CPUExRAM;
+}
+
 //=============================================================================
