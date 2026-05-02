@@ -37,6 +37,8 @@ The script chains build → static analyzer → plist lint → codesign verify �
 
 Only escalate to "please test this in a real game session" when the change is genuinely about in-game behavior (input mapping, save states, rendering, audio sync, RA achievements triggering). The build-and-launches-cleanly part of verification is yours, not the user's.
 
+**If you (or the user) are working in a git worktree:** use `Scripts/build-for-worktree.sh` (or `verify.sh --worktree`, which auto-detects worktrees) instead of plain xcodebuild. macOS binds privacy permissions to the app's path, and Xcode's default DerivedData uses a different hash per worktree — so a fresh build means re-granting Input Monitoring etc. from scratch every time. The stable per-branch path under `~/Builds/openemu/<branch>/` keeps permissions persistent. See `docs/worktree-workflow.md` for the full workflow including the cores-are-shared gotcha.
+
 ---
 
 ## Autonomy — run things yourself

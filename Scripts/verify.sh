@@ -7,6 +7,11 @@
 #   ./Scripts/verify.sh --test                 # above, plus run OpenEmuTests unit test target
 #   ./Scripts/verify.sh --core <CoreName>      # build a core scheme + install + verify the installed plugin
 #   ./Scripts/verify.sh --core <CoreName> --launch
+#   ./Scripts/verify.sh --worktree             # build to ~/Builds/openemu/<branch>/ for stable permissions
+#
+# When run inside a git worktree (or with --worktree), the script builds and
+# locates artifacts at ~/Builds/openemu/<branch>/ so macOS privacy permissions
+# persist across rebuilds of the same branch. See docs/worktree-workflow.md.
 #
 # Exit code is the number of failing checks. 0 means everything passed.
 # Each check prints a single PASS/FAIL line so the summary is greppable.
@@ -25,6 +30,7 @@ INSTALLED_APP_DEFAULT="$HOME/Library/Application Support/OpenEmu"
 LAUNCH=0
 CORE=""
 RUN_TESTS=0
+WORKTREE=0
 FAILURES=0
 
 while [ $# -gt 0 ]; do
@@ -32,10 +38,30 @@ while [ $# -gt 0 ]; do
     --launch) LAUNCH=1; shift ;;
     --core) CORE="${2:-}"; shift 2 ;;
     --test) RUN_TESTS=1; shift ;;
+    --worktree) WORKTREE=1; shift ;;
     -h|--help) sed -n '2,12p' "$0"; exit 0 ;;
     *) echo "unknown flag: $1" >&2; exit 2 ;;
   esac
 done
+
+# Auto-detect worktree if not explicitly set.
+# `git rev-parse --show-superproject-working-tree` returns non-empty for submodules; use a different signal.
+# A linked worktree has its .git as a *file* (pointing into the main repo's .git/worktrees/), not a directory.
+if [ "$WORKTREE" -eq 0 ] && [ -f .git ]; then
+  WORKTREE=1
+fi
+
+# Determine build directory for worktree mode.
+if [ "$WORKTREE" -eq 1 ]; then
+  BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null | sed 's|/|-|g')
+  if [ -z "$BRANCH" ] || [ "$BRANCH" = "HEAD" ]; then
+    echo "warning: --worktree set but cannot determine branch name; falling back to DerivedData" >&2
+    WORKTREE=0
+  else
+    BUILD_DIR_OVERRIDE="$HOME/Builds/openemu/$BRANCH"
+    mkdir -p "$BUILD_DIR_OVERRIDE"
+  fi
+fi
 
 pass() { echo "PASS  $1"; }
 fail() { echo "FAIL  $1"; FAILURES=$((FAILURES+1)); }
@@ -60,9 +86,14 @@ else
 fi
 
 BUILD_LOG=$(mktemp -t verify_build.XXXXXX)
-if xcodebuild -workspace "$WORKSPACE" -scheme "$SCHEME" \
-     -configuration Debug -destination 'platform=macOS,arch=arm64' \
-     build > "$BUILD_LOG" 2>&1; then
+XCODEBUILD_ARGS=(-workspace "$WORKSPACE" -scheme "$SCHEME"
+                 -configuration Debug -destination 'platform=macOS,arch=arm64')
+if [ "$WORKTREE" -eq 1 ]; then
+  XCODEBUILD_ARGS+=(-derivedDataPath "$BUILD_DIR_OVERRIDE")
+  info "worktree mode — building to $BUILD_DIR_OVERRIDE"
+fi
+
+if xcodebuild "${XCODEBUILD_ARGS[@]}" build > "$BUILD_LOG" 2>&1; then
   pass "build ($SCHEME)"
 else
   fail "build ($SCHEME) — see $BUILD_LOG (last 30 lines below)"
@@ -80,9 +111,7 @@ fi
 
 if [ -z "$CORE" ]; then
   ANALYZE_LOG=$(mktemp -t verify_analyze.XXXXXX)
-  if xcodebuild -workspace "$WORKSPACE" -scheme "$SCHEME" \
-       -configuration Debug -destination 'platform=macOS,arch=arm64' \
-       analyze > "$ANALYZE_LOG" 2>&1; then
+  if xcodebuild "${XCODEBUILD_ARGS[@]}" analyze > "$ANALYZE_LOG" 2>&1; then
     pass "analyze ($SCHEME)"
   else
     fail "analyze ($SCHEME) — see $ANALYZE_LOG"
@@ -117,12 +146,26 @@ done
 
 # --- Locate the built artifact and codesign verify ---------------------------
 
-DERIVED_BASE="$HOME/Library/Developer/Xcode/DerivedData"
+if [ "$WORKTREE" -eq 1 ]; then
+  ARTIFACT_BASE="$BUILD_DIR_OVERRIDE"
+else
+  ARTIFACT_BASE="$HOME/Library/Developer/Xcode/DerivedData"
+fi
 
 if [ -z "$CORE" ]; then
-  ARTIFACT=$(find "$DERIVED_BASE" -maxdepth 5 -path '*OpenEmu-metal-*/Build/Products/Debug/OpenEmu.app' -print -quit 2>/dev/null)
+  if [ "$WORKTREE" -eq 1 ]; then
+    ARTIFACT="$ARTIFACT_BASE/Build/Products/Debug/OpenEmu.app"
+    [ -e "$ARTIFACT" ] || ARTIFACT=""
+  else
+    ARTIFACT=$(find "$ARTIFACT_BASE" -maxdepth 5 -path '*OpenEmu-metal-*/Build/Products/Debug/OpenEmu.app' -print -quit 2>/dev/null)
+  fi
 else
-  ARTIFACT=$(find "$DERIVED_BASE" -maxdepth 5 -path "*OpenEmu-metal-*/Build/Products/Debug/${CORE}.oecoreplugin" -print -quit 2>/dev/null)
+  if [ "$WORKTREE" -eq 1 ]; then
+    ARTIFACT="$ARTIFACT_BASE/Build/Products/Debug/${CORE}.oecoreplugin"
+    [ -e "$ARTIFACT" ] || ARTIFACT=""
+  else
+    ARTIFACT=$(find "$ARTIFACT_BASE" -maxdepth 5 -path "*OpenEmu-metal-*/Build/Products/Debug/${CORE}.oecoreplugin" -print -quit 2>/dev/null)
+  fi
 fi
 
 if [ -z "$ARTIFACT" ] || [ ! -e "$ARTIFACT" ]; then
