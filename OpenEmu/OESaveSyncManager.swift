@@ -52,7 +52,7 @@ protocol OESaveSyncManagerDelegate: AnyObject {
 // MARK: - OESaveSyncManager
 
 /// Singleton that manages cloud synchronisation of OpenEmu saves (battery saves + save states)
-/// with Google Drive using the hidden App Data folder.
+/// with Google Drive in a user-visible "OpenEmu Saves" folder at the root of the user's Drive.
 ///
 /// ## Lifecycle
 /// Call `startMonitoring()` once the library database has loaded.
@@ -104,8 +104,16 @@ final class OESaveSyncManager: NSObject {
     
     private var oauthListener: NWListener?
     
+    // MARK: - Save Folder
+
+    /// Cached Drive folder ID for "OpenEmu Saves". Persisted in keychain across sessions.
+    private var saveFolderID: String? {
+        get { keychainRead(account: "saveFolderID") }
+        set { keychainWrite(value: newValue, account: "saveFolderID") }
+    }
+
     // MARK: - Background Sync
-    
+
     private var backgroundTimer: Timer?
     
     /// The date and time when the last successful sync operation completed.
@@ -254,12 +262,63 @@ final class OESaveSyncManager: NSObject {
     /// Manually triggers a check for all currently monitored folders to see if anything needs uploading or downloading.
     @objc func performFullSyncCheck() {
         guard isSignedIn else { return }
-        
-        os_log(.info, log: log, "Performing full background sync check...")
-        
-        // In a real implementation, we might want to iterate over recent games.
-        // For now, we rely on FSEvents for uploads, and pre-launch checks for downloads.
-        // We can however check if any local files are newer than cloud and haven't been uploaded.
+
+        os_log(.info, log: log, "Performing full sync check across %d monitored directories.", monitoredURLs.count)
+
+        let relevantExtensions: Set<String> = ["sav", "srm", "oesavestate", "state", "rtc", "eep", "nv"]
+
+        Task {
+            do {
+                try await ensureValidAccessToken()
+
+                // Build a name→modifiedTime map from the cloud once, rather than per-file.
+                let cloudFiles = try await fetchCloudFileList()
+                let cloudIndex: [String: Date] = Dictionary(
+                    cloudFiles.compactMap { f in
+                        guard let name = f.name, let date = f.modifiedTime else { return nil }
+                        return (name, date)
+                    },
+                    uniquingKeysWith: { newer, _ in newer }
+                )
+
+                var toUpload: [URL] = []
+
+                for dir in monitoredURLs {
+                    guard let enumerator = FileManager.default.enumerator(
+                        at: dir,
+                        includingPropertiesForKeys: [.contentModificationDateKey],
+                        options: [.skipsHiddenFiles]
+                    ) else { continue }
+
+                    for case let url as URL in enumerator {
+                        guard relevantExtensions.contains(url.pathExtension.lowercased()) else { continue }
+                        guard let attrs = try? url.resourceValues(forKeys: [.contentModificationDateKey]),
+                              let localMod = attrs.contentModificationDate else { continue }
+
+                        let cloudName = cloudFileName(for: url)
+                        let cloudMod = cloudIndex[cloudName] ?? .distantPast
+
+                        if localMod > cloudMod {
+                            toUpload.append(url)
+                        }
+                    }
+                }
+
+                if toUpload.isEmpty {
+                    os_log(.info, log: log, "Full sync check: all saves are up to date.")
+                    setStatus(.success, message: "All saves are up to date.")
+                    return
+                }
+
+                os_log(.info, log: log, "Full sync check: uploading %d file(s).", toUpload.count)
+                for url in toUpload {
+                    await uploadFile(at: url)
+                }
+            } catch {
+                os_log(.error, log: log, "Full sync check failed: %@", error.localizedDescription)
+                setStatus(.failed, message: "Sync failed: \(error.localizedDescription)")
+            }
+        }
     }
     
     // MARK: - Pre-launch Sync Check
@@ -286,8 +345,9 @@ final class OESaveSyncManager: NSObject {
             do {
                 // Refresh token if necessary before any API call.
                 try await ensureValidAccessToken()
-                
-                let remoteFiles = try await listFiles(inFolder: OEGoogleDriveConfig.appDataFolderName, namePrefix: cloudPath)
+                let folderID = try await ensureSaveFolder()
+
+                let remoteFiles = try await listFiles(inFolder: folderID, namePrefix: cloudPath)
                 
                 // Find the most recently modified remote file.
                 let latestRemote = remoteFiles.max { a, b in
@@ -336,8 +396,9 @@ final class OESaveSyncManager: NSObject {
         Task {
             do {
                 try await ensureValidAccessToken()
-                
-                let files = try await listFiles(inFolder: OEGoogleDriveConfig.appDataFolderName, namePrefix: cloudPath)
+                let folderID = try await ensureSaveFolder()
+
+                let files = try await listFiles(inFolder: folderID, namePrefix: cloudPath)
                 
                 for file in files {
                     guard let fileId = file.id, let fileName = file.name else { continue }
@@ -364,20 +425,21 @@ final class OESaveSyncManager: NSObject {
         
         do {
             try await ensureValidAccessToken()
-            
+            let folderID = try await ensureSaveFolder()
+
             let data = try Data(contentsOf: localURL)
             let cloudName = cloudFileName(for: localURL)
-            
+
             setStatus(.syncing, message: "Uploading \(localURL.lastPathComponent)…")
-            
+
             // Check if a file with this name already exists in Drive (for update vs. create).
-            let existing = try await listFiles(inFolder: OEGoogleDriveConfig.appDataFolderName, namePrefix: cloudName)
-            
+            let existing = try await listFiles(inFolder: folderID, namePrefix: cloudName)
+
             if let existingFile = existing.first(where: { $0.name == cloudName }), let fileId = existingFile.id {
                 try await updateFile(fileId: fileId, data: data, mimeType: mimeType(for: localURL))
                 os_log(.debug, log: log, "Updated cloud save: %@", cloudName)
             } else {
-                try await createFile(name: cloudName, data: data, mimeType: mimeType(for: localURL))
+                try await createFile(name: cloudName, data: data, mimeType: mimeType(for: localURL), parentID: folderID)
                 os_log(.debug, log: log, "Created cloud save: %@", cloudName)
             }
             
@@ -600,6 +662,7 @@ final class OESaveSyncManager: NSObject {
         accessToken   = nil
         tokenExpiryDate = nil
         refreshToken  = nil   // clears from keychain
+        saveFolderID  = nil   // clears from keychain
         setStatus(.idle, message: nil)
         os_log(.info, log: log, "Signed out of Google Drive.")
     }
@@ -701,11 +764,61 @@ final class OESaveSyncManager: NSObject {
     }
     
     
-    /// Returns a list of all files currently stored in the Google Drive appDataFolder.
+    /// Returns the Drive folder ID for "OpenEmu Saves", creating the folder if it doesn't exist yet.
+    private func ensureSaveFolder() async throws -> String {
+        if let id = saveFolderID { return id }
+
+        // Search for an existing folder with this name.
+        let folderMime = "application/vnd.google-apps.folder"
+        let safe = OEGoogleDriveConfig.saveFolderName.replacingOccurrences(of: "'", with: "\\'")
+        let q = "name='\(safe)' and mimeType='\(folderMime)' and trashed=false"
+
+        var components = URLComponents(string: "\(OEGoogleDriveConfig.driveAPIBaseURL)/files")!
+        components.queryItems = [
+            URLQueryItem(name: "spaces", value: "drive"),
+            URLQueryItem(name: "fields", value: "files(id,name)"),
+            URLQueryItem(name: "q",      value: q),
+        ]
+        var request = URLRequest(url: components.url!)
+        request.setValue("Bearer \(accessToken!)", forHTTPHeaderField: "Authorization")
+
+        let (data, response) = try await session.data(for: request)
+        try validateResponse(response, data: data, context: "ensureSaveFolder/search")
+
+        let json = try JSONSerialization.jsonObject(with: data) as! [String: Any]
+        if let existing = (json["files"] as? [[String: Any]])?.first,
+           let id = existing["id"] as? String {
+            saveFolderID = id
+            os_log(.info, log: log, "Found existing save folder: %@", id)
+            return id
+        }
+
+        // Create it.
+        let metadata: [String: Any] = ["name": OEGoogleDriveConfig.saveFolderName, "mimeType": folderMime]
+        var createRequest = URLRequest(url: URL(string: "\(OEGoogleDriveConfig.driveAPIBaseURL)/files")!)
+        createRequest.httpMethod = "POST"
+        createRequest.setValue("Bearer \(accessToken!)", forHTTPHeaderField: "Authorization")
+        createRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        createRequest.httpBody = try JSONSerialization.data(withJSONObject: metadata)
+
+        let (createData, createResponse) = try await session.data(for: createRequest)
+        try validateResponse(createResponse, data: createData, context: "ensureSaveFolder/create")
+
+        let createJSON = try JSONSerialization.jsonObject(with: createData) as! [String: Any]
+        guard let newID = createJSON["id"] as? String else {
+            throw OESaveSyncError.apiError(statusCode: 0, body: "Folder creation returned no ID")
+        }
+        saveFolderID = newID
+        os_log(.info, log: log, "Created save folder: %@", newID)
+        return newID
+    }
+
+    /// Returns a list of all files currently stored in the "OpenEmu Saves" Drive folder.
     public func fetchCloudFileList() async throws -> [DriveFile] {
         try await ensureValidAccessToken()
-        let files = try await listFiles(inFolder: OEGoogleDriveConfig.appDataFolderName)
-        os_log(.info, log: log, "Fetched %d files from appDataFolder", files.count)
+        let folderID = try await ensureSaveFolder()
+        let files = try await listFiles(inFolder: folderID)
+        os_log(.info, log: log, "Fetched %d files from save folder", files.count)
         return files
     }
     
@@ -719,7 +832,7 @@ final class OESaveSyncManager: NSObject {
         
         var components = URLComponents(string: "\(OEGoogleDriveConfig.driveAPIBaseURL)/files")!
         components.queryItems = [
-            URLQueryItem(name: "spaces",  value: "appDataFolder"),
+            URLQueryItem(name: "spaces",  value: "drive"),
             URLQueryItem(name: "fields",  value: "files(id,name,modifiedTime)"),
             URLQueryItem(name: "q",       value: q),
         ]
@@ -734,7 +847,8 @@ final class OESaveSyncManager: NSObject {
         let files = (json["files"] as? [[String: Any]]) ?? []
         
         let isoFormatter = ISO8601DateFormatter()
-        
+        isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+
         return files.compactMap { dict -> DriveFile? in
             var file = DriveFile()
             file.id   = dict["id"]   as? String
@@ -756,12 +870,12 @@ final class OESaveSyncManager: NSObject {
         return data
     }
     
-    private func createFile(name: String, data: Data, mimeType: String) async throws {
+    private func createFile(name: String, data: Data, mimeType: String, parentID: String) async throws {
         // Multipart upload: metadata + binary data.
         let boundary = "oebound-\(UUID().uuidString)"
-        
+
         var body = Data()
-        let metadata = ["name": name, "parents": [OEGoogleDriveConfig.appDataFolderName]] as [String: Any]
+        let metadata = ["name": name, "parents": [parentID]] as [String: Any]
         let metaData = try JSONSerialization.data(withJSONObject: metadata)
         
         body.append("--\(boundary)\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n".data(using: .utf8)!)
