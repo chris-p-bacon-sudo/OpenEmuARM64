@@ -29,7 +29,7 @@ When you change code, you should run `/verify` before declaring the task done. Y
 What this looks like in practice:
 
 - Main app change → `./Scripts/verify.sh --launch`
-- Core change → `./Scripts/verify.sh --core <CoreName>`
+- Core change → `./Scripts/verify.sh --core <CoreName>` (add `--release` when reproducing a Release-only bug). **Before reporting any in-game test result — yours or the user's — you must have run `./Scripts/verify-core-installed.sh <CoreName>` and seen `OK` since the last build.** If you haven't, the result is invalid and you say so. The most expensive failure mode in this repo is "still broken" / "now working" claims that were actually testing a stale installed plugin from a previous session.
 - Both → run both
 - Scripts / CI / docs only → no verify needed
 

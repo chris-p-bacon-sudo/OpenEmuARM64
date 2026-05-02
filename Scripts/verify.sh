@@ -6,6 +6,7 @@
 #   ./Scripts/verify.sh --launch               # above, plus 5s smoke launch with log + crash check
 #   ./Scripts/verify.sh --test                 # above, plus run OpenEmuTests unit test target
 #   ./Scripts/verify.sh --core <CoreName>      # build a core scheme + install + verify the installed plugin
+#   ./Scripts/verify.sh --core <CoreName> --release  # use Release configuration (for Release-only bugs)
 #   ./Scripts/verify.sh --core <CoreName> --launch
 #   ./Scripts/verify.sh --worktree             # build to ~/Builds/openemu/<branch>/ for stable permissions
 #
@@ -53,6 +54,7 @@ LAUNCH=0
 CORE=""
 RUN_TESTS=0
 WORKTREE=0
+CONFIG="Debug"
 FAILURES=0
 
 while [ $# -gt 0 ]; do
@@ -61,7 +63,9 @@ while [ $# -gt 0 ]; do
     --core) CORE="${2:-}"; shift 2 ;;
     --test) RUN_TESTS=1; shift ;;
     --worktree) WORKTREE=1; shift ;;
-    -h|--help) sed -n '2,12p' "$0"; exit 0 ;;
+    --debug) CONFIG="Debug"; shift ;;
+    --release) CONFIG="Release"; shift ;;
+    -h|--help) sed -n '2,17p' "$0"; exit 0 ;;
     *) echo "unknown flag: $1" >&2; exit 2 ;;
   esac
 done
@@ -109,7 +113,7 @@ fi
 
 BUILD_LOG=$(mktemp -t verify_build.XXXXXX)
 XCODEBUILD_ARGS=(-workspace "$WORKSPACE" -scheme "$SCHEME"
-                 -configuration Debug -destination 'platform=macOS,arch=arm64')
+                 -configuration "$CONFIG" -destination 'platform=macOS,arch=arm64')
 if [ "$WORKTREE" -eq 1 ]; then
   XCODEBUILD_ARGS+=(-derivedDataPath "$BUILD_DIR_OVERRIDE")
   info "worktree mode — building to $BUILD_DIR_OVERRIDE"
@@ -176,17 +180,17 @@ fi
 
 if [ -z "$CORE" ]; then
   if [ "$WORKTREE" -eq 1 ]; then
-    ARTIFACT="$ARTIFACT_BASE/Build/Products/Debug/OpenEmu.app"
+    ARTIFACT="$ARTIFACT_BASE/Build/Products/${CONFIG}/OpenEmu.app"
     [ -e "$ARTIFACT" ] || ARTIFACT=""
   else
-    ARTIFACT=$(find "$ARTIFACT_BASE" -maxdepth 5 -path '*OpenEmu-metal-*/Build/Products/Debug/OpenEmu.app' -print -quit 2>/dev/null)
+    ARTIFACT=$(find "$ARTIFACT_BASE" -maxdepth 5 -path "*OpenEmu-metal-*/Build/Products/${CONFIG}/OpenEmu.app" -print -quit 2>/dev/null)
   fi
 else
   if [ "$WORKTREE" -eq 1 ]; then
-    ARTIFACT="$ARTIFACT_BASE/Build/Products/Debug/${CORE}.oecoreplugin"
+    ARTIFACT="$ARTIFACT_BASE/Build/Products/${CONFIG}/${CORE}.oecoreplugin"
     [ -e "$ARTIFACT" ] || ARTIFACT=""
   else
-    ARTIFACT=$(find "$ARTIFACT_BASE" -maxdepth 5 -path "*OpenEmu-metal-*/Build/Products/Debug/${CORE}.oecoreplugin" -print -quit 2>/dev/null)
+    ARTIFACT=$(find "$ARTIFACT_BASE" -maxdepth 5 -path "*OpenEmu-metal-*/Build/Products/${CONFIG}/${CORE}.oecoreplugin" -print -quit 2>/dev/null)
   fi
 fi
 
@@ -206,12 +210,13 @@ fi
 
 if [ -n "$CORE" ] && [ -n "${ARTIFACT:-}" ] && [ -e "$ARTIFACT" ]; then
   INSTALL_DEST="$INSTALLED_APP_DEFAULT/Cores/${CORE}.oecoreplugin"
+  CONFIG_FLAG="--$(echo "$CONFIG" | tr '[:upper:]' '[:lower:]')"
   if [ -x "./Scripts/install-core.sh" ]; then
-    info "installing core via Scripts/install-core.sh"
-    if ./Scripts/install-core.sh "$CORE" >/dev/null 2>&1; then
-      pass "install-core.sh $CORE"
+    info "installing core via Scripts/install-core.sh ($CONFIG)"
+    if ./Scripts/install-core.sh "$CORE" "$CONFIG_FLAG" >/dev/null 2>&1; then
+      pass "install-core.sh $CORE $CONFIG_FLAG"
     else
-      fail "install-core.sh $CORE"
+      fail "install-core.sh $CORE $CONFIG_FLAG"
     fi
   else
     info "Scripts/install-core.sh not executable — skipping install"
@@ -222,6 +227,18 @@ if [ -n "$CORE" ] && [ -n "${ARTIFACT:-}" ] && [ -e "$ARTIFACT" ]; then
       pass "codesign installed plugin"
     else
       fail "codesign installed plugin"
+    fi
+  fi
+
+  # Final preflight: confirm the installed plugin actually matches what we
+  # just built. This catches silent install failures (e.g. OpenEmu still
+  # holding the binary open) that the codesign check above would not.
+  if [ -x "./Scripts/verify-core-installed.sh" ]; then
+    if ./Scripts/verify-core-installed.sh "$CORE" "$CONFIG_FLAG" >/dev/null 2>&1; then
+      pass "verify-core-installed.sh $CORE $CONFIG_FLAG"
+    else
+      fail "verify-core-installed.sh $CORE $CONFIG_FLAG — installed plugin does not match build"
+      ./Scripts/verify-core-installed.sh "$CORE" "$CONFIG_FLAG" || true
     fi
   fi
 fi

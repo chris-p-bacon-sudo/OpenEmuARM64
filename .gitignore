@@ -54,6 +54,9 @@ test_dlopen
 # Cursor IDE config
 .cursor/
 
+# Agent artifacts — plans, scratchpads, notes (kept out of PR diffs by convention)
+tmp/agent/
+
 # PPSSPP third-party ext libraries (not committed — large C++ dependencies)
 PPSSPP/PPSSPP-Core/ppsspp/ext/SPIRV-Cross/
 PPSSPP/PPSSPP-Core/ppsspp/ext/armips/

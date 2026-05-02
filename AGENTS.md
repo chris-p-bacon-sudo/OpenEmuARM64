@@ -219,6 +219,7 @@ The issue tracker at `nickybmon/OpenEmu-Silicon` is the primary place for bug re
 - Do not add debug `+load` / `+initialize` methods that write to `/tmp` or hardcode local paths
 - Do not commit large binaries (`.zip`, `.tar.gz`, compiled executables) — these belong in GitHub Releases
 - Do not commit directly to `main` under any circumstances
+- Do not declare a core test result without running `./Scripts/verify-core-installed.sh <CoreName>` since the last build — testing against a stale installed plugin is the single most expensive failure mode in this repo
 
 ---
 
@@ -241,6 +242,16 @@ The main app is **BSD 2-Clause**. Emulator cores are mostly **GPL v2**. Key rule
 ---
 
 ## Testing PRs Locally Before Merging
+
+> **Core plugin work has a process gate.**
+>
+> OpenEmu loads cores from `~/Library/Application Support/OpenEmu/Cores/`, **not** from the build directory. Building a core does *not* affect what OpenEmu loads. Before claiming any test result on a core change:
+>
+> 1. Build the core scheme (or run `./Scripts/verify.sh --core <CoreName>` which does this for you, with `--release` if testing a Release-only behavior).
+> 2. Run `./Scripts/install-core.sh <CoreName>` (use `--release` for Release builds). This is automatic when you use `verify.sh --core`.
+> 3. Run `./Scripts/verify-core-installed.sh <CoreName>` and confirm `OK`. If it prints `FAIL`, the installed plugin doesn't match the build and your test result is invalid.
+>
+> The most common silent failure is testing against a stale installed plugin from a previous session. The preflight script catches this in under a second; run it before reporting any "still broken" or "now working" result.
 
 Before merging any PR, check it out locally, build, and verify the behaviors described in the PR's test plan.
 
