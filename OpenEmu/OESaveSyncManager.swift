@@ -265,7 +265,9 @@ final class OESaveSyncManager: NSObject {
 
         os_log(.info, log: log, "Performing full sync check across %d monitored directories.", monitoredURLs.count)
 
-        let relevantExtensions: Set<String> = ["sav", "srm", "oesavestate", "state", "rtc", "eep", "nv"]
+        // Enumerate filesystem candidates synchronously (FileManager.Enumerator is not Sendable
+        // and cannot be iterated from an async context under Swift 6 strict concurrency).
+        let candidates = collectSyncCandidates()
 
         Task {
             do {
@@ -281,27 +283,9 @@ final class OESaveSyncManager: NSObject {
                     uniquingKeysWith: { newer, _ in newer }
                 )
 
-                var toUpload: [URL] = []
-
-                for dir in monitoredURLs {
-                    guard let enumerator = FileManager.default.enumerator(
-                        at: dir,
-                        includingPropertiesForKeys: [.contentModificationDateKey],
-                        options: [.skipsHiddenFiles]
-                    ) else { continue }
-
-                    for case let url as URL in enumerator {
-                        guard relevantExtensions.contains(url.pathExtension.lowercased()) else { continue }
-                        guard let attrs = try? url.resourceValues(forKeys: [.contentModificationDateKey]),
-                              let localMod = attrs.contentModificationDate else { continue }
-
-                        let cloudName = cloudFileName(for: url)
-                        let cloudMod = cloudIndex[cloudName] ?? .distantPast
-
-                        if localMod > cloudMod {
-                            toUpload.append(url)
-                        }
-                    }
+                let toUpload = candidates.filter { (url, localMod) in
+                    let cloudMod = cloudIndex[cloudFileName(for: url)] ?? .distantPast
+                    return localMod > cloudMod
                 }
 
                 if toUpload.isEmpty {
@@ -311,7 +295,7 @@ final class OESaveSyncManager: NSObject {
                 }
 
                 os_log(.info, log: log, "Full sync check: uploading %d file(s).", toUpload.count)
-                for url in toUpload {
+                for (url, _) in toUpload {
                     await uploadFile(at: url)
                 }
             } catch {
@@ -319,6 +303,30 @@ final class OESaveSyncManager: NSObject {
                 setStatus(.failed, message: "Sync failed: \(error.localizedDescription)")
             }
         }
+    }
+
+    /// Walks every monitored directory synchronously and returns each save-file URL
+    /// alongside its local modification date. Done outside of any `Task` to keep
+    /// `FileManager.Enumerator` (not `Sendable`) on its synchronous, non-isolated path.
+    private func collectSyncCandidates() -> [(url: URL, modified: Date)] {
+        let relevantExtensions: Set<String> = ["sav", "srm", "oesavestate", "state", "rtc", "eep", "nv"]
+        var results: [(URL, Date)] = []
+
+        for dir in monitoredURLs {
+            guard let enumerator = FileManager.default.enumerator(
+                at: dir,
+                includingPropertiesForKeys: [.contentModificationDateKey],
+                options: [.skipsHiddenFiles]
+            ) else { continue }
+
+            for case let url as URL in enumerator {
+                guard relevantExtensions.contains(url.pathExtension.lowercased()) else { continue }
+                guard let attrs = try? url.resourceValues(forKeys: [.contentModificationDateKey]),
+                      let localMod = attrs.contentModificationDate else { continue }
+                results.append((url, localMod))
+            }
+        }
+        return results
     }
     
     // MARK: - Pre-launch Sync Check
