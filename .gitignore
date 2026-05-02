@@ -51,8 +51,12 @@ test_dlopen
 # Claude Code local config
 .claude/settings.json
 
-# Cursor IDE config
-.cursor/
+# Cursor IDE config — local user settings stay out of git, but project hooks
+# are checked in so every contributor (and AI session) gets the same automated
+# guardrails.
+.cursor/*
+!.cursor/hooks.json
+!.cursor/hooks/
 
 # Agent artifacts — plans, scratchpads, notes (kept out of PR diffs by convention)
 tmp/agent/

@@ -252,6 +252,8 @@ The main app is **BSD 2-Clause**. Emulator cores are mostly **GPL v2**. Key rule
 > 3. Run `./Scripts/verify-core-installed.sh <CoreName>` and confirm `OK`. If it prints `FAIL`, the installed plugin doesn't match the build and your test result is invalid.
 >
 > The most common silent failure is testing against a stale installed plugin from a previous session. The preflight script catches this in under a second; run it before reporting any "still broken" or "now working" result.
+>
+> Cursor users: a project-level hook at `.cursor/hooks/post-edit-core.sh` automatically reminds the agent of these steps after every edit to a core source file, and surfaces the live preflight status. Do not work around the hook — if it tells you the install is stale, fix it before claiming a result.
 
 Before merging any PR, check it out locally, build, and verify the behaviors described in the PR's test plan.
 
