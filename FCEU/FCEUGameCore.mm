@@ -61,6 +61,7 @@ static uint32_t palette[256];
 @interface FCEUGameCore () <OENESSystemResponderClient>
 {
     uint32_t *_videoBuffer;
+    uint32_t *_videoBufferHint;
     int32_t  *_soundBuffer;
     int32_t   _soundSize;
     uint32_t  _pad;
@@ -342,6 +343,18 @@ static __weak FCEUGameCore *_current;
 
     FCEUI_Emulate(&pXBuf, &_soundBuffer, &_soundSize, 0);
 
+    // Translate the freshly-emulated XBuf (palette-indexed) into the renderer's
+    // 32-bit BGRA buffer. Doing this here (rather than in -getVideoBufferWithHint:)
+    // ensures the buffer contains the latest frame whenever the renderer reads it,
+    // matching the contract used by every other 2D pixel-buffer core.
+    if (_videoBufferHint) {
+        const uint8_t *src = XBuf;
+        uint32_t *dst = _videoBufferHint;
+        for (unsigned y = 0; y < 240; y++)
+            for (unsigned x = 0; x < 256; x++, src++)
+                dst[y * 256 + x] = palette[*src];
+    }
+
     if (_rcClient)
         rc_client_do_frame(_rcClient);
 
@@ -390,12 +403,14 @@ static __weak FCEUGameCore *_current;
         hint = _videoBuffer;
     }
 
-    // TODO: support paletted video in OE
-    uint8_t *pXBuf = XBuf;
-    uint32_t *pOBuf = (uint32_t *)hint;
-    for (unsigned y = 0; y < 240; y++)
-        for (unsigned x = 0; x < 256; x++, pXBuf++)
-            pOBuf[y * 256 + x] = palette[*pXBuf];
+    // Cache the renderer's buffer pointer; -executeFrame writes pixels here.
+    _videoBufferHint = (uint32_t *)hint;
+
+    // Clear the buffer to black for the first frame, before any emulation has
+    // run. This avoids briefly displaying uninitialised memory through the
+    // palette table (which previously appeared as a solid grey screen in
+    // builds that called this method only at renderer setup).
+    memset(hint, 0, 256 * 240 * sizeof(uint32_t));
 
     return hint;
 }
