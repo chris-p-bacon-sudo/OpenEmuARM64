@@ -83,6 +83,7 @@ NSString *MupenControlNames[] = {
     rc_client_t *_rcClient;
     id _raTokenObserver;
     NSString *_romPath;
+    NSUInteger _raFrameCounter;
 }
 
 - (void)OE_didReceiveStateChangeForParamType:(m64p_core_param)paramType value:(int)newValue;
@@ -425,7 +426,7 @@ static void MupenSetAudioSpeed(int percent)
         rc_client_set_userdata(_rcClient, (__bridge void *)self);
         rc_client_set_event_handler(_rcClient, mupen_rc_event_handler);
         rc_client_set_hardcore_enabled(_rcClient, 0);
-        rc_client_enable_logging(_rcClient, RC_CLIENT_LOG_LEVEL_INFO, mupen_rc_log);
+        rc_client_enable_logging(_rcClient, RC_CLIENT_LOG_LEVEL_WARN, mupen_rc_log);
 
         __weak MupenGameCore *weakSelf = self;
         _raTokenObserver = [[NSNotificationCenter defaultCenter]
@@ -535,13 +536,18 @@ static void MupenSetAudioSpeed(int percent)
 
 - (void)videoInterrupt
 {
-    // Mupen runs M64CMD_EXECUTE on a separate emu thread, so executeFrame is empty.
-    // videoInterrupt fires once per VI on the emu thread — the right place to advance
-    // rcheevos one emulated frame.
-    if (_rcClient) {
+    // Signal "frame ready" first so the renderer presents on time.
+    // rcheevos work runs in the leftover budget before the next VI.
+    [self.renderDelegate didRenderFrameOnAlternateThread];
+
+    // Throttle rcheevos to every other VI (~30 Hz). RA condition timing
+    // measures in do_frame ticks, not wall-clock seconds, so this just
+    // means each "rcheevos frame" equals 2 emulated VIs. Mupen runs
+    // M64CMD_EXECUTE on a separate emu thread and executeFrame is a no-op,
+    // so videoInterrupt is the right place to advance rcheevos.
+    if (_rcClient && (++_raFrameCounter & 1) == 0) {
         rc_client_do_frame(_rcClient);
     }
-    [self.renderDelegate didRenderFrameOnAlternateThread];
 }
 
 - (void)swapBuffers
