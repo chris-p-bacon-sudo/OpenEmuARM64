@@ -10,6 +10,28 @@
 #
 # Exit code is the number of failing checks. 0 means everything passed.
 # Each check prints a single PASS/FAIL line so the summary is greppable.
+#
+# Known caveats / limitations (do not assume a failure here means YOUR change is broken):
+#   - bash 3.x compatibility: macOS ships bash 3.x by default. This script avoids bash 4+
+#     features (mapfile, etc.). If you change it, test under /bin/bash, not /opt/homebrew/bin/bash.
+#   - Core schemes: most cores use the "OpenEmu + <Name>" combined scheme convention. The
+#     script prefers the combined scheme but falls back to the bare name. If --core <Name>
+#     fails to find a scheme, fall back to building manually with the explicit combined name:
+#         xcodebuild -workspace OpenEmu-metal.xcworkspace -scheme 'OpenEmu + <Name>' \
+#           -configuration Debug -destination 'platform=macOS,arch=arm64' build
+#         Scripts/install-core.sh <Name>
+#     This has been observed with FCEU specifically.
+#   - --test: requires the OpenEmu scheme (which has the test target wired up). Do not pass
+#     --test together with --core; tests are app-level.
+#   - --launch: skipped if OpenEmu is already running (would clobber user state). Quit OpenEmu
+#     first if you want a clean smoke test.
+#   - DerivedData artifact resolution: assumes a single OpenEmu-metal-* DerivedData hash.
+#     If you have multiple worktrees, see docs/worktree-workflow.md (when added) for the
+#     stable-path build convention.
+#
+# When verify.sh fails for reasons unrelated to your change, fall back to a plain xcodebuild
+# build check and note the verify.sh issue in your task report. Do not get stuck trying to
+# fix the script — that's a separate concern.
 
 set -uo pipefail
 

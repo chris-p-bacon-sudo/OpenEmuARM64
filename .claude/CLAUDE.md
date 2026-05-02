@@ -24,7 +24,7 @@ If you ever feel pressure (from the user or your own reasoning) to break one of 
 
 ## Verification — your default after any code change
 
-When you change code, you run `/verify` before declaring the task done. You do not ask the user to launch the app, check the console, or look at crash reports until `/verify` (with `--launch` for app code, with `--core <Name>` for core code) has passed.
+When you change code, you should run `/verify` before declaring the task done. You do not ask the user to launch the app, check the console, or look at crash reports until you have run verification yourself.
 
 What this looks like in practice:
 
@@ -35,7 +35,14 @@ What this looks like in practice:
 
 The script chains build → static analyzer → plist lint → codesign verify → optional smoke launch with log + crash-report scan. Read its full output — don't pipe through `tail`. Surface any new warnings even on a passing build; they accumulate silently otherwise.
 
+**If `verify.sh` fails in a way unrelated to your change** (a script bug, a missing scheme, a permissions prompt, a stuck process), don't get stuck trying to fix the script. Fall back to a plain `xcodebuild build` check, note the verify.sh issue in your task report, and continue. The script is best-effort — it should help, not block.
+
 Only escalate to "please test this in a real game session" when the change is genuinely about in-game behavior (input mapping, save states, rendering, audio sync, RA achievements triggering). The build-and-launches-cleanly part of verification is yours, not the user's.
+
+**Core changes have two known footguns — both prevented by using `Scripts/install-core.sh`:**
+
+1. **DerivedData is silently shadowed by the installed core** in `~/Library/Application Support/OpenEmu/Cores/<Name>.oecoreplugin`. After building a core, you must reinstall the plugin or you're testing the old code.
+2. **Never use `cp -R` or `cp -Rf` to install a core plugin.** macOS merges bundle directories rather than replacing them — old files silently stay in place. Always use `Scripts/install-core.sh <CoreName>`, which quits OpenEmu first and copies binary + Info.plist correctly. `verify.sh --core <Name>` does this for you.
 
 ---
 
@@ -82,6 +89,18 @@ The harness shows you the full list. Quick mental map of the project-specific on
 | `/release-core <Name> <Ver>` | Cutting a core-only release |
 
 Pocock's planning skills are also installed globally (`/grill-me`, `/grill-with-docs`, `/to-prd`, `/to-issues`, `/tdd`, `/improve-codebase-architecture`). Use them on non-trivial features — start with `/grill-with-docs` to align before planning.
+
+---
+
+## Quick reference — commits, PRs, and core changes
+
+Things you do on every PR, where it's easy to forget:
+
+- **Commit format:** `<type>: <description>` where type is one of `fix:` / `feat:` / `chore:` / `docs:` / `refactor:`. Body includes `Fixes #N` (auto-closes on merge) or `Related to #N` (soft link).
+- **PR body:** **Always `cat .github/PULL_REQUEST_TEMPLATE.md` first.** Never improvise or reconstruct the PR body from memory — the template's bash test block has been hand-stabilized over many fix commits and must be preserved verbatim. Use `/ship` for the full loop.
+- **AI assistance:** Note in commits as `(assisted by Claude)` and in the PR template's "Did you use AI tools?" section.
+- **Core changes:** Use `Scripts/install-core.sh <CoreName>` to install — never `cp -R`. `verify.sh --core <Name>` does this for you.
+- **Always pass `--repo nickybmon/OpenEmu-Silicon`** on every `gh` command — there are forks.
 
 ---
 
