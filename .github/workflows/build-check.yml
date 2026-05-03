@@ -28,7 +28,6 @@ jobs:
 
       - name: Build OpenEmu (Debug, arm64)
         run: |
-          set -o pipefail
           xcodebuild build \
             -workspace OpenEmu-metal.xcworkspace \
             -scheme OpenEmu \
@@ -36,5 +35,4 @@ jobs:
             -destination 'platform=macOS,arch=arm64' \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=NO \
-            2>&1 | tail -50
+            CODE_SIGNING_ALLOWED=NO

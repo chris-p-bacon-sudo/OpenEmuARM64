@@ -47,12 +47,18 @@
 #import "main/main.h"
 //#import "r4300/r4300.h"
 #import "device/r4300/r4300_core.h"
-//#import "device/rdram/rdram.h"
+#import "device/rdram/rdram.h"
+#import "device/device.h"
 #import "device/rcp/vi/vi_controller.h"
 
 #import "plugin/plugin.h"
 
 #import <dlfcn.h>
+#include <os/log.h>
+#define RC_CLIENT_SUPPORTS_HASH 1
+#include <rc_client.h>
+#include <rc_consoles.h>
+#import "OERetroAchievementsTransport.h"
 
 NSString *MupenControlNames[] = {
     @"N64_DPadU", @"N64_DPadD", @"N64_DPadL", @"N64_DPadR",
@@ -73,9 +79,15 @@ NSString *MupenControlNames[] = {
 
     dispatch_queue_t _callbackQueue;
     NSMutableDictionary *_callbackHandlers;
+
+    rc_client_t *_rcClient;
+    id _raTokenObserver;
+    NSString *_romPath;
+    NSUInteger _raFrameCounter;
 }
 
 - (void)OE_didReceiveStateChangeForParamType:(m64p_core_param)paramType value:(int)newValue;
+- (void)_beginLoadGame;
 
 @end
 
@@ -115,7 +127,84 @@ static void MupenStateCallback(void *context, m64p_core_param paramType, int new
     [((__bridge MupenGameCore *)context) OE_didReceiveStateChangeForParamType:paramType value:newValue];
 }
 
+#pragma mark - RetroAchievements
+
+// rcheevos N64 address space (Vendor/rcheevos/src/rcheevos/consoleinfo.c lines 728-733):
+//   0x000000-0x1FFFFF  RDRAM 1 (2 MB, always present)
+//   0x200000-0x3FFFFF  RDRAM 2 (2 MB, expansion pak only)
+//   0x400000-0x7FFFFF  padding for expansion pak
+//
+// Mupen stores RDRAM as host-native 32-bit words in g_dev.rdram.dram. RA hashes
+// and conditions assume big-endian byte ordering, so each byte read needs the
+// standard N64 byte-swap (addr ^ 3) on a little-endian host.
+static uint32_t mupen_rc_read_memory(uint32_t address, uint8_t *buffer,
+                                     uint32_t num_bytes, rc_client_t *client)
+{
+    uint8_t *ram = (uint8_t *)g_dev.rdram.dram;
+    size_t   sz  = g_dev.rdram.dram_size;
+    if (!ram || sz == 0) { return 0; }
+    for (uint32_t i = 0; i < num_bytes; i++) {
+        uint32_t addr = address + i;
+        if (addr >= sz) { return i; }
+        buffer[i] = ram[addr ^ 3];
+    }
+    return num_bytes;
+}
+
+static void mupen_rc_log(const char *message, const rc_client_t *client)
+{
+    os_log(OS_LOG_DEFAULT, "[rcheevos] %{public}s", message);
+}
+
+static void mupen_rc_load_game_callback(int result, const char *error_message,
+                                         rc_client_t *client, void *userdata)
+{
+    if (result != RC_OK)
+        NSLog(@"[RA-Mupen64Plus] game load failed — result=%d error=%s", result, error_message ?: "(none)");
+}
+
+static void mupen_rc_login_callback(int result, const char *error_message,
+                                     rc_client_t *client, void *userdata)
+{
+    MupenGameCore *s = (__bridge MupenGameCore *)userdata;
+    if (result == RC_OK) {
+        [s _beginLoadGame];
+    } else {
+        NSLog(@"[RA-Mupen64Plus] login failed — result=%d error=%s", result, error_message ?: "(none)");
+    }
+}
+
+static void mupen_rc_event_handler(const rc_client_event_t *event, rc_client_t *client)
+{
+    if (event->type != RC_CLIENT_EVENT_ACHIEVEMENT_TRIGGERED) { return; }
+    const rc_client_achievement_t *ach = event->achievement;
+    if (!ach) { return; }
+
+    NSDictionary *info = @{
+        OEAchievementIDKey:          @(ach->id),
+        OEAchievementTitleKey:       @(ach->title       ?: ""),
+        OEAchievementDescriptionKey: @(ach->description ?: ""),
+        OEAchievementBadgeURLKey:    @(ach->badge_name  ?: ""),
+        OEAchievementPointsKey:      @(ach->points),
+    };
+    [[NSNotificationCenter defaultCenter]
+        postNotificationName:OEAchievementUnlockedNotification
+                      object:nil
+                    userInfo:info];
+}
+
 @implementation MupenGameCore
+
+- (void)_beginLoadGame
+{
+    if (!_rcClient || !_romPath) { return; }
+    rc_client_begin_identify_and_load_game(_rcClient,
+                                           RC_CONSOLE_NINTENDO_64,
+                                           _romPath.fileSystemRepresentation,
+                                           NULL, 0,
+                                           mupen_rc_load_game_callback,
+                                           (__bridge void *)self);
+}
 
 - (instancetype)init
 {
@@ -328,6 +417,39 @@ static void MupenSetAudioSpeed(int percent)
     if (CoreDoCommand(M64CMD_ROM_OPEN, (int)romData.length, (void *)romData.bytes) != M64ERR_SUCCESS)
         return NO;
 
+    // RetroAchievements: create rc_client and observe the OE token. Game identification
+    // happens in the login callback so we never miss the token notification that fires
+    // immediately after setRetroAchievementsToken.
+    _romPath = path;
+    _rcClient = rc_client_create(mupen_rc_read_memory, oeRetroAchievementsServerCall);
+    if (_rcClient) {
+        rc_client_set_userdata(_rcClient, (__bridge void *)self);
+        rc_client_set_event_handler(_rcClient, mupen_rc_event_handler);
+        rc_client_set_hardcore_enabled(_rcClient, 0);
+        rc_client_enable_logging(_rcClient, RC_CLIENT_LOG_LEVEL_WARN, mupen_rc_log);
+
+        __weak MupenGameCore *weakSelf = self;
+        _raTokenObserver = [[NSNotificationCenter defaultCenter]
+            addObserverForName:OERetroAchievementsTokenDidChangeNotification
+                        object:nil
+                         queue:nil
+                    usingBlock:^(NSNotification *note) {
+            MupenGameCore *s = weakSelf;
+            if (!s || !s->_rcClient) { return; }
+            NSString *token    = note.userInfo[OERetroAchievementsTokenKey];
+            NSString *username = note.userInfo[OERetroAchievementsUsernameKey];
+            if (token && username) {
+                rc_client_begin_login_with_token(s->_rcClient,
+                                                 username.UTF8String,
+                                                 token.UTF8String,
+                                                 mupen_rc_login_callback,
+                                                 (__bridge void *)s);
+            } else {
+                rc_client_logout(s->_rcClient);
+            }
+        }];
+    }
+
     return YES;
 }
 
@@ -414,7 +536,18 @@ static void MupenSetAudioSpeed(int percent)
 
 - (void)videoInterrupt
 {
+    // Signal "frame ready" first so the renderer presents on time.
+    // rcheevos work runs in the leftover budget before the next VI.
     [self.renderDelegate didRenderFrameOnAlternateThread];
+
+    // Throttle rcheevos to every other VI (~30 Hz). RA condition timing
+    // measures in do_frame ticks, not wall-clock seconds, so this just
+    // means each "rcheevos frame" equals 2 emulated VIs. Mupen runs
+    // M64CMD_EXECUTE on a separate emu thread and executeFrame is a no-op,
+    // so videoInterrupt is the right place to advance rcheevos.
+    if (_rcClient && (++_raFrameCounter & 1) == 0) {
+        rc_client_do_frame(_rcClient);
+    }
 }
 
 - (void)swapBuffers
@@ -432,6 +565,15 @@ static void MupenSetAudioSpeed(int percent)
 
 - (void)stopEmulation
 {
+    if (_raTokenObserver) {
+        [[NSNotificationCenter defaultCenter] removeObserver:_raTokenObserver];
+        _raTokenObserver = nil;
+    }
+    if (_rcClient) {
+        rc_client_unload_game(_rcClient);
+        rc_client_destroy(_rcClient);
+        _rcClient = NULL;
+    }
     CoreDoCommand(M64CMD_STOP, 0, NULL);
     [super stopEmulation];
 }
@@ -441,6 +583,9 @@ static void MupenSetAudioSpeed(int percent)
     // FIXME: do we want/need soft reset? It doesn’t seem to work well with sending M64CMD_RESET alone
     // FIXME: might need to explicitly kick other thread
     CoreDoCommand(M64CMD_RESET, 1 /* hard reset */, NULL);
+    if (_rcClient) {
+        rc_client_reset(_rcClient);
+    }
 }
 
 - (NSTimeInterval)frameInterval
@@ -577,6 +722,9 @@ static void MupenSetAudioSpeed(int percent)
     {
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 1000 * NSEC_PER_MSEC), dispatch_get_main_queue(), ^{
             int success = CoreDoCommand(M64CMD_STATE_LOAD, 1, (void *)fileName.fileSystemRepresentation);
+            if (success == M64ERR_SUCCESS && self->_rcClient) {
+                rc_client_reset(self->_rcClient);
+            }
             if(block) block(success==M64ERR_SUCCESS, nil);
        });
     }
@@ -600,6 +748,9 @@ static void MupenSetAudioSpeed(int percent)
                      return;
                  }
 
+                 if (self->_rcClient) {
+                     rc_client_reset(self->_rcClient);
+                 }
                  block(YES, nil);
              });
              return NO;
