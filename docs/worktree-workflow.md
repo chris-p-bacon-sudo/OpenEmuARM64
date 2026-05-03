@@ -71,14 +71,56 @@ If you've already pushed the branch and the merge commit is fine, the merge appr
 
 ## `verify.sh` from a worktree
 
-`Scripts/verify.sh` itself uses DerivedData glob to locate built artifacts. From inside a worktree that's built via `build-for-worktree.sh`, the artifact won't be where verify.sh expects it.
+`verify.sh --worktree` uses the stable `~/Builds/openemu/<branch>/` path instead of DerivedData. Always pass `--worktree` when inside a linked worktree:
 
-Workaround until verify.sh learns the worktree convention: after running `build-for-worktree.sh`, you can either:
+```bash
+./Scripts/verify.sh --worktree --core <CoreName>
+```
 
-1. Run a plain `xcodebuild build` (which lands in DerivedData) and then run verify.sh — wasteful but works
-2. Skip verify.sh in worktrees and manually run the checks: `codesign --verify --deep --strict ~/Builds/openemu/<branch>/Build/Products/Debug/OpenEmu.app` etc.
+This builds to the stable path, installs the core, and runs the MD5 preflight (`verify-core-installed.sh`) to confirm the installed plugin matches the build. Without `--worktree`, verify.sh looks in DerivedData and may find a stale artifact from a previous session.
 
-(A future PR may add a `--worktree` flag to verify.sh that uses the stable path. Until then, the manual fallback is fine.)
+## Verification protocol for core changes
+
+OpenEmu loads cores from `~/Library/Application Support/OpenEmu/Cores/`, not the build directory. There are three distinct binaries to track whenever you're doing core work in a worktree:
+
+| What | Path |
+|---|---|
+| Worktree build | `~/Builds/openemu/<branch>/Build/Products/Debug/<Core>.oecoreplugin/Contents/MacOS/<Core>` |
+| DerivedData build | `~/Library/Developer/Xcode/DerivedData/OpenEmu-metal-*/Build/Products/Debug/<Core>.oecoreplugin/Contents/MacOS/<Core>` |
+| Installed (what OpenEmu loads) | `~/Library/Application Support/OpenEmu/Cores/<Core>.oecoreplugin/Contents/MacOS/<Core>` |
+
+After any core install, run the three-way MD5 check:
+
+```bash
+md5 \
+  ~/Builds/openemu/<branch>/Build/Products/Debug/<Core>.oecoreplugin/Contents/MacOS/<Core> \
+  ~/Library/Developer/Xcode/DerivedData/OpenEmu-metal-*/Build/Products/Debug/<Core>.oecoreplugin/Contents/MacOS/<Core> \
+  ~/Library/Application\ Support/OpenEmu/Cores/<Core>.oecoreplugin/Contents/MacOS/<Core>
+```
+
+What each hash tells you:
+
+- **Worktree build hash** — the code you just compiled. This is the source of truth.
+- **DerivedData hash** — may be stale from a previous session or a main-checkout build. Should be ignored if it's older than the worktree build.
+- **Installed hash** — what OpenEmu will actually run. Must match the worktree build hash or your test result is invalid.
+
+`Scripts/verify-core-installed.sh <CoreName>` automates the build-vs-installed comparison and prints both hashes. Use it, but read the hash output — don't rely on the exit code alone.
+
+### What went wrong (incident log)
+
+During FCEU grey-screen debugging, `install-core.sh` only searched DerivedData. The worktree build landed in `~/Builds/openemu/<branch>/` instead. The script found the stale DerivedData artifact and installed it without error. The preflight check also only looked at DerivedData, so it reported "installed matches latest build" — and both were true about the wrong binary. The bug was caught only by running a manual three-way MD5 comparison. Hours of "still broken" debugging were actually testing code that hadn't been installed.
+
+The fix (PR #321) makes `install-core.sh` search both paths and prefer the most recently modified. The three-way check remains the definitive confirmation — run it after every install.
+
+## Worktree session checklist
+
+Run through this at the start of any session that touches cores in a worktree:
+
+- [ ] Confirm you're in a worktree: `git worktree list` — `.git` will be a file, not a directory
+- [ ] Build with: `./Scripts/verify.sh --worktree --core <Name>` (or `./Scripts/build-for-worktree.sh` for app-only)
+- [ ] Install with: `./Scripts/install-core.sh <Name>` (searches both paths, prefers most recent)
+- [ ] Verify with three-way hash — only declare done when installed hash matches worktree build hash
+- [ ] If the hashes don't match: quit OpenEmu, re-run `install-core.sh`, re-check
 
 ## Cleanup
 

@@ -17,6 +17,7 @@ This file is read at the start of every Claude Code session. Keep it focused on 
 - **Never commit secrets.** `OEGoogleDriveSecrets.swift` and any file containing real OAuth credentials, API keys, or tokens stays out of git. The template file is safe.
 - **Never force-push to `main`.** Never reuse a merged branch. Never push a branch without opening a PR in the same step.
 - **Never modify `project.pbxproj` wholesale or by hand** unless you know exactly what the change is. Surgical only.
+- **Never merge a PR.** Opening a PR is fine; merging is always the user's action. Same principle as the no-publish rule — once merged, it runs.
 
 If you ever feel pressure (from the user or your own reasoning) to break one of these, stop and surface it instead.
 
@@ -29,7 +30,7 @@ When you change code, you should run `/verify` before declaring the task done. Y
 What this looks like in practice:
 
 - Main app change → `./Scripts/verify.sh --launch`
-- Core change → `./Scripts/verify.sh --core <CoreName>`
+- Core change → `./Scripts/verify.sh --core <CoreName>` (add `--release` when reproducing a Release-only bug). **Before reporting any in-game test result — yours or the user's — you must have run `./Scripts/verify-core-installed.sh <CoreName>` and seen `OK` since the last build.** If you haven't, the result is invalid and you say so. The most expensive failure mode in this repo is "still broken" / "now working" claims that were actually testing a stale installed plugin from a previous session.
 - Both → run both
 - Scripts / CI / docs only → no verify needed
 
@@ -45,6 +46,27 @@ Only escalate to "please test this in a real game session" when the change is ge
 2. **Never use `cp -R` or `cp -Rf` to install a core plugin.** macOS merges bundle directories rather than replacing them — old files silently stay in place. Always use `Scripts/install-core.sh <CoreName>`, which quits OpenEmu first and copies binary + Info.plist correctly. `verify.sh --core <Name>` does this for you.
 
 **If you (or the user) are working in a git worktree:** use `Scripts/build-for-worktree.sh` (or `verify.sh --worktree`, which auto-detects worktrees) instead of plain xcodebuild. macOS binds privacy permissions to the app's path, and Xcode's default DerivedData uses a different hash per worktree — so a fresh build means re-granting Input Monitoring etc. from scratch every time. The stable per-branch path under `~/Builds/openemu/<branch>/` keeps permissions persistent. See `docs/worktree-workflow.md` for the full workflow including the cores-are-shared gotcha.
+
+### Worktree sessions — core change protocol
+
+Any task that touches a core in a worktree requires these extra checks. They exist because the tooling can pass while installing the wrong binary — as happened in a real debugging session that wasted hours on a grey screen.
+
+**1. Detect the context first.** Before any core work, run `git worktree list` and check whether `.git` is a file (linked worktree) or a directory (main checkout). Surface which case applies before proceeding.
+
+**2. Use `--worktree` everywhere in a worktree.** Never run `verify.sh --core <Name>` without `--worktree` inside a linked worktree. Never run plain `xcodebuild` without `-derivedDataPath ~/Builds/openemu/<branch>`.
+
+**3. Always run the three-way hash check after any core install.** A passing exit code means the script ran without error — not that it installed the right binary. After every install, run:
+
+```bash
+md5 \
+  ~/Builds/openemu/<branch>/Build/Products/Debug/<Core>.oecoreplugin/Contents/MacOS/<Core> \
+  ~/Library/Developer/Xcode/DerivedData/OpenEmu-metal-*/Build/Products/Debug/<Core>.oecoreplugin/Contents/MacOS/<Core> \
+  ~/Library/Application\ Support/OpenEmu/Cores/<Core>.oecoreplugin/Contents/MacOS/<Core>
+```
+
+Report all three hashes. Only declare "verified" when the installed hash matches the worktree build hash — not just "matches something." `Scripts/verify-core-installed.sh <CoreName>` automates the build-vs-installed comparison; run it, but also read its hash output, not just its exit code.
+
+**4. Do not declare a test result without the hash check.** "Still broken" and "now working" claims that were actually testing a stale installed plugin are the single most expensive failure mode in this repo. The hash check takes under one second. Do it.
 
 ---
 
@@ -62,10 +84,30 @@ Read-only observation commands are safe and you should run them rather than aski
 
 Pause and confirm before:
 - destructive operations (delete, force-push, branch -D, dropping data)
-- actions visible to others (PR open/merge/close, posting comments on issues, pushing tags that fire workflows)
+- actions visible to others (PR open/merge/close, merging PRs, posting comments on issues, pushing tags that fire workflows)
 - killing OpenEmu when the user might be using it (only `pkill` if you launched it yourself this session)
 
 If you find yourself about to write "could you check…" or "could you launch…" — stop and run it.
+
+---
+
+## Communication
+
+- No filler phrases. "Good question", "great point", "strong instincts" — cut them all.
+- State the result or decision first. No circling.
+- Plain English. Nick is not a developer. Skip jargon; if a term is unavoidable, define it in one plain sentence.
+- No headers in short conversational replies.
+- No hedging without a recommendation. "It depends" must always be followed by a clear direction.
+
+---
+
+## Collaboration
+
+- If session priorities aren't clear at the start, ask before diving in.
+- Call out scope creep or rat-holing when it's happening — don't just follow the thread.
+- Push back on half-baked ideas before writing code. Flag architectural issues, tech debt risk, or missing concerns up front.
+- Before creating a new file, function, directory, or output path — check what already exists and extend it.
+- When there's a right way and an easy way, default to right. If taking a shortcut, say so and name the tradeoff.
 
 ---
 

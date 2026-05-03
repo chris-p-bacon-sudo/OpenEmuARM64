@@ -8,7 +8,7 @@ This is the default check after any code change. Do not ask the user to test thi
 |---|---|
 | Main app code (`OpenEmu/`, `OpenEmuKit/`, `OpenEmu-SDK/`, `OpenEmu-Shaders/`) | `./Scripts/verify.sh --launch` |
 | Code with coverage in `OpenEmu/OpenEmuTests/` | `./Scripts/verify.sh --launch --test` |
-| A core plugin (`Dolphin/`, `Flycast/`, `mGBA/`, etc.) | `./Scripts/verify.sh --core <CoreName>` |
+| A core plugin (`Dolphin/`, `Flycast/`, `mGBA/`, etc.) | `./Scripts/verify.sh --core <CoreName>` (add `--release` for a Release-only bug) |
 | Both | run both, in that order |
 | Scripts, CI, docs only | skip — no code to verify |
 
@@ -16,7 +16,9 @@ This is the default check after any code change. Do not ask the user to test thi
 
 For the main app: build → static analyzer → plist lint → codesign verify on the built `.app`. With `--launch`: also launches the app for 5 seconds, scans the unified log for faults/errors, and checks `~/Library/Logs/DiagnosticReports/` for new crash reports.
 
-For a core: builds the core scheme → plist lint → installs via `Scripts/install-core.sh` → verifies codesign on the installed plugin.
+For a core: builds the core scheme → plist lint → installs via `Scripts/install-core.sh` → verifies codesign on the installed plugin → final preflight via `Scripts/verify-core-installed.sh` to confirm the installed plugin's MD5 matches the build (the most expensive failure mode in this repo is testing against a stale installed plugin).
+
+You can also run the preflight by itself, sub-second, before reporting any in-game test result: `./Scripts/verify-core-installed.sh <CoreName> [--release]`.
 
 ## What you do with the output
 
