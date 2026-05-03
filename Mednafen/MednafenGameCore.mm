@@ -30,6 +30,8 @@
 #include "state-driver.h"
 #include "mednafen-driver.h"
 #include "MemoryStream.h"
+#include "mednafen/psx/psx.h"
+#include "mednafen/pce/pce.h"
 
 #import "MednafenGameCore.h"
 #import <OpenEmuBase/OERingBuffer.h>
@@ -43,6 +45,18 @@
 #import "OESaturnSystemResponderClient.h"
 #import "OEVBSystemResponderClient.h"
 #import "OEWSSystemResponderClient.h"
+
+#include <os/log.h>
+#define RC_CLIENT_SUPPORTS_HASH 1
+#include <rc_client.h>
+#include <rc_consoles.h>
+#import "OERetroAchievementsTransport.h"
+
+extern "C" uint8_t *MDFNLynx_GetRAMPointer(void);
+extern "C" uint8_t *MDFNNGP_GetRAMPointer(void);
+extern "C" uint8_t *MDFNPCE_GetCDRAMPointer(void);
+extern "C" uint8_t *MDFNPCE_GetSysCardRAMPointer(void);
+extern "C" uint8_t *MDFNPCE_GetSaveRAMPointer(void);
 
 #ifdef DEBUG
     #error "Cores should not be compiled in DEBUG! Follow the guide https://github.com/OpenEmu/OpenEmu/wiki/Compiling-From-Source-Guide"
@@ -91,7 +105,14 @@ namespace MDFN_IEN_VB
     BOOL _isPSXGunConSupportedGame;
     NSMutableArray *_allCueSheetFiles;
     NSMutableArray <NSMutableDictionary <NSString *, id> *> *_availableDisplayModes;
+
+    rc_client_t *_rcClient;
+    id _raTokenObserver;
+    NSString *_romPath;
+    int _rcConsole;
 }
+- (NSString *)mednafenCoreModule;
+- (void)_beginLoadGame;
 
 - (void)initializeMednafen;
 - (void)loadDisplayModeOptions;
@@ -100,7 +121,146 @@ namespace MDFN_IEN_VB
 
 static __weak MednafenGameCore *_current;
 
+#pragma mark - RetroAchievements
+
+// rcheevos memory callback. Each Mednafen system exposes its main RAM differently;
+// dispatch on the active core module. Address-space mappings come from
+// Vendor/rcheevos/src/rcheevos/consoleinfo.c (rc_memory_regions_*).
+//
+//   psx     0x000000-0x1FFFFF  MainRAM (2 MB) — kernel + system RAM contiguous
+//   pce     0x000000-0x001FFF  8 KB system RAM via PCE_PeekMainRAM()
+//   pcecd   0x000000-0x001FFF  8 KB system RAM via PCE_PeekMainRAM()
+//           0x002000-0x011FFF  64 KB CD RAM
+//           0x012000-0x041FFF  192 KB Super System Card RAM
+//           0x042000-0x0427FF  2 KB CD battery-backed save RAM
+//   lynx    0x000000-0x00FFFF  64 KB system RAM via MDFNLynx_GetRAMPointer()
+//   ngp     0x000000-0x003FFF  16 KB CPUExRAM via MDFNNGP_GetRAMPointer()
+//
+// PSX scratchpad (0x200000-0x2003FF) is intentionally left unmapped — the
+// overwhelming majority of PSX achievement sets only touch main RAM.
+// PCE-CD regions return short-reads when the underlying buffer hasn't been
+// allocated for a particular game (e.g. plain HuCard loaded as pcecd).
+static uint32_t mednafen_rc_read_memory(uint32_t address, uint8_t *buffer,
+                                        uint32_t num_bytes, rc_client_t *client)
+{
+    MednafenGameCore *c = (__bridge MednafenGameCore *)rc_client_get_userdata(client);
+    NSString *mod = [c mednafenCoreModule];
+    if (!mod) { return 0; }
+
+    if ([mod isEqualToString:@"psx"]) {
+        for (uint32_t i = 0; i < num_bytes; i++) {
+            uint32_t a = address + i;
+            if (a >= 0x200000) { return i; }
+            buffer[i] = MDFN_IEN_PSX::MainRAM.data8[a];
+        }
+        return num_bytes;
+    }
+    if ([mod isEqualToString:@"pce"]) {
+        for (uint32_t i = 0; i < num_bytes; i++) {
+            if (address + i >= 0x2000) { return i; }
+            buffer[i] = MDFN_IEN_PCE::PCE_PeekMainRAM(address + i);
+        }
+        return num_bytes;
+    }
+    if ([mod isEqualToString:@"pcecd"]) {
+        uint8_t *cdram     = MDFNPCE_GetCDRAMPointer();      // 64 KB,  may be NULL
+        uint8_t *syscard   = MDFNPCE_GetSysCardRAMPointer(); // 192 KB, may be NULL
+        uint8_t *saveram   = MDFNPCE_GetSaveRAMPointer();    // 2 KB,   always present
+        for (uint32_t i = 0; i < num_bytes; i++) {
+            uint32_t a = address + i;
+            if (a < 0x002000) {
+                buffer[i] = MDFN_IEN_PCE::PCE_PeekMainRAM(a);
+            } else if (a < 0x012000) {
+                if (!cdram) { return i; }
+                buffer[i] = cdram[a - 0x002000];
+            } else if (a < 0x042000) {
+                if (!syscard) { return i; }
+                buffer[i] = syscard[a - 0x012000];
+            } else if (a < 0x042800) {
+                buffer[i] = saveram[a - 0x042000];
+            } else {
+                return i;
+            }
+        }
+        return num_bytes;
+    }
+    if ([mod isEqualToString:@"lynx"]) {
+        uint8_t *ram = MDFNLynx_GetRAMPointer();
+        if (!ram) { return 0; }
+        for (uint32_t i = 0; i < num_bytes; i++) {
+            if (address + i >= 0x10000) { return i; }
+            buffer[i] = ram[address + i];
+        }
+        return num_bytes;
+    }
+    if ([mod isEqualToString:@"ngp"]) {
+        uint8_t *ram = MDFNNGP_GetRAMPointer();
+        if (!ram) { return 0; }
+        for (uint32_t i = 0; i < num_bytes; i++) {
+            if (address + i >= 0x4000) { return i; }
+            buffer[i] = ram[address + i];
+        }
+        return num_bytes;
+    }
+    return 0;
+}
+
+static void mednafen_rc_log(const char *message, const rc_client_t *client)
+{
+    os_log(OS_LOG_DEFAULT, "[rcheevos] %{public}s", message);
+}
+
+static void mednafen_rc_load_game_callback(int result, const char *error_message,
+                                            rc_client_t *client, void *userdata)
+{
+    if (result != RC_OK)
+        NSLog(@"[RA-Mednafen] game load failed — result=%d error=%s", result, error_message ?: "(none)");
+}
+
+static void mednafen_rc_login_callback(int result, const char *error_message,
+                                        rc_client_t *client, void *userdata)
+{
+    MednafenGameCore *s = (__bridge MednafenGameCore *)userdata;
+    if (result == RC_OK) {
+        [s _beginLoadGame];
+    } else {
+        NSLog(@"[RA-Mednafen] login failed — result=%d error=%s", result, error_message ?: "(none)");
+    }
+}
+
+static void mednafen_rc_event_handler(const rc_client_event_t *event, rc_client_t *client)
+{
+    if (event->type != RC_CLIENT_EVENT_ACHIEVEMENT_TRIGGERED) { return; }
+    const rc_client_achievement_t *ach = event->achievement;
+    if (!ach) { return; }
+
+    NSDictionary *info = @{
+        OEAchievementIDKey:          @(ach->id),
+        OEAchievementTitleKey:       @(ach->title       ?: ""),
+        OEAchievementDescriptionKey: @(ach->description ?: ""),
+        OEAchievementBadgeURLKey:    @(ach->badge_name),
+        OEAchievementPointsKey:      @(ach->points),
+    };
+    [[NSNotificationCenter defaultCenter]
+        postNotificationName:OEAchievementUnlockedNotification
+                      object:nil
+                    userInfo:info];
+}
+
 @implementation MednafenGameCore
+
+- (NSString *)mednafenCoreModule { return _mednafenCoreModule; }
+
+- (void)_beginLoadGame
+{
+    if (!_rcClient || !_romPath) { return; }
+    rc_client_begin_identify_and_load_game(_rcClient,
+                                           (uint32_t)_rcConsole,
+                                           _romPath.fileSystemRepresentation,
+                                           NULL, 0,
+                                           mednafen_rc_load_game_callback,
+                                           (__bridge void *)self);
+}
 
 - (void)initializeMednafen
 {
@@ -3435,6 +3595,48 @@ static __weak MednafenGameCore *_current;
         [self loadDisplayModeOptions];
     }
 
+    // RetroAchievements: only enabled for Phase 2 systems (PSX, PCE/PCECD, Lynx, NGP).
+    // Saturn / VB / WSwan / PCFX are intentionally skipped here so Phase 3 (#261)
+    // can drop them in cleanly.
+    _rcConsole = -1;
+    if ([_mednafenCoreModule isEqualToString:@"psx"])         _rcConsole = RC_CONSOLE_PLAYSTATION;
+    else if ([_mednafenCoreModule isEqualToString:@"pce"])    _rcConsole = RC_CONSOLE_PC_ENGINE;
+    else if ([_mednafenCoreModule isEqualToString:@"pcecd"])  _rcConsole = RC_CONSOLE_PC_ENGINE_CD;
+    else if ([_mednafenCoreModule isEqualToString:@"lynx"])   _rcConsole = RC_CONSOLE_ATARI_LYNX;
+    else if ([_mednafenCoreModule isEqualToString:@"ngp"])    _rcConsole = RC_CONSOLE_NEOGEO_POCKET;
+
+    if (_rcConsole > 0) {
+        _romPath = path;
+        _rcClient = rc_client_create(mednafen_rc_read_memory, oeRetroAchievementsServerCall);
+        if (_rcClient) {
+            rc_client_set_userdata(_rcClient, (__bridge void *)self);
+            rc_client_set_event_handler(_rcClient, mednafen_rc_event_handler);
+            rc_client_set_hardcore_enabled(_rcClient, 0);
+            rc_client_enable_logging(_rcClient, RC_CLIENT_LOG_LEVEL_INFO, mednafen_rc_log);
+
+            __weak MednafenGameCore *weakSelf = self;
+            _raTokenObserver = [[NSNotificationCenter defaultCenter]
+                addObserverForName:OERetroAchievementsTokenDidChangeNotification
+                            object:nil
+                             queue:nil
+                        usingBlock:^(NSNotification *note) {
+                MednafenGameCore *s = weakSelf;
+                if (!s || !s->_rcClient) { return; }
+                NSString *token    = note.userInfo[OERetroAchievementsTokenKey];
+                NSString *username = note.userInfo[OERetroAchievementsUsernameKey];
+                if (token && username) {
+                    rc_client_begin_login_with_token(s->_rcClient,
+                                                     username.UTF8String,
+                                                     token.UTF8String,
+                                                     mednafen_rc_login_callback,
+                                                     (__bridge void *)s);
+                } else {
+                    rc_client_logout(s->_rcClient);
+                }
+            }];
+        }
+    }
+
     return YES;
 }
 
@@ -3465,6 +3667,10 @@ static __weak MednafenGameCore *_current;
 
     MDFNI_Emulate(&spec);
 
+    if (_rcClient) {
+        rc_client_do_frame(_rcClient);
+    }
+
     _mednafenCoreTiming = _masterClock / spec.MasterCycles;
 
     _videoOffsetX = spec.DisplayRect.x;
@@ -3491,10 +3697,22 @@ static __weak MednafenGameCore *_current;
     }
 
     MDFNI_Reset();
+    if (_rcClient) {
+        rc_client_reset(_rcClient);
+    }
 }
 
 - (void)stopEmulation
 {
+    if (_raTokenObserver) {
+        [[NSNotificationCenter defaultCenter] removeObserver:_raTokenObserver];
+        _raTokenObserver = nil;
+    }
+    if (_rcClient) {
+        rc_client_unload_game(_rcClient);
+        rc_client_destroy(_rcClient);
+        _rcClient = NULL;
+    }
     MDFNI_CloseGame();
 
     [super stopEmulation];
@@ -3564,7 +3782,11 @@ static __weak MednafenGameCore *_current;
 
 - (void)loadStateFromFileAtPath:(NSString *)fileName completionHandler:(void (^)(BOOL, NSError *))block
 {
-    block(MDFNI_LoadState(fileName.fileSystemRepresentation, ""), nil);
+    BOOL ok = MDFNI_LoadState(fileName.fileSystemRepresentation, "");
+    if (ok && _rcClient) {
+        rc_client_reset(_rcClient);
+    }
+    block(ok, nil);
 }
 
 - (NSData *)serializeStateWithError:(NSError **)outError
@@ -3618,6 +3840,9 @@ static __weak MednafenGameCore *_current;
     }
     else
     {
+        if (_rcClient) {
+            rc_client_reset(_rcClient);
+        }
         return true;
     }
 }

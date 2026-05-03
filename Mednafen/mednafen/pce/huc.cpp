@@ -642,5 +642,18 @@ void HuC_PokeBRAM(uint32 A, uint8 V)
  SaveRAM[A & 2047] = V;
 }
 
+// PCE-CD RAM accessors used by the OpenEmu RetroAchievements integration.
+// All three pointers are file-static, so we expose them through small
+// inline-namespace functions and a flat extern "C" trampoline.
+uint8 *PCE_GetCDRAMPointer(void)        { return CDRAM; }
+uint8 *PCE_GetSysCardRAMPointer(void)   { return SysCardRAM; }
+uint8 *PCE_GetSaveRAMPointer(void)      { return SaveRAM; }
+
 
 };
+
+extern "C" {
+uint8_t *MDFNPCE_GetCDRAMPointer(void)      { return MDFN_IEN_PCE::PCE_GetCDRAMPointer(); }
+uint8_t *MDFNPCE_GetSysCardRAMPointer(void) { return MDFN_IEN_PCE::PCE_GetSysCardRAMPointer(); }
+uint8_t *MDFNPCE_GetSaveRAMPointer(void)    { return MDFN_IEN_PCE::PCE_GetSaveRAMPointer(); }
+}
