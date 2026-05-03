@@ -24,7 +24,7 @@ Fixes #
 
 ## How to test locally
 
-Replace `NUMBER` with this PR's number, then paste the whole block. For Flycast use `-scheme "OpenEmu + Flycast"` with `clean build`; for Mednafen use `-scheme "OpenEmu + Mednafen" -configuration Release`.
+The PR number below is filled in automatically — just paste the whole block. For Flycast use `-scheme "OpenEmu + Flycast"` with `clean build`; for Mednafen use `-scheme "OpenEmu + Mednafen" -configuration Release`.
 
 ```bash
 cd ~/Documents/Cursor/Open\ Emu

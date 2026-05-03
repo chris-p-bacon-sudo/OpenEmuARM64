@@ -33,10 +33,16 @@ Run the full git shipping loop for the current branch.
 
    Then the template's `## How to test locally` section follows automatically — that's already in `.github/PULL_REQUEST_TEMPLATE.md` and `gh pr create --body` will inherit it if you pass `--body-file` or pipe through. If you're constructing the body inline with `--body "..."`, copy the test block verbatim from the template.
 
-   Then push and open the PR in the same step:
+   Push and open the PR, then immediately edit the body to replace `NUMBER` with the real PR number:
+   ```bash
+   # Step 1 — create the PR (NUMBER is a placeholder at this point)
+   PR_URL=$(gh pr create --repo nickybmon/OpenEmu-Silicon --base main --title "<type>: description" --body "...")
+   # Step 2 — extract the number and patch the body
+   PR_NUM=$(echo "$PR_URL" | grep -o '[0-9]*$')
+   gh pr edit "$PR_NUM" --repo nickybmon/OpenEmu-Silicon --body "$(gh pr view "$PR_NUM" --repo nickybmon/OpenEmu-Silicon --json body -q .body | sed "s/NUMBER/$PR_NUM/g")"
    ```
-   gh pr create --repo nickybmon/OpenEmu-Silicon --base main --title "<type>: description" --body "..."
-   ```
+
+   Always do both steps. The reviewer should never see `NUMBER` in the test block — it must be the real PR number before you report the PR as open.
 
    - If this PR fixes a tracked issue, the PR body **must** include `Fixes #N` (not just the commit). GitHub only auto-closes an issue when the keyword appears in the PR body.
 
