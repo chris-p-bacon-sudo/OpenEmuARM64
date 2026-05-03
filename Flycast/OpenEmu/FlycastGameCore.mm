@@ -48,6 +48,7 @@
 #include "wsi/osx.h"
 
 #include <OpenGL/gl3.h>
+#include <mach/mach_time.h>
 #include <sys/stat.h>
 
 #define SAMPLERATE 44100
@@ -58,33 +59,51 @@
 // Custom AudioBackend that writes samples to OpenEmu's ring buffer
 class OpenEmuAudioBackend : public AudioBackend
 {
+    mach_timebase_info_data_t _tb;
+    uint64_t _nextPushTime = 0;
+
 public:
     OpenEmuAudioBackend() : AudioBackend("openemu", "OpenEmu") {}
 
-    bool init() override { return true; }
+    bool init() override {
+        mach_timebase_info(&_tb);
+        _nextPushTime = 0;
+        return true;
+    }
 
     u32 push(const void *data, u32 frames, bool wait) override
     {
         if (!_current) return frames;
 
-        OERingBuffer *buf = [_current audioBufferAtIndex:0];
-        NSUInteger byteCount = frames * 4; // stereo s16 = 4 bytes per frame
-
         if (wait) {
-            // Block until there's room in the ring buffer. This is the primary
-            // real-time throttle: config::LimitFPS is constexpr true, so push()
-            // is always called with wait=true. Spinning here paces the SH4 thread
-            // to OE's audio consumption rate, fixing games running too fast (#202).
-            // 200 × 100µs = 20ms max (one PAL frame), preventing infinite spin if
-            // the emulator stops while the SH4 thread is mid-flight.
-            for (int i = 0; i < 200 && _current && [buf freeBytes] < byteCount; i++)
-                usleep(100);
+            // Wall-clock throttle: pace the SH4 thread to real time using
+            // mach_absolute_time rather than ring-buffer drain rate. The
+            // previous ring-buffer approach (#203) ran ~8.8% fast on 48 kHz
+            // hosts because CoreAudio drained the buffer faster than the
+            // 44100 Hz math assumed (#202).
+            uint64_t now = mach_absolute_time();
+
+            // Reset after pauses, save-state loads, or the very first push.
+            // 20ms slack = one PAL frame; anything larger means we fell behind.
+            uint64_t maxSlipTicks = (uint64_t)(20 * NSEC_PER_MSEC) * _tb.denom / _tb.numer;
+            if (_nextPushTime == 0 || now > _nextPushTime + maxSlipTicks)
+                _nextPushTime = now;
+
+            if (now < _nextPushTime) {
+                uint64_t sleepNanos = (_nextPushTime - now) * _tb.numer / _tb.denom;
+                usleep((useconds_t)(sleepNanos / 1000));
+            }
+
+            uint64_t batchNanos = (uint64_t)frames * NSEC_PER_SEC / SAMPLERATE;
+            _nextPushTime += batchNanos * _tb.denom / _tb.numer;
         }
-        [buf write:(const uint8_t *)data maxLength:byteCount];
+
+        OERingBuffer *buf = [_current audioBufferAtIndex:0];
+        [buf write:(const uint8_t *)data maxLength:(NSUInteger)(frames * 4)];
         return frames;
     }
 
-    void term() override {}
+    void term() override { _nextPushTime = 0; }
 };
 
 static OpenEmuAudioBackend openEmuAudioBackend;
