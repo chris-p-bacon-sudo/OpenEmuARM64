@@ -1077,7 +1077,10 @@ bool Emulator::render()
 		return false;
 	if (state != Running)
 		return false;
-	return rend_single_frame(true); // use default timeout (20ms NTSC / 23ms PAL)
+	// OE's audio throttle allows SH4 to run up to one NTSC frame (~16.7ms) ahead
+	// of real time. 35ms gives comfortable margin above PAL's 20ms VBlank period
+	// without stalling the render thread on slow frames.
+	return rend_single_frame(true, 35);
 }
 
 void Emulator::vblank()

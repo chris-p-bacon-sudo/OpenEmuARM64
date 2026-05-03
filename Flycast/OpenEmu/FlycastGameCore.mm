@@ -61,6 +61,7 @@ class OpenEmuAudioBackend : public AudioBackend
 {
     mach_timebase_info_data_t _tb;
     uint64_t _nextPushTime = 0;
+    uint64_t _frameAheadTicks = 0; // one NTSC frame of lookahead in mach ticks
 
 public:
     OpenEmuAudioBackend() : AudioBackend("openemu", "OpenEmu") {}
@@ -68,6 +69,11 @@ public:
     bool init() override {
         mach_timebase_info(&_tb);
         _nextPushTime = 0;
+        // Allow SH4 to run up to one NTSC frame (~16.7ms) ahead of real time
+        // before sleeping. This matches the original ring-buffer one-frame
+        // lookahead, and crucially lets VBlank fire during the free-run window
+        // so the render thread gets frames at full rate (#202).
+        _frameAheadTicks = (uint64_t)NSEC_PER_SEC / 60 * _tb.denom / _tb.numer;
         return true;
     }
 
@@ -81,21 +87,29 @@ public:
             // previous ring-buffer approach (#203) ran ~8.8% fast on 48 kHz
             // hosts because CoreAudio drained the buffer faster than the
             // 44100 Hz math assumed (#202).
+            //
+            // Advance the deadline first, then sleep only if SH4 is more than
+            // one NTSC frame ahead of real time. This gives VBlank a full
+            // ~16.7ms window to fire before we block the SH4 thread.
+            uint64_t batchNanos = (uint64_t)frames * NSEC_PER_SEC / SAMPLERATE;
+            uint64_t batchTicks = batchNanos * _tb.denom / _tb.numer;
+
             uint64_t now = mach_absolute_time();
 
             // Reset after pauses, save-state loads, or the very first push.
-            // 20ms slack = one PAL frame; anything larger means we fell behind.
-            uint64_t maxSlipTicks = (uint64_t)(20 * NSEC_PER_MSEC) * _tb.denom / _tb.numer;
+            // 40ms slack = two PAL frames; anything larger means we fell behind.
+            uint64_t maxSlipTicks = (uint64_t)(40 * NSEC_PER_MSEC) * _tb.denom / _tb.numer;
             if (_nextPushTime == 0 || now > _nextPushTime + maxSlipTicks)
                 _nextPushTime = now;
 
-            if (now < _nextPushTime) {
-                uint64_t sleepNanos = (_nextPushTime - now) * _tb.numer / _tb.denom;
+            _nextPushTime += batchTicks;
+
+            // Only sleep when SH4 is more than one NTSC frame ahead.
+            if (_nextPushTime > now + _frameAheadTicks) {
+                uint64_t sleepTicks = _nextPushTime - (now + _frameAheadTicks);
+                uint64_t sleepNanos = sleepTicks * _tb.numer / _tb.denom;
                 usleep((useconds_t)(sleepNanos / 1000));
             }
-
-            uint64_t batchNanos = (uint64_t)frames * NSEC_PER_SEC / SAMPLERATE;
-            _nextPushTime += batchNanos * _tb.denom / _tb.numer;
         }
 
         OERingBuffer *buf = [_current audioBufferAtIndex:0];
