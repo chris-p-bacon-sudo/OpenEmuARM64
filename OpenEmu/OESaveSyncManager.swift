@@ -87,29 +87,34 @@ final class OESaveSyncManager: NSObject {
     @objc var isSignedIn: Bool { accessToken != nil }
     
     // MARK: - OAuth Tokens
-    
+
     private var accessToken: String?
+    // In-memory cache for Keychain-backed tokens. Pre-loaded off the main thread in
+    // startMonitoring() so SecItemCopyMatching is never called on the main thread during
+    // timer-driven or FSEvent-driven sync checks (which run on the main actor in Swift 5.x).
+    private var _refreshToken: String?
     private var refreshToken: String? {
-        get { keychainRead(account: "refreshToken") }
-        set { keychainWrite(value: newValue, account: "refreshToken") }
+        get { _refreshToken }
+        set { _refreshToken = newValue; keychainWrite(value: newValue, account: "refreshToken") }
     }
     private var tokenExpiryDate: Date?
-    
+
     // MARK: - FSEventStream
-    
+
     private var eventStream: FSEventStreamRef?
     private var monitoredURLs: [URL] = []
-    
+
     // MARK: - OAuth Listener
-    
+
     private var oauthListener: NWListener?
-    
+
     // MARK: - Save Folder
 
     /// Cached Drive folder ID for "OpenEmu Saves". Persisted in keychain across sessions.
+    private var _saveFolderID: String?
     private var saveFolderID: String? {
-        get { keychainRead(account: "saveFolderID") }
-        set { keychainWrite(value: newValue, account: "saveFolderID") }
+        get { _saveFolderID }
+        set { _saveFolderID = newValue; keychainWrite(value: newValue, account: "saveFolderID") }
     }
 
     // MARK: - Background Sync
@@ -171,7 +176,19 @@ final class OESaveSyncManager: NSObject {
         monitoredURLs = urls
         startFSEventStream(for: urls)
         os_log(.info, log: log, "Save Sync Manager started monitoring %d directories.", urls.count)
-        
+
+        // Pre-load persisted tokens from Keychain on a background thread so the main thread
+        // is never blocked by SecItemCopyMatching when the sync timer or FSEvent fires.
+        Task.detached(priority: .utility) { [weak self] in
+            guard let self = self else { return }
+            let token    = self.keychainRead(account: "refreshToken")
+            let folderID = self.keychainRead(account: "saveFolderID")
+            await MainActor.run {
+                self._refreshToken  = token
+                self._saveFolderID  = folderID
+            }
+        }
+
         startBackgroundTimer()
     }
     
