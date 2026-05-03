@@ -52,7 +52,7 @@ protocol OESaveSyncManagerDelegate: AnyObject {
 // MARK: - OESaveSyncManager
 
 /// Singleton that manages cloud synchronisation of OpenEmu saves (battery saves + save states)
-/// with Google Drive using the hidden App Data folder.
+/// with Google Drive in a user-visible "OpenEmu Saves" folder at the root of the user's Drive.
 ///
 /// ## Lifecycle
 /// Call `startMonitoring()` once the library database has loaded.
@@ -87,25 +87,38 @@ final class OESaveSyncManager: NSObject {
     @objc var isSignedIn: Bool { accessToken != nil }
     
     // MARK: - OAuth Tokens
-    
+
     private var accessToken: String?
+    // In-memory cache for Keychain-backed tokens. Pre-loaded off the main thread in
+    // startMonitoring() so SecItemCopyMatching is never called on the main thread during
+    // timer-driven or FSEvent-driven sync checks (which run on the main actor in Swift 5.x).
+    private var _refreshToken: String?
     private var refreshToken: String? {
-        get { keychainRead(account: "refreshToken") }
-        set { keychainWrite(value: newValue, account: "refreshToken") }
+        get { _refreshToken }
+        set { _refreshToken = newValue; keychainWrite(value: newValue, account: "refreshToken") }
     }
     private var tokenExpiryDate: Date?
-    
+
     // MARK: - FSEventStream
-    
+
     private var eventStream: FSEventStreamRef?
     private var monitoredURLs: [URL] = []
-    
+
     // MARK: - OAuth Listener
-    
+
     private var oauthListener: NWListener?
-    
+
+    // MARK: - Save Folder
+
+    /// Cached Drive folder ID for "OpenEmu Saves". Persisted in keychain across sessions.
+    private var _saveFolderID: String?
+    private var saveFolderID: String? {
+        get { _saveFolderID }
+        set { _saveFolderID = newValue; keychainWrite(value: newValue, account: "saveFolderID") }
+    }
+
     // MARK: - Background Sync
-    
+
     private var backgroundTimer: Timer?
     
     /// The date and time when the last successful sync operation completed.
@@ -163,7 +176,19 @@ final class OESaveSyncManager: NSObject {
         monitoredURLs = urls
         startFSEventStream(for: urls)
         os_log(.info, log: log, "Save Sync Manager started monitoring %d directories.", urls.count)
-        
+
+        // Pre-load persisted tokens from Keychain on a background thread so the main thread
+        // is never blocked by SecItemCopyMatching when the sync timer or FSEvent fires.
+        Task.detached(priority: .utility) { [weak self] in
+            guard let self = self else { return }
+            let token    = self.keychainRead(account: "refreshToken")
+            let folderID = self.keychainRead(account: "saveFolderID")
+            await MainActor.run {
+                self._refreshToken  = token
+                self._saveFolderID  = folderID
+            }
+        }
+
         startBackgroundTimer()
     }
     
@@ -254,12 +279,71 @@ final class OESaveSyncManager: NSObject {
     /// Manually triggers a check for all currently monitored folders to see if anything needs uploading or downloading.
     @objc func performFullSyncCheck() {
         guard isSignedIn else { return }
-        
-        os_log(.info, log: log, "Performing full background sync check...")
-        
-        // In a real implementation, we might want to iterate over recent games.
-        // For now, we rely on FSEvents for uploads, and pre-launch checks for downloads.
-        // We can however check if any local files are newer than cloud and haven't been uploaded.
+
+        os_log(.info, log: log, "Performing full sync check across %d monitored directories.", monitoredURLs.count)
+
+        // Enumerate filesystem candidates synchronously (FileManager.Enumerator is not Sendable
+        // and cannot be iterated from an async context under Swift 6 strict concurrency).
+        let candidates = collectSyncCandidates()
+
+        Task {
+            do {
+                try await ensureValidAccessToken()
+
+                // Build a name→modifiedTime map from the cloud once, rather than per-file.
+                let cloudFiles = try await fetchCloudFileList()
+                let cloudIndex: [String: Date] = Dictionary(
+                    cloudFiles.compactMap { f in
+                        guard let name = f.name, let date = f.modifiedTime else { return nil }
+                        return (name, date)
+                    },
+                    uniquingKeysWith: { newer, _ in newer }
+                )
+
+                let toUpload = candidates.filter { (url, localMod) in
+                    let cloudMod = cloudIndex[cloudFileName(for: url)] ?? .distantPast
+                    return localMod > cloudMod
+                }
+
+                if toUpload.isEmpty {
+                    os_log(.info, log: log, "Full sync check: all saves are up to date.")
+                    setStatus(.success, message: "All saves are up to date.")
+                    return
+                }
+
+                os_log(.info, log: log, "Full sync check: uploading %d file(s).", toUpload.count)
+                for (url, _) in toUpload {
+                    await uploadFile(at: url)
+                }
+            } catch {
+                os_log(.error, log: log, "Full sync check failed: %@", error.localizedDescription)
+                setStatus(.failed, message: "Sync failed: \(error.localizedDescription)")
+            }
+        }
+    }
+
+    /// Walks every monitored directory synchronously and returns each save-file URL
+    /// alongside its local modification date. Done outside of any `Task` to keep
+    /// `FileManager.Enumerator` (not `Sendable`) on its synchronous, non-isolated path.
+    private func collectSyncCandidates() -> [(url: URL, modified: Date)] {
+        let relevantExtensions: Set<String> = ["sav", "srm", "oesavestate", "state", "rtc", "eep", "nv"]
+        var results: [(URL, Date)] = []
+
+        for dir in monitoredURLs {
+            guard let enumerator = FileManager.default.enumerator(
+                at: dir,
+                includingPropertiesForKeys: [.contentModificationDateKey],
+                options: [.skipsHiddenFiles]
+            ) else { continue }
+
+            for case let url as URL in enumerator {
+                guard relevantExtensions.contains(url.pathExtension.lowercased()) else { continue }
+                guard let attrs = try? url.resourceValues(forKeys: [.contentModificationDateKey]),
+                      let localMod = attrs.contentModificationDate else { continue }
+                results.append((url, localMod))
+            }
+        }
+        return results
     }
     
     // MARK: - Pre-launch Sync Check
@@ -286,8 +370,9 @@ final class OESaveSyncManager: NSObject {
             do {
                 // Refresh token if necessary before any API call.
                 try await ensureValidAccessToken()
-                
-                let remoteFiles = try await listFiles(inFolder: OEGoogleDriveConfig.appDataFolderName, namePrefix: cloudPath)
+                let folderID = try await ensureSaveFolder()
+
+                let remoteFiles = try await listFiles(inFolder: folderID, namePrefix: cloudPath)
                 
                 // Find the most recently modified remote file.
                 let latestRemote = remoteFiles.max { a, b in
@@ -336,8 +421,9 @@ final class OESaveSyncManager: NSObject {
         Task {
             do {
                 try await ensureValidAccessToken()
-                
-                let files = try await listFiles(inFolder: OEGoogleDriveConfig.appDataFolderName, namePrefix: cloudPath)
+                let folderID = try await ensureSaveFolder()
+
+                let files = try await listFiles(inFolder: folderID, namePrefix: cloudPath)
                 
                 for file in files {
                     guard let fileId = file.id, let fileName = file.name else { continue }
@@ -364,20 +450,21 @@ final class OESaveSyncManager: NSObject {
         
         do {
             try await ensureValidAccessToken()
-            
+            let folderID = try await ensureSaveFolder()
+
             let data = try Data(contentsOf: localURL)
             let cloudName = cloudFileName(for: localURL)
-            
+
             setStatus(.syncing, message: "Uploading \(localURL.lastPathComponent)…")
-            
+
             // Check if a file with this name already exists in Drive (for update vs. create).
-            let existing = try await listFiles(inFolder: OEGoogleDriveConfig.appDataFolderName, namePrefix: cloudName)
-            
+            let existing = try await listFiles(inFolder: folderID, namePrefix: cloudName)
+
             if let existingFile = existing.first(where: { $0.name == cloudName }), let fileId = existingFile.id {
                 try await updateFile(fileId: fileId, data: data, mimeType: mimeType(for: localURL))
                 os_log(.debug, log: log, "Updated cloud save: %@", cloudName)
             } else {
-                try await createFile(name: cloudName, data: data, mimeType: mimeType(for: localURL))
+                try await createFile(name: cloudName, data: data, mimeType: mimeType(for: localURL), parentID: folderID)
                 os_log(.debug, log: log, "Created cloud save: %@", cloudName)
             }
             
@@ -529,7 +616,20 @@ final class OESaveSyncManager: NSObject {
         do {
             let listener = try NWListener(using: .tcp, on: .any)
             self.oauthListener = listener
-            
+
+            // Capture the assigned port when the listener becomes ready so we can pass
+            // the exact same redirect URI in both the auth request and the token exchange.
+            // listener.port is reliable here; by the time newConnectionHandler fires and
+            // the listener is cancelled, it may already be nil.
+            var capturedRedirectURI: String = OEGoogleDriveConfig.redirectURI
+
+            listener.stateUpdateHandler = { state in
+                if case .ready = state, let port = listener.port {
+                    capturedRedirectURI = "http://127.0.0.1:\(port.rawValue)"
+                    self.openAuthPage(with: capturedRedirectURI)
+                }
+            }
+
             listener.newConnectionHandler = { connection in
                 connection.start(queue: .main)
                 self.receiveOAuthRequest(on: connection) { code in
@@ -537,23 +637,13 @@ final class OESaveSyncManager: NSObject {
                     connection.send(content: response.data(using: .utf8), completion: .contentProcessed({ _ in
                         connection.cancel()
                         listener.cancel()
-                        
-                        if let port = listener.port {
-                            completion(code, "http://127.0.0.1:\(port.rawValue)")
-                        } else {
-                            completion(code, OEGoogleDriveConfig.redirectURI)
-                        }
+                        // Use the URI captured at listener-ready time, not listener.port
+                        // (which may be nil after cancel()).
+                        completion(code, capturedRedirectURI)
                     }))
                 }
             }
-            
-            listener.stateUpdateHandler = { state in
-                if case .ready = state, let port = listener.port {
-                    let redirectURI = "http://127.0.0.1:\(port.rawValue)"
-                    self.openAuthPage(with: redirectURI)
-                }
-            }
-            
+
             listener.start(queue: .main)
         } catch {
             os_log(.error, log: log, "Failed to start OAuth listener: %{public}@", error.localizedDescription)
@@ -600,6 +690,7 @@ final class OESaveSyncManager: NSObject {
         accessToken   = nil
         tokenExpiryDate = nil
         refreshToken  = nil   // clears from keychain
+        saveFolderID  = nil   // clears from keychain
         setStatus(.idle, message: nil)
         os_log(.info, log: log, "Signed out of Google Drive.")
     }
@@ -701,11 +792,61 @@ final class OESaveSyncManager: NSObject {
     }
     
     
-    /// Returns a list of all files currently stored in the Google Drive appDataFolder.
+    /// Returns the Drive folder ID for "OpenEmu Saves", creating the folder if it doesn't exist yet.
+    private func ensureSaveFolder() async throws -> String {
+        if let id = saveFolderID { return id }
+
+        // Search for an existing folder with this name.
+        let folderMime = "application/vnd.google-apps.folder"
+        let safe = OEGoogleDriveConfig.saveFolderName.replacingOccurrences(of: "'", with: "\\'")
+        let q = "name='\(safe)' and mimeType='\(folderMime)' and trashed=false"
+
+        var components = URLComponents(string: "\(OEGoogleDriveConfig.driveAPIBaseURL)/files")!
+        components.queryItems = [
+            URLQueryItem(name: "spaces", value: "drive"),
+            URLQueryItem(name: "fields", value: "files(id,name)"),
+            URLQueryItem(name: "q",      value: q),
+        ]
+        var request = URLRequest(url: components.url!)
+        request.setValue("Bearer \(accessToken!)", forHTTPHeaderField: "Authorization")
+
+        let (data, response) = try await session.data(for: request)
+        try validateResponse(response, data: data, context: "ensureSaveFolder/search")
+
+        let json = try JSONSerialization.jsonObject(with: data) as! [String: Any]
+        if let existing = (json["files"] as? [[String: Any]])?.first,
+           let id = existing["id"] as? String {
+            saveFolderID = id
+            os_log(.info, log: log, "Found existing save folder: %@", id)
+            return id
+        }
+
+        // Create it.
+        let metadata: [String: Any] = ["name": OEGoogleDriveConfig.saveFolderName, "mimeType": folderMime]
+        var createRequest = URLRequest(url: URL(string: "\(OEGoogleDriveConfig.driveAPIBaseURL)/files")!)
+        createRequest.httpMethod = "POST"
+        createRequest.setValue("Bearer \(accessToken!)", forHTTPHeaderField: "Authorization")
+        createRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        createRequest.httpBody = try JSONSerialization.data(withJSONObject: metadata)
+
+        let (createData, createResponse) = try await session.data(for: createRequest)
+        try validateResponse(createResponse, data: createData, context: "ensureSaveFolder/create")
+
+        let createJSON = try JSONSerialization.jsonObject(with: createData) as! [String: Any]
+        guard let newID = createJSON["id"] as? String else {
+            throw OESaveSyncError.apiError(statusCode: 0, body: "Folder creation returned no ID")
+        }
+        saveFolderID = newID
+        os_log(.info, log: log, "Created save folder: %@", newID)
+        return newID
+    }
+
+    /// Returns a list of all files currently stored in the "OpenEmu Saves" Drive folder.
     public func fetchCloudFileList() async throws -> [DriveFile] {
         try await ensureValidAccessToken()
-        let files = try await listFiles(inFolder: OEGoogleDriveConfig.appDataFolderName)
-        os_log(.info, log: log, "Fetched %d files from appDataFolder", files.count)
+        let folderID = try await ensureSaveFolder()
+        let files = try await listFiles(inFolder: folderID)
+        os_log(.info, log: log, "Fetched %d files from save folder", files.count)
         return files
     }
     
@@ -719,7 +860,7 @@ final class OESaveSyncManager: NSObject {
         
         var components = URLComponents(string: "\(OEGoogleDriveConfig.driveAPIBaseURL)/files")!
         components.queryItems = [
-            URLQueryItem(name: "spaces",  value: "appDataFolder"),
+            URLQueryItem(name: "spaces",  value: "drive"),
             URLQueryItem(name: "fields",  value: "files(id,name,modifiedTime)"),
             URLQueryItem(name: "q",       value: q),
         ]
@@ -734,7 +875,8 @@ final class OESaveSyncManager: NSObject {
         let files = (json["files"] as? [[String: Any]]) ?? []
         
         let isoFormatter = ISO8601DateFormatter()
-        
+        isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+
         return files.compactMap { dict -> DriveFile? in
             var file = DriveFile()
             file.id   = dict["id"]   as? String
@@ -756,12 +898,12 @@ final class OESaveSyncManager: NSObject {
         return data
     }
     
-    private func createFile(name: String, data: Data, mimeType: String) async throws {
+    private func createFile(name: String, data: Data, mimeType: String, parentID: String) async throws {
         // Multipart upload: metadata + binary data.
         let boundary = "oebound-\(UUID().uuidString)"
-        
+
         var body = Data()
-        let metadata = ["name": name, "parents": [OEGoogleDriveConfig.appDataFolderName]] as [String: Any]
+        let metadata = ["name": name, "parents": [parentID]] as [String: Any]
         let metaData = try JSONSerialization.data(withJSONObject: metadata)
         
         body.append("--\(boundary)\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n".data(using: .utf8)!)

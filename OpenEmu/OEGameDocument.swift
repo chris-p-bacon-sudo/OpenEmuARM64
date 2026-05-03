@@ -1040,6 +1040,7 @@ final class OEGameDocument: NSDocument {
         emulationStatus = .starting
         gameCoreManager?.startEmulation() {
             self.emulationStatus = .playing
+            self.cheats.filter(\.isEnabled).forEach { self.setCheat($0) }
         }
         
         gameViewController.reflectEmulationPaused(false)
@@ -1334,7 +1335,34 @@ final class OEGameDocument: NSDocument {
         if supportsCheats,
            let md5Hash = rom.md5Hash {
             let cheatsXML = Cheats(md5Hash: md5Hash)
-            cheats = cheatsXML.allCheats
+            cheats = cheatsXML.allCheats + loadUserCheats()
+        }
+    }
+
+    // MARK: - User Cheat Persistence
+
+    private var userCheatsFileURL: URL? {
+        guard let md5 = rom.md5Hash,
+              let base = OELibraryDatabase.default?.databaseFolderURL
+        else { return nil }
+        let dir = base.appendingPathComponent("Cheats", isDirectory: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir.appendingPathComponent("\(md5).json")
+    }
+
+    private func loadUserCheats() -> [Cheat] {
+        guard let url = userCheatsFileURL,
+              let data = try? Data(contentsOf: url),
+              let saved = try? JSONDecoder().decode([Cheat].self, from: data)
+        else { return [] }
+        return saved
+    }
+
+    private func saveUserCheats() {
+        guard let url = userCheatsFileURL else { return }
+        let userCheats = cheats.filter(\.isUserAdded)
+        if let data = try? JSONEncoder().encode(userCheats) {
+            try? data.write(to: url, options: .atomic)
         }
     }
     
@@ -1358,15 +1386,16 @@ final class OEGameDocument: NSDocument {
         alert.inputLimit = 1000
         
         if alert.runModal() == .alertFirstButtonReturn {
-            let cheat = Cheat(code: alert.stringValue, type: "Unknown", name: alert.otherStringValue)
-            
+            let cheat = Cheat(code: alert.stringValue, type: "GameShark", name: alert.otherStringValue)
+            cheat.isUserAdded = true
+
             if alert.suppressionButtonState {
                 cheat.isEnabled = true
                 setCheat(cheat)
             }
-            
-            //TODO: decide how to handle setting a cheat type from the modal and save added cheats to file
+
             cheats.append(cheat)
+            saveUserCheats()
         }
     }
     
@@ -1374,9 +1403,10 @@ final class OEGameDocument: NSDocument {
     @IBAction func toggleCheat(_ sender: AnyObject) {
         guard let cheat = sender.representedObject as? Cheat
         else { return }
-        
+
         cheat.isEnabled.toggle()
         setCheat(cheat)
+        if cheat.isUserAdded { saveUserCheats() }
     }
     
     func setCheat(_ cheat: Cheat) {

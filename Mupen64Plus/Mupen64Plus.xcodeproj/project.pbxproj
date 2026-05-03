@@ -297,6 +297,8 @@
 		EE2BBC46225AD5380007BF6F /* iob.cpp in Sources */ = {isa = PBXBuildFile; fileRef = EE2BBC45225AD5370007BF6F /* iob.cpp */; };
 		EE2BBC48225AD6520007BF6F /* MemoryStatus_mupenplus.cpp in Sources */ = {isa = PBXBuildFile; fileRef = EE2BBC47225AD6510007BF6F /* MemoryStatus_mupenplus.cpp */; };
                 8784175F25994FEF002ED39D /* linkage_arm64.S in Sources */ = {isa = PBXBuildFile; fileRef = 8784175E25994FEF002ED39D /* linkage_arm64.S */; };
+		OE0M64P0BUILDFILE000000001 /* rcheevos_build.c in Sources */ = {isa = PBXBuildFile; fileRef = OE0M64P0FILEREF000000001 /* rcheevos_build.c */; settings = {COMPILER_FLAGS = "-DRC_NO_THREADS=1 -DRC_CLIENT_SUPPORTS_HASH=1 -Dmd5_init=rc_md5_init -Dmd5_append=rc_md5_append -Dmd5_finish=rc_md5_finish"; }; };
+		OE0M64P0BUILDFILE000000002 /* OERetroAchievementsTransport.m in Sources */ = {isa = PBXBuildFile; fileRef = OE0M64P0FILEREF000000002 /* OERetroAchievementsTransport.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -1155,6 +1157,8 @@
 		EE2BBC44225AD5370007BF6F /* MemoryStatus.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = MemoryStatus.h; path = ../../../Mupen64plus/GLideN64/src/MemoryStatus.h; sourceTree = "<group>"; };
 		EE2BBC45225AD5370007BF6F /* iob.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = iob.cpp; path = ../../../Mupen64plus/GLideN64/src/iob.cpp; sourceTree = "<group>"; };
 		EE2BBC47225AD6510007BF6F /* MemoryStatus_mupenplus.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = MemoryStatus_mupenplus.cpp; path = ../../../../Mupen64plus/GLideN64/src/mupenplus/MemoryStatus_mupenplus.cpp; sourceTree = "<group>"; };
+		OE0M64P0FILEREF000000001 /* rcheevos_build.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = rcheevos_build.c; path = ../Vendor/rcheevos/rcheevos_build.c; sourceTree = SOURCE_ROOT; };
+		OE0M64P0FILEREF000000002 /* OERetroAchievementsTransport.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = OERetroAchievementsTransport.m; path = ../OpenEmuKit/Source/OERetroAchievementsTransport.m; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -3296,6 +3300,8 @@
 				878419A325995AFB002ED39D /* dynamiclib_unix.c in Sources */,
 				878419AD25995AFF002ED39D /* files_unix.c in Sources */,
 				3D208F821182B00300BEAA42 /* MupenGameCore.m in Sources */,
+				OE0M64P0BUILDFILE000000001 /* rcheevos_build.c in Sources */,
+				OE0M64P0BUILDFILE000000002 /* OERetroAchievementsTransport.m in Sources */,
 				3D8B35D812260F9D00C4C844 /* main.m in Sources */,
 				3D00F06D1183E4AA002995A1 /* eventloop.m in Sources */,
 				3D00F06E1183E4AA002995A1 /* osd.m in Sources */,
@@ -3398,6 +3404,9 @@
 					"\"$(SRCROOT)/mupen64plus-core/subprojects/md5\"",
 					"\"$(SRCROOT)/mupen64plus-core/subprojects/xxhash\"",
 					"\"$(SRCROOT)/mupen64plus-core/subprojects/minizip\"",
+					"\"$(SRCROOT)/../Vendor/rcheevos/include\"",
+					"\"$(SRCROOT)/../Vendor/rcheevos/src\"",
+					"\"$(SRCROOT)/../OpenEmuKit/Source\"",
 				);
 				INFOPLIST_FILE = Info.plist;
 				INSTALL_PATH = "\"$(USER_LIBRARY_DIR)/Application Support/OpenEmu/Cores\"";
@@ -3459,6 +3468,9 @@
 					"\"$(SRCROOT)/mupen64plus-core/subprojects/md5\"",
 					"\"$(SRCROOT)/mupen64plus-core/subprojects/xxhash\"",
 					"\"$(SRCROOT)/mupen64plus-core/subprojects/minizip\"",
+					"\"$(SRCROOT)/../Vendor/rcheevos/include\"",
+					"\"$(SRCROOT)/../Vendor/rcheevos/src\"",
+					"\"$(SRCROOT)/../OpenEmuKit/Source\"",
 				);
 				INFOPLIST_FILE = Info.plist;
 				INSTALL_PATH = "\"$(USER_LIBRARY_DIR)/Application Support/OpenEmu/Cores\"";

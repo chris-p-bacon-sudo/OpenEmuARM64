@@ -206,8 +206,13 @@ final class ImportOperation: Operation, NSCopying, @unchecked Sendable {
         if Self.isInvalidExtension(at: url) {
             return nil
         }
-        
-        self.init(url: url, sourceURL: url)
+
+        // For multi-disc .cue/.ccd inputs whose siblings live in the same folder, auto-create
+        // an .m3u and import that instead, so the whole multi-disc set lands in one library
+        // entry / subfolder. See `tryMultiDiscM3UAutoCreate(at:)` for the full rationale.
+        let importURL = Self.tryMultiDiscM3UAutoCreate(at: url) ?? url
+
+        self.init(url: importURL, sourceURL: url)
         self.importer = importer
     }
     
@@ -354,14 +359,14 @@ final class ImportOperation: Operation, NSCopying, @unchecked Sendable {
     
     private static func isInvalidExtension(at url: URL) -> Bool {
         let pathExtension = url.pathExtension.lowercased()
-        
+
         // Ignore unsupported file extensions
         var validExtensions = OESystemPlugin.supportedTypeExtensions
-        
+
         // Hack fix for #2031
         // TODO: Build set for extensions from all BIOS file types?
         validExtensions.insert("img")
-        
+
         // TODO:
         // The Archived Game document type lists all supported archive extensions, e.g. zip
         if let bundleInfo = Bundle.main.infoDictionary,
@@ -371,7 +376,7 @@ final class ImportOperation: Operation, NSCopying, @unchecked Sendable {
         {
             validExtensions.formUnion(extensions)
         }
-        
+
         if !url.isDirectory {
             if !pathExtension.isEmpty,
                !validExtensions.contains(pathExtension)
@@ -380,10 +385,95 @@ final class ImportOperation: Operation, NSCopying, @unchecked Sendable {
                 return true
             }
         }
-        
+
         return false
     }
-    
+
+    // If `url` points at one disc of a multi-disc set whose siblings live in the same folder,
+    // write a sibling .m3u listing every disc and return its URL. Returns nil for single-disc
+    // games, m3u/non-disc inputs, or when siblings can't be located. The detection is
+    // filename-based ("(Disc 1)", "[CD2]", etc.) so it works for any disc-based system without
+    // needing per-game serial knowledge in the importer. Mednafen requires .m3u for multi-disc
+    // PSX games to keep saves and disc-swap state coherent (#294); doing this at import time
+    // (rather than at launch) ensures the m3u and its referenced .cue/.bin files end up in a
+    // single library subfolder via OEM3UFile.copyToURL: instead of being split into per-disc
+    // subfolders by performImportStepOrganize.
+    private static func tryMultiDiscM3UAutoCreate(at url: URL) -> URL? {
+        let pathExtension = url.pathExtension.lowercased()
+        guard pathExtension == "cue" || pathExtension == "ccd" else {
+            return nil
+        }
+
+        // Match "(Disc 1)", "[Disc 1]", "(Disk 1)", "(CD 1)", "[CD2]", etc. The capture group
+        // grabs the disc number so we can sort by it.
+        let pattern = #"\s*[\(\[]\s*(?:Disc|Disk|CD)\s*(\d+)\s*[\)\]]\s*"#
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive) else {
+            return nil
+        }
+
+        let baseName = (url.lastPathComponent as NSString).deletingPathExtension
+        let baseRange = NSRange(location: 0, length: (baseName as NSString).length)
+        guard regex.firstMatch(in: baseName, options: [], range: baseRange) != nil else {
+            return nil // not a multi-disc filename
+        }
+
+        let strippedBaseName = regex
+            .stringByReplacingMatches(in: baseName, options: [], range: baseRange, withTemplate: "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !strippedBaseName.isEmpty else {
+            return nil
+        }
+
+        let folderURL = url.deletingLastPathComponent()
+        let fileManager = FileManager.default
+        guard let folderContents = try? fileManager.contentsOfDirectory(at: folderURL, includingPropertiesForKeys: nil) else {
+            return nil
+        }
+
+        var discFiles: [(disc: Int, name: String)] = []
+        for fileURL in folderContents {
+            let ext = fileURL.pathExtension.lowercased()
+            guard ext == "cue" || ext == "ccd" else { continue }
+            let candidate = (fileURL.lastPathComponent as NSString).deletingPathExtension
+            let candidateRange = NSRange(location: 0, length: (candidate as NSString).length)
+            guard let candidateMatch = regex.firstMatch(in: candidate, options: [], range: candidateRange) else { continue }
+            let candidateStripped = regex
+                .stringByReplacingMatches(in: candidate, options: [], range: candidateRange, withTemplate: "")
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            guard candidateStripped == strippedBaseName else { continue }
+            let discNumberRange = candidateMatch.range(at: 1)
+            guard discNumberRange.location != NSNotFound,
+                  let discNumber = Int((candidate as NSString).substring(with: discNumberRange))
+            else { continue }
+            discFiles.append((discNumber, fileURL.lastPathComponent))
+        }
+
+        guard discFiles.count >= 2 else {
+            return nil // single disc, or siblings missing — fall back to single-disc import
+        }
+
+        discFiles.sort { $0.disc < $1.disc }
+
+        let m3uURL = folderURL.appendingPathComponent("\(strippedBaseName).m3u", isDirectory: false)
+
+        // Reuse a pre-existing .m3u so re-imports are idempotent and dedupe via hash.
+        if fileManager.fileExists(atPath: m3uURL.path) {
+            DLog("Multi-disc .m3u already exists, reusing: \(m3uURL.path)")
+            return m3uURL
+        }
+
+        let m3uContent = discFiles.map { $0.name }.joined(separator: "\n") + "\n"
+        do {
+            try m3uContent.write(to: m3uURL, atomically: true, encoding: .utf8)
+        } catch {
+            DLog("Could not auto-create multi-disc .m3u at \(m3uURL.path): \(error)")
+            return nil
+        }
+
+        os_log(.info, log: .import, "Auto-created %d-disc .m3u: %{public}@", discFiles.count, m3uURL.path)
+        return m3uURL
+    }
+
     // MARK: -
     
     override func main() {

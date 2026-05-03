@@ -62,15 +62,20 @@ final class Cheats: NSObject {
     }
     
     private func findCheats() {
-        
+
         // TODO: Read cheats database from server instead of bundling with the app for easy updating.
-        let cheatsDatabaseURL = Bundle.main.url(forResource: "cheats-database", withExtension: "xml")!
-        
-        let xml = try! Data(contentsOf: cheatsDatabaseURL)
-        
+        guard let cheatsDatabaseURL = Bundle.main.url(forResource: "cheats-database", withExtension: "xml") else {
+            NSLog("[Cheats] cheats-database.xml not found in app bundle — no cheats available.")
+            return
+        }
+
+        guard let xml = try? Data(contentsOf: cheatsDatabaseURL) else {
+            NSLog("[Cheats] Failed to read cheats-database.xml at %@", cheatsDatabaseURL.path)
+            return
+        }
+
         let parser = XMLParser(data: xml)
         parser.delegate = self
-        
         parser.parse()
     }
 }
@@ -113,7 +118,8 @@ final class Cheat: Codable {
     let type: String
     var name: String
     var isEnabled = false
-    
+    var isUserAdded = false
+
     init(code: String, type: String, name: String) {
         self.code = code
         self.type = type

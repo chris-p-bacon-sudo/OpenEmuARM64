@@ -29,6 +29,11 @@ enum OEGoogleDriveConfig {
     
     // MARK: - OAuth Credentials
     
+    // TODO: Inject real credentials before Cloud Sync can function.
+    // Strategy options: (a) CI secret → OEGoogleDriveSecrets.swift at build time,
+    //                   (b) runtime user-provided credentials in Preferences.
+    // See: OEGoogleDriveSecrets.template.swift for the secrets-file pattern.
+    // Tracked in: https://github.com/nickybmon/OpenEmu-Silicon/issues/129
     /// Your Google API OAuth 2.0 Client ID.
     static let clientID     = "YOUR_CLIENT_ID_HERE"
     
@@ -42,18 +47,20 @@ enum OEGoogleDriveConfig {
     static let redirectURI           = "http://127.0.0.1"
     
     // MARK: - API Scopes
-    
-    /// Requests access to the hidden App Data folder only.
-    static let scopes = ["https://www.googleapis.com/auth/drive.appdata"]
-    
+
+    /// Requests access to files created by this app only (user-visible in Drive).
+    static let scopes = ["https://www.googleapis.com/auth/drive.file"]
+
     // MARK: - API Endpoints
-    
+
     static let driveAPIBaseURL   = "https://www.googleapis.com/drive/v3"
     static let uploadAPIBaseURL  = "https://www.googleapis.com/upload/drive/v3"
-    
-    // MARK: - App Data Folder
-    
-    static let appDataFolderName = "appDataFolder"
+
+    // MARK: - Save Folder
+
+    /// Name of the folder created in the root of the user's Google Drive.
+    /// User-visible in the Drive web UI, browseable, and removable.
+    static let saveFolderName = "OpenEmu Saves"
     
     // MARK: - Keychain
     

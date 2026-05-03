@@ -24,37 +24,42 @@ Fixes #
 
 ## How to test locally
 
-```bash
-# 1. Check out this PR
-gh pr checkout <PR_NUMBER> --repo nickybmon/OpenEmu-Silicon
+Replace `NUMBER` with this PR's number, then paste the whole block. For Flycast use `-scheme "OpenEmu + Flycast"` with `clean build`; for Mednafen use `-scheme "OpenEmu + Mednafen" -configuration Release`.
 
-# 2. Build — use the scheme that covers the changed target.
-#    For main app changes: -scheme OpenEmu
-#    For Flycast core changes: -scheme "OpenEmu + Flycast" with 'clean build'
-#    (incremental builds will not recompile core C++ files)
+```bash
+cd ~/Documents/Cursor/Open\ Emu
+gh pr checkout NUMBER --repo nickybmon/OpenEmu-Silicon
 xcodebuild \
-  -workspace OpenEmu-metal.xcworkspace \
+  -workspace OpenEmu.xcworkspace \
   -scheme OpenEmu \
   -configuration Debug \
   -destination 'platform=macOS,arch=arm64' \
   build 2>&1 | tail -20
-
-# 3. If this PR touches a core (Flycast, etc.), install the rebuilt binary:
-#    cp -f ~/Library/Developer/Xcode/DerivedData/OpenEmu-metal-*/Build/Products/Debug/<CoreName>.oecoreplugin/Contents/MacOS/<CoreName> \
-#      ~/Library/Application\ Support/OpenEmu/Cores/<CoreName>.oecoreplugin/Contents/MacOS/<CoreName>
-
-# 4. Launch
-open ~/Library/Developer/Xcode/DerivedData/OpenEmu-*/Build/Products/Debug/OpenEmu.app
+DEBUG_DIR=$(ls -dt ~/Library/Developer/Xcode/DerivedData/OpenEmu-*/Build/Products/Debug 2>/dev/null | head -1)
+SIGN_ID=$(security find-identity -v -p codesigning | awk -F'"' '/Apple Development/ {print $2; exit}')
+codesign --force --deep --sign "${SIGN_ID:--}" "$DEBUG_DIR/OpenEmu.app"
+open "$DEBUG_DIR/OpenEmu.app"
 ```
 
-<!-- Replace <PR_NUMBER> with this PR's number. Add any PR-specific setup steps here (e.g. BIOS files needed, permissions to revoke first, specific ROM to test with). -->
+The `SIGN_ID` line auto-picks your local Apple Development identity so the binary gets a **stable** code signature across rebuilds. Without it, ad-hoc signing (`-`) would cause macOS to treat each rebuild as a new app and revoke Input Monitoring, Keychain ACLs, and other TCC permissions every time you test. Falls back to ad-hoc only if you have no Apple Development cert.
+
+If this PR touches a core, install it before the `open` line:
+
+```bash
+cp -R "$DEBUG_DIR/<CoreName>.oecoreplugin" \
+  ~/Library/Application\ Support/OpenEmu/Cores/<CoreName>.oecoreplugin
+codesign --force --sign - \
+  ~/Library/Application\ Support/OpenEmu/Cores/<CoreName>.oecoreplugin
+```
+
+<!-- Add any PR-specific setup here (BIOS files, permissions to revoke, specific ROM to test with). -->
 
 ---
 
 ## PR checklist
 
 - [ ] Branched from an up-to-date `main` (ran `git fetch origin && git merge origin/main`)
-- [ ] Build passes: `xcodebuild -workspace OpenEmu-metal.xcworkspace -scheme OpenEmu -configuration Debug -destination 'platform=macOS,arch=arm64' build`
+- [ ] Build passes: `xcodebuild -workspace OpenEmu.xcworkspace -scheme OpenEmu -configuration Debug -destination 'platform=macOS,arch=arm64' build`
 - [ ] Tested on Apple Silicon (M1 / M2 / M3 / M4 Mac)
 - [ ] No build logs, binaries, or credentials committed
 - [ ] Copyright headers preserved on all modified files
