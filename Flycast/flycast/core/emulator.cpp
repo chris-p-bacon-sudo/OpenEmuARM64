@@ -1077,10 +1077,16 @@ bool Emulator::render()
 		return false;
 	if (state != Running)
 		return false;
-	// OE's audio throttle allows SH4 to run up to one NTSC frame (~16.7ms) ahead
-	// of real time. 35ms gives comfortable margin above PAL's 20ms VBlank period
-	// without stalling the render thread on slow frames.
-	return rend_single_frame(true, 35);
+	// Interpreter runs at ~10-20% real speed on ARM64; a Dreamcast frame takes
+	// ~160ms of wall time. Use 500ms timeout for interpreter so rend_single_frame
+	// doesn't time out mid-frame. JIT runs at full speed so -1 (infinite wait) is
+	// correct there — the render thread will be woken promptly by the SH4 thread.
+#if FEAT_SHREC != DYNAREC_NONE
+	const int frameTimeout = config::DynarecEnabled ? -1 : 500;
+#else
+	const int frameTimeout = 500;
+#endif
+	return rend_single_frame(true, frameTimeout);
 }
 
 void Emulator::vblank()

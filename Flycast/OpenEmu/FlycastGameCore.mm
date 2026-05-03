@@ -69,11 +69,11 @@ public:
     bool init() override {
         mach_timebase_info(&_tb);
         _nextPushTime = 0;
-        // Allow SH4 to run up to one NTSC frame (~16.7ms) ahead of real time
-        // before sleeping. This matches the original ring-buffer one-frame
-        // lookahead, and crucially lets VBlank fire during the free-run window
-        // so the render thread gets frames at full rate (#202).
-        _frameAheadTicks = (uint64_t)NSEC_PER_SEC / 60 * _tb.denom / _tb.numer;
+        // Allow SH4 to run up to two NTSC frames (~33.4ms) ahead of real time
+        // before sleeping. Two frames gives SH4 enough runway to complete a full
+        // PVR render cycle and signal the render thread before the 60ms timeout
+        // fires, fixing video slowdown and maple-bus polling gaps (#202).
+        _frameAheadTicks = (uint64_t)NSEC_PER_SEC / 60 * 2 * _tb.denom / _tb.numer;
         return true;
     }
 
@@ -97,8 +97,9 @@ public:
             uint64_t now = mach_absolute_time();
 
             // Reset after pauses, save-state loads, or the very first push.
-            // 40ms slack = two PAL frames; anything larger means we fell behind.
-            uint64_t maxSlipTicks = (uint64_t)(40 * NSEC_PER_MSEC) * _tb.denom / _tb.numer;
+            // 60ms slack = three PAL frames; matches the wider 2-frame lookahead
+            // window so a brief CPU hiccup doesn't trigger a spurious clock reset.
+            uint64_t maxSlipTicks = (uint64_t)(60 * NSEC_PER_MSEC) * _tb.denom / _tb.numer;
             if (_nextPushTime == 0 || now > _nextPushTime + maxSlipTicks)
                 _nextPushTime = now;
 
@@ -183,7 +184,9 @@ __weak FlycastGameCore *_current;
 
     config::RendererType = RenderType::OpenGL;
     config::AudioBackend.set("openemu");
-    config::DynarecEnabled.override(false); // interpreter — JIT has stability issues on ARM64 macOS
+    // JIT was previously disabled due to a race under non-threaded rendering (#46cdc996).
+    // Threaded rendering is always active in this build so that race does not apply.
+    config::DynarecEnabled.override(true);
 
     if (!addrspace::reserve()) {
         NSLog(@"[Flycast] Failed to reserve Dreamcast address space");
@@ -245,7 +248,7 @@ __weak FlycastGameCore *_current;
             theGLContext.init();
             emu.loadGame(_romPath.fileSystemRepresentation);
             // loadGame calls reset()+load() which clears all settings — re-apply after it returns.
-            config::DynarecEnabled.override(false); // keep interpreter; JIT unstable on ARM64 macOS
+            config::DynarecEnabled.override(true);  // JIT race was non-threaded-rendering only; threaded is always active
             config::AudioBackend.set("openemu");    // reset() clears this to "auto"; restore before InitAudio()
             // loadGameSpecificSettings() runs load(true) which can flip UseReios=false from a per-game
             // config. Without HLE BIOS the VBL-driven GD-ROM server is inert and games freeze on a
