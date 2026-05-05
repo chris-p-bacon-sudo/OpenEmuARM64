@@ -5,6 +5,16 @@
   <channel>
     <title>Mednafen</title>
         <item>
+      <title>Mednafen 1.26.3</title>
+      <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
+      <enclosure
+        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.3.0/Mednafen.oecoreplugin.zip"
+        sparkle:version="1.26.3"
+        sparkle:shortVersionString="1.26.3"
+        length="2915033"
+        type="application/octet-stream" />
+    </item>
+        <item>
       <title>Mednafen 1.26.2</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure

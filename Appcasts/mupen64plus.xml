@@ -5,6 +5,16 @@
   <channel>
     <title>Mupen64Plus</title>
         <item>
+      <title>Mupen64Plus 2.5.12</title>
+      <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
+      <enclosure
+        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.3.0/Mupen64Plus.oecoreplugin.zip"
+        sparkle:version="2.5.12"
+        sparkle:shortVersionString="2.5.12"
+        length="1218351"
+        type="application/octet-stream" />
+    </item>
+        <item>
       <title>Mupen64Plus 2.5.11</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure

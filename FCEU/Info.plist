@@ -16,8 +16,10 @@
 	<string>BNDL</string>
 	<key>CFBundleSignature</key>
 	<string>????</string>
+	<key>CFBundleShortVersionString</key>
+	<string>2.6.8</string>
 	<key>CFBundleVersion</key>
-	<string>2.6.6</string>
+	<string>2.6.8</string>
 	<key>NSPrincipalClass</key>
 	<string>OEGameCoreController</string>
 	<key>OEGameCoreClass</key>
