@@ -36,6 +36,8 @@ What this looks like in practice:
 
 The script chains build → static analyzer → plist lint → codesign verify → optional smoke launch with log + crash-report scan. Read its full output — don't pipe through `tail`. Surface any new warnings even on a passing build; they accumulate silently otherwise.
 
+**Launching the debug app:** use `./Scripts/launch-debug.sh` instead of `open <path>`. It picks the build matching the current git branch, refuses to launch when source is newer than the binary, and replaces any running instance (debug or production) cleanly. Plain `open` will silently launch a stale build from an old DerivedData hash whenever Xcode rotates hashes.
+
 **If `verify.sh` fails in a way unrelated to your change** (a script bug, a missing scheme, a permissions prompt, a stuck process), don't get stuck trying to fix the script. Fall back to a plain `xcodebuild build` check, note the verify.sh issue in your task report, and continue. The script is best-effort — it should help, not block.
 
 Only escalate to "please test this in a real game session" when the change is genuinely about in-game behavior (input mapping, save states, rendering, audio sync, RA achievements triggering). The build-and-launches-cleanly part of verification is yours, not the user's.
