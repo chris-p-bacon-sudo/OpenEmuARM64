@@ -51,6 +51,23 @@ plutil -lint <CoreName>/Info.plist
 /usr/libexec/PlistBuddy -c "Print :CFBundleVersion" <CoreName>/Info.plist
 ```
 
+**Watch out for `$(CURRENT_PROJECT_VERSION)`.** Some cores (BSNES is the
+known case) have `<string>$(CURRENT_PROJECT_VERSION)</string>` in
+`Info.plist` instead of a literal version. For those, editing only the
+plist won't change the built binary — Xcode substitutes the value at
+build time from `CURRENT_PROJECT_VERSION` in the project file. The
+Step 7b guardrail will catch this (the zip's `CFBundleVersion` will
+come back as the old version, not what you wrote here). When that
+happens, you also need to bump `CURRENT_PROJECT_VERSION` in
+`<CoreName>/<CoreName>.xcodeproj/project.pbxproj` (or the relevant
+xcconfig). Detect this case before building:
+
+```bash
+grep -q '\$(CURRENT_PROJECT_VERSION)' <CoreName>/Info.plist \
+  && echo "WARNING: Info.plist uses CURRENT_PROJECT_VERSION — also bump it in the project file" \
+  || echo "Plist uses literal version — single edit is enough"
+```
+
 ## Step 4 — Build the main workspace in Release (produces frameworks the core needs)
 
 ```bash
@@ -66,22 +83,20 @@ If this fails, stop and report the errors. Do not continue.
 
 ## Step 5 — Build the core in Release
 
-Find the Release framework path:
-```bash
-DERIVED_RELEASE=$(find ~/Library/Developer/Xcode/DerivedData/OpenEmu-metal-* \
-  -maxdepth 3 -name "Release" -path "*/Build/Products/Release" 2>/dev/null | head -1)
-echo "$DERIVED_RELEASE"
-```
+Build via the workspace's `OpenEmu + <CoreName>` scheme — not the bare
+`<CoreName>` scheme. The bare scheme isn't configured for the build
+action on every core (4DO is one example) and will fail with
+`Scheme <CoreName> is not currently configured for the build action`.
+The combo scheme always builds both the host app and the plugin together,
+producing both into the same `OpenEmu-metal-*` DerivedData tree.
 
-Build the core:
 ```bash
 xcodebuild \
-  -project <CoreName>/<CoreName>.xcodeproj \
-  -scheme <CoreName> \
+  -workspace OpenEmu-metal.xcworkspace \
+  -scheme "OpenEmu + <CoreName>" \
   -configuration Release \
   -destination 'platform=macOS,arch=arm64' \
   ONLY_ACTIVE_ARCH=YES \
-  FRAMEWORK_SEARCH_PATHS="$DERIVED_RELEASE" \
   build 2>&1 | tail -10
 ```
 
@@ -89,8 +104,11 @@ If the build fails, stop and report the errors.
 
 ## Step 6 — Locate the built plugin
 
+The plugin is built into the same `OpenEmu-metal-*` DerivedData tree as
+the host app, not into a per-core `<CoreName>-*` tree:
+
 ```bash
-PLUGIN=$(find ~/Library/Developer/Xcode/DerivedData/<CoreName>-* \
+PLUGIN=$(find ~/Library/Developer/Xcode/DerivedData/OpenEmu-metal-* \
   -name "<CoreName>.oecoreplugin" \
   -path "*/Release/*" \
   -not -path "*.dSYM*" \
