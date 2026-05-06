@@ -62,6 +62,9 @@ class AppDelegate: NSObject, UNUserNotificationCenterDelegate {
     /// Result of the most recent bridge auto-refresh sweep, surfaced in
     /// core-inventory.txt so we can confirm the mechanism ran.
     fileprivate var bridgeRefreshReport: (bridgeVersion: String, refreshed: [String], failed: [(String, String)]) = ("(unknown)", [], [])
+
+    /// Result of the most recent SUFeedURL refresh sweep on installed core plugins.
+    fileprivate var feedURLRefreshReport: (refreshed: [String], failed: [(String, String)]) = ([], [])
     
     var hidEventsMonitor: Any?
     var keyboardEventsMonitor: Any?
@@ -457,6 +460,75 @@ class AppDelegate: NSObject, UNUserNotificationCenterDelegate {
         }
 
         bridgeRefreshReport = (runningVersion, refreshed, failed)
+    }
+
+    /// Walks every installed `*.oecoreplugin` (excluding RetroArch stubs) and
+    /// rewrites a stale `SUFeedURL` in its `Info.plist` to the canonical
+    /// nickybmon-hosted appcast. Sparkle and `CoreUpdater` both read the URL
+    /// from the installed plist, so cores installed before the URL migration
+    /// stay frozen on the dormant upstream URL until this runs.
+    ///
+    /// Staleness is detected by prefix: any URL that doesn't start with
+    /// `canonicalPrefix` is rewritten to `<prefix><lowercased-bundle-suffix>.xml`.
+    /// Only the plist is touched — the binary's signature is undisturbed and
+    /// the host's `disable-library-validation` entitlement covers any plugin
+    /// signature drift, so re-codesigning is not required.
+    fileprivate func refreshStaleCoreFeedURLs() {
+        let canonicalPrefix = "https://raw.githubusercontent.com/nickybmon/OpenEmu-Silicon/main/Appcasts/"
+        feedURLRefreshReport = ([], [])
+
+        let coresDir = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library/Application Support/OpenEmu/Cores")
+        guard let entries = try? FileManager.default.contentsOfDirectory(at: coresDir, includingPropertiesForKeys: nil) else {
+            return
+        }
+
+        var refreshed: [String] = []
+        var failed: [(String, String)] = []
+
+        for plugin in entries
+            where plugin.pathExtension == "oecoreplugin"
+               && !plugin.deletingPathExtension().lastPathComponent.hasSuffix("-RetroArch")
+        {
+            let plistURL = plugin.appendingPathComponent("Contents/Info.plist")
+            guard
+                let data  = try? Data(contentsOf: plistURL),
+                var plist = (try? PropertyListSerialization.propertyList(from: data, options: [.mutableContainers], format: nil)) as? [String: Any]
+            else {
+                continue
+            }
+
+            guard
+                let bundleID    = plist["CFBundleIdentifier"] as? String,
+                let currentURL  = plist["SUFeedURL"] as? String
+            else {
+                continue
+            }
+
+            if currentURL.hasPrefix(canonicalPrefix) {
+                continue
+            }
+
+            let suffix = (bundleID.split(separator: ".").last.map(String.init) ?? "").lowercased()
+            guard !suffix.isEmpty else {
+                continue
+            }
+            let canonical = canonicalPrefix + suffix + ".xml"
+
+            do {
+                plist["SUFeedURL"] = canonical
+                let newData = try PropertyListSerialization.data(fromPropertyList: plist, format: .xml, options: 0)
+                try newData.write(to: plistURL)
+                refreshed.append(plugin.deletingPathExtension().lastPathComponent)
+                os_log(.info, log: .default, "SUFeedURL refresh: rewrote %{public}@ to %{public}@", plugin.lastPathComponent, canonical)
+            } catch {
+                failed.append((plugin.lastPathComponent, error.localizedDescription))
+                os_log(.error, log: .default, "SUFeedURL refresh failed for %{public}@: %{public}@", plugin.lastPathComponent, error.localizedDescription)
+            }
+        }
+
+        feedURLRefreshReport = (refreshed, failed)
+        os_log(.info, log: .default, "SUFeedURL refresh summary: refreshed=%{public}d failed=%{public}d", refreshed.count, failed.count)
     }
 
     /// One-shot diagnostic written at startup so we can see what core plugins
@@ -1064,6 +1136,7 @@ extension AppDelegate: NSMenuDelegate {
         // Refresh stale RetroArch stub bridges before any plugin enumeration so
         // newly-refreshed stubs load with the current translator code in this
         // same launch — not the next one.
+        refreshStaleCoreFeedURLs()
         refreshStaleRetroArchStubs()
 
         atexit {

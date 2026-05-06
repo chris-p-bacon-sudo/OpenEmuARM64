@@ -86,6 +86,9 @@ final class CoreUpdater: NSObject {
         for plugin in OECorePlugin.allPlugins {
             let coreID = plugin.bundleIdentifier.lowercased()
             guard !oeKnownCoreIDs.contains(coreID) else { continue }
+            // `infoDictionary` is cached at plugin load. Stale URLs on disk are
+            // rewritten by `AppDelegate.refreshStaleCoreFeedURLs()` at launch,
+            // but the rewrite only takes effect from the *next* launch onwards.
             if let appcastURLString = plugin.infoDictionary["SUFeedURL"] as? String,
                let feedURL = URL(string: appcastURLString) {
                 checkForUpdateInformation(url: feedURL, plugin: plugin) { item in
