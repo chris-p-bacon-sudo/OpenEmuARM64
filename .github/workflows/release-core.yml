@@ -100,7 +100,7 @@ jobs:
             || { echo "ERROR: Core project not found at $CORE_PROJ"; exit 1; }
 
           # Check appcast exists — file uses lowercase core name
-          APPCAST_FILE="Appcasts/${CORE,,}.xml"
+          APPCAST_FILE="Appcasts/$(echo "$CORE" | tr '[:upper:]' '[:lower:]').xml"
           [ -f "$APPCAST_FILE" ] \
             || { echo "ERROR: Appcast not found at $APPCAST_FILE"; exit 1; }
 
@@ -140,8 +140,8 @@ jobs:
       # ── Bump CFBundleVersion in core Info.plist ─────────────────────────────
       - name: Bump ${{ inputs.core_name }} Info.plist version to ${{ inputs.version }}
         run: |
-          # Core Info.plists live at <Core>/OpenEmu/Info.plist
-          PLIST="${{ env.CORE }}/OpenEmu/Info.plist"
+          # Core Info.plists live at <Core>/Info.plist
+          PLIST="${{ env.CORE }}/Info.plist"
           [ -f "$PLIST" ] || {
             echo "ERROR: Info.plist not found at $PLIST"
             exit 1
@@ -228,6 +228,26 @@ jobs:
           ZIP_SIZE=$(stat -f%z "$ZIP_PATH")
           echo "ZIP_SIZE=$ZIP_SIZE" >> $GITHUB_ENV
           echo "Zip created: $ZIP_PATH ($ZIP_SIZE bytes)"
+
+      # ── Verify zip contents match input version ─────────────────────────────
+      # Guardrail against the cores-v1.2.0 class of bug, where the appcast
+      # advertised versions that the zipped artifact didn't actually contain.
+      - name: Verify zip CFBundleVersion matches input
+        run: |
+          VERIFY_DIR="${{ runner.temp }}/verify-zip"
+          rm -rf "$VERIFY_DIR" && mkdir -p "$VERIFY_DIR"
+          ditto -x -k "${{ env.ZIP_PATH }}" "$VERIFY_DIR"
+          ZIP_PLIST="$VERIFY_DIR/${{ env.CORE }}.oecoreplugin/Contents/Info.plist"
+          [ -f "$ZIP_PLIST" ] || {
+            echo "ERROR: Info.plist not found in unzipped artifact at $ZIP_PLIST"
+            exit 1
+          }
+          ACTUAL=$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" "$ZIP_PLIST")
+          if [ "$ACTUAL" != "${{ env.VERSION }}" ]; then
+            echo "ERROR: Zip CFBundleVersion is '$ACTUAL', expected '${{ env.VERSION }}'"
+            exit 1
+          fi
+          echo "Verified: zip CFBundleVersion = $ACTUAL"
 
       # ── Find or create cores-v* tag ─────────────────────────────────────────
       - name: Compute next cores release tag
