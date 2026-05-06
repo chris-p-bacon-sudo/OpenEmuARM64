@@ -5,16 +5,6 @@
   <channel>
     <title>4DO</title>
     <item>
-      <title>4DO 2.3.2</title>
-      <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
-      <enclosure
-        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.3.1/4DO.oecoreplugin.zip"
-        sparkle:version="2.3.2"
-        sparkle:shortVersionString="2.3.2"
-        length="76552"
-        type="application/octet-stream" />
-    </item>
-    <item>
       <title>4DO 2.3.1</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
