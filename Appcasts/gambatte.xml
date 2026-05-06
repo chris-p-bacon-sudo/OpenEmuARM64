@@ -5,16 +5,6 @@
   <channel>
     <title>Gambatte</title>
         <item>
-      <title>Gambatte 0.5.2</title>
-      <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
-      <enclosure
-        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.2.0/Gambatte.oecoreplugin.zip"
-        sparkle:version="0.5.2"
-        sparkle:shortVersionString="0.5.2"
-        length="393699"
-        type="application/octet-stream" />
-    </item>
-<item>
       <title>Gambatte 0.5.1</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure

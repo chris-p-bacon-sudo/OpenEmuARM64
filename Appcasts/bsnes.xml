@@ -5,12 +5,12 @@
   <channel>
     <title>BSNES</title>
       <item>
-      <title>BSNES 115.1</title>
+      <title>BSNES 115</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
         url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.2.0/BSNES.oecoreplugin.zip"
-        sparkle:version="115.1"
-        sparkle:shortVersionString="115.1"
+        sparkle:version="115"
+        sparkle:shortVersionString="115"
         length="918198"
         type="application/octet-stream" />
     </item>

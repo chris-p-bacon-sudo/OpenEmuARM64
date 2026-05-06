@@ -5,16 +5,6 @@
   <channel>
     <title>mGBA</title>
         <item>
-      <title>mGBA 0.10.6</title>
-      <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
-      <enclosure
-        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.2.0/mGBA.oecoreplugin.zip"
-        sparkle:version="0.10.6"
-        sparkle:shortVersionString="0.10.6"
-        length="369630"
-        type="application/octet-stream" />
-    </item>
-<item>
       <title>mGBA 0.10.5</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure

@@ -5,16 +5,6 @@
   <channel>
     <title>Nestopia</title>
         <item>
-      <title>Nestopia 1.52.1</title>
-      <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
-      <enclosure
-        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.2.0/Nestopia.oecoreplugin.zip"
-        sparkle:version="1.52.1"
-        sparkle:shortVersionString="1.52.1"
-        length="799998"
-        type="application/octet-stream" />
-    </item>
-<item>
       <title>Nestopia 1.52</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure

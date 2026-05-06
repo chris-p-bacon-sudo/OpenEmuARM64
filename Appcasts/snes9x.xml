@@ -5,16 +5,6 @@
   <channel>
     <title>SNES9x</title>
         <item>
-      <title>SNES9x 1.63.1</title>
-      <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
-      <enclosure
-        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.2.0/SNES9x.oecoreplugin.zip"
-        sparkle:version="1.63.1"
-        sparkle:shortVersionString="1.63.1"
-        length="852888"
-        type="application/octet-stream" />
-    </item>
-<item>
       <title>SNES9x 1.63</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
