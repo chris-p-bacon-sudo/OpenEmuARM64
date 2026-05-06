@@ -42,12 +42,13 @@ git checkout -b chore/<corename-lowercase>-<version>-release
 
 ## Step 3 — Bump the core version
 
-Edit `<CoreName>/OpenEmu/Info.plist` (or the equivalent path for that core):
+Edit `<CoreName>/Info.plist`:
 - Increment `CFBundleVersion` to the new version string
 
 Verify with:
 ```bash
-plutil -lint <CoreName>/OpenEmu/Info.plist
+plutil -lint <CoreName>/Info.plist
+/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" <CoreName>/Info.plist
 ```
 
 ## Step 4 — Build the main workspace in Release (produces frameworks the core needs)
@@ -114,6 +115,30 @@ ditto -c -k --keepParent "$PLUGIN" "$ZIP"
 wc -c < "$ZIP" | tr -d ' '   # note the byte count — needed for the appcast
 ```
 
+### Step 7b — Verify the zip contents match the target version
+
+This is the guardrail against the cores-v1.2.0 class of bug, where the
+appcast advertised a version that the zipped artifact didn't actually
+contain (because the plist bump didn't take, or an old zip got reused).
+Stop here if it fails — the appcast must never claim a version that
+isn't in the zip.
+
+```bash
+VERIFY_DIR=$(mktemp -d)
+ditto -x -k "$ZIP" "$VERIFY_DIR"
+ZIP_VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" \
+  "$VERIFY_DIR/<CoreName>.oecoreplugin/Contents/Info.plist")
+echo "Zip CFBundleVersion: $ZIP_VERSION (expected: <NewVersion>)"
+[ "$ZIP_VERSION" = "<NewVersion>" ] || { echo "MISMATCH — stop"; exit 1; }
+rm -rf "$VERIFY_DIR"
+```
+
+If this fails, the most likely causes are: the plist bump in Step 3 was
+saved to the wrong path, the build cached an old binary, or
+`CURRENT_PROJECT_VERSION` in the project file overrides the literal in
+Info.plist. Investigate before continuing — do not edit the appcast to
+match a wrong zip.
+
 ## Step 8 — Determine the release tag
 
 Check existing cores releases:
@@ -175,7 +200,7 @@ xmllint --noout Appcasts/<corename>.xml && echo "Valid XML"
 ## Step 11 — Commit, push, and open a PR
 
 ```bash
-git add <CoreName>/OpenEmu/Info.plist Appcasts/<corename-lowercase>.xml
+git add <CoreName>/Info.plist Appcasts/<corename-lowercase>.xml
 git commit -m "chore: bump <CoreName> to <NewVersion>, update appcast for <NEXT_TAG>
 
 <One sentence describing the fix being shipped.>
