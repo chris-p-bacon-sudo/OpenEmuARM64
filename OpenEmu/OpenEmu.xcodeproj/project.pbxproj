@@ -7,42 +7,6 @@
 	objects = {
 
 /* Begin PBXAggregateTarget section */
-		011FD36125267910006D7C05 /* Build Experimental SystemPlugins */ = {
-			isa = PBXAggregateTarget;
-			buildConfigurationList = 011FD36225267910006D7C05 /* Build configuration list for PBXAggregateTarget "Build Experimental SystemPlugins" */;
-			buildPhases = (
-			);
-			dependencies = (
-				011FD36625267927006D7C05 /* PBXTargetDependency */,
-				011FD36825267927006D7C05 /* PBXTargetDependency */,
-				011FD36A25267932006D7C05 /* PBXTargetDependency */,
-				011FD36C25267956006D7C05 /* PBXTargetDependency */,
-				011FD37025267986006D7C05 /* PBXTargetDependency */,
-				011FD3722526798B006D7C05 /* PBXTargetDependency */,
-				011FD3742526799C006D7C05 /* PBXTargetDependency */,
-				011FD376252679A1006D7C05 /* PBXTargetDependency */,
-				011FD378252679AD006D7C05 /* PBXTargetDependency */,
-				011FD36E25267973006D7C05 /* PBXTargetDependency */,
-			);
-			name = "Build Experimental SystemPlugins";
-			productName = "Build Experimental SystemPlugins";
-		};
-		01607FC525388361006FCBC8 /* Build & Copy Experimental SystemPlugins */ = {
-			isa = PBXAggregateTarget;
-			buildConfigurationList = 01607FD825388361006FCBC8 /* Build configuration list for PBXAggregateTarget "Build & Copy Experimental SystemPlugins" */;
-			buildPhases = (
-				01607FCC25388361006FCBC8 /* CopyFiles */,
-				01607FD725388361006FCBC8 /* Update Info.plist File Types */,
-				01E85CBE25389A8000980F83 /* Set Experimental Appcast URLs */,
-			);
-			dependencies = (
-				01607FC625388361006FCBC8 /* PBXTargetDependency */,
-				01607FC825388361006FCBC8 /* PBXTargetDependency */,
-				01607FCA25388361006FCBC8 /* PBXTargetDependency */,
-			);
-			name = "Build & Copy Experimental SystemPlugins";
-			productName = "Build SystemPlugins";
-		};
 		37C802FF101564A300356EF3 /* Build & Copy OpenEmuBase */ = {
 			isa = PBXAggregateTarget;
 			buildConfigurationList = 37C80315101564C000356EF3 /* Build configuration list for PBXAggregateTarget "Build & Copy OpenEmuBase" */;
@@ -108,22 +72,6 @@
 			name = "Build SystemPlugins";
 			productName = "Build SystemPlugins";
 		};
-		94EBBCD7183F422500743756 /* Build & Copy Experimental & Alpha SystemPlugins */ = {
-			isa = PBXAggregateTarget;
-			buildConfigurationList = 94EBBCF4183F422500743756 /* Build configuration list for PBXAggregateTarget "Build & Copy Experimental & Alpha SystemPlugins" */;
-			buildPhases = (
-				94EBBCFB183F42CE00743756 /* CopyFiles */,
-				0121480E2537D541007F3C84 /* Update Info.plist File Types */,
-				01E85CBD25389A3700980F83 /* Set Experimental Appcast URLs */,
-			);
-			dependencies = (
-				012148262537D7FD007F3C84 /* PBXTargetDependency */,
-				01853AC523C0FB5F00619549 /* PBXTargetDependency */,
-				011FD37A252679CB006D7C05 /* PBXTargetDependency */,
-			);
-			name = "Build & Copy Experimental & Alpha SystemPlugins";
-			productName = "Build SystemPlugins";
-		};
 /* End PBXAggregateTarget section */
 
 /* Begin PBXBuildFile section */
@@ -131,7 +79,6 @@
 		012148082537C6D6007F3C84 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 012148072537C6D6007F3C84 /* main.swift */; };
 		012FE6591CE51D4100716960 /* LibraryToolbarDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 012FE6581CE51D4100716960 /* LibraryToolbarDelegate.swift */; };
 		015BFEB725266DFC0025139F /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 015BFEB625266DFC0025139F /* main.swift */; };
-		01607FD625388361006FCBC8 /* Arcade.oesystemplugin in CopyFiles */ = {isa = PBXBuildFile; fileRef = 945E42FB1517F2B500057D08 /* Arcade.oesystemplugin */; };
 		016F22DF23F19F5F00181842 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 016F22DE23F19F5F00181842 /* AppDelegate.swift */; };
 		016F22E423F19F6100181842 /* MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = 016F22E323F19F6100181842 /* MainMenu.xib */; };
 		016F22EA23F1A35400181842 /* OEAlert.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83C68ED014483579000F720A /* OEAlert.swift */; };
@@ -193,7 +140,6 @@
 		05F5BAED228662D3004D713C /* OpenEmuShaders.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 05F5BAE8228662C5004D713C /* OpenEmuShaders.framework */; };
 		05F5BAEE22866317004D713C /* OpenEmuShaders.framework in Copy Frameworks to App Frameworks */ = {isa = PBXBuildFile; fileRef = 05F5BAE8228662C5004D713C /* OpenEmuShaders.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		060837EB57D7C9F44F51156B /* OESyncStatusOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CCE228E57ED51524BAE52BB /* OESyncStatusOverlayView.swift */; };
-		081A462F1B9574CE00565444 /* Pokemon mini.oesystemplugin in CopyFiles */ = {isa = PBXBuildFile; fileRef = 081A46261B95744A00565444 /* Pokemon mini.oesystemplugin */; };
 		0867695A1B96E8B2006545DA /* OEPMSystemResponder.m in Sources */ = {isa = PBXBuildFile; fileRef = 086769591B96E8B2006545DA /* OEPMSystemResponder.m */; };
 		086769671B96E92C006545DA /* Keyboard-Mappings.plist in Resources */ = {isa = PBXBuildFile; fileRef = 086769661B96E92C006545DA /* Keyboard-Mappings.plist */; };
 		086769691B96E936006545DA /* Controller-Preferences.plist in Resources */ = {isa = PBXBuildFile; fileRef = 086769681B96E936006545DA /* Controller-Preferences.plist */; };
@@ -230,7 +176,6 @@
 		3DB744C51BD8BACD00C23E74 /* Controller-Mappings.plist in Resources */ = {isa = PBXBuildFile; fileRef = 3DB744831BD8B9DE00C23E74 /* Controller-Mappings.plist */; };
 		3DB744C61BD8BACD00C23E74 /* Controller-Preferences.plist in Resources */ = {isa = PBXBuildFile; fileRef = 3DB744841BD8B9DE00C23E74 /* Controller-Preferences.plist */; };
 		3DB744C71BD8BACD00C23E74 /* Keyboard-Mappings.plist in Resources */ = {isa = PBXBuildFile; fileRef = 3DB744851BD8B9DE00C23E74 /* Keyboard-Mappings.plist */; };
-		3DB744CE1BD8BB0B00C23E74 /* PlayStation 2.oesystemplugin in CopyFiles */ = {isa = PBXBuildFile; fileRef = 3DB744BA1BD8BA9E00C23E74 /* PlayStation 2.oesystemplugin */; };
 		53439A9A13B92C97005C0CC8 /* OEDBAllGamesCollection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53439A9313B92C97005C0CC8 /* OEDBAllGamesCollection.swift */; };
 		53439AAB13B92CE6005C0CC8 /* OECollectionViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 53439AA913B92CE5005C0CC8 /* OECollectionViewController.m */; };
 		53439AE313B92E59005C0CC8 /* RatingCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53439ADA13B92E59005C0CC8 /* RatingCell.swift */; };
@@ -341,7 +286,6 @@
 		837964F31A614ACD00A8DE5C /* Keyboard-Mappings.plist in Resources */ = {isa = PBXBuildFile; fileRef = 837964EC1A614ACD00A8DE5C /* Keyboard-Mappings.plist */; };
 		837964F41A614ACD00A8DE5C /* OESVSystemResponder.m in Sources */ = {isa = PBXBuildFile; fileRef = 837964EE1A614ACD00A8DE5C /* OESVSystemResponder.m */; };
 		837964F91A614C0A00A8DE5C /* OpenEmuSystem.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C6D120C417112E1300E868A8 /* OpenEmuSystem.framework */; };
-		837964FA1A614C6A00A8DE5C /* Supervision.oesystemplugin in CopyFiles */ = {isa = PBXBuildFile; fileRef = 837964E11A6149C000A8DE5C /* Supervision.oesystemplugin */; };
 		839310BC147802380020058E /* CoreDownload.swift in Sources */ = {isa = PBXBuildFile; fileRef = 839310BB147802380020058E /* CoreDownload.swift */; };
 		83955CB5165D939100572B34 /* BlankSlateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83955CB4165D939100572B34 /* BlankSlateView.swift */; };
 		8397082F163C405000E04871 /* 0.2 to 0.3.xcmappingmodel in Sources */ = {isa = PBXBuildFile; fileRef = 8397082E163C405000E04871 /* 0.2 to 0.3.xcmappingmodel */; };
@@ -399,7 +343,6 @@
 		87DF05271BCE302F0060E2C2 /* Keyboard-Mappings.plist in Resources */ = {isa = PBXBuildFile; fileRef = 87DF05131BCE302F0060E2C2 /* Keyboard-Mappings.plist */; };
 		87DF05281BCE302F0060E2C2 /* OEDCSystemController.m in Sources */ = {isa = PBXBuildFile; fileRef = 87DF05151BCE302F0060E2C2 /* OEDCSystemController.m */; };
 		87DF05291BCE302F0060E2C2 /* OEDCSystemResponder.m in Sources */ = {isa = PBXBuildFile; fileRef = 87DF05171BCE302F0060E2C2 /* OEDCSystemResponder.m */; };
-		87DF05411BCE3CEA0060E2C2 /* Dreamcast.oesystemplugin in CopyFiles */ = {isa = PBXBuildFile; fileRef = 87DF04FE1BCE2D100060E2C2 /* Dreamcast.oesystemplugin */; };
 		87F077B423B68D02001FFC9B /* GameCube.oesystemplugin in Copy System Plugins to App Plugins */ = {isa = PBXBuildFile; fileRef = 94CEB26D17A84809005A2107 /* GameCube.oesystemplugin */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		87FB253B1BBC572E00E739CE /* Controller-Preferences-JAP.plist in Resources */ = {isa = PBXBuildFile; fileRef = 87FB25391BBC572E00E739CE /* Controller-Preferences-JAP.plist */; };
 		87FB253C1BBC572E00E739CE /* Controller-Preferences-NA.plist in Resources */ = {isa = PBXBuildFile; fileRef = 87FB253A1BBC572E00E739CE /* Controller-Preferences-NA.plist */; };
@@ -408,13 +351,11 @@
 		87FBC0821BFC76A000AECF5A /* Controller-Preferences.plist in Resources */ = {isa = PBXBuildFile; fileRef = 87FBC07C1BFC76A000AECF5A /* Controller-Preferences.plist */; };
 		87FBC0831BFC76A000AECF5A /* Keyboard-Mappings.plist in Resources */ = {isa = PBXBuildFile; fileRef = 87FBC07D1BFC76A000AECF5A /* Keyboard-Mappings.plist */; };
 		87FBC0851BFC76E200AECF5A /* OpenEmuSystem.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C6D120C417112E1300E868A8 /* OpenEmuSystem.framework */; };
-		87FBC0861BFC77AF00AECF5A /* Commodore 64.oesystemplugin in CopyFiles */ = {isa = PBXBuildFile; fileRef = 87FBC06D1BFC70FE00AECF5A /* Commodore 64.oesystemplugin */; };
 		87FBC0951C07929D00AECF5A /* OpenEmuSystem.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C6D120C417112E1300E868A8 /* OpenEmuSystem.framework */; };
 		87FBC09A1C0796B800AECF5A /* OEA8SystemResponder.m in Sources */ = {isa = PBXBuildFile; fileRef = 87FBC0981C0796B800AECF5A /* OEA8SystemResponder.m */; };
 		87FBC0A21C07985900AECF5A /* Keyboard-Mappings.plist in Resources */ = {isa = PBXBuildFile; fileRef = 87FBC0A11C07985900AECF5A /* Keyboard-Mappings.plist */; };
 		87FBC0A41C0798C000AECF5A /* Controller-Preferences.plist in Resources */ = {isa = PBXBuildFile; fileRef = 87FBC0A31C0798C000AECF5A /* Controller-Preferences.plist */; };
 		87FBC0A61C07996B00AECF5A /* Controller-Mappings.plist in Resources */ = {isa = PBXBuildFile; fileRef = 87FBC0A51C07996B00AECF5A /* Controller-Mappings.plist */; };
-		87FBC0A81C07A22700AECF5A /* Atari 8bit.oesystemplugin in CopyFiles */ = {isa = PBXBuildFile; fileRef = 87FBC08E1C0790B400AECF5A /* Atari 8bit.oesystemplugin */; };
 		87FBC0C01BFC7A0000AECF5A /* Commodore 64.oesystemplugin in Copy System Plugins to App Plugins */ = {isa = PBXBuildFile; fileRef = 87FBC06D1BFC70FE00AECF5A /* Commodore 64.oesystemplugin */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		8CBD3AA217D23AA80022399B /* OEGridGameCell.m in Sources */ = {isa = PBXBuildFile; fileRef = 8CBD3AA117D23AA80022399B /* OEGridGameCell.m */; };
 		8F057160254E7EA5003B36FD /* MainMenu.strings in Resources */ = {isa = PBXBuildFile; fileRef = 8F057162254E7EA5003B36FD /* MainMenu.strings */; };
@@ -620,7 +561,6 @@
 		94A4E98D179F9A4D00AD8C7D /* OEDBSaveStatesMedia.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94A4E98C179F9A4D00AD8C7D /* OEDBSaveStatesMedia.swift */; };
 		94A4E992179F9D0400AD8C7D /* OEDBScreenshotsMedia.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94A4E98F179F9D0400AD8C7D /* OEDBScreenshotsMedia.swift */; };
 		94A4E996179FAB9F00AD8C7D /* OEMediaViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 94A4E995179FAB9F00AD8C7D /* OEMediaViewController.m */; };
-		94A5321918DF8A3700AE11B3 /* Jaguar.oesystemplugin in CopyFiles */ = {isa = PBXBuildFile; fileRef = 943C80121708A62E00D8D93E /* Jaguar.oesystemplugin */; };
 		94AE2C1017B07D450018DFBB /* cheats-database.xml in Resources */ = {isa = PBXBuildFile; fileRef = 94AE2C0F17B07D450018DFBB /* cheats-database.xml */; };
 		94B28256189DF5AA00D80F3D /* OENDSSystemController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94B28255189DF5AA00D80F3D /* OENDSSystemController.swift */; };
 		94BE9E61171689B400AB08E6 /* OEColecoVisionSystemResponder.m in Sources */ = {isa = PBXBuildFile; fileRef = 94BE9E5F171689B400AB08E6 /* OEColecoVisionSystemResponder.m */; };
@@ -629,7 +569,6 @@
 		94BE9E6D171689C900AB08E6 /* Keyboard-Mappings.plist in Resources */ = {isa = PBXBuildFile; fileRef = 94BE9E67171689C900AB08E6 /* Keyboard-Mappings.plist */; };
 		94BE9E741716922100AB08E6 /* OpenEmuSystem.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C6D120C417112E1300E868A8 /* OpenEmuSystem.framework */; };
 		94C59FBF1921CCBD0096BCC2 /* OEN64SystemController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94C59FBE1921CCBD0096BCC2 /* OEN64SystemController.swift */; };
-		94CE3FB218DE92970079CC16 /* 3DO.oesystemplugin in CopyFiles */ = {isa = PBXBuildFile; fileRef = 943F99B31707DF3700270E89 /* 3DO.oesystemplugin */; };
 		94CEB28017A84A75005A2107 /* OEGCSystemController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94CEB27C17A84A75005A2107 /* OEGCSystemController.swift */; };
 		94CEB28117A84A75005A2107 /* OEGCSystemResponder.m in Sources */ = {isa = PBXBuildFile; fileRef = 94CEB27E17A84A75005A2107 /* OEGCSystemResponder.m */; };
 		94CEB28A17A84A8F005A2107 /* Controller-Mappings.plist in Resources */ = {isa = PBXBuildFile; fileRef = 94CEB28417A84A8F005A2107 /* Controller-Mappings.plist */; };
@@ -641,7 +580,6 @@
 		94D7E8E415073E3900FBDD85 /* OENDSSystemResponder.m in Sources */ = {isa = PBXBuildFile; fileRef = 94D7E8E115073E3800FBDD85 /* OENDSSystemResponder.m */; };
 		94DEA000171896AE00073397 /* NDS.oesystemplugin in Copy System Plugins to App Plugins */ = {isa = PBXBuildFile; fileRef = 94D7E8C915073BA000FBDD85 /* NDS.oesystemplugin */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		94E6C304166DB15900082F27 /* Controller-Mappings.plist in Resources */ = {isa = PBXBuildFile; fileRef = 94E6C303166DB15900082F27 /* Controller-Mappings.plist */; };
-		94EBBD31183F4DB000743756 /* Arcade.oesystemplugin in CopyFiles */ = {isa = PBXBuildFile; fileRef = 945E42FB1517F2B500057D08 /* Arcade.oesystemplugin */; };
 		9ACAEF142DD44E2AACFFB26F /* OEWiiSystemResponder.m in Sources */ = {isa = PBXBuildFile; fileRef = 4C5E668B27CE43FF88AE57AF /* OEWiiSystemResponder.m */; };
 		C3A0FE0857AF614EBC218749 /* OpenEmuLibretroBridge.oecoreplugin in Copy Libretro Bridge to App PlugIns */ = {isa = PBXBuildFile; fileRef = C44B2D2208894931909A8618 /* OpenEmuLibretroBridge.oecoreplugin */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		C6252DAC14E752E300350A13 /* Controller-Preferences.plist in Resources */ = {isa = PBXBuildFile; fileRef = C6252DAA14E752E300350A13 /* Controller-Preferences.plist */; };
@@ -728,7 +666,6 @@
 		EF78E5264D33437A93870DF2 /* OpenEmuSystem.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C6D120C417112E1300E868A8 /* OpenEmuSystem.framework */; };
 		EFBD5D7814EFE19A00FBD1E0 /* NSColor+OEAdditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFBD5D7714EFE19A00FBD1E0 /* NSColor+OEAdditions.swift */; };
 		EFBD5D7F14EFE26300FBD1E0 /* OEGridView.m in Sources */ = {isa = PBXBuildFile; fileRef = EFBD5D7C14EFE26300FBD1E0 /* OEGridView.m */; };
-		FE6310A1187F099800D8AE07 /* MSX.oesystemplugin in CopyFiles */ = {isa = PBXBuildFile; fileRef = FEB6625B187B791800D14713 /* MSX.oesystemplugin */; };
 		FEB66268187B792700D14713 /* OEMSXSystemController.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEB66251187B62CA00D14713 /* OEMSXSystemController.swift */; };
 		FEB66269187B792700D14713 /* OEMSXSystemResponder.m in Sources */ = {isa = PBXBuildFile; fileRef = FEB66254187B751700D14713 /* OEMSXSystemResponder.m */; };
 		FEB6626B187B797600D14713 /* OpenEmuSystem.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C6D120C417112E1300E868A8 /* OpenEmuSystem.framework */; };
@@ -749,124 +686,12 @@
 			remoteGlobalIDString = 83F37141140BB166005A7353;
 			remoteInfo = "Build SystemPlugins";
 		};
-		011FD36525267927006D7C05 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 2A37F4A9FDCFA73011CA2CEA /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 87FBC08D1C0790B400AECF5A;
-			remoteInfo = "Atari 8bit";
-		};
-		011FD36725267927006D7C05 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 2A37F4A9FDCFA73011CA2CEA /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 87FBC06C1BFC70FE00AECF5A;
-			remoteInfo = "Commodore 64";
-		};
-		011FD36925267932006D7C05 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 2A37F4A9FDCFA73011CA2CEA /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 3DB744A51BD8BA9E00C23E74;
-			remoteInfo = "PlayStation 2";
-		};
-		011FD36B25267956006D7C05 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 2A37F4A9FDCFA73011CA2CEA /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 87DF04FD1BCE2D100060E2C2;
-			remoteInfo = Dreamcast;
-		};
-		011FD36D25267973006D7C05 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 2A37F4A9FDCFA73011CA2CEA /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 945E42FA1517F2B500057D08;
-			remoteInfo = Arcade;
-		};
-		011FD36F25267986006D7C05 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 2A37F4A9FDCFA73011CA2CEA /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 081A46251B95744A00565444;
-			remoteInfo = "Pokemon mini";
-		};
-		011FD3712526798B006D7C05 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 2A37F4A9FDCFA73011CA2CEA /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 837964E01A6149C000A8DE5C;
-			remoteInfo = Supervision;
-		};
-		011FD3732526799C006D7C05 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 2A37F4A9FDCFA73011CA2CEA /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 943C80111708A62E00D8D93E;
-			remoteInfo = Jaguar;
-		};
-		011FD375252679A1006D7C05 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 2A37F4A9FDCFA73011CA2CEA /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 943F99B21707DF3700270E89;
-			remoteInfo = 3DO;
-		};
-		011FD377252679AD006D7C05 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 2A37F4A9FDCFA73011CA2CEA /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = FEB6625A187B791800D14713;
-			remoteInfo = MSX;
-		};
-		011FD379252679CB006D7C05 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 2A37F4A9FDCFA73011CA2CEA /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 011FD36125267910006D7C05;
-			remoteInfo = "Build Experimental SystemPlugins";
-		};
-		011FD37B252679E9006D7C05 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 2A37F4A9FDCFA73011CA2CEA /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 011FD36125267910006D7C05;
-			remoteInfo = "Build Experimental SystemPlugins";
-		};
 		012148252537D7FD007F3C84 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 2A37F4A9FDCFA73011CA2CEA /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = 012148042537C6D6007F3C84;
 			remoteInfo = OESystemPluginPostInstall;
-		};
-		01607FC725388361006FCBC8 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 2A37F4A9FDCFA73011CA2CEA /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 012148042537C6D6007F3C84;
-			remoteInfo = OESystemPluginPostInstall;
-		};
-		01607FC925388361006FCBC8 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 2A37F4A9FDCFA73011CA2CEA /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 8D15AC270486D014006FF6A4;
-			remoteInfo = OpenEmu;
-		};
-		01607FCB25388361006FCBC8 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 2A37F4A9FDCFA73011CA2CEA /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 011FD36125267910006D7C05;
-			remoteInfo = "Build Experimental SystemPlugins";
-		};
-		01853AC423C0FB5F00619549 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 2A37F4A9FDCFA73011CA2CEA /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 8D15AC270486D014006FF6A4;
-			remoteInfo = OpenEmu;
 		};
 		05DB72A62532681B0098459D /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -1146,16 +971,6 @@
 			);
 			runOnlyForDeploymentPostprocessing = 1;
 		};
-		01607FCC25388361006FCBC8 /* CopyFiles */ = {
-			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
-			dstPath = OpenEmu.app/Contents/PlugIns/Systems;
-			dstSubfolderSpec = 16;
-			files = (
-				01607FD625388361006FCBC8 /* Arcade.oesystemplugin in CopyFiles */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		0547FDDB24E8614C005C1FFC /* Copy Auxilliary Executables */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
@@ -1278,25 +1093,6 @@
 				948E54151571D78D002D26E0 /* GameGear.oesystemplugin in Copy System Plugins to App Plugins */,
 			);
 			name = "Copy System Plugins to App Plugins";
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		94EBBCFB183F42CE00743756 /* CopyFiles */ = {
-			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
-			dstPath = OpenEmu.app/Contents/PlugIns/Systems;
-			dstSubfolderSpec = 16;
-			files = (
-				87FBC0A81C07A22700AECF5A /* Atari 8bit.oesystemplugin in CopyFiles */,
-				87FBC0861BFC77AF00AECF5A /* Commodore 64.oesystemplugin in CopyFiles */,
-				3DB744CE1BD8BB0B00C23E74 /* PlayStation 2.oesystemplugin in CopyFiles */,
-				87DF05411BCE3CEA0060E2C2 /* Dreamcast.oesystemplugin in CopyFiles */,
-				081A462F1B9574CE00565444 /* Pokemon mini.oesystemplugin in CopyFiles */,
-				837964FA1A614C6A00A8DE5C /* Supervision.oesystemplugin in CopyFiles */,
-				94A5321918DF8A3700AE11B3 /* Jaguar.oesystemplugin in CopyFiles */,
-				94CE3FB218DE92970079CC16 /* 3DO.oesystemplugin in CopyFiles */,
-				FE6310A1187F099800D8AE07 /* MSX.oesystemplugin in CopyFiles */,
-				94EBBD31183F4DB000743756 /* Arcade.oesystemplugin in CopyFiles */,
-			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXCopyFilesBuildPhase section */
@@ -4575,7 +4371,6 @@
 			);
 			dependencies = (
 				011FD3602526785D006D7C05 /* PBXTargetDependency */,
-				011FD37C252679E9006D7C05 /* PBXTargetDependency */,
 			);
 			name = OEControlLabelsGenerator;
 			productName = ControlLabelsStringsExtractor;
@@ -5515,9 +5310,6 @@
 				LastSwiftUpdateCheck = 1340;
 				LastUpgradeCheck = 1320;
 				TargetAttributes = {
-					011FD36125267910006D7C05 = {
-						CreatedOnToolsVersion = 11.3.1;
-					};
 					012148042537C6D6007F3C84 = {
 						CreatedOnToolsVersion = 11.3.1;
 					};
@@ -5640,9 +5432,6 @@
 				82C9C96F0F080C7F0071460B /* Distribution */,
 				37C802FF101564A300356EF3 /* Build & Copy OpenEmuBase */,
 				83F37141140BB166005A7353 /* Build SystemPlugins */,
-				011FD36125267910006D7C05 /* Build Experimental SystemPlugins */,
-				94EBBCD7183F422500743756 /* Build & Copy Experimental & Alpha SystemPlugins */,
-				01607FC525388361006FCBC8 /* Build & Copy Experimental SystemPlugins */,
 				016F22DB23F19F5F00181842 /* OEAlertTest */,
 				015BFEB325266DFC0025139F /* OEControlLabelsGenerator */,
 				05DB72A02532681B0098459D /* OpenEmuTests */,
@@ -6262,84 +6051,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "\"${BUILT_PRODUCTS_DIR}/OESystemPluginPostInstall\" \"${BUILT_PRODUCTS_DIR}/OpenEmu.app\"\n";
-		};
-		0121480E2537D541007F3C84 /* Update Info.plist File Types */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-				"$(BUILT_PRODUCTS_DIR)/OESystemPluginPostInstall",
-				"$(BUILT_PRODUCTS_DIR)/OpenEmu.app/Contents/Info.plist",
-			);
-			name = "Update Info.plist File Types";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${BUILT_PRODUCTS_DIR}/OESystemPluginPostInstall\" \"${BUILT_PRODUCTS_DIR}/OpenEmu.app\"\n";
-		};
-		01607FD725388361006FCBC8 /* Update Info.plist File Types */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-				"$(BUILT_PRODUCTS_DIR)/OESystemPluginPostInstall",
-				"$(BUILT_PRODUCTS_DIR)/OpenEmu.app/Contents/Info.plist",
-			);
-			name = "Update Info.plist File Types";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${BUILT_PRODUCTS_DIR}/OESystemPluginPostInstall\" \"${BUILT_PRODUCTS_DIR}/OpenEmu.app\"\n";
-		};
-		01E85CBD25389A3700980F83 /* Set Experimental Appcast URLs */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-				"$(BUILT_PRODUCTS_DIR)/OpenEmu.app/Contents/Info.plist",
-			);
-			name = "Set Experimental Appcast URLs";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "# For Build All + Experimental scheme, tell Sparkle where to find experimental app and cores\n/usr/libexec/PlistBuddy -c \"Set :OECoreListURL https://raw.github.com/OpenEmu/OpenEmu-Update/master/oecores-experimental.xml\" \"${BUILT_PRODUCTS_DIR}/OpenEmu.app/Contents/Info.plist\"\n\n/usr/libexec/PlistBuddy -c \"Set :SUFeedURL https://raw.github.com/OpenEmu/OpenEmu-Update/master/appcast-experimental.xml\" \"${BUILT_PRODUCTS_DIR}/OpenEmu.app/Contents/Info.plist\"\n";
-		};
-		01E85CBE25389A8000980F83 /* Set Experimental Appcast URLs */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-				"$(BUILT_PRODUCTS_DIR)/OpenEmu.app/Contents/Info.plist",
-			);
-			name = "Set Experimental Appcast URLs";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "# For Build All + Experimental scheme, tell Sparkle where to find experimental app and cores\n/usr/libexec/PlistBuddy -c \"Set :OECoreListURL https://raw.github.com/OpenEmu/OpenEmu-Update/master/oecores-experimental.xml\" \"${BUILT_PRODUCTS_DIR}/OpenEmu.app/Contents/Info.plist\"\n\n/usr/libexec/PlistBuddy -c \"Set :SUFeedURL https://raw.github.com/OpenEmu/OpenEmu-Update/master/appcast-experimental.xml\" \"${BUILT_PRODUCTS_DIR}/OpenEmu.app/Contents/Info.plist\"\n";
 		};
 		37C80308101564B000356EF3 /* ShellScript */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -7033,90 +6744,10 @@
 			target = 83F37141140BB166005A7353 /* Build SystemPlugins */;
 			targetProxy = 011FD35F2526785D006D7C05 /* PBXContainerItemProxy */;
 		};
-		011FD36625267927006D7C05 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = 87FBC08D1C0790B400AECF5A /* Atari 8bit */;
-			targetProxy = 011FD36525267927006D7C05 /* PBXContainerItemProxy */;
-		};
-		011FD36825267927006D7C05 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = 87FBC06C1BFC70FE00AECF5A /* Commodore 64 */;
-			targetProxy = 011FD36725267927006D7C05 /* PBXContainerItemProxy */;
-		};
-		011FD36A25267932006D7C05 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = 3DB744A51BD8BA9E00C23E74 /* PlayStation 2 */;
-			targetProxy = 011FD36925267932006D7C05 /* PBXContainerItemProxy */;
-		};
-		011FD36C25267956006D7C05 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = 87DF04FD1BCE2D100060E2C2 /* Dreamcast */;
-			targetProxy = 011FD36B25267956006D7C05 /* PBXContainerItemProxy */;
-		};
-		011FD36E25267973006D7C05 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = 945E42FA1517F2B500057D08 /* Arcade */;
-			targetProxy = 011FD36D25267973006D7C05 /* PBXContainerItemProxy */;
-		};
-		011FD37025267986006D7C05 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = 081A46251B95744A00565444 /* Pokemon mini */;
-			targetProxy = 011FD36F25267986006D7C05 /* PBXContainerItemProxy */;
-		};
-		011FD3722526798B006D7C05 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = 837964E01A6149C000A8DE5C /* Supervision */;
-			targetProxy = 011FD3712526798B006D7C05 /* PBXContainerItemProxy */;
-		};
-		011FD3742526799C006D7C05 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = 943C80111708A62E00D8D93E /* Jaguar */;
-			targetProxy = 011FD3732526799C006D7C05 /* PBXContainerItemProxy */;
-		};
-		011FD376252679A1006D7C05 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = 943F99B21707DF3700270E89 /* 3DO */;
-			targetProxy = 011FD375252679A1006D7C05 /* PBXContainerItemProxy */;
-		};
-		011FD378252679AD006D7C05 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = FEB6625A187B791800D14713 /* MSX */;
-			targetProxy = 011FD377252679AD006D7C05 /* PBXContainerItemProxy */;
-		};
-		011FD37A252679CB006D7C05 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = 011FD36125267910006D7C05 /* Build Experimental SystemPlugins */;
-			targetProxy = 011FD379252679CB006D7C05 /* PBXContainerItemProxy */;
-		};
-		011FD37C252679E9006D7C05 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = 011FD36125267910006D7C05 /* Build Experimental SystemPlugins */;
-			targetProxy = 011FD37B252679E9006D7C05 /* PBXContainerItemProxy */;
-		};
 		012148262537D7FD007F3C84 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 012148042537C6D6007F3C84 /* OESystemPluginPostInstall */;
 			targetProxy = 012148252537D7FD007F3C84 /* PBXContainerItemProxy */;
-		};
-		01607FC625388361006FCBC8 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = 012148042537C6D6007F3C84 /* OESystemPluginPostInstall */;
-			targetProxy = 01607FC725388361006FCBC8 /* PBXContainerItemProxy */;
-		};
-		01607FC825388361006FCBC8 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = 8D15AC270486D014006FF6A4 /* OpenEmu */;
-			targetProxy = 01607FC925388361006FCBC8 /* PBXContainerItemProxy */;
-		};
-		01607FCA25388361006FCBC8 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = 011FD36125267910006D7C05 /* Build Experimental SystemPlugins */;
-			targetProxy = 01607FCB25388361006FCBC8 /* PBXContainerItemProxy */;
-		};
-		01853AC523C0FB5F00619549 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = 8D15AC270486D014006FF6A4 /* OpenEmu */;
-			targetProxy = 01853AC423C0FB5F00619549 /* PBXContainerItemProxy */;
 		};
 		05DB72A72532681B0098459D /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
@@ -7447,20 +7078,6 @@
 /* End PBXVariantGroup section */
 
 /* Begin XCBuildConfiguration section */
-		011FD36325267910006D7C05 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				PRODUCT_NAME = "$(TARGET_NAME)";
-			};
-			name = Debug;
-		};
-		011FD36425267910006D7C05 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				PRODUCT_NAME = "$(TARGET_NAME)";
-			};
-			name = Release;
-		};
 		012148092537C6D6007F3C84 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -7546,20 +7163,6 @@
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
-			};
-			name = Release;
-		};
-		01607FD925388361006FCBC8 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				PRODUCT_NAME = "$(TARGET_NAME)";
-			};
-			name = Debug;
-		};
-		01607FDA25388361006FCBC8 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Release;
 		};
@@ -8726,20 +8329,6 @@
 			};
 			name = Release;
 		};
-		94EBBCF5183F422500743756 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				PRODUCT_NAME = "Build & Copy Experimental SystemPlugins";
-			};
-			name = Debug;
-		};
-		94EBBCF6183F422500743756 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				PRODUCT_NAME = "Build & Copy Experimental SystemPlugins";
-			};
-			name = Release;
-		};
 		C05733C808A9546B00998B17 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 8F22764629D301FC001FB9F8 /* Config.xcconfig */;
@@ -9110,15 +8699,6 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		011FD36225267910006D7C05 /* Build configuration list for PBXAggregateTarget "Build Experimental SystemPlugins" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				011FD36325267910006D7C05 /* Debug */,
-				011FD36425267910006D7C05 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
 		0121480B2537C6D6007F3C84 /* Build configuration list for PBXNativeTarget "OESystemPluginPostInstall" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -9133,15 +8713,6 @@
 			buildConfigurations = (
 				015BFEB825266DFC0025139F /* Debug */,
 				015BFEB925266DFC0025139F /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		01607FD825388361006FCBC8 /* Build configuration list for PBXAggregateTarget "Build & Copy Experimental SystemPlugins" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				01607FD925388361006FCBC8 /* Debug */,
-				01607FDA25388361006FCBC8 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
@@ -9565,15 +9136,6 @@
 			buildConfigurations = (
 				94D7E8D215073BA000FBDD85 /* Debug */,
 				94D7E8D315073BA000FBDD85 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		94EBBCF4183F422500743756 /* Build configuration list for PBXAggregateTarget "Build & Copy Experimental & Alpha SystemPlugins" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				94EBBCF5183F422500743756 /* Debug */,
-				94EBBCF6183F422500743756 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
