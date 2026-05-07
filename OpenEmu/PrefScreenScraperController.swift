@@ -192,15 +192,20 @@ final class PrefScreenScraperController: NSViewController {
         let isSignedIn = !username.isEmpty && ScreenScraperCredentials.hasStoredPassword()
 
         if isSignedIn {
-            // Show the last fetch error if one occurred, so users know why art lookup failed
+            // Show the last fetch error if one occurred, so users know why art lookup failed.
+            // If no fetch has been attempted yet, show a neutral "credentials saved" state
+            // rather than a green "signed in" that implies verified authentication.
             Task { @MainActor in
                 if let fetchError = ScreenScraperClient.shared.lastFetchError,
                    let description = fetchError.errorDescription {
                     self.statusLabel.stringValue = description
                     self.statusLabel.textColor = NSColor(red: 0.87, green: 0.20, blue: 0.18, alpha: 1)
-                } else {
+                } else if ScreenScraperClient.shared.hasVerifiedCredentials {
                     self.statusLabel.stringValue = "✓  Signed in as \(username)"
                     self.statusLabel.textColor = NSColor(red: 0.2, green: 0.78, blue: 0.35, alpha: 1)
+                } else {
+                    self.statusLabel.stringValue = "Credentials saved — not yet verified. Save to confirm."
+                    self.statusLabel.textColor = .secondaryLabelColor
                 }
             }
         } else {
@@ -213,7 +218,7 @@ final class PrefScreenScraperController: NSViewController {
 
     @objc private func saveCredentials() {
         let username = usernameField.stringValue.trimmingCharacters(in: .whitespaces)
-        let password = passwordField.stringValue
+        let password = passwordField.stringValue.trimmingCharacters(in: .whitespaces)
 
         guard !username.isEmpty else {
             statusLabel.stringValue = "Username cannot be empty."
@@ -230,7 +235,31 @@ final class PrefScreenScraperController: NSViewController {
         ScreenScraperCredentials.storePassword(password)
         passwordField.stringValue = ""
         passwordField.placeholderString = "••••••••  (saved)"
-        updateStatus()
+
+        saveButton.isEnabled = false
+        clearButton.isEnabled = false
+        statusLabel.stringValue = "Verifying credentials…"
+        statusLabel.textColor = .secondaryLabelColor
+
+        Task { @MainActor in
+            do {
+                let ok = try await ScreenScraperClient.shared.verifyCredentials(username: username, password: password)
+                if ok {
+                    // Clear any prior fetch error so the pane reflects the fresh verification.
+                    ScreenScraperClient.shared.clearLastFetchError()
+                    statusLabel.stringValue = "✓  Signed in as \(username)"
+                    statusLabel.textColor = NSColor(red: 0.2, green: 0.78, blue: 0.35, alpha: 1)
+                } else {
+                    statusLabel.stringValue = "ScreenScraper rejected these credentials. Check your username and password."
+                    statusLabel.textColor = NSColor(red: 0.87, green: 0.20, blue: 0.18, alpha: 1)
+                }
+            } catch {
+                statusLabel.stringValue = "Could not reach ScreenScraper — check your connection."
+                statusLabel.textColor = NSColor(red: 0.87, green: 0.20, blue: 0.18, alpha: 1)
+            }
+            saveButton.isEnabled = true
+            clearButton.isEnabled = true
+        }
     }
 
     @objc private func clearCredentials() {

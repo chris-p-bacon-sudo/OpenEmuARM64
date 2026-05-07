@@ -65,6 +65,34 @@ final class ScreenScraperClient {
     /// Updated on every call to fetchGameInfo. Thread-safe via main-queue dispatch.
     @MainActor private(set) var lastFetchError: ScreenScraperFetchError?
 
+    /// True once verifyCredentials() has returned success this session.
+    /// Lets the Cover Art pane distinguish "credentials saved but unverified"
+    /// from "credentials confirmed by ScreenScraper."
+    @MainActor private(set) var hasVerifiedCredentials: Bool = false
+
+    @MainActor func clearLastFetchError() { lastFetchError = nil }
+
+    /// Verify that a username/password pair is accepted by ScreenScraper.
+    /// Calls ssuserInfos.php — lightweight, does not burn game-lookup quota.
+    /// Returns true on 2xx, false on 403, throws on network error.
+    func verifyCredentials(username: String, password: String) async throws -> Bool {
+        var components = URLComponents(string: "https://www.screenscraper.fr/api2/ssuserInfos.php")!
+        components.queryItems = [
+            URLQueryItem(name: "devid",       value: ScreenScraperClient.devID),
+            URLQueryItem(name: "devpassword", value: ScreenScraperClient.devPassword),
+            URLQueryItem(name: "ssid",        value: username),
+            URLQueryItem(name: "sspassword",  value: password),
+            URLQueryItem(name: "output",      value: "json"),
+            URLQueryItem(name: "softname",    value: "OpenEmu-Silicon"),
+        ]
+        guard let url = components.url else { return false }
+        let (_, response) = try await URLSession.shared.data(from: url)
+        guard let http = response as? HTTPURLResponse else { return false }
+        let ok = (200..<300).contains(http.statusCode)
+        if ok { await MainActor.run { hasVerifiedCredentials = true } }
+        return ok
+    }
+
     // ScreenScraper numeric system IDs keyed by OpenEmu system identifier
     static let systemIDs: [String: Int] = [
         // Nintendo
@@ -255,7 +283,10 @@ final class ScreenScraperClient {
 
             let parsed = self.parseGameInfo(jeu: jeu)
             fetchResult = .success(parsed)
-            Task { @MainActor in self.lastFetchError = nil }
+            Task { @MainActor in
+                self.lastFetchError = nil
+                self.hasVerifiedCredentials = true
+            }
         }
 
         task.resume()
