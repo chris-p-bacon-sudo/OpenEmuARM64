@@ -141,11 +141,32 @@ echo "Archive: $ARCHIVE_PATH"
 step "Uploading dSYMs to Sentry (symbolicated crash reports)"
 
 if command -v sentry-cli &>/dev/null; then
+  # Upload host app + framework dSYMs from the archive
   sentry-cli debug-files upload \
     --org openemu-silicon \
     --project openemu-silicon \
     "$ARCHIVE_PATH/dSYMs/" \
     || echo "WARNING: dSYM upload to Sentry failed — crash stack traces may be unreadable. Check sentry-cli auth."
+
+  # Upload core plugin dSYMs from DerivedData (Xcode does not copy them into the archive).
+  # Find the DerivedData folder for this workspace by matching the OpenEmu-metal prefix.
+  DERIVED_DATA=$(find ~/Library/Developer/Xcode/DerivedData -maxdepth 1 -name "OpenEmu-metal-*" -type d 2>/dev/null | head -1)
+  if [ -n "$DERIVED_DATA" ]; then
+    CORE_DSYM_DIR="$DERIVED_DATA/Build/Products/Release"
+    mapfile -d '' CORE_DSYMS < <(find "$CORE_DSYM_DIR" -maxdepth 1 -name "*.oecoreplugin.dSYM" -type d -print0 2>/dev/null)
+    if [ "${#CORE_DSYMS[@]}" -gt 0 ]; then
+      echo "Uploading ${#CORE_DSYMS[@]} core plugin dSYM(s)..."
+      sentry-cli debug-files upload \
+        --org openemu-silicon \
+        --project openemu-silicon \
+        "${CORE_DSYMS[@]}" \
+        || echo "WARNING: Core plugin dSYM upload failed — core crash traces may be unsymbolicated."
+    else
+      echo "NOTE: No core plugin dSYMs found in DerivedData. Build the full workspace in Release first."
+    fi
+  else
+    echo "NOTE: DerivedData folder for OpenEmu-metal not found — skipping core plugin dSYM upload."
+  fi
 else
   echo "WARNING: sentry-cli not installed. Crash stack traces in Sentry will not be symbolicated."
   echo "         Install with: brew install getsentry/tools/sentry-cli"
