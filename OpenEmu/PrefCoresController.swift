@@ -283,10 +283,14 @@ final class PrefCoresController: NSViewController {
                         if let error = error {
                             NSApp.presentError(error)
                         } else {
+                            self?.enableSystems(for: raCore.systemIDs)
                             self?.rebuildEntries()
                         }
                     }
                 }
+            } else {
+                // Plugin already on disk — ensure the system is visible without a restart.
+                enableSystems(for: raCore.systemIDs)
             }
         }
     }
@@ -653,6 +657,30 @@ extension PrefCoresController {
     }
 
     // MARK: - Plugin installation
+
+    /// Ensures the `OEDBSystem` for each system identifier is created and enabled, then posts
+    /// `OEDBSystemAvailabilityDidChange` so the sidebar and Library pane refresh immediately.
+    private func enableSystems(for systemIDs: [String]) {
+        guard let context = OELibraryDatabase.default?.mainThreadContext else { return }
+        var changed = false
+        for sysID in systemIDs {
+            guard let plugin = OESystemPlugin.systemPlugin(forIdentifier: sysID) else { continue }
+            let system = OEDBSystem.system(for: plugin, in: context)
+            // Only auto-enable when the system has never been explicitly configured.
+            // If the user deliberately disabled it, respect that choice.
+            if system.isEnabledByDefault {
+                system.isEnabled = true
+                changed = true
+            } else if system.isEnabled {
+                // Already enabled — just fire the notification so the sidebar refreshes
+                // after OECorePlugin.allPlugins gained the new core.
+                NotificationCenter.default.post(name: .OEDBSystemAvailabilityDidChange, object: system)
+            }
+        }
+        if changed {
+            try? context.save()
+        }
+    }
 
     private func installRetroArchPlugin(_ core: RetroArchCore, completion: @escaping (Error?) -> Void) {
         DispatchQueue.global(qos: .userInitiated).async {
