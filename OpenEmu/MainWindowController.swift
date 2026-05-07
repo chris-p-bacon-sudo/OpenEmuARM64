@@ -356,7 +356,8 @@ extension MainWindowController: LibraryControllerDelegate {
                 }
                 else if let error = error as NSError?, !(error.domain == NSCocoaErrorDomain && error.code == NSUserCancelledError) {
                     DispatchQueue.main.async {
-                        self.presentError(error)
+                        self.presentError(error, modalFor: self.window!, delegate: nil,
+                                          didPresent: nil, contextInfo: nil)
                     }
                 }
                 

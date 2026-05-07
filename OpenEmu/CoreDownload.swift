@@ -129,31 +129,28 @@ extension CoreDownload: URLSessionDownloadDelegate {
         let coresFolder = URL.oeApplicationSupportDirectory
             .appendingPathComponent("Cores", isDirectory: true)
         
-        // TODO: per URLSession docs
-        //  "If you choose to open the file for reading, you should do the actual reading in another thread to avoid blocking the delegate queue."
         guard
             let fileName = ArchiveHelper.decompressFileInArchive(at: location, toDirectory: coresFolder)
         else { return }
-        
+
         let fullPluginURL = coresFolder.appendingPathComponent(fileName)
-        
+
         DLog("Core (\(bundleIdentifier)) extracted to application support folder.")
 
-        adHocSign(fullPluginURL)
+        adHocSign(fullPluginURL) {
+            guard let plugin = OECorePlugin.corePlugin(bundleAtURL: fullPluginURL) else {
+                return assertionFailure()
+            }
 
-        guard let plugin = OECorePlugin.corePlugin(bundleAtURL: fullPluginURL) else {
-            return assertionFailure()
-        }
-        
-        if hasUpdate {
-            // flush bundle cache as NSBundle still returns the infoDictionary of the previous version
-            plugin.flushBundleCache()
-            version = plugin.version
-            hasUpdate = false
-            canBeInstalled = false
-        }
-        else if canBeInstalled {
-            updateProperties(with: plugin)
+            if self.hasUpdate {
+                // flush bundle cache as NSBundle still returns the infoDictionary of the previous version
+                plugin.flushBundleCache()
+                self.version = plugin.version
+                self.hasUpdate = false
+                self.canBeInstalled = false
+            } else if self.canBeInstalled {
+                self.updateProperties(with: plugin)
+            }
         }
     }
 }
@@ -165,19 +162,22 @@ extension CoreDownload {
     /// Ad-hoc signs the plugin bundle so macOS 26+ will load it.
     /// Downloaded cores arrive unsigned; the OS refuses to dlopen them even
     /// with disable-library-validation unless they carry at least an ad-hoc signature.
-    private func adHocSign(_ bundleURL: URL) {
-        let task = Process()
-        task.executableURL = URL(fileURLWithPath: "/usr/bin/codesign")
-        task.arguments = ["--force", "--sign", "-", bundleURL.path]
+    private func adHocSign(_ bundleURL: URL, completion: @escaping () -> Void) {
+        DispatchQueue.global(qos: .userInitiated).async {
+            let task = Process()
+            task.executableURL = URL(fileURLWithPath: "/usr/bin/codesign")
+            task.arguments = ["--force", "--sign", "-", bundleURL.path]
 
-        do {
-            try task.run()
-            task.waitUntilExit()
-            if task.terminationStatus != 0 {
-                DLog("codesign exited with status \(task.terminationStatus) for \(bundleURL.lastPathComponent)")
+            do {
+                try task.run()
+                task.waitUntilExit()
+                if task.terminationStatus != 0 {
+                    DLog("codesign exited with status \(task.terminationStatus) for \(bundleURL.lastPathComponent)")
+                }
+            } catch {
+                DLog("Failed to run codesign for \(bundleURL.lastPathComponent): \(error)")
             }
-        } catch {
-            DLog("Failed to run codesign for \(bundleURL.lastPathComponent): \(error)")
+            DispatchQueue.main.async { completion() }
         }
     }
 }

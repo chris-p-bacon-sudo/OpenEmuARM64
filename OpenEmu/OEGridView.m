@@ -554,17 +554,27 @@ NSString *const OEImageBrowserGroupSubtitleKey = @"OEImageBrowserGroupSubtitleKe
         if(image == nil)
         {
             NSURL *url = [[pboard readObjectsForClasses:@[[NSURL class]] options:@{}] lastObject];
-            QLThumbnailRef thumbnailRef = QLThumbnailCreate(NULL, (__bridge CFURLRef)url, [self cellSize], NULL);
-            if(thumbnailRef)
-            {
-                CGImageRef thumbnailImageRef = QLThumbnailCopyImage(thumbnailRef);
-                if(thumbnailImageRef)
+            if(url == nil) { [self setProposedImage:nil]; return; }
+
+            CGSize cellSize = [self cellSize];
+            dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+                NSImage *thumbnail = nil;
+                QLThumbnailRef thumbnailRef = QLThumbnailCreate(NULL, (__bridge CFURLRef)url, cellSize, NULL);
+                if(thumbnailRef)
                 {
-                    image = [[NSImage alloc] initWithCGImage:thumbnailImageRef size:NSMakeSize(CGImageGetWidth(thumbnailImageRef), CGImageGetHeight(thumbnailImageRef))];
-                    CGImageRelease(thumbnailImageRef);
+                    CGImageRef thumbnailImageRef = QLThumbnailCopyImage(thumbnailRef);
+                    if(thumbnailImageRef)
+                    {
+                        thumbnail = [[NSImage alloc] initWithCGImage:thumbnailImageRef size:NSMakeSize(CGImageGetWidth(thumbnailImageRef), CGImageGetHeight(thumbnailImageRef))];
+                        CGImageRelease(thumbnailImageRef);
+                    }
+                    CFRelease(thumbnailRef);
                 }
-                CFRelease(thumbnailRef);
-            }
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    [self setProposedImage:thumbnail];
+                });
+            });
+            return;
         }
     }
 

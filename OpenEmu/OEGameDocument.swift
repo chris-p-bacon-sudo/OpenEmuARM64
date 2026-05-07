@@ -631,8 +631,10 @@ final class OEGameDocument: NSDocument {
                 self.lastPlayStartDate = Date()
                 
                 if let saveStateForGameStart = self.saveStateForGameStart {
-                    self.loadState(state: saveStateForGameStart)
                     self.saveStateForGameStart = nil
+                    DispatchQueue.main.async {
+                        self.loadState(state: saveStateForGameStart)
+                    }
                 }
                 
                 // set initial volume
