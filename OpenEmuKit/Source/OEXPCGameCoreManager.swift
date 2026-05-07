@@ -46,71 +46,73 @@ import OpenEmuKitPrivate
     public override func loadROM(completionHandler: @escaping StartupCompletionHandler) {
         guard let executableURL = executableURL
         else { fatalError("Missing XPC helper executable") }
-        
-        let cn: NSXPCConnection
-        do {
-            NSLog("[OEXPCGameCoreManager] Launching helper at \(executableURL.path)")
-            cn = try .makeConnection(serviceName: serviceName, executableURL: executableURL)
-            helperConnection = cn
-        } catch {
-            DispatchQueue.main.async {
-                completionHandler(error)
+
+        DispatchQueue.global(qos: .userInitiated).async {
+            let cn: NSXPCConnection
+            do {
+                NSLog("[OEXPCGameCoreManager] Launching helper at \(executableURL.path)")
+                cn = try .makeConnection(serviceName: self.serviceName, executableURL: executableURL)
+            } catch {
+                DispatchQueue.main.async {
+                    completionHandler(error)
+                }
+                // There's no listener endpoint, so don't bother trying to create an NSXPCConnection.
+                // Returning now since calling initWithListenerEndpoint: and passing it nil results in a memory leak.
+                // Also, there's no point in trying to get the gameCoreHelper if there's no _helperConnection.
+                return
             }
-            
-            // There's no listener endpoint, so don't bother trying to create an NSXPCConnection.
-            // Returning now since calling initWithListenerEndpoint: and passing it nil results in a memory leak.
-            // Also, there's no point in trying to get the gameCoreHelper if there's no _helperConnection.
-            return
-        }
-        
-        cn.invalidationHandler = { [weak self] in
-            self?.notifyGameCoreDidTerminate()
-        }
-        
-        let proxy = OEThreadProxy(target: gameCoreOwner, thread: .main)
-        
-        cn.exportedInterface = .init(with: OEGameCoreOwner.self)
-        cn.exportedObject = proxy
-        
-        let intf = NSXPCInterface(with: OEXPCGameCoreHelper.self)
-        
-        // startup
-        let classes: NSSet = [OEGameStartupInfo.self]
-        // swiftlint:disable:next force_cast
-        intf.setClasses(classes as! Set<AnyHashable>,
-                        for: #selector(OEXPCGameCoreHelper.load(with:completionHandler:)),
-                        argumentIndex: 0,
-                        ofReply: false)
-        
-        cn.remoteObjectInterface = intf
-        cn.resume()
-        
-        let gameCoreHelper = cn.remoteObjectProxyWithErrorHandler { error in
-            os_log(.error, log: .helper, "Helper connection failed with error: %{public}@", error.localizedDescription)
-            DispatchQueue.main.async {
-                completionHandler(error)
-                self.stop()
+
+            self.helperConnection = cn
+
+            cn.invalidationHandler = { [weak self] in
+                self?.notifyGameCoreDidTerminate()
             }
-        } as? OEXPCGameCoreHelper
-        
-        guard let gameCoreHelper = gameCoreHelper
-        else { return }
-        
-        gameCoreHelper.load(with: startupInfo) { error in
-            if let error = error {
+
+            let proxy = OEThreadProxy(target: self.gameCoreOwner, thread: .main)
+
+            cn.exportedInterface = .init(with: OEGameCoreOwner.self)
+            cn.exportedObject = proxy
+
+            let intf = NSXPCInterface(with: OEXPCGameCoreHelper.self)
+
+            // startup
+            let classes: NSSet = [OEGameStartupInfo.self]
+            // swiftlint:disable:next force_cast
+            intf.setClasses(classes as! Set<AnyHashable>,
+                            for: #selector(OEXPCGameCoreHelper.load(with:completionHandler:)),
+                            argumentIndex: 0,
+                            ofReply: false)
+
+            cn.remoteObjectInterface = intf
+            cn.resume()
+
+            let gameCoreHelper = cn.remoteObjectProxyWithErrorHandler { error in
+                os_log(.error, log: .helper, "Helper connection failed with error: %{public}@", error.localizedDescription)
                 DispatchQueue.main.async {
                     completionHandler(error)
                     self.stop()
                 }
-                
-                // There's no listener endpoint, so don't bother trying to create an NSXPCConnection.
-                // Returning now since calling initWithListenerEndpoint: and passing it nil results in a memory leak.
-                return
-            }
-            
-            self.gameCoreHelper = gameCoreHelper
-            DispatchQueue.main.async {
-                completionHandler(nil)
+            } as? OEXPCGameCoreHelper
+
+            guard let gameCoreHelper = gameCoreHelper
+            else { return }
+
+            gameCoreHelper.load(with: self.startupInfo) { error in
+                if let error = error {
+                    DispatchQueue.main.async {
+                        completionHandler(error)
+                        self.stop()
+                    }
+
+                    // There's no listener endpoint, so don't bother trying to create an NSXPCConnection.
+                    // Returning now since calling initWithListenerEndpoint: and passing it nil results in a memory leak.
+                    return
+                }
+
+                self.gameCoreHelper = gameCoreHelper
+                DispatchQueue.main.async {
+                    completionHandler(nil)
+                }
             }
         }
     }

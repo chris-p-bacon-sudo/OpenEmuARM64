@@ -869,12 +869,14 @@ class AppDelegate: NSObject, UNUserNotificationCenterDelegate {
 
         UserDefaults.standard.set(true, forKey: suppressionKey)
 
-        let res = alert.runModal()
-        if res == .alertFirstButtonReturn {
-            if #available(macOS 13.0, *) {
-                NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension?Privacy_ListenEvent")!)
-            } else {
-                NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent")!)
+        guard let window = mainWindowController.window else { return }
+        alert.beginSheetModal(for: window) { res in
+            if res == .alertFirstButtonReturn {
+                if #available(macOS 13.0, *) {
+                    NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension?Privacy_ListenEvent")!)
+                } else {
+                    NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent")!)
+                }
             }
         }
     }
