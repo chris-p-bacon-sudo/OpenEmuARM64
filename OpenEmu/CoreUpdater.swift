@@ -161,7 +161,7 @@ final class CoreUpdater: NSObject {
     
     func checkForNewCores(completionHandler handler: ((_ error: Error?) -> Void)? = nil) {
         guard lastCoreListURLTask == nil else {
-            handler?(Errors.newCoreCheckAlreadyPendingError)
+            DispatchQueue.main.async { handler?(Errors.newCoreCheckAlreadyPendingError) }
             return
         }
         
