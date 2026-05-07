@@ -12,33 +12,28 @@
 
 ## Current Status
 
-**Actively maintained. Running natively on Apple Silicon (no Rosetta required).**
+**Actively maintained. Runs natively on Apple Silicon (no Rosetta required).**
 
-This is a community-maintained fork of OpenEmu, rebuilt to run natively on M-series Macs. All emulation cores have been ported to ARM64. The app runs on macOS 11.0+ and has been tested on macOS Sequoia and macOS 26 (Tahoe).
+This is a community-maintained fork of OpenEmu for M-series Macs. The app runs on macOS 11.0+ and has been tested on macOS Sequoia and macOS 26 (Tahoe).
 
 > **Download:** Get the latest signed DMG from the **[Releases](https://github.com/nickybmon/OpenEmu-Silicon/releases)** page. The app is notarized — no Gatekeeper workaround needed.
 
 ---
 
-## Why this exists if original OpenEmu already works on your M-series Mac
+## What this fork is and isn't
 
-It probably does work — Rosetta 2 is genuinely impressive at hiding the fact that you're running an Intel app on Apple Silicon. Here's what's actually happening and why it matters.
+OpenEmu is the work of an exceptional team of developers who built one of the finest pieces of Mac software ever made — and kept improving it for over a decade.
 
-**What the original OpenEmu does on Apple Silicon**
-The original project was built for Intel Macs and hasn't had a release for some time. When you run it on an M-series Mac, macOS silently runs it through Rosetta 2 — Apple's x86-to-ARM translation layer. Rosetta is remarkably good, which is why many people never notice.
+[**stuartcarnie**](https://github.com/stuartcarnie) added Metal rendering in 2019, replacing OpenGL across the entire app and delivering a significant improvement to frame pacing, battery life, and display quality. [**MaddTheSane**](https://github.com/MaddTheSane) (C.W. Betts) did the ARM64 porting work across the emulation cores starting in January 2021 — removing x86-only architecture restrictions, updating static libraries, adding ARM64 linkage support, and making architecture-specific CPU code conditional. The top contributors by commit count — [**cyco**](https://github.com/cyco), [**clobber**](https://github.com/clobber), [**J-rg**](https://github.com/J-rg), and others — built the app, the plugin architecture, and the library experience that makes OpenEmu what it is. None of that work originated here.
 
-**What this build does differently**
-- **Native ARM64** — every emulation core runs directly on the Apple Silicon chip, no translation layer
-- **Metal renderer** — Apple deprecated OpenGL; this build uses Metal, the native macOS graphics API
-- **Active maintenance** — updated cores, macOS 26 (Tahoe) compatibility fixes, and new systems added
+What never happened is a release. The ARM64 core work landed in the repos and stayed there. The last official binary (OpenEmu 2.4.1, December 2023) was Intel-only — explicitly stated in its release notes. [**bazley82**](https://github.com/bazley82) was the first to assemble those ARM64-capable cores into a downloadable build in early 2026. This fork continued from there.
 
-**When you might notice a real difference**
-For lighter systems (NES, SNES, GBA), you probably won't. For heavier cores — N64, PlayStation, Dreamcast, PSP — native execution means lower CPU overhead, better frame pacing, and less fan activity during long sessions.
+**What this fork provides:**
+- **A downloadable, notarized, native ARM64 binary** — the original project's ARM64 work was never published as a release.
+- **Active maintenance** — macOS 26 (Tahoe) compatibility, updated cores, and ongoing bug fixes.
+- **New features not in the original** — RetroAchievements, ScreenScraper cover art, RetroArch Core Support, Google Drive save sync (being verified by Google), and several new or restored systems, such as Dolphin, PPSSPP (RetroArch), and Flycast.
 
-**Rosetta 2 has a confirmed end of life**
-Starting with macOS 26.4, Apple will show a notification every time you launch an app that still requires Rosetta — alerting users to find native alternatives. Starting with macOS 28 (expected Fall 2027), Rosetta 2 will be largely discontinued. When that happens, the original OpenEmu stops working entirely. This build won't be affected.
-
-If original OpenEmu meets your needs today, there's no urgency. But if you've had a core feel sluggish, noticed audio issues, or want to be ahead of the Rosetta end-of-life, this is a build you can switch to now or someday. ([full details on the wiki](https://github.com/nickybmon/OpenEmu-Silicon/wiki/Why-Native-ARM64-Matters))
+**On Rosetta 2:** Apple has confirmed that starting with macOS 26.4, the OS will notify users each time they launch a Rosetta-dependent app. If you want to stay ahead of that, this fork is a drop-in replacement. ([full details on the wiki](https://github.com/nickybmon/OpenEmu-Silicon/wiki/Why-Native-ARM64-Matters))
 
 ---
 
@@ -55,38 +50,52 @@ brew install --cask openemu-silicon
 
 ---
 
-## What's New in v1.0.7
+## What's New in v1.1.0
 
-- **RetroAchievements — Phase 1** — Earn achievements automatically as you play across 9 cores and 7 systems: NES (FCEU, Nestopia), SNES (SNES9x, BSNES), Game Boy / GBC (Gambatte, mGBA), Game Boy Advance (mGBA), and Genesis / Master System / Game Gear / Sega CD / SG-1000 (Genesis Plus GX). Log in once in Preferences → Achievements. See the [RetroAchievements wiki page](https://github.com/nickybmon/OpenEmu-Silicon/wiki/RetroAchievements) for setup.
-- **Play With… core selection** — Right-click any game in your library and choose **Play With…** to pick which core to use for that session, without changing your default. (only applies to systems with multiple cores installed)
-- **3DO now works out of the box** — A bundle identifier bug was silently dropping the 3DO system at launch. Fixed — 3DO appears in your console list automatically with no extra steps.
-- **N64 GameShark cheats fixed** — Cheat codes now apply correctly in Mupen64Plus.
-- **Dreamcast speed and audio fixed** — Flycast no longer runs faster than real-time on high-refresh-rate displays, and the distorted audio that came with it is gone.
-- **NES color palette restored** — FCEU was rendering all NES games with a washed-out grey palette due to a regression. Fixed.
+### Libretro Bridge — run RetroArch cores inside OpenEmu *(Experimental)*
+
+OpenEmu Silicon now ships a **Libretro Bridge** (built with [pystIC](https://github.com/pystIC)) — a translation layer that lets you load RetroArch / libretro cores directly, without per-core ports. Working in 1.1.0: PSP via PPSSPP-libretro, Atari 2600, and Commodore 64 via VICE. Hardware-rendered cores (Dolphin, melonDS) and Dreamcast via Flycast-libretro are not yet supported — use the native Flycast core for Dreamcast.
+
+→ [Setup guide and supported cores list](https://github.com/nickybmon/OpenEmu-Silicon/wiki/Using-RetroArch-Cores)
+
+### RetroAchievements — Phase 2
+
+Two more system families earn achievements: **Nintendo 64** (Mupen64Plus) and **PlayStation, PC Engine, Lynx, and Neo Geo Pocket** (Mednafen). Log in once in Preferences → Achievements. Full supported list: GBA, GB/GBC, SNES, NES, Genesis/Mega Drive/CD, Master System/Game Gear, N64, PSX, PC Engine, Lynx, NGP.
+
+### Core update pipeline fixed
+
+If you've seen "Update Available" loop without anything changing, or cores felt stuck on old versions — 1.1.0 fixes that. The update feed was pointing at stale upstream sources instead of this fork's own. Existing installations migrate automatically on first launch.
+
+### Other improvements
+
+- **Cheats persist** — User-added cheat codes are saved and re-applied automatically on game load.
+- **ScreenScraper maps 16 more systems** — Covers and metadata now fetch for systems that were previously missing.
+- **Window resize artifacts fixed** — Maximising or resizing no longer leaves ghost content layers.
+- **Dreamcast fixes** — JIT re-enabled (fixes 27fps / half-speed issue); black screen on second launch fixed; PSX multi-disc games no longer require a manual `.m3u` file.
+- **Input Monitoring detection fixed** — If permission was already granted before launch, the prompt no longer re-appears and controllers respond immediately.
 
 **Earlier highlights:**
+- **RetroAchievements Phase 1** — NES, SNES, GB/GBC, GBA, Genesis family.
 - **Nintendo 64** — Mupen64Plus revived and working.
-- **Sega Dreamcast** — Migrated from Reicast to Flycast for a significantly more stable experience.
-- **GameCube / Wii** — Dolphin core integrated and working.
-- **ScreenScraper cover art** — Automatic box art via [ScreenScraper](https://www.screenscraper.fr). Enter credentials in Preferences → Cover Art.
+- **Sega Dreamcast** — Migrated from Reicast to Flycast.
+- **GameCube / Wii** — Dolphin core integrated.
+- **ScreenScraper cover art** — Automatic box art via [ScreenScraper](https://www.screenscraper.fr).
 
 ---
 
 ## Supported Systems
 
-> **Full details — working status, known issues, in-progress cores, and what’s planned — are on the [Supported Systems](https://github.com/nickybmon/OpenEmu-Silicon/wiki/Supported-Systems) wiki page.**
+> **Full details — working status, known issues, in-progress cores, and what's planned — are on the [Supported Systems](https://github.com/nickybmon/OpenEmu-Silicon/wiki/Supported-Systems) wiki page.**
 
-Quick summary: 30+ systems work today, including NES, SNES, Game Boy, GBA, N64, PlayStation, Dreamcast, and more. A handful have known issues (PSP, Saturn registration, Game Boy Color categorization). GameCube/Wii (Dolphin) and a new Nintendo DS core (melonDS) are actively in progress. Commodore 64, Arcade/MAME, and PS2 have no core yet.
-
-**Also working:** controller mapping and detection, save states, Google Drive sync for saves, ScreenScraper cover art.
+Quick summary: 30+ systems work today, including NES, SNES, Game Boy, GBA, N64, PlayStation, Dreamcast, and more. A handful have known issues (PSP, Saturn, Game Boy Color categorization). GameCube/Wii (Dolphin) and Nintendo DS (melonDS) are actively in progress. PS2 has no core yet.
 
 ---
 
 ## Known Issues
 
-- **Save state compatibility** — Save states from certain older cores are incompatible with the current ARM64 builds and will crash if loaded. On launch, the app detects these and shows a warning dialog listing the affected cores and count. You can delete them immediately or keep them and back up first. **We strongly recommend backing up your save states before your first launch** — see [Migrating from OpenEmu](https://github.com/nickybmon/OpenEmu-Silicon/wiki/Migrating-from-OpenEmu) for instructions and the full list of affected cores.
-- A few cores have quirks on Apple Silicon still being investigated (see open issues)
-- Input Monitoring permission may need to be granted manually in System Settings → Privacy & Security
+- **Save state compatibility** — Save states from certain older cores are incompatible with current ARM64 builds and will crash if loaded. On launch, the app detects these and shows a warning dialog. **Back up your save states before your first launch** — see [Migrating from OpenEmu](https://github.com/nickybmon/OpenEmu-Silicon/wiki/Migrating-from-OpenEmu) for the full list and instructions.
+- Input Monitoring permission may need to be granted manually in System Settings → Privacy & Security.
+- A few cores have quirks on Apple Silicon still being investigated (see open issues).
 
 ---
 
@@ -99,14 +108,14 @@ Quick summary: 30+ systems work today, including NES, SNES, Game Boy, GBA, N64, 
 
 ## About This Project
 
-OpenEmu is one of the best pieces of Mac software ever made — a beautifully designed, first-class game emulation frontend that brought together dozens of emulation cores under a single native macOS UI. The original project went quiet around 2022.
+OpenEmu is one of the best pieces of Mac software ever made. [stuartcarnie](https://github.com/stuartcarnie) brought Metal rendering to the app in 2019. [MaddTheSane](https://github.com/MaddTheSane) ported the emulation cores to ARM64 starting in 2021. [cyco](https://github.com/cyco), [clobber](https://github.com/clobber), [J-rg](https://github.com/J-rg), and the rest of the OpenEmu team built the application, the plugin architecture, and the library experience over more than a decade. That work is the foundation everything here stands on.
 
-This fork started from [bazley82's OpenEmuARM64](https://github.com/bazley82/OpenEmuARM64), which did the foundational work of porting all 25 cores to build natively on Apple Silicon. Since then this project has diverged significantly: Nintendo 64 and Pokémon Mini were rebuilt from scratch and brought back online; PPSSPP was fully re-integrated to add PSP emulation on Apple Silicon; Dreamcast was migrated from the stale Reicast codebase to Flycast for a much more stable experience; ScreenScraper cover art was integrated to bring the library back to life; RetroAchievements support shipped across 9 cores; core updates shipped (SNES9x 1.63.1, mGBA 0.10.6, Mupen64Plus 2.5.11); and the entire app was hardened for macOS 26 (Tahoe) compatibility. The goal is to make OpenEmu genuinely great on modern Macs again — not just technically booting, but actually usable for players.
+The original project went quiet around 2024 after the last release. By that time, the original team had already done significant work on the ARM64 cores. The ARM64 core work was real and substantial, but it was never assembled into a release — the last official binary (December 2023) was stated as Intel-only. [bazley82](https://github.com/bazley82) published a downloadable ARM64 build in early 2026, pulling together the ARM64-capable core submodules the original team had prepared into a single repo and release. This fork continued from there: RetroAchievements shipped across 9+ cores; a Libretro Bridge was built to load RetroArch cores directly inside OpenEmu; ScreenScraper cover art was integrated; Dreamcast was migrated from Reicast to Flycast; save persistence, system detection, and the core update pipeline were all fixed; and the app was hardened for macOS 26 (Tahoe).
 
 **Lineage:**
-- [OpenEmu/OpenEmu](https://github.com/OpenEmu/OpenEmu) — the original project, built by the OpenEmu team
-- [bazley82/OpenEmuARM64](https://github.com/bazley82/OpenEmuARM64) — the ARM64 port that this fork is built on
-- **This repo** — continued development and maintenance by [@nickybmon](https://github.com/nickybmon)
+- [OpenEmu/OpenEmu](https://github.com/OpenEmu/OpenEmu) — the original project
+- [bazley82/OpenEmuARM64](https://github.com/bazley82/OpenEmuARM64) — the first published ARM64 build, built on the original team's core work
+- **This repo** — continued development and maintenance by [@nickybmon](https://github.com/nickybmon) and others.
 
 ---
 
@@ -134,7 +143,7 @@ I'm transparent about this because honesty with the community matters more than 
 
 Issues, PRs, and testing feedback are all welcome. If something breaks for you, open an issue and describe your Mac model, macOS version, and which system/game you were running. That context is the most valuable thing you can provide.
 
-If you want to contribute code, check the open issues for good starting points. A simple PR with a clear description of what it fixes is the best kind of contribution.
+If you want to contribute code, check the open issues for good starting points. A clear PR description of what it fixes is the best kind of contribution.
 
 ---
 

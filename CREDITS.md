@@ -6,28 +6,37 @@ OpenEmu-Silicon stands on the shoulders of a lot of excellent work. This file ho
 
 ## Original OpenEmu Project
 
-The original OpenEmu application was built by the OpenEmu Team — a group of developers who created one of the best pieces of Mac software ever made.
+The original OpenEmu application was built by an exceptional team of developers over more than a decade. Their work is the foundation everything here stands on.
 
 - **OpenEmu/OpenEmu** — https://github.com/OpenEmu/OpenEmu
 
-The full contributor history for the original project is preserved in that repository.
+Key contributors by name:
+
+- **cyco** — https://github.com/cyco (1,581 commits — top contributor, core application architecture)
+- **clobber** — https://github.com/clobber (1,516 commits — core application, retro gaming and emulation specialist)
+- **J-rg** — https://github.com/J-rg (704 commits)
+- **PsychoH13** — https://github.com/PsychoH13 (567 commits)
+- **shysaur** — https://github.com/shysaur (350 commits)
+- **stuartcarnie** — https://github.com/stuartcarnie (301 commits — added Metal rendering support in 2019, replacing OpenGL across the entire app)
+- **jweinberg** — https://github.com/jweinberg (281 commits)
+- **vade** (Anton Marini) — https://github.com/vade (280 commits — Syphon Framework, creative media)
+- **MaddTheSane** (C.W. Betts) — https://github.com/MaddTheSane (ARM64 porting work across emulation cores, starting January 2021 — removing x86-only architecture restrictions, updating static libraries, adding ARM64 linkage support, and making CPU code architecture-conditional)
+
+The full contributor history for the original project is preserved at https://github.com/OpenEmu/OpenEmu/graphs/contributors.
 
 ---
 
-## ARM64 Port Foundation
+## First ARM64 Build
 
-The foundational work of porting all emulation cores to build natively on Apple Silicon was done by bazley82.
+The original OpenEmu team's ARM64 core work was real and substantial but was never assembled into a published release. [**bazley82**](https://github.com/bazley82) pulled those ARM64-capable submodules together and published a downloadable build in early 2026.
 
 - **bazley82/OpenEmuARM64** — https://github.com/bazley82/OpenEmuARM64
-  - Systematic ARM64 port of all 25 emulation cores
-  - App update via GitHub (Sparkle) and Per-Core Revert feature
-  - Core Preferences UI refactor
-  - VirtualC64 core for Commodore 64
-  - Appcast infrastructure
+  - ARM64 build assembling the original team's ARM64-capable cores into a single release
+  - Core Preferences UI
 
-Earlier foundational work in the same lineage by **Barrie Sanders**:
-  - Google Drive Save Sync Manager (ARM64 native)
-  - Initial ARM64 port finalization, Cloud Sync scaffolding, and localization
+Earlier integration work by **Barrie Sanders**:
+  - Google Drive Save Sync scaffolding
+  - Localization
 
 ---
 
