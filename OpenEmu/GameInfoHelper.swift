@@ -200,11 +200,12 @@ final class GameInfoHelper {
                 // FIX: pass full filename (including extension) so ScreenScraper
                 // can differentiate ROMs sharing names across systems.
                 let romName = url?.lastPathComponent
-                if case .success(let ss) = ScreenScraperClient.shared.fetchGameInfo(
+                let ssResult = ScreenScraperClient.shared.fetchGameInfo(
                     md5: md5,
                     romName: romName,
                     systemIdentifier: systemIdentifier
-                ), let ss = ss {
+                )
+                if case .success(let ss) = ssResult, let ss = ss {
                     if let boxURL = ss.boxImageURL {
                         resultDict["boxImageURL"] = boxURL.absoluteString
                     }
@@ -224,8 +225,16 @@ final class GameInfoHelper {
                     }
                 }
 
-                // ScreenScraper (+ libretro fallback) handled it; no need for fuzzy fallback.
-                return resultDict
+                // Only skip the fuzzy fallback when ScreenScraper actually responded
+                // (success or not-found). If SS returned a hard error (bad credentials,
+                // network down, rate limited), fall through so fuzzy OpenVGDB + libretro
+                // still have a chance to find art.
+                switch ssResult {
+                case .success:
+                    return resultDict
+                case .failure:
+                    break  // fall through to fuzzy path below
+                }
             }
 
             // --- Advanced fuzzy fallback (only for users NOT logged in to ScreenScraper) ---
