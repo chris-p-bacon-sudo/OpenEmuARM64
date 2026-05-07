@@ -24,6 +24,27 @@
 
 import Foundation
 import OpenEmuKit
+import Sentry
+
+// Initialize Sentry in the helper process if the user opted in via the host app.
+// CFPreferencesCopyValue reads the host app's preference domain directly, which is
+// safe in this non-sandboxed helper process and avoids any IPC or file-sharing setup.
+let consentValue = CFPreferencesCopyValue(
+    "OESentryCrashReportingEnabled" as CFString,
+    "org.openemu.OpenEmu" as CFString,
+    kCFPreferencesAnyUser,
+    kCFPreferencesAnyHost
+)
+if (consentValue as? Bool) == true {
+    let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "unknown"
+    let build   = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "0"
+    SentrySDK.start { options in
+        options.dsn         = "https://387777a8153aae33cb514deea3601946@o4511164820815872.ingest.us.sentry.io/4511164891529216"
+        options.releaseName = "openemu-silicon@\(version)+\(build)"
+        options.environment = "production"
+        options.debug       = false
+    }
+}
 
 if let wait = ProcessInfo.processInfo.environment["OE_HELPER_WAIT_FOR_DEBUGGER"] as? NSString, wait.boolValue {
     XPCDebugSupport.waitForDebugger(until: .distantFuture)

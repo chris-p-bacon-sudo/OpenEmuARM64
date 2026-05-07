@@ -161,6 +161,7 @@
 		1E4B7FC710DE4156A46DAB79 /* OEWiiSystemController.m in Sources */ = {isa = PBXBuildFile; fileRef = 60C6AA00A0A44B609186B94D /* OEWiiSystemController.m */; };
 		22041F6779860DD69DB04FDD /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 38F89E810430637386DA95E8 /* Cocoa.framework */; };
 		22477F282F81F85500C2A0BD /* Sentry in Frameworks */ = {isa = PBXBuildFile; productRef = 22477F272F81F85500C2A0BD /* Sentry */; };
+		22477F2B2F82A00000C2A0BD /* Sentry in Frameworks */ = {isa = PBXBuildFile; productRef = 22477F2C2F82A00000C2A0BD /* Sentry */; };
 		22477F2A2F81F99300C2A0BD /* SentryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22477F292F81F99300C2A0BD /* SentryService.swift */; };
 		277CBA3719DE54200059A2C1 /* OpenEmuSystem.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C6D120C417112E1300E868A8 /* OpenEmuSystem.framework */; };
 		277CBA4A19DE54A80059A2C1 /* OEIntellivisionSystemResponder.m in Sources */ = {isa = PBXBuildFile; fileRef = 277CBA4819DE54A80059A2C1 /* OEIntellivisionSystemResponder.m */; };
@@ -1993,6 +1994,7 @@
 				C6D120C917112E9E00E868A8 /* OpenEmuBase.framework in Frameworks */,
 				C6D120CA17112E9E00E868A8 /* OpenEmuSystem.framework in Frameworks */,
 				0547FD9A24E77695005C1FFC /* OpenEmuKit.framework in Frameworks */,
+				22477F2B2F82A00000C2A0BD /* Sentry in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -4475,6 +4477,9 @@
 			dependencies = (
 			);
 			name = OpenEmuHelperApp;
+			packageProductDependencies = (
+				22477F2C2F82A00000C2A0BD /* Sentry */,
+			);
 			productName = OpenEmuHelperApp;
 			productReference = 1BEF2A9411682A530090F72B /* OpenEmuHelperApp */;
 			productType = "com.apple.product-type.tool";
@@ -9282,6 +9287,11 @@
 			productName = OrderedCollections;
 		};
 		22477F272F81F85500C2A0BD /* Sentry */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 22477F262F81F85500C2A0BD /* XCRemoteSwiftPackageReference "sentry-cocoa" */;
+			productName = Sentry;
+		};
+		22477F2C2F82A00000C2A0BD /* Sentry */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 22477F262F81F85500C2A0BD /* XCRemoteSwiftPackageReference "sentry-cocoa" */;
 			productName = Sentry;
