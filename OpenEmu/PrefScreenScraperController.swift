@@ -181,36 +181,46 @@ final class PrefScreenScraperController: NSViewController {
 
     private func loadSavedCredentials() {
         usernameField.stringValue = UserDefaults.standard.string(forKey: "ScreenScraperUsername") ?? ""
-        // Password is in Keychain — show placeholder only, don't pre-fill for security
-        if ScreenScraperCredentials.hasStoredPassword() {
-            passwordField.placeholderString = "••••••••  (saved)"
+        // SecItemCopyMatching blocks on Security daemon — do not call on main thread.
+        Task.detached(priority: .userInitiated) { [weak self] in
+            guard let self else { return }
+            let hasPassword = ScreenScraperCredentials.hasStoredPassword()
+            await MainActor.run {
+                if hasPassword {
+                    self.passwordField.placeholderString = "••••••••  (saved)"
+                }
+            }
         }
     }
 
     private func updateStatus() {
         let username = UserDefaults.standard.string(forKey: "ScreenScraperUsername") ?? ""
-        let isSignedIn = !username.isEmpty && ScreenScraperCredentials.hasStoredPassword()
-
-        if isSignedIn {
-            // Show the last fetch error if one occurred, so users know why art lookup failed.
-            // If no fetch has been attempted yet, show a neutral "credentials saved" state
-            // rather than a green "signed in" that implies verified authentication.
-            Task { @MainActor in
-                if let fetchError = ScreenScraperClient.shared.lastFetchError,
-                   let description = fetchError.errorDescription {
-                    self.statusLabel.stringValue = description
-                    self.statusLabel.textColor = NSColor(red: 0.87, green: 0.20, blue: 0.18, alpha: 1)
-                } else if ScreenScraperClient.shared.hasVerifiedCredentials {
-                    self.statusLabel.stringValue = "✓  Signed in as \(username)"
-                    self.statusLabel.textColor = NSColor(red: 0.2, green: 0.78, blue: 0.35, alpha: 1)
+        // SecItemCopyMatching blocks on Security daemon — do not call on main thread.
+        Task.detached(priority: .userInitiated) { [weak self] in
+            guard let self else { return }
+            let hasPassword = ScreenScraperCredentials.hasStoredPassword()
+            await MainActor.run {
+                let isSignedIn = !username.isEmpty && hasPassword
+                if isSignedIn {
+                    // Show the last fetch error if one occurred, so users know why art lookup failed.
+                    // If no fetch has been attempted yet, show a neutral "credentials saved" state
+                    // rather than a green "signed in" that implies verified authentication.
+                    if let fetchError = ScreenScraperClient.shared.lastFetchError,
+                       let description = fetchError.errorDescription {
+                        self.statusLabel.stringValue = description
+                        self.statusLabel.textColor = NSColor(red: 0.87, green: 0.20, blue: 0.18, alpha: 1)
+                    } else if ScreenScraperClient.shared.hasVerifiedCredentials {
+                        self.statusLabel.stringValue = "✓  Signed in as \(username)"
+                        self.statusLabel.textColor = NSColor(red: 0.2, green: 0.78, blue: 0.35, alpha: 1)
+                    } else {
+                        self.statusLabel.stringValue = "Credentials saved — not yet verified. Save to confirm."
+                        self.statusLabel.textColor = .secondaryLabelColor
+                    }
                 } else {
-                    self.statusLabel.stringValue = "Credentials saved — not yet verified. Save to confirm."
+                    self.statusLabel.stringValue = "Not signed in — ScreenScraper will be skipped. OpenVGDB and libretro-thumbnails are still active."
                     self.statusLabel.textColor = .secondaryLabelColor
                 }
             }
-        } else {
-            statusLabel.stringValue = "Not signed in — ScreenScraper will be skipped. OpenVGDB and libretro-thumbnails are still active."
-            statusLabel.textColor = .secondaryLabelColor
         }
     }
 
