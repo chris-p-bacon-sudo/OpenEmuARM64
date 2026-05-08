@@ -29,16 +29,20 @@ The PR number below is filled in automatically — just paste the whole block. F
 ```bash
 cd ~/Documents/Cursor/Open\ Emu
 gh pr checkout NUMBER --repo nickybmon/OpenEmu-Silicon
-./Scripts/verify.sh          # builds, prunes stale DerivedData, codesign-checks
-./Scripts/launch-debug.sh    # launches the freshest Debug build safely (no glob)
+./Scripts/verify.sh
+./Scripts/launch-debug.sh
 ```
+
+`verify.sh` builds, prunes stale DerivedData, and runs a codesign check. `launch-debug.sh` picks the freshest Debug build without using a glob (which opens multiple instances when DerivedData has more than one hash directory).
 
 If this PR touches a core, install it before launching:
 
 ```bash
-./Scripts/install-core.sh <CoreName>   # quits OpenEmu, copies correctly, re-signs
+./Scripts/install-core.sh <CoreName>
 ./Scripts/launch-debug.sh
 ```
+
+`install-core.sh` quits OpenEmu first, copies files correctly, and re-signs the bundle.
 
 <!-- Add any PR-specific setup here (BIOS files, permissions to revoke, specific ROM to test with). -->
 
