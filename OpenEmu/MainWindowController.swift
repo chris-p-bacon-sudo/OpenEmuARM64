@@ -167,8 +167,10 @@ final class MainWindowController: NSWindowController {
         window?.restorationClass = type(of: self)
         window?.titlebarAppearsTransparent = true
         window?.styleMask.insert(.fullSizeContentView)
-        // Lock in the dark content-area background regardless of OS version
-        window?.backgroundColor = NSColor(white: 0.15, alpha: 1)
+        // Adaptive window background: dark charcoal in dark mode, standard light in light/system mode.
+        if let window = window {
+            window.backgroundColor = Self.adaptiveWindowBackground(for: window.effectiveAppearance)
+        }
 
         assert(window?.identifier == .mainWindow, "Main library window identifier does not match between nib and code")
     }
@@ -399,6 +401,17 @@ extension MainWindowController: LibraryControllerDelegate {
 }
 
 extension MainWindowController: NSWindowDelegate {
+
+    func windowDidChangeEffectiveAppearance(_ window: NSWindow) {
+        window.backgroundColor = Self.adaptiveWindowBackground(for: window.effectiveAppearance)
+    }
+
+    private static func adaptiveWindowBackground(for appearance: NSAppearance) -> NSColor {
+        appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+            ? NSColor(white: 0.15, alpha: 1)
+            : .windowBackgroundColor
+    }
+
     
     func windowDidBecomeKey(_ notification: Notification) {
         currentContentController?.viewWillAppear()
