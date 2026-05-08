@@ -93,6 +93,33 @@ pass() { echo "PASS  $1"; }
 fail() { echo "FAIL  $1"; FAILURES=$((FAILURES+1)); }
 info() { echo "----  $1"; }
 
+# --- Prune stale DerivedData directories -----------------------------------
+# Xcode rotates OpenEmu-metal-<hash> whenever the workspace path or scheme
+# hash changes, leaving old dirs behind. Keeping only the newest means that
+# `open ... OpenEmu-metal-*/...` globs never accidentally open multiple apps.
+# Worktree builds go to ~/Builds/openemu/<branch>/ and are unaffected.
+if [ "$WORKTREE" -eq 0 ]; then
+  DD="$HOME/Library/Developer/Xcode/DerivedData"
+  pruned=0
+  newest=""
+  while IFS= read -r dir; do
+    if [ -z "$newest" ]; then
+      newest="$dir"
+    else
+      rm -rf "$dir"
+      pruned=$((pruned+1))
+    fi
+  done < <(
+    find "$DD" -maxdepth 1 -name 'OpenEmu-metal-*' -type d -print0 2>/dev/null \
+      | xargs -0 stat -f '%m %N' 2>/dev/null \
+      | sort -rn \
+      | awk '{print $2}'
+  )
+  if [ $pruned -gt 0 ]; then
+    info "pruned $pruned stale DerivedData dir(s); keeping $(basename "${newest:-none}")"
+  fi
+fi
+
 # --- Core feed-URL guardrail (precondition for --core runs) --------------
 
 if [ -n "$CORE" ] && [ -x "./Scripts/check-core-feed-urls.sh" ]; then

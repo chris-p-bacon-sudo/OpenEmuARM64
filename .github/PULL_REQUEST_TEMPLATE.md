@@ -29,27 +29,15 @@ The PR number below is filled in automatically — just paste the whole block. F
 ```bash
 cd ~/Documents/Cursor/Open\ Emu
 gh pr checkout NUMBER --repo nickybmon/OpenEmu-Silicon
-xcodebuild \
-  -workspace OpenEmu.xcworkspace \
-  -scheme OpenEmu \
-  -configuration Debug \
-  -destination 'platform=macOS,arch=arm64' \
-  build 2>&1 | tail -20
-DEBUG_DIR=$(ls -dt ~/Library/Developer/Xcode/DerivedData/OpenEmu-*/Build/Products/Debug 2>/dev/null | head -1)
-SIGN_ID=$(security find-identity -v -p codesigning | awk -F'"' '/Apple Development/ {print $2; exit}')
-codesign --force --deep --sign "${SIGN_ID:--}" "$DEBUG_DIR/OpenEmu.app"
-open "$DEBUG_DIR/OpenEmu.app"
+./Scripts/verify.sh          # builds, prunes stale DerivedData, codesign-checks
+./Scripts/launch-debug.sh    # launches the freshest Debug build safely (no glob)
 ```
 
-The `SIGN_ID` line auto-picks your local Apple Development identity so the binary gets a **stable** code signature across rebuilds. Without it, ad-hoc signing (`-`) would cause macOS to treat each rebuild as a new app and revoke Input Monitoring, Keychain ACLs, and other TCC permissions every time you test. Falls back to ad-hoc only if you have no Apple Development cert.
-
-If this PR touches a core, install it before the `open` line:
+If this PR touches a core, install it before launching:
 
 ```bash
-cp -R "$DEBUG_DIR/<CoreName>.oecoreplugin" \
-  ~/Library/Application\ Support/OpenEmu/Cores/<CoreName>.oecoreplugin
-codesign --force --sign - \
-  ~/Library/Application\ Support/OpenEmu/Cores/<CoreName>.oecoreplugin
+./Scripts/install-core.sh <CoreName>   # quits OpenEmu, copies correctly, re-signs
+./Scripts/launch-debug.sh
 ```
 
 <!-- Add any PR-specific setup here (BIOS files, permissions to revoke, specific ROM to test with). -->
@@ -59,7 +47,7 @@ codesign --force --sign - \
 ## PR checklist
 
 - [ ] Branched from an up-to-date `main` (ran `git fetch origin && git merge origin/main`)
-- [ ] Build passes: `xcodebuild -workspace OpenEmu.xcworkspace -scheme OpenEmu -configuration Debug -destination 'platform=macOS,arch=arm64' build`
+- [ ] Build passes: `./Scripts/verify.sh` (or `xcodebuild -workspace OpenEmu-metal.xcworkspace -scheme OpenEmu -configuration Debug -destination 'platform=macOS,arch=arm64' build`)
 - [ ] Tested on Apple Silicon (M1 / M2 / M3 / M4 Mac)
 - [ ] No build logs, binaries, or credentials committed
 - [ ] Copyright headers preserved on all modified files
