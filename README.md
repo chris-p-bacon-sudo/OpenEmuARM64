@@ -114,7 +114,7 @@ The original project went quiet around 2024 after the last release. By that time
 
 **Lineage:**
 - [OpenEmu/OpenEmu](https://github.com/OpenEmu/OpenEmu) — the original project
-- [bazley82/OpenEmuARM64](https://github.com/bazley82/OpenEmuARM64) — the first published ARM64 build, built on the original team's core work
+- [bazley82/OpenEmuARM64](https://github.com/bazley82/OpenEmuARM64) — ARM64 build, built on the original team's core work and what I started building upon
 - **This repo** — continued development and maintenance by [@nickybmon](https://github.com/nickybmon) and others.
 
 ---
