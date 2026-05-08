@@ -157,6 +157,33 @@ saved to the wrong path, the build cached an old binary, or
 Info.plist. Investigate before continuing — do not edit the appcast to
 match a wrong zip.
 
+### Step 7c — Upload dSYM to Sentry
+
+```bash
+if command -v sentry-cli &>/dev/null; then
+  DERIVED_DATA=$(find ~/Library/Developer/Xcode/DerivedData \
+    -maxdepth 1 -name "OpenEmu-metal-*" -type d 2>/dev/null | head -1)
+  if [ -n "$DERIVED_DATA" ]; then
+    DSYM="$DERIVED_DATA/Build/Products/Release/<CoreName>.oecoreplugin.dSYM"
+    if [ -d "$DSYM" ]; then
+      sentry-cli debug-files upload \
+        --org openemu-silicon \
+        --project openemu-silicon \
+        "$DSYM" && echo "dSYM uploaded to Sentry" \
+        || echo "WARNING: dSYM upload failed — check sentry-cli auth"
+    else
+      echo "WARNING: dSYM not found at $DSYM — build may not have produced one"
+    fi
+  else
+    echo "WARNING: DerivedData for OpenEmu-metal not found — skipping dSYM upload"
+  fi
+else
+  echo "WARNING: sentry-cli not installed — install with: brew install getsentry/tools/sentry-cli"
+fi
+```
+
+Non-fatal: warns but does not abort the release.
+
 ## Step 8 — Determine the release tag
 
 Check existing cores releases:
