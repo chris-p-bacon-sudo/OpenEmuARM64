@@ -44,6 +44,7 @@ final class CoreDownload: NSObject {
     var appcastItem: CoreAppcastItem?
     
     private var downloadSession: URLSession?
+    private var pendingFinish = false
     
     convenience init(plugin: OECorePlugin) {
         self.init()
@@ -113,7 +114,8 @@ extension CoreDownload: URLSessionDownloadDelegate {
             } else {
                 NSApplication.shared.presentError(error)
             }
-        } else {
+        } else if !pendingFinish {
+            // adHocSign hasn't taken over — extraction failed or was skipped; notify now.
             delegate?.coreDownloadDidFinish(self)
         }
     }
@@ -137,7 +139,12 @@ extension CoreDownload: URLSessionDownloadDelegate {
 
         DLog("Core (\(bundleIdentifier)) extracted to application support folder.")
 
+        pendingFinish = true
         adHocSign(fullPluginURL) {
+            defer {
+                self.pendingFinish = false
+                self.delegate?.coreDownloadDidFinish(self)
+            }
             guard let plugin = OECorePlugin.corePlugin(bundleAtURL: fullPluginURL) else {
                 return assertionFailure()
             }
