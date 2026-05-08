@@ -323,6 +323,7 @@
 		8763A38F1D5694E90089C30B /* OEArcadeSystemController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8763A38E1D5694E90089C30B /* OEArcadeSystemController.swift */; };
 		877EDD191E24BC63004D68E7 /* Controller-Preferences-JAP.plist in Resources */ = {isa = PBXBuildFile; fileRef = 877EDD141E24BC63004D68E7 /* Controller-Preferences-JAP.plist */; };
 		877EDD231E24BEE0004D68E7 /* Controller-Preferences-JAP.plist in Resources */ = {isa = PBXBuildFile; fileRef = 877EDD1E1E24BEE0004D68E7 /* Controller-Preferences-JAP.plist */; };
+		1BB9BDE24AAA476991EB4F41 /* Arcade.oesystemplugin in Copy System Plugins to App Plugins */ = {isa = PBXBuildFile; fileRef = 945E42FB1517F2B500057D08 /* Arcade.oesystemplugin */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		87BD9E241C2A66B1006722DF /* Atari 5200.oesystemplugin in Copy System Plugins to App Plugins */ = {isa = PBXBuildFile; fileRef = 94A224B31707544100098DA0 /* Atari 5200.oesystemplugin */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		87BD9E251C2A66BC006722DF /* Atari 7800.oesystemplugin in Copy System Plugins to App Plugins */ = {isa = PBXBuildFile; fileRef = 941F5A0117A785AD0005D7EA /* Atari 7800.oesystemplugin */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		87BD9E261C2A66CE006722DF /* Lynx.oesystemplugin in Copy System Plugins to App Plugins */ = {isa = PBXBuildFile; fileRef = 94A22453170753C800098DA0 /* Lynx.oesystemplugin */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
@@ -1078,6 +1079,7 @@
 				87BD9E271C2A66DC006722DF /* ColecoVision.oesystemplugin in Copy System Plugins to App Plugins */,
 				87BD9E261C2A66CE006722DF /* Lynx.oesystemplugin in Copy System Plugins to App Plugins */,
 				87BD9E251C2A66BC006722DF /* Atari 7800.oesystemplugin in Copy System Plugins to App Plugins */,
+				1BB9BDE24AAA476991EB4F41 /* Arcade.oesystemplugin in Copy System Plugins to App Plugins */,
 				87BD9E241C2A66B1006722DF /* Atari 5200.oesystemplugin in Copy System Plugins to App Plugins */,
 				946C7ABB19EE4AF4000F9466 /* Atari 2600.oesystemplugin in Copy System Plugins to App Plugins */,
 				94CEB29C17A8D507005A2107 /* Sega 32X.oesystemplugin in Copy System Plugins to App Plugins */,
