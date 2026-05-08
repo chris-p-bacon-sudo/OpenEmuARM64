@@ -108,7 +108,37 @@ final class LibraryGamesViewController: NSSplitViewController {
             sidebarItem.titlebarSeparatorStyle = .automatic
         }
         addSplitViewItem(sidebarItem)
-        
+
+        // The NSSplitViewItem sidebar wrapper spans the full left pane but the
+        // SidebarController's view may not cover its bottom edge (xib gap between
+        // the scroll view and the game-scanner panel). The system's
+        // NSVisualEffectView behind the wrapper samples the desktop colour, which
+        // renders dark on a dark wallpaper even in light mode.
+        //
+        // Fix: attach an NSBox directly to the wrapper so it covers every pixel
+        // of the pane. Clear in dark mode so it never touches the vibrancy
+        // compositor (an opaque fill in dark mode causes ghost-toolbar artifacts).
+        if let sidebarWrapper = splitView.subviews.first {
+            let gapFill = NSColor(name: nil) { appearance in
+                appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+                    ? .clear
+                    : NSColor(white: 0.88, alpha: 1)
+            }
+            let bg = NSBox()
+            bg.boxType = .custom
+            bg.borderWidth = 0
+            bg.contentViewMargins = .zero
+            bg.fillColor = gapFill
+            bg.translatesAutoresizingMaskIntoConstraints = false
+            sidebarWrapper.addSubview(bg, positioned: .below, relativeTo: nil)
+            NSLayoutConstraint.activate([
+                bg.topAnchor.constraint(equalTo: sidebarWrapper.topAnchor),
+                bg.bottomAnchor.constraint(equalTo: sidebarWrapper.bottomAnchor),
+                bg.leadingAnchor.constraint(equalTo: sidebarWrapper.leadingAnchor),
+                bg.trailingAnchor.constraint(equalTo: sidebarWrapper.trailingAnchor),
+            ])
+        }
+
         let collectionItem = NSSplitViewItem(viewController: collectionController)
         collectionItem.minimumThickness = collectionViewMinWidth
         if #available(macOS 11.0, *) {

@@ -106,14 +106,14 @@ final class SidebarController: NSViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        // Adaptive sidebar background: dark charcoal in dark mode, light gray in light/system mode.
-        let sidebarBG = NSColor(name: nil) { appearance in
+        // Adaptive sidebar color for the outline view rows and scroll view fill.
+        let sidebarColor = NSColor(name: nil) { appearance in
             appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
                 ? NSColor(white: 0.13, alpha: 1)
-                : NSColor(white: 0.94, alpha: 1)
+                : NSColor(white: 0.88, alpha: 1)
         }
-        sidebarView.backgroundColor = sidebarBG
-        sidebarView.enclosingScrollView?.backgroundColor = sidebarBG
+        sidebarView.backgroundColor = sidebarColor
+        sidebarView.enclosingScrollView?.backgroundColor = sidebarColor
         sidebarView.enclosingScrollView?.drawsBackground = true
 
         sidebarView.registerForDraggedTypes([.fileURL, .game])

@@ -42,6 +42,7 @@ NSString * const OELastGridSizeKey       = @"lastGridSize";
 NSString * const OELastCollectionViewKey = @"lastCollectionView";
 
 static void *OEUserDefaultsDisplayGameTitleKVOContext = &OEUserDefaultsDisplayGameTitleKVOContext;
+static void *OEViewEffectiveAppearanceKVOContext      = &OEViewEffectiveAppearanceKVOContext;
 
 @implementation NSDate (OESortAdditions)
 
@@ -133,8 +134,7 @@ static void *OEUserDefaultsDisplayGameTitleKVOContext = &OEUserDefaultsDisplayGa
     [_gridView setDataSource:self];
     [_gridView setDraggingDestinationDelegate:self];
     [_gridView setCellSize:defaultGridSize];
-    [_gridView setValue:[NSColor clearColor] forKey:IKImageBrowserBackgroundColorKey];
-    [[_gridView enclosingScrollView] setDrawsBackground:NO];
+    [self oe_updateCollectionBackground];
     
     // Set up list view
     [listView setTarget:self];
@@ -146,8 +146,7 @@ static void *OEUserDefaultsDisplayGameTitleKVOContext = &OEUserDefaultsDisplayGa
     [listView setSortDescriptors:[self defaultSortDescriptors]];
     [listView setAllowsMultipleSelection:YES];
     [listView registerForDraggedTypes:@[NSPasteboardTypeFileURL]];
-    [listView setBackgroundColor:[NSColor clearColor]];
-    [[listView enclosingScrollView] setDrawsBackground:NO];
+    // Background applied via oe_updateCollectionBackground above.
 
     // Setup BlankSlate View
     [blankSlateView setDelegate:self];
@@ -159,6 +158,13 @@ static void *OEUserDefaultsDisplayGameTitleKVOContext = &OEUserDefaultsDisplayGa
     if ([self representedObject])
         [self reloadData];
     
+    // KVO on effectiveAppearance so we re-apply the background whenever the
+    // app switches between dark and light mode at runtime.
+    [self.view addObserver:self
+               forKeyPath:@"effectiveAppearance"
+                  options:NSKeyValueObservingOptionNew
+                  context:OEViewEffectiveAppearanceKVOContext];
+
     NSUserDefaults *standardUserDefaults = [NSUserDefaults standardUserDefaults];
     [standardUserDefaults addObserver:self
                            forKeyPath:OEDBGame.displayGameTitleKey
@@ -172,6 +178,43 @@ static void *OEUserDefaultsDisplayGameTitleKVOContext = &OEUserDefaultsDisplayGa
     [notificationCenter addObserver:self selector:@selector(OE_managedObjectContextDidUpdate:) name:NSManagedObjectContextDidSaveNotification object:context];
     
     [notificationCenter addObserver:self selector:@selector(libraryLocationDidChange:) name:OELibraryDatabase.locationDidChangeNotification object:nil];
+}
+
+/// Returns the appropriate solid background color for the current effective appearance.
+/// IKImageBrowserView composites onto a black render target, so a transparent (clear)
+/// background produces an always-dark result. We resolve an explicit color here instead.
+- (BOOL)oe_isEffectiveAppearanceDark
+{
+    NSAppearance *app = self.view.window ? self.view.effectiveAppearance : NSApp.effectiveAppearance;
+    NSAppearanceName match = [app bestMatchFromAppearancesWithNames:
+                              @[NSAppearanceNameDarkAqua, NSAppearanceNameAqua]];
+    return [match isEqualToString:NSAppearanceNameDarkAqua];
+}
+
+- (void)oe_updateCollectionBackground
+{
+    if ([self oe_isEffectiveAppearanceDark]) {
+        // Dark mode: restore original behaviour. IKImageBrowserView's Metal
+        // compositor composites against the dark window background when the
+        // background colour key is clear; an explicit solid colour causes it
+        // to incorrectly blend the titlebar layer into its output (ghost
+        // toolbar artifacts when the window is active).
+        [_gridView setValue:NSColor.clearColor forKey:IKImageBrowserBackgroundColorKey];
+        [_gridView enclosingScrollView].drawsBackground = NO;
+        listView.backgroundColor = NSColor.clearColor;
+        [listView enclosingScrollView].drawsBackground = NO;
+    } else {
+        // Light mode: supply explicit colours so the views don't render dark
+        // against a light window background.
+        NSColor *bg = NSColor.windowBackgroundColor;
+        [_gridView setValue:bg forKey:IKImageBrowserBackgroundColorKey];
+        [_gridView enclosingScrollView].backgroundColor = bg;
+        [_gridView enclosingScrollView].drawsBackground = YES;
+        [_gridView setNeedsDisplay:YES];
+        listView.backgroundColor = NSColor.controlBackgroundColor;
+        [listView enclosingScrollView].backgroundColor = NSColor.controlBackgroundColor;
+        [listView enclosingScrollView].drawsBackground = YES;
+    }
 }
 
 - (void)viewDidAppear
@@ -201,6 +244,15 @@ static void *OEUserDefaultsDisplayGameTitleKVOContext = &OEUserDefaultsDisplayGa
     if(context == OEUserDefaultsDisplayGameTitleKVOContext)
     {
         [self setNeedsReloadVisible];
+    }
+    else if(context == OEViewEffectiveAppearanceKVOContext)
+    {
+        // Defer until the runloop finishes. The KVO can fire during addSubview:
+        // while the split view hierarchy is still assembling, and calling into
+        // IKImageBrowserView via KVC at that moment throws internally.
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self oe_updateCollectionBackground];
+        });
     }
     else
     {
