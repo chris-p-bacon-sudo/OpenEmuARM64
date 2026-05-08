@@ -338,9 +338,10 @@ extension MainWindowController: LibraryControllerDelegate {
                         alert.informativeText = NSLocalizedString("Sometimes a crash may occur while loading a save state because of incompatibilities between different versions of the same core. Do you want to open the game without loading a save state?", comment: "")
                         alert.defaultButtonTitle = NSLocalizedString("Reopen without loading state", comment: "")
                         alert.alternateButtonTitle = NSLocalizedString("Cancel", comment: "")
-                        let resp = alert.runModal()
-                        if resp == .alertFirstButtonReturn {
-                            self.openGameDocument(with: state?.rom?.game, saveState: nil, secondAttempt: true, disableAutoReload: true)
+                        alert.beginSheetModal(for: window) { response in
+                            if response == .alertFirstButtonReturn {
+                                self.openGameDocument(with: state?.rom?.game, saveState: nil, secondAttempt: true, disableAutoReload: true)
+                            }
                         }
                     } else {
                         alert.messageText = String(format: NSLocalizedString("The %@ core has quit unexpectedly", comment: ""), coreName)
@@ -353,7 +354,7 @@ extension MainWindowController: LibraryControllerDelegate {
                             alert.messageUsesHTML = true
                         }
                         alert.defaultButtonTitle = NSLocalizedString("OK", comment: "")
-                        alert.runModal()
+                        alert.beginSheetModal(for: window) { _ in }
                     }
                 }
                 else if let error = error as NSError?, !(error.domain == NSCocoaErrorDomain && error.code == NSUserCancelledError) {

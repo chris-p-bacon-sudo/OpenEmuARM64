@@ -503,17 +503,16 @@ final class OEGameDocument: NSDocument {
                 alert.defaultButtonTitle = NSLocalizedString("Play Game", comment: "")
                 alert.alternateButtonTitle = NSLocalizedString("Cancel", comment: "")
                 
-                if alert.runModal() == .alertFirstButtonReturn {
+                // Ugly hack to start imported games in main window
+                let mainWindowController = (NSApp.delegate as! AppDelegate).mainWindowController
+                alert.beginSheetModal(for: mainWindowController.window!) { response in
+                    guard response == .alertFirstButtonReturn else { return }
                     let rom = OEDBRom.object(with: romID, in: context)!
-                    
-                    // Ugly hack to start imported games in main window
-                    let mainWindowController = (NSApp.delegate as! AppDelegate).mainWindowController
                     if !mainWindowController.mainWindowRunsGame {
                         mainWindowController.startGame(rom.game)
                     } else {
                         if let url = rom.url {
-                            NSDocumentController.shared.openDocument(withContentsOf: url, display: false) { document, documentWasAlreadyOpen, error in
-                            }
+                            NSDocumentController.shared.openDocument(withContentsOf: url, display: false) { _, _, _ in }
                         }
                     }
                 }
@@ -1859,10 +1858,21 @@ final class OEGameDocument: NSDocument {
                     coreName: corePlugin.displayName,
                     savedVersion: savedVersion,
                     installedVersion: corePlugin.version)
-                if alert.runModal() == .alertFirstButtonReturn {
-                    loadState()
+                if let win = gameWindowController?.window {
+                    alert.beginSheetModal(for: win) { [weak self] response in
+                        guard let self else { return }
+                        if response == .alertFirstButtonReturn {
+                            self.loadState()
+                        } else {
+                            self.startEmulation()
+                        }
+                    }
                 } else {
-                    startEmulation()
+                    if alert.runModal() == .alertFirstButtonReturn {
+                        loadState()
+                    } else {
+                        startEmulation()
+                    }
                 }
             } else {
                 loadState()
