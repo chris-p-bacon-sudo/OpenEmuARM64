@@ -56,7 +56,7 @@
 #define RETRO_ENVIRONMENT_GET_AUDIO_VIDEO_ENABLE (47 | 0x10000)
 #endif
 
-NSString * const OELibretroBridgeVersion = @"2";
+NSString * const OELibretroBridgeVersion = @"3";
 
 
 @interface OELibretroCoreTranslator () <OELibretroInputReceiver>
@@ -73,16 +73,9 @@ NSString * const OELibretroBridgeVersion = @"2";
 @property (atomic, assign) int touchY;
 @property (atomic, assign) BOOL isTouching;
 
-// Per-core isolation flags — set once in loadFileAtPath, used everywhere else.
-// This prevents system-specific hacks from polluting other cores.
-@property (nonatomic, assign) BOOL isPSP;
-@property (nonatomic, assign) BOOL isNDS;
-@property (nonatomic, assign) BOOL isDC;
-@property (nonatomic, assign) BOOL isSaturn;
-@property (nonatomic, assign) BOOL isC64;
-@property (nonatomic, assign) BOOL isArcade;
+// Per-system policy is stored in the _policy ivar (see @implementation block).
+// To add a new system, extend OELibretroSystemPolicyForSystemID() below.
 @property (nonatomic, assign) retro_keyboard_event_t retroKeyboardEvent;
-@property (nonatomic, assign) BOOL isN64;
 
 // Persistent path storage — NSString ivars keep the ObjC objects alive,
 // and the corresponding char* ivars (strdup'd) are what we hand to cores.
@@ -221,6 +214,206 @@ static void libretro_log_cb(enum retro_log_level level, const char *fmt, ...) {
     // Hardened: Absolute Silence
 }
 
+// ---------------------------------------------------------------------------
+// Per-system policy
+// ---------------------------------------------------------------------------
+// One value of this struct is built once per session in -loadFileAtPath: and
+// consulted everywhere the host needs system-specific behaviour. To add a new
+// system, add its static tables below and fill in the factory function.
+
+typedef struct {
+    const char *key;
+    const char *value;
+} OELibretroVariableDefault;
+
+typedef struct {
+    // If YES, any pixel format the core requests is overridden to XRGB8888.
+    BOOL forceXRGB8888;
+
+    // If YES, RETRO_ENVIRONMENT_SET_HW_RENDER is rejected so the core falls
+    // back to its software renderer.
+    BOOL rejectHWRender;
+
+    // If YES, pointer Y is mapped to the bottom half of the screen
+    // (NDS: top screen 0..191, touch screen 192..383).
+    BOOL hasNDSTouchScreen;
+
+    // Per-system core variable overrides. The host returns these before
+    // falling back to the core's own declared defaults.
+    const OELibretroVariableDefault *variableDefaults;
+    NSUInteger variableDefaultCount;
+
+    // Button map for -_retroButtonForOEButton:. NULL = use the generic
+    // SNES-ish fallback. 0xFF = analog / unmapped button.
+    const uint8_t *buttonMap;
+    NSUInteger buttonMapCount;
+
+    // When non-NULL, any variable key matching this prefix returns "100".
+    // Used for Snes9x sndchan_volume keys that mute channels when empty.
+    const char *sndchanVolumePrefix;
+} OELibretroSystemPolicy;
+
+// --- Button maps ------------------------------------------------------------
+// OEPSPButton: Up=0 Down=1 Left=2 Right=3
+//   AnalogUp=4..AnalogRight=7  (handled in didMovePSPJoystickDirection:)
+//   Triangle=8 Circle=9 Cross=10 Square=11  L1=12 R1=13 Start=14 Select=15
+static const uint8_t kPSPButtonMap[] = {
+    [0]  = RETRO_DEVICE_ID_JOYPAD_UP,
+    [1]  = RETRO_DEVICE_ID_JOYPAD_DOWN,
+    [2]  = RETRO_DEVICE_ID_JOYPAD_LEFT,
+    [3]  = RETRO_DEVICE_ID_JOYPAD_RIGHT,
+    [4]  = 0xFF, // AnalogUp    → didMovePSPJoystickDirection:
+    [5]  = 0xFF, // AnalogDown
+    [6]  = 0xFF, // AnalogLeft
+    [7]  = 0xFF, // AnalogRight
+    [8]  = RETRO_DEVICE_ID_JOYPAD_X,      // Triangle
+    [9]  = RETRO_DEVICE_ID_JOYPAD_A,      // Circle
+    [10] = RETRO_DEVICE_ID_JOYPAD_B,      // Cross
+    [11] = RETRO_DEVICE_ID_JOYPAD_Y,      // Square
+    [12] = RETRO_DEVICE_ID_JOYPAD_L,      // L1
+    [13] = RETRO_DEVICE_ID_JOYPAD_R,      // R1
+    [14] = RETRO_DEVICE_ID_JOYPAD_START,
+    [15] = RETRO_DEVICE_ID_JOYPAD_SELECT,
+};
+
+// OESaturnButton: Up=0 Down=1 Left=2 Right=3
+//   A=4 B=5 C=6  X=7 Y=8 Z=9  L=10 R=11  Start=12
+static const uint8_t kSaturnButtonMap[] = {
+    [0]  = RETRO_DEVICE_ID_JOYPAD_UP,
+    [1]  = RETRO_DEVICE_ID_JOYPAD_DOWN,
+    [2]  = RETRO_DEVICE_ID_JOYPAD_LEFT,
+    [3]  = RETRO_DEVICE_ID_JOYPAD_RIGHT,
+    [4]  = RETRO_DEVICE_ID_JOYPAD_Y,      // A → Y (Libretro Saturn layout)
+    [5]  = RETRO_DEVICE_ID_JOYPAD_B,      // B → B
+    [6]  = RETRO_DEVICE_ID_JOYPAD_A,      // C → A
+    [7]  = RETRO_DEVICE_ID_JOYPAD_L,      // X → L
+    [8]  = RETRO_DEVICE_ID_JOYPAD_X,      // Y → X
+    [9]  = RETRO_DEVICE_ID_JOYPAD_R,      // Z → R
+    [10] = RETRO_DEVICE_ID_JOYPAD_L2,     // L → L2
+    [11] = RETRO_DEVICE_ID_JOYPAD_R2,     // R → R2
+    [12] = RETRO_DEVICE_ID_JOYPAD_START,
+};
+
+// --- Variable default tables ------------------------------------------------
+static const OELibretroVariableDefault kN64VariableDefaults[] = {
+    // GLideN64 — best-compat renderer on Apple Silicon.
+    { "mupen64plus-rdp-plugin",                   "gliden64" },
+    // GLideN64's threaded renderer needs a shared GL context we don't provide;
+    // crashes in TextureCache::_addTexture without this.
+    { "mupen64plus-ThreadedRenderer",             "False" },
+    { "mupen64plus-MaxTxCacheSize",               "1500" },
+    { "mupen64plus-txHiresEnable",                "False" },
+    { "mupen64plus-EnableEnhancedTextureStorage", "False" },
+    { "mupen64plus-EnableEnhancedHighResStorage", "False" },
+    { "mupen64plus-EnableTextureCache",           "False" },
+    { "mupen64plus-txCacheCompression",           "False" },
+    { "mupen64plus-cpucore",                      "dynamic_recompiler" },
+};
+
+static const OELibretroVariableDefault kNDSVariableDefaults[] = {
+    { "melonds_boot_directly",     "true" },
+    // Threaded renderer needs a shared GL context we don't provide.
+    { "melonds_threaded_renderer", "false" },
+    { "desmume_jit_trust_unit",    "enabled" },
+};
+
+// Flycast uses both "reicast_" (legacy) and "flycast_" key prefixes.
+static const OELibretroVariableDefault kDCVariableDefaults[] = {
+    { "reicast_hle_bios",              "disabled" },
+    { "reicast_fast_gd_rom_load",      "enabled" },
+    { "flycast_fast_gd_rom_load",      "enabled" },
+    // 2× native (640×480 → 1280×960) — good default for M-series Macs.
+    { "reicast_internal_resolution",   "1280x960" },
+    { "flycast_internal_resolution",   "1280x960" },
+    // Threaded rendering needs a shared GL context we can't provide.
+    { "reicast_threaded_rendering",    "disabled" },
+    { "flycast_threaded_rendering",    "disabled" },
+    // Frame-swap delay causes a CoreAudio deadlock — retro_run blocks waiting
+    // for audio to drain, while the IO thread waits for retro_run to return.
+    { "reicast_delay_frame_swapping",  "disabled" },
+    // DSP adds audio sync points that worsen the CoreAudio deadlock risk.
+    { "reicast_enable_dsp",            "disabled" },
+};
+
+static const OELibretroVariableDefault kC64VariableDefaults[] = {
+    { "vice_c64_model",           "C64C PAL" }, // better late-era compatibility
+    { "vice_drive_true_emulation","disabled" }, // faster loading
+    { "vice_joyport",             "2" },         // standard for most C64 games
+    { "vice_autostart",           "enabled" },
+};
+
+// PPSSPP: force software rendering — hardware path crashes on Apple Silicon
+// due to incompatible threading in EmuThread + our single-context bridge.
+static const OELibretroVariableDefault kPSPVariableDefaults[] = {
+    { "ppsspp_backend",                     "SOFTWARE" },
+    { "ppsspp_cpu_core",                    "jit" },
+    { "ppsspp_rendering_mode",              "software" },
+    { "ppsspp_threaded_rendering",          "disabled" },
+    { "ppsspp_inflight_frames",             "1" },
+    { "ppsspp_software_rendering",          "enabled" },
+    { "ppsspp_gpu_disallow_shared_context", "enabled" },
+    { "ppsspp_force_max_fps",              "enabled" },
+};
+
+// --- Factory function -------------------------------------------------------
+// Returns the policy for the given OE system identifier string. Called once
+// per session in -loadFileAtPath:. To add a new system, add a branch here
+// (and static tables above if needed).
+static OELibretroSystemPolicy OELibretroSystemPolicyForSystemID(NSString *systemID) {
+#define ARRAY_COUNT(a) (sizeof(a) / sizeof((a)[0]))
+    if ([systemID containsString:@"psp"]) {
+        return (OELibretroSystemPolicy){
+            .forceXRGB8888        = YES,
+            .rejectHWRender       = YES,
+            .variableDefaults     = kPSPVariableDefaults,
+            .variableDefaultCount = ARRAY_COUNT(kPSPVariableDefaults),
+            .buttonMap            = kPSPButtonMap,
+            .buttonMapCount       = ARRAY_COUNT(kPSPButtonMap),
+        };
+    }
+    if ([systemID containsString:@"nds"]) {
+        return (OELibretroSystemPolicy){
+            .hasNDSTouchScreen    = YES,
+            .variableDefaults     = kNDSVariableDefaults,
+            .variableDefaultCount = ARRAY_COUNT(kNDSVariableDefaults),
+        };
+    }
+    if ([systemID containsString:@"dc"]) {
+        return (OELibretroSystemPolicy){
+            .variableDefaults     = kDCVariableDefaults,
+            .variableDefaultCount = ARRAY_COUNT(kDCVariableDefaults),
+        };
+    }
+    if ([systemID containsString:@"saturn"]) {
+        return (OELibretroSystemPolicy){
+            .buttonMap      = kSaturnButtonMap,
+            .buttonMapCount = ARRAY_COUNT(kSaturnButtonMap),
+        };
+    }
+    if ([systemID containsString:@"c64"]) {
+        return (OELibretroSystemPolicy){
+            .variableDefaults     = kC64VariableDefaults,
+            .variableDefaultCount = ARRAY_COUNT(kC64VariableDefaults),
+        };
+    }
+    if ([systemID containsString:@"n64"]) {
+        return (OELibretroSystemPolicy){
+            .variableDefaults     = kN64VariableDefaults,
+            .variableDefaultCount = ARRAY_COUNT(kN64VariableDefaults),
+        };
+    }
+    if ([systemID isEqualToString:@"openemu.system.snes"]) {
+        return (OELibretroSystemPolicy){
+            // snes9x_sndchan_volume_* keys use atoi(); an empty string returns 0
+            // and mutes every channel. Return "100" for full per-channel volume.
+            .sndchanVolumePrefix = "snes9x_sndchan_volume_",
+        };
+    }
+    // No quirks for this system.
+    return (OELibretroSystemPolicy){};
+#undef ARRAY_COUNT
+}
+
 @implementation OELibretroCoreTranslator
 {
     void *_coreHandle;
@@ -269,6 +462,10 @@ static void libretro_log_cb(enum retro_log_level level, const char *fmt, ...) {
     unsigned _lastHeight;
 
     os_unfair_lock _avInfoLock;
+
+    // Per-system policy — set once in -loadFileAtPath:, consulted everywhere
+    // else. Adding a new system: extend OELibretroSystemPolicyForSystemID().
+    OELibretroSystemPolicy _policy;
 }
 
 + (NSString *)libraryVersionForCoreAtURL:(NSURL *)url {
@@ -454,12 +651,11 @@ static bool libretro_environment_cb(unsigned cmd, void *data) {
             if (data && _current) {
                 enum retro_pixel_format format = *(enum retro_pixel_format *)data;
                 
-                // Isolation Guard: Force XRGB8888 for PSP to ensure hardware bridge compatibility.
-                // Many PPSSPP builds default to 0RGB1555 which can cause black screens if not 
-                // explicitly handled by the Metal shaders.
-                if (_current.isPSP && format != RETRO_PIXEL_FORMAT_XRGB8888) {
+                // System policy may force XRGB8888 regardless of what the core requests
+                // (e.g. PPSSPP: many builds default to 0RGB1555, causing black screens).
+                if (_current->_policy.forceXRGB8888 && format != RETRO_PIXEL_FORMAT_XRGB8888) {
 #if DEBUG
-                    NSLog(@"[OELibretro] PSP requested format %d, but bridge is forcing XRGB8888 for stability.", format);
+                    NSLog(@"[OELibretro] System policy: forcing XRGB8888 (core requested %d).", format);
 #endif
                     format = RETRO_PIXEL_FORMAT_XRGB8888;
                 }
@@ -524,9 +720,9 @@ static bool libretro_environment_cb(unsigned cmd, void *data) {
                 // The current PPSSPP libretro nightly has a threading model that is incompatible with 
                 // macOS OpenGL on Apple Silicon, leading to crashes in 'EmuThread'.
                 // Returning false here forces the core to use its software renderer.
-                if (_current.isPSP) {
+                if (_current->_policy.rejectHWRender) {
 #if DEBUG
-                    NSLog(@"[OELibretro] PSP requested HW rendering, but the bridge is REJECTING it to force stable software mode.");
+                    NSLog(@"[OELibretro] System policy: rejecting HW render request (forcing software mode).");
 #endif
                     return false;
                 }
@@ -576,181 +772,27 @@ static bool libretro_environment_cb(unsigned cmd, void *data) {
         case RETRO_ENVIRONMENT_GET_VARIABLE:
             if (data && _current) {
                 struct retro_variable *var = (struct retro_variable *)data;
-                NSString *systemID = [_current systemIdentifier];
-                
-                // Mupen64Plus-Next Defaults
-                if ([systemID containsString:@"n64"]) {
-                    if (strcmp(var->key, "mupen64plus-rdp-plugin") == 0) {
-                        var->value = "gliden64";
-                        return true;
-                    }
-                    // GLideN64's threaded renderer spawns a GL command thread
-                    // that requires a shared GL context. Our bridge does not
-                    // provide one, so GL calls on that thread corrupt state
-                    // and crash in TextureCache::_addTexture. Force single-threaded.
-                    if (strcmp(var->key, "mupen64plus-ThreadedRenderer") == 0) {
-                        var->value = "False";
-                        return true;
-                    }
-                    if (strcmp(var->key, "mupen64plus-MaxTxCacheSize") == 0) {
-                        var->value = "1500";
-                        return true;
-                    }
-                    if (strcmp(var->key, "mupen64plus-txHiresEnable") == 0) {
-                        var->value = "False";
-                        return true;
-                    }
-                    if (strcmp(var->key, "mupen64plus-EnableEnhancedTextureStorage") == 0) {
-                        var->value = "False";
-                        return true;
-                    }
-                    if (strcmp(var->key, "mupen64plus-EnableEnhancedHighResStorage") == 0) {
-                        var->value = "False";
-                        return true;
-                    }
-                    if (strcmp(var->key, "mupen64plus-EnableTextureCache") == 0) {
-                        var->value = "False";
-                        return true;
-                    }
-                    if (strcmp(var->key, "mupen64plus-txCacheCompression") == 0) {
-                        var->value = "False";
-                        return true;
-                    }
-                    if (strcmp(var->key, "mupen64plus-cpucore") == 0) {
-                        var->value = "dynamic_recompiler";
-                        return true;
-                    }
-                }
-                
-                // NDS (MelonDS/DeSmuME) Defaults
-                if ([systemID containsString:@"nds"]) {
-                    if (strcmp(var->key, "melonds_boot_directly") == 0) {
-                        var->value = "true";
-                        return true;
-                    }
-                    if (strcmp(var->key, "melonds_threaded_renderer") == 0) {
-                        var->value = "false";
-                        return true;
-                    }
-                    if (strcmp(var->key, "desmume_jit_trust_unit") == 0) {
-                        var->value = "enabled";
-                        return true;
-                    }
-                }
-                
-                // Flycast/Reicast Defaults (core uses 'reicast_' prefix for legacy vars)
-                if ([systemID containsString:@"dc"]) {
-                    if (strcmp(var->key, "reicast_hle_bios") == 0) {
-                        var->value = "disabled";
-                        return true;
-                    }
-                    if (strcmp(var->key, "reicast_fast_gd_rom_load") == 0 ||
-                        strcmp(var->key, "flycast_fast_gd_rom_load") == 0) {
-                        var->value = "enabled";
-                        return true;
-                    }
-                    // 2x native resolution (640x480 -> 1280x960) — good default for M-series Macs
-                    if (strcmp(var->key, "reicast_internal_resolution") == 0 ||
-                        strcmp(var->key, "flycast_internal_resolution") == 0) {
-                        var->value = "1280x960";
-                        return true;
-                    }
-                    // Disable threaded rendering — our bridge provides a single GL context;
-                    // Flycast's threaded renderer spawns a second thread that needs a shared
-                    // context we don't provide, which causes black screens on Apple Silicon.
-                    if (strcmp(var->key, "reicast_threaded_rendering") == 0 ||
-                        strcmp(var->key, "flycast_threaded_rendering") == 0) {
-                        var->value = "disabled";
-                        return true;
-                    }
-                    // Disable frame-swap delay — this variable makes retro_run block waiting
-                    // for audio to be consumed, causing a deadlock with CoreAudio's IO thread.
-                    if (strcmp(var->key, "reicast_delay_frame_swapping") == 0) {
-                        var->value = "disabled";
-                        return true;
-                    }
-                    // Disable DSP — reduces audio thread pressure and avoids secondary
-                    // audio sync points that can contribute to the CoreAudio deadlock.
-                    if (strcmp(var->key, "reicast_enable_dsp") == 0) {
-                        var->value = "disabled";
+
+                // Per-system variable overrides — looked up from the policy table
+                // set once in -loadFileAtPath:. To add overrides for a new system,
+                // add a static table and extend OELibretroSystemPolicyForSystemID().
+                for (NSUInteger i = 0; i < _current->_policy.variableDefaultCount; i++) {
+                    if (strcmp(var->key, _current->_policy.variableDefaults[i].key) == 0) {
+                        var->value = _current->_policy.variableDefaults[i].value;
                         return true;
                     }
                 }
 
-                // VICE (Commodore 64) Defaults
-                if (_current->_isC64) {
-                    // C64C model — better compatibility with late-era software
-                    if (strcmp(var->key, "vice_c64_model") == 0) {
-                        var->value = "C64C PAL";
-                        return true;
-                    }
-                    // Disable true drive emulation — faster loading, sufficient for most games
-                    if (strcmp(var->key, "vice_drive_true_emulation") == 0) {
-                        var->value = "disabled";
-                        return true;
-                    }
-                    // Joystick port 2 is standard for most C64 games
-                    if (strcmp(var->key, "vice_joyport") == 0) {
-                        var->value = "2";
-                        return true;
-                    }
-                    // Auto-start ROMs immediately
-                    if (strcmp(var->key, "vice_autostart") == 0) {
-                        var->value = "enabled";
-                        return true;
-                    }
-                }
-
-                // SNES (Snes9x) Defaults
-                // The per-channel volume keys (snes9x_sndchan_volume_1..8) are
-                // parsed via atoi(value) — so the empty-string fallback below
-                // converts to 0 and mutes every channel. Return "100" so the
-                // core uses full volume per channel by default. The matching
-                // enable keys (snes9x_sndchan_1..8) use strcmp("disabled", value),
-                // which tolerates "" fine, so we don't override those.
-                if ([systemID isEqualToString:@"openemu.system.snes"]) {
-                    if (strncmp(var->key, "snes9x_sndchan_volume_", 22) == 0) {
+                // SNES sndchan volume prefix — "snes9x_sndchan_volume_*" keys are
+                // parsed via atoi(); an empty string returns 0 and mutes the channel.
+                if (_current->_policy.sndchanVolumePrefix) {
+                    size_t prefixLen = strlen(_current->_policy.sndchanVolumePrefix);
+                    if (strncmp(var->key, _current->_policy.sndchanVolumePrefix, prefixLen) == 0) {
                         var->value = "100";
                         return true;
                     }
                 }
 
-                // PPSSPP Defaults
-                if ([systemID containsString:@"psp"]) {
-                    if (strcmp(var->key, "ppsspp_backend") == 0) {
-                        var->value = "SOFTWARE";
-                        return true;
-                    }
-                    if (strcmp(var->key, "ppsspp_cpu_core") == 0) {
-                        var->value = "jit";
-                        return true;
-                    }
-                    if (strcmp(var->key, "ppsspp_rendering_mode") == 0) {
-                        var->value = "software";
-                        return true;
-                    }
-                    if (strcmp(var->key, "ppsspp_threaded_rendering") == 0) {
-                        var->value = "disabled";
-                        return true;
-                    }
-                    if (strcmp(var->key, "ppsspp_inflight_frames") == 0) {
-                        var->value = "1";
-                        return true;
-                    }
-                    if (strcmp(var->key, "ppsspp_software_rendering") == 0) {
-                        var->value = "enabled";
-                        return true;
-                    }
-                    if (strcmp(var->key, "ppsspp_gpu_disallow_shared_context") == 0) {
-                        var->value = "enabled";
-                        return true;
-                    }
-                    if (strcmp(var->key, "ppsspp_force_max_fps") == 0) {
-                        var->value = "enabled";
-                        return true;
-                    }
-                }
-                
                 // No per-system override matched. Next layer: the default the
                 // core itself declared via SET_VARIABLES / SET_CORE_OPTIONS{,_V2}.
                 // RetroArch behaves the same way; returning the declared default
@@ -768,7 +810,7 @@ static bool libretro_environment_cb(unsigned cmd, void *data) {
                 // for keys the core never declared (rare; usually a core bug).
                 var->value = "";
 #if DEBUG
-                NSLog(@"[OELibretro] Core queried variable: %s (System: %s) — no override and no declared default", var->key, [systemID UTF8String]);
+                NSLog(@"[OELibretro] Core queried variable: %s — no override and no declared default", var->key);
 #endif
 #if OE_LIBRETRO_AUDIO_DEBUG
                 {
@@ -1143,14 +1185,14 @@ static int16_t libretro_input_state_cb(unsigned port, unsigned device, unsigned 
                 return (int16_t)(([_current touchX] / 256.0) * 65535 - 32768);
             }
             if (id == RETRO_DEVICE_ID_POINTER_Y) {
-                if (_current.isNDS) {
-                    // NDS-specific: touch screen is the bottom half (Y 192..384)
+                if (_current->_policy.hasNDSTouchScreen) {
+                    // NDS: touch screen is the bottom half (Y 192..383 of a 384-line frame).
                     float yNorm = ([_current touchY] - 192.0) / 192.0;
                     if (yNorm < 0) yNorm = 0;
                     if (yNorm > 1) yNorm = 1;
                     return (int16_t)(yNorm * 65535 - 32768);
                 } else {
-                    // Generic pointer Y: full surface
+                    // Generic pointer Y: full surface.
                     return (int16_t)(([_current touchY] / 256.0) * 65535 - 32768);
                 }
             }
@@ -1255,18 +1297,11 @@ static void* bridge_dlsym(void *handle, const char *symbol) {
         corePath = [bundleMacOSDir stringByAppendingPathComponent:corePath];
     }
     
-    // Per-system isolation flags — identify system once, use flags everywhere.
-    // This prevents core-specific logic from leaking across systems.
+    // Build the per-system policy once — consulted throughout the session.
+    // To add a new system, extend OELibretroSystemPolicyForSystemID().
     NSString *systemID = [self systemIdentifier];
-    
-    _isPSP    = [systemID containsString:@"psp"];
-    _isNDS    = [systemID containsString:@"nds"];
-    _isDC     = [systemID containsString:@"dc"];
-    _isSaturn = [systemID containsString:@"saturn"];
-    _isC64    = [systemID containsString:@"c64"];
-    _isN64    = [systemID containsString:@"n64"];
-    _isArcade = [systemID containsString:@"arcade"];
-    _isHW     = NO;  // Reset — core will re-request via SET_HW_RENDER if needed
+    _policy = OELibretroSystemPolicyForSystemID(systemID);
+    _isHW   = NO;  // Reset — core will re-request via SET_HW_RENDER if needed
 
     // Reset declared option defaults so a re-load doesn't carry stale entries
     // from a previous game/core into the new core's environment callbacks.
@@ -1720,53 +1755,17 @@ static void* bridge_dlsym(void *handle, const char *symbol) {
 }
 
 - (uint8_t)_retroButtonForOEButton:(NSInteger)button {
-    // Standard OpenEmu button order tends to match SNES-ish layout for simple digital pads.
-    // However, the cleanest way to support multiple cores is to map based on the current system.
-    
-    if (self.isPSP) {
-        // OEPSPButton enum (OEPSPSystemResponderClient.h):
-        //   Up=0 Down=1 Left=2 Right=3
-        //   AnalogUp=4 AnalogDown=5 AnalogLeft=6 AnalogRight=7  (handled in didMovePSPJoystickDirection:)
-        //   Triangle=8 Circle=9 Cross=10 Square=11
-        //   L1=12 R1=13 Start=14 Select=15
-        switch (button) {
-            case 0:  return RETRO_DEVICE_ID_JOYPAD_UP;     // OEPSPButtonUp
-            case 1:  return RETRO_DEVICE_ID_JOYPAD_DOWN;   // OEPSPButtonDown
-            case 2:  return RETRO_DEVICE_ID_JOYPAD_LEFT;   // OEPSPButtonLeft
-            case 3:  return RETRO_DEVICE_ID_JOYPAD_RIGHT;  // OEPSPButtonRight
-            case 8:  return RETRO_DEVICE_ID_JOYPAD_X;      // OEPSPButtonTriangle
-            case 9:  return RETRO_DEVICE_ID_JOYPAD_A;      // OEPSPButtonCircle
-            case 10: return RETRO_DEVICE_ID_JOYPAD_B;      // OEPSPButtonCross
-            case 11: return RETRO_DEVICE_ID_JOYPAD_Y;      // OEPSPButtonSquare
-            case 12: return RETRO_DEVICE_ID_JOYPAD_L;      // OEPSPButtonL1
-            case 13: return RETRO_DEVICE_ID_JOYPAD_R;      // OEPSPButtonR1
-            case 14: return RETRO_DEVICE_ID_JOYPAD_START;  // OEPSPButtonStart
-            case 15: return RETRO_DEVICE_ID_JOYPAD_SELECT; // OEPSPButtonSelect
-            default: return 0xFF;
+    // Use the per-system button map from the policy if one is set.
+    // Each map entry is a RETRO_DEVICE_ID_JOYPAD_* value; 0xFF = analog/unmapped.
+    // The generic SNES-ish layout is the fallback when no map is provided.
+    if (_policy.buttonMap) {
+        if ((NSUInteger)button < _policy.buttonMapCount) {
+            return _policy.buttonMap[button];
         }
-    }
-    
-    if (self.isSaturn) {
-        // OESaturnButton mapping
-        switch (button) {
-            case 0: return RETRO_DEVICE_ID_JOYPAD_UP;     // OESaturnButtonUp
-            case 1: return RETRO_DEVICE_ID_JOYPAD_DOWN;   // OESaturnButtonDown
-            case 2: return RETRO_DEVICE_ID_JOYPAD_LEFT;   // OESaturnButtonLeft
-            case 3: return RETRO_DEVICE_ID_JOYPAD_RIGHT;  // OESaturnButtonRight
-            case 4: return RETRO_DEVICE_ID_JOYPAD_Y;      // OESaturnButtonA -> Y (Libretro Saturn layout)
-            case 5: return RETRO_DEVICE_ID_JOYPAD_B;      // OESaturnButtonB -> B
-            case 6: return RETRO_DEVICE_ID_JOYPAD_A;      // OESaturnButtonC -> A
-            case 7: return RETRO_DEVICE_ID_JOYPAD_L;      // OESaturnButtonX -> L
-            case 8: return RETRO_DEVICE_ID_JOYPAD_X;      // OESaturnButtonY -> X
-            case 9: return RETRO_DEVICE_ID_JOYPAD_R;      // OESaturnButtonZ -> R
-            case 10: return RETRO_DEVICE_ID_JOYPAD_L2;    // OESaturnButtonL -> L2
-            case 11: return RETRO_DEVICE_ID_JOYPAD_R2;    // OESaturnButtonR -> R2
-            case 12: return RETRO_DEVICE_ID_JOYPAD_START; // OESaturnButtonStart
-            default: return 0xFF;
-        }
+        return 0xFF; // out of range for this system's map
     }
 
-    // Default Fallback (SNES/Generic)
+    // Default fallback (SNES/generic layout).
     switch (button) {
         case 0: return RETRO_DEVICE_ID_JOYPAD_UP;
         case 1: return RETRO_DEVICE_ID_JOYPAD_DOWN;
