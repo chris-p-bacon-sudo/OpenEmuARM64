@@ -46,6 +46,16 @@ The goal is to honor the original OpenEmu spirit — a beautifully designed, fir
 
 ## Build Command
 
+The canonical verification floor is `Scripts/verify.sh`. It builds, runs the static analyzer, validates Info.plist and entitlements, and checks codesign — a stricter floor than a bare `xcodebuild build`.
+
+```bash
+./Scripts/verify.sh                 # build + analyze + plist + codesign
+./Scripts/verify.sh --launch        # above + 5s smoke launch with crash check
+./Scripts/verify.sh --test          # above + run OpenEmuTests unit target
+```
+
+A bare build check is acceptable for quick iteration:
+
 ```bash
 xcodebuild \
   -workspace OpenEmu-metal.xcworkspace \
@@ -55,7 +65,7 @@ xcodebuild \
   build 2>&1 | tail -30
 ```
 
-A clean build is the definition of "passing." Run this before every commit touching source files.
+**A clean `verify.sh` run is the definition of "passing."** Run it before every push touching source files. The pre-push git hook in `.githooks/pre-push` enforces this mechanically — install it once per clone with `./Scripts/install-hooks.sh`.
 
 ---
 

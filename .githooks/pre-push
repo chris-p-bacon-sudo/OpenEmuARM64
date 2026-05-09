@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+# .githooks/pre-push — verification gate before any push reaches origin.
+#
+# Runs Scripts/verify.sh. If it fails, the push is blocked.
+#
+# Bypass options (use sparingly, audit when used):
+#   • Single push:  git push --no-verify
+#   • This shell:   SKIP_VERIFY=1 git push
+#
+# Setup (once per clone):  ./Scripts/install-hooks.sh
+#
+# Why this exists: AGENTS.md requires a verification floor before pushing
+# Swift/ObjC changes to origin. Running Scripts/verify.sh is the canonical
+# way to satisfy that. AI-assisted sessions in particular should not be
+# trusted to remember to run it manually — this hook is the mechanical
+# enforcement of the documented rule.
+
+set -uo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+cd "$REPO_ROOT"
+
+if [ "${SKIP_VERIFY:-0}" = "1" ]; then
+  echo "[pre-push] SKIP_VERIFY=1 set — skipping Scripts/verify.sh"
+  exit 0
+fi
+
+if [ ! -x ./Scripts/verify.sh ]; then
+  echo "[pre-push] Scripts/verify.sh not found or not executable — skipping (nothing to enforce)"
+  exit 0
+fi
+
+echo "[pre-push] Running Scripts/verify.sh ..."
+if ./Scripts/verify.sh; then
+  echo "[pre-push] verify.sh PASSED — push allowed"
+  exit 0
+else
+  rc=$?
+  echo ""
+  echo "[pre-push] verify.sh FAILED ($rc check(s) failed) — push blocked"
+  echo "[pre-push] Fix the failures above, or bypass with: git push --no-verify"
+  exit 1
+fi
