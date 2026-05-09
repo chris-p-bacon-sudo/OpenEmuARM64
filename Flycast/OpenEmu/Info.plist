@@ -16,18 +16,16 @@
 	<string>${PRODUCT_NAME}</string>
 	<key>CFBundlePackageType</key>
 	<string>BNDL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>2.4.2</string>
 	<key>CFBundleSignature</key>
 	<string>????</string>
-	<key>CFBundleShortVersionString</key>
-	<string>2.4.1</string>
 	<key>CFBundleVersion</key>
-	<string>2.4.1</string>
+	<string>2.4.2</string>
 	<key>NSPrincipalClass</key>
 	<string>OEGameCoreController</string>
 	<key>OEGameCoreClass</key>
 	<string>FlycastGameCore</string>
-	<key>SUFeedURL</key>
-	<string>https://raw.githubusercontent.com/nickybmon/OpenEmu-Silicon/main/Appcasts/flycast.xml</string>
 	<key>OEGameCoreOptions</key>
 	<dict>
 		<key>openemu.system.dc</key>
@@ -89,5 +87,7 @@
 	<array>
 		<string>openemu.system.dc</string>
 	</array>
+	<key>SUFeedURL</key>
+	<string>https://raw.githubusercontent.com/nickybmon/OpenEmu-Silicon/main/Appcasts/flycast.xml</string>
 </dict>
 </plist>
