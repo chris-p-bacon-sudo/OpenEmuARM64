@@ -260,6 +260,10 @@ final class OECredentialStore {
             migrated += 1
         }
 
+        // saveFolderID was written by an older version of the sync code and is no longer
+        // used anywhere. Delete it so it can't trigger a keychain prompt.
+        keychainDelete(service: "com.openemu.GoogleDriveSaveSync", account: "saveFolderID")
+
         if migrated > 0 {
             os_log(.info, log: log,
                    "Migrated %d credential(s) from keychain to encrypted file store.", migrated)
