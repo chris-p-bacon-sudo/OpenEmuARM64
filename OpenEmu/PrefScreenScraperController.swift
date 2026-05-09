@@ -191,20 +191,22 @@ final class PrefScreenScraperController: NSViewController {
         let isSignedIn = !username.isEmpty && OECredentialStore.shared.has(.screenScraperPassword)
 
         if isSignedIn {
-            // Show the last fetch error if one occurred, so users know why art lookup failed.
-            // If no fetch has been attempted yet, show a neutral "credentials saved" state
-            // rather than a green "signed in" that implies verified authentication.
             Task { @MainActor in
                 if let fetchError = ScreenScraperClient.shared.lastFetchError,
                    let description = fetchError.errorDescription {
+                    // A previous game lookup failed — surface the error so the user knows.
                     self.statusLabel.stringValue = description
                     self.statusLabel.textColor = NSColor(red: 0.87, green: 0.20, blue: 0.18, alpha: 1)
                 } else if ScreenScraperClient.shared.hasVerifiedCredentials {
                     self.statusLabel.stringValue = "✓  Signed in as \(username)"
                     self.statusLabel.textColor = NSColor(red: 0.2, green: 0.78, blue: 0.35, alpha: 1)
                 } else {
-                    self.statusLabel.stringValue = "Credentials saved — not yet verified. Save to confirm."
+                    // Credentials are stored but haven't been verified this session yet.
+                    // Silently verify in the background so the pane shows the correct state
+                    // without the user needing to hit Save.
+                    self.statusLabel.stringValue = "Verifying…"
                     self.statusLabel.textColor = .secondaryLabelColor
+                    self.silentlyVerify(username: username)
                 }
             }
         } else {
@@ -214,6 +216,29 @@ final class PrefScreenScraperController: NSViewController {
     }
 
     // MARK: - Actions
+
+    /// Called on pane load when credentials exist but haven't been confirmed this session.
+    /// Fires a lightweight API call in the background and updates the status label with the result.
+    private func silentlyVerify(username: String) {
+        guard let password = OECredentialStore.shared.get(.screenScraperPassword) else { return }
+        Task { @MainActor in
+            do {
+                let ok = try await ScreenScraperClient.shared.verifyCredentials(username: username, password: password)
+                if ok {
+                    ScreenScraperClient.shared.clearLastFetchError()
+                    self.statusLabel.stringValue = "✓  Signed in as \(username)"
+                    self.statusLabel.textColor = NSColor(red: 0.2, green: 0.78, blue: 0.35, alpha: 1)
+                } else {
+                    self.statusLabel.stringValue = "ScreenScraper rejected these credentials. Re-enter your password and save."
+                    self.statusLabel.textColor = NSColor(red: 0.87, green: 0.20, blue: 0.18, alpha: 1)
+                }
+            } catch {
+                // Network unavailable — don't show an error for a background check, just go neutral.
+                self.statusLabel.stringValue = "Could not reach ScreenScraper — check your connection."
+                self.statusLabel.textColor = .secondaryLabelColor
+            }
+        }
+    }
 
     @objc private func saveCredentials() {
         let username = usernameField.stringValue.trimmingCharacters(in: .whitespaces)
