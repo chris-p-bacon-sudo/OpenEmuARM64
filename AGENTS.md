@@ -92,7 +92,6 @@ xcodebuild \
 | Atari 7800 | ProSystem |
 | Atari Lynx | Mednafen |
 | ColecoVision | JollyCV |
-| Commodore 64 | VICE |
 | Famicom Disk System | Nestopia |
 | Game Boy / GBC | Gambatte |
 | Game Boy Advance | mGBA |
@@ -100,7 +99,6 @@ xcodebuild \
 | Intellivision | Bliss |
 | Nintendo (NES) | Nestopia, FCEU |
 | Nintendo 64 | Mupen64Plus |
-| Nintendo DS | DeSmuME |
 | Odyssey² / Videopac+ | O2EM |
 | Pokémon Mini | PokeMini |
 | Sega 32X | picodrive |
