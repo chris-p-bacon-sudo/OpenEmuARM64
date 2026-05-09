@@ -39,10 +39,41 @@ if (consentValue as? Bool) == true {
     let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "unknown"
     let build   = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "0"
     SentrySDK.start { options in
-        options.dsn         = "https://387777a8153aae33cb514deea3601946@o4511164820815872.ingest.us.sentry.io/4511164891529216"
-        options.releaseName = "openemu-silicon@\(version)+\(build)"
-        options.environment = "production"
-        options.debug       = false
+        options.dsn              = "https://387777a8153aae33cb514deea3601946@o4511164820815872.ingest.us.sentry.io/4511164891529216"
+        options.releaseName      = "openemu-silicon@\(version)+\(build)"
+        options.environment      = "production"
+        options.debug            = false
+        options.tracesSampleRate = 0.2
+        options.enableLogs       = true
+        options.enableMetricKit  = true
+        options.appHangTimeoutInterval = 1.0
+    }
+
+    // Tag this helper process with the active game/system/core. The host writes
+    // these into its preference domain just before launching the helper, and
+    // CFPreferencesCopyValue reads from the host domain (this helper is not
+    // sandboxed). Without this, every helper crash arrives with no emulation
+    // context — and most crashes happen in the helper, not the host.
+    let domain = "org.openemu.OpenEmu" as CFString
+    func ctx(_ key: String) -> String? {
+        CFPreferencesCopyValue(key as CFString, domain, kCFPreferencesAnyUser, kCFPreferencesAnyHost) as? String
+    }
+    let game   = ctx("OESentryActiveGame")
+    let system = ctx("OESentryActiveSystem")
+    let core   = ctx("OESentryActiveCore")
+    if game != nil || system != nil || core != nil {
+        SentrySDK.configureScope { scope in
+            scope.setContext(value: [
+                "game":   game   ?? "Unknown",
+                "system": system ?? "Unknown",
+                "core":   core   ?? "Unknown",
+                "process": "helper",
+            ], key: "emulation")
+        }
+    } else {
+        SentrySDK.configureScope { scope in
+            scope.setContext(value: ["process": "helper"], key: "emulation")
+        }
     }
 }
 

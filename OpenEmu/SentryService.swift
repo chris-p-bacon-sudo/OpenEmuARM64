@@ -35,6 +35,12 @@ enum SentryService {
     private static let consentKey    = "OESentryCrashReportingEnabled"
     private static let hasPromptedKey = "OESentryCrashReportingPrompted"
 
+    // Game-context keys mirrored into CFPreferences so the helper process
+    // (which crashes most often) can attach the same context to its events.
+    private static let ctxGameKey   = "OESentryActiveGame"
+    private static let ctxSystemKey = "OESentryActiveSystem"
+    private static let ctxCoreKey   = "OESentryActiveCore"
+
     /// Call once at the top of applicationDidFinishLaunching.
     /// On first launch, shows a consent prompt. On subsequent launches,
     /// starts Sentry automatically if the user previously opted in.
@@ -63,6 +69,14 @@ enum SentryService {
                 "core": coreIdentifier,
             ], key: "emulation")
         }
+        // Mirror into CFPrefs so the helper process picks up the same context
+        // when it starts Sentry. Synchronize forces the write to disk before
+        // the helper launches.
+        let defaults = UserDefaults.standard
+        defaults.set(gameName,         forKey: ctxGameKey)
+        defaults.set(systemIdentifier, forKey: ctxSystemKey)
+        defaults.set(coreIdentifier,   forKey: ctxCoreKey)
+        defaults.synchronize()
     }
 
     /// Clears game context when emulation ends so stale info doesn't attach to future crashes.
@@ -70,6 +84,11 @@ enum SentryService {
         SentrySDK.configureScope { scope in
             scope.removeContext(key: "emulation")
         }
+        let defaults = UserDefaults.standard
+        defaults.removeObject(forKey: ctxGameKey)
+        defaults.removeObject(forKey: ctxSystemKey)
+        defaults.removeObject(forKey: ctxCoreKey)
+        defaults.synchronize()
     }
 
     /// Records a breadcrumb — a timestamped event visible in the crash report trail.
@@ -146,6 +165,12 @@ enum SentryService {
             options.environment      = "production"
             options.tracesSampleRate = 0.2  // sample 20% of sessions for performance tracing
             options.enableLogs       = true
+            // OS-level diagnostics: hangs the in-process detector misses,
+            // CPU exceptions, disk-write spikes. Off by default in the SDK.
+            options.enableMetricKit  = true
+            // Default is 2.0s. UI thread blocks shorter than that — like the
+            // OEAlert runModal hang we fixed in 01456229 — slip through silently.
+            options.appHangTimeoutInterval = 1.0
         }
     }
 }
