@@ -180,7 +180,15 @@ final class ScreenScraperClient {
     /// Also writes to `lastFetchError` (main actor) for UI display.
     ///
     /// Pass `debugMode: true` to attach the developer debug password (100 uses/day limit).
-    func fetchGameInfo(md5: String?, romName: String?, systemIdentifier: String, debugMode: Bool = false) -> Result<ScreenScraperResult?, ScreenScraperFetchError> {
+    /// - Parameters:
+    ///   - md5: ROM MD5 hash (uppercased internally). Sent as `rommd5` when non-empty.
+    ///   - romName: Full ROM filename including extension. Sent as `romnom`.
+    ///   - fileSize: ROM file size in bytes. Sent as `romtaille` when > 0. Significantly
+    ///     improves match accuracy for ROMs whose MD5 doesn't match SS's canonical hash
+    ///     (headered/byte-swapped/trainer-modified dumps).
+    ///   - systemIdentifier: OpenEmu system identifier, mapped to SS `systemeid`.
+    ///   - debugMode: Developer cache-bypass mode (100/day limit, never use in production).
+    func fetchGameInfo(md5: String?, romName: String?, fileSize: Int? = nil, systemIdentifier: String, debugMode: Bool = false) -> Result<ScreenScraperResult?, ScreenScraperFetchError> {
 
         guard let systemID = ScreenScraperClient.systemIDs[systemIdentifier] else {
             return .success(nil)
@@ -206,6 +214,9 @@ final class ScreenScraperClient {
         }
         if let romName = romName, !romName.isEmpty {
             queryItems.append(URLQueryItem(name: "romnom", value: romName))
+        }
+        if let fileSize = fileSize, fileSize > 0 {
+            queryItems.append(URLQueryItem(name: "romtaille", value: String(fileSize)))
         }
 
         // User credentials — optional, attached when the user has saved their own account.

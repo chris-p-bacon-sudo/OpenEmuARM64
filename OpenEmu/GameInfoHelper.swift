@@ -63,8 +63,9 @@ final class GameInfoHelper {
                 // FIX: preserve the file extension so ScreenScraper can disambiguate
                 // ROMs that share the same name across platforms (e.g. .n64 vs .sfc).
                 let romName = url?.lastPathComponent
+                let romSize = url?.fileSize ?? 0
                 var fallback: [String: Any] = [:]
-                if case .success(let ss) = ScreenScraperClient.shared.fetchGameInfo(md5: md5, romName: romName, systemIdentifier: systemIdentifier), let ss = ss {
+                if case .success(let ss) = ScreenScraperClient.shared.fetchGameInfo(md5: md5, romName: romName, fileSize: romSize, systemIdentifier: systemIdentifier), let ss = ss {
                     if let boxURL = ss.boxImageURL { fallback["boxImageURL"] = boxURL.absoluteString }
                     if let title = ss.gameTitle   { fallback["gameTitle"] = title }
                     if let desc  = ss.gameDescription { fallback["gameDescription"] = desc }
@@ -202,10 +203,14 @@ final class GameInfoHelper {
             if hasSScredentials && missingArt {
                 // FIX: pass full filename (including extension) so ScreenScraper
                 // can differentiate ROMs sharing names across systems.
+                // Also pass file size — significantly boosts SS match accuracy for
+                // ROMs whose MD5 doesn't match (headered/byte-swapped dumps).
                 let romName = url?.lastPathComponent
+                let romSize = url?.fileSize ?? 0
                 let ssResult = ScreenScraperClient.shared.fetchGameInfo(
                     md5: md5,
                     romName: romName,
+                    fileSize: romSize,
                     systemIdentifier: systemIdentifier
                 )
                 if case .success(let ss) = ssResult, let ss = ss {
@@ -228,22 +233,18 @@ final class GameInfoHelper {
                     }
                 }
 
-                // Only skip the fuzzy fallback when ScreenScraper actually responded
-                // (success or not-found). If SS returned a hard error (bad credentials,
-                // network down, rate limited), fall through so fuzzy OpenVGDB + libretro
-                // still have a chance to find art.
-                switch ssResult {
-                case .success:
-                    return resultDict
-                case .failure:
-                    break  // fall through to fuzzy path below
-                }
+                // No early return: fuzzy OpenVGDB + libretro-thumbnails always get
+                // a chance to fill in missing art, whether SS succeeded with partial
+                // data, returned not-found, or failed outright. The fuzzy block below
+                // is gated on `missingBoxArt`, so it's a no-op when SS already provided art.
             }
 
-            // --- Advanced fuzzy fallback (only for users NOT logged in to ScreenScraper) ---
-            // Runs when: hasSScredentials == false
-            // i.e., the user has not provided ScreenScraper credentials, so we do our
-            // best with OpenVGDB fuzzy matching instead of leaving them with nothing.
+            // --- Advanced fuzzy fallback (runs whenever box art is still missing) ---
+            // Previously gated on `!hasSScredentials`, but that left SS-logged-in users
+            // with nothing when SS didn't have a particular ROM. Now runs for everyone
+            // when art is missing — covers ROMs SS doesn't know about but OpenVGDB does.
+            // The libretro-thumbnails request inside this block provides a final 2D-art
+            // fallback for titles missing from both SS and OpenVGDB.
             let missingBoxArt = resultDict["boxImageURL"] == nil
                              || (resultDict["boxImageURL"] as? String)?.isEmpty == true
 
