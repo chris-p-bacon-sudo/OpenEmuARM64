@@ -47,7 +47,7 @@
 
   <core
     id="org.openemu.genesisplus"
-    name="Genesis Plus"
+    name="Genesis Plus GX"
     appcastURL="https://raw.githubusercontent.com/nickybmon/OpenEmu-Silicon/main/Appcasts/genesisplus.xml">
     <description>Genesis Plus GX emulator</description>
     <systems>

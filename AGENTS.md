@@ -85,33 +85,57 @@ xcodebuild \
 
 ## Supported Cores (as of 2026)
 
-| System | Core |
-|--------|------|
+| System | Core(s) |
+|--------|---------|
+| 3DO | 4DO |
 | Atari 2600 | Stella |
 | Atari 5200 | Atari800 |
 | Atari 7800 | ProSystem |
+| Atari 8-bit | Atari800 |
+| Atari Jaguar | VirtualJaguar |
 | Atari Lynx | Mednafen |
-| ColecoVision | JollyCV |
+| ColecoVision | JollyCV (default), CrabEmu, blueMSX |
+| Commodore 64 | (RetroArch / VICE only — no native core ships in this fork) |
 | Famicom Disk System | Nestopia |
 | Game Boy / GBC | Gambatte |
 | Game Boy Advance | mGBA |
 | Game Gear | Genesis Plus GX |
+| GameCube | Dolphin |
 | Intellivision | Bliss |
-| Nintendo (NES) | Nestopia, FCEU |
+| MSX | blueMSX |
+| Neo Geo Pocket | Mednafen |
+| Nintendo (NES) | Nestopia (default), FCEU |
 | Nintendo 64 | Mupen64Plus |
+| Nintendo DS | (no arm64 build available — see #424) |
 | Odyssey² / Videopac+ | O2EM |
+| PC Engine | Mednafen |
+| PC Engine CD | Mednafen |
+| PC-FX | Mednafen |
 | Pokémon Mini | PokeMini |
-| Sega 32X | picodrive |
+| Sega 32X | Picodrive |
 | Sega CD / Mega CD | Genesis Plus GX |
 | Sega Dreamcast | Flycast |
 | Sega Genesis / Mega Drive | Genesis Plus GX |
 | Sega Master System | Genesis Plus GX |
 | Sega Saturn | Mednafen |
 | Sony PlayStation | Mednafen |
-| Super Nintendo (SNES) | BSNES, Snes9x |
+| Sony PSP | PPSSPP |
+| Super Nintendo (SNES) | SNES9x (default), BSNES |
+| Supervision | Potator |
 | Vectrex | VecXGL |
+| Virtual Boy | Mednafen |
+| Wii | Dolphin |
 | WonderSwan | Mednafen |
-| 3DO | 4DO |
+
+### Default core selection
+
+For systems with multiple cores, OpenEmu uses the value at
+`defaultCore.openemu.system.<sysid>` in `UserDefaults`. The host app seeds a default in `OpenEmu/AppDelegate.swift` for two systems today:
+
+- `openemu.system.nes` → `org.openemu.Nestopia`
+- `openemu.system.snes` → `org.openemu.SNES9x`
+
+For any other multi-core system (e.g. ColecoVision — JollyCV / CrabEmu / blueMSX), no default is seeded and the user picks from Preferences → Cores. Adding a default seed is a one-line change in `AppDelegate.swift` if a default is wanted; until that is done, behavior is whatever the picker chooses to surface first.
 
 ### Libretro / RetroArch cores
 
