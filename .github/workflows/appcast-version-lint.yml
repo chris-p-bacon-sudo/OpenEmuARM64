@@ -1,0 +1,41 @@
+name: Appcast Version Lint
+
+# Run on every PR or push to main that touches Appcasts/. The check downloads
+# each appcast's topmost referenced GitHub release asset, extracts the bundle's
+# Info.plist, and confirms CFBundleVersion matches the sparkle:version the
+# appcast advertises. This catches the cores-v1.2.0 class of bug regardless of
+# how the bad state arrived (script, hand-edit, copy-paste).
+
+on:
+  pull_request:
+    paths:
+      - 'Appcasts/**'
+      - 'Scripts/verify-appcast-versions.py'
+      - '.github/workflows/appcast-version-lint.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'Appcasts/**'
+      - 'Scripts/verify-appcast-versions.py'
+      - '.github/workflows/appcast-version-lint.yml'
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Verify each appcast's topmost entry matches its referenced asset
+        env:
+          # gh is preinstalled on ubuntu-latest. GH_TOKEN authenticates it
+          # against this repo's release assets (works for private repos too).
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ./Scripts/verify-appcast-versions.py
