@@ -193,10 +193,13 @@ final class GameInfoHelper {
             }
 
             // --- ScreenScraper (Priority 1 when user is logged in) ---
-            // Only runs when the user HAS configured SS credentials.
-            // Users who have NOT logged in to ScreenScraper go through the
-            // advanced fuzzy path below instead.
-            if hasSScredentials {
+            // Only runs when the user HAS configured SS credentials AND OpenVGDB
+            // did not already return a complete result (title + box art).
+            // Skipping when art is already present avoids burning daily API quota
+            // on lookups that add no value, and prevents HTTP 430 rate-limit
+            // failures during large library imports.
+            let missingArt = (resultDict["boxImageURL"] as? String)?.isEmpty != false
+            if hasSScredentials && missingArt {
                 // FIX: pass full filename (including extension) so ScreenScraper
                 // can differentiate ROMs sharing names across systems.
                 let romName = url?.lastPathComponent
