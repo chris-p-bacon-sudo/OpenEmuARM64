@@ -41,6 +41,25 @@
 
 set -uo pipefail
 
+# Ignore SIGPIPE. A truncated consumer (e.g. `verify.sh | head -30`,
+# `... | grep ... | head`) closes its stdin partway through; without this trap,
+# the next echo from verify.sh receives SIGPIPE and terminates the script
+# mid-run. The currently running xcodebuild child then gets orphaned and keeps
+# holding the build.db lock, which causes the *next* verify invocation to fail
+# with a "database is locked" build error — the symptom that's been showing up
+# across worktrees today.
+trap '' PIPE
+
+# On any exit, terminate child processes so xcodebuild cannot outlive the
+# script. xcodebuild handles SIGTERM cleanly and propagates to its own
+# children (swift-frontend, clang, ld, etc.), which releases the build.db
+# lock for the next verify run. Errors are suppressed because there may be
+# no children to kill on a clean exit.
+verify_cleanup_children() {
+  pkill -TERM -P $$ 2>/dev/null || true
+}
+trap verify_cleanup_children EXIT
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(dirname "$SCRIPT_DIR")"
 cd "$REPO_ROOT"
