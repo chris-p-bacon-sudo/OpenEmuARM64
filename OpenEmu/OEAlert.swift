@@ -53,7 +53,8 @@ final class OEAlert: NSObject {
     private(set) var result = NSApplication.ModalResponse(0)
     private(set) var window: NSWindow!
     
-    private var blocks = [(() -> Void)]()
+    // blocks array removed — performBlockInModalSession now dispatches directly
+    // onto the main queue, which NSApp.runModal(for:) processes normally.
     private var sheetMode = false
     private var needsRebuild = true
     
@@ -194,28 +195,12 @@ final class OEAlert: NSObject {
         
         window.animationBehavior = .alertPanel
         
-        window.makeKeyAndOrderFront(nil)
-        
-        let executeBlocks = {
-            DispatchQueue(label: "org.openemu.OEAlert").sync {
-                while !self.blocks.isEmpty {
-                    if let block = self.blocks.first {
-                        block()
-                    }
-                    self.blocks.removeFirst()
-                }
-            }
-            self.layoutWindowIfNeeded()
-        }
-        
-        let session = NSApp.beginModalSession(for: window)
-        while NSApp.runModalSession(session) == .continue {
-            executeBlocks()
-            RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.05))
-        }
-        executeBlocks()
-        
-        NSApp.endModalSession(session)
+        // Use NSApp.runModal(for:) — the proper AppKit modal API.
+        // macOS Tahoe's App Hang watchdog does not flag this path, unlike a
+        // custom beginModalSession/runModalSession spin loop. Any blocks
+        // queued via performBlockInModalSession are dispatched onto the main
+        // queue and execute normally inside NSApp.runModal's event loop.
+        NSApp.runModal(for: window)
         
         window.close()
         
@@ -228,8 +213,10 @@ final class OEAlert: NSObject {
             return
         }
         
-        DispatchQueue(label: "org.openemu.OEAlert").sync {
-            blocks.append(block)
+        // Dispatch onto the main queue so it runs inside NSApp.runModal's event loop.
+        DispatchQueue.main.async {
+            block()
+            self.layoutWindowIfNeeded()
         }
     }
     
