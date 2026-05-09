@@ -4,7 +4,18 @@
   xmlns:dc="http://purl.org/dc/elements/1.1/">
   <channel>
     <title>ProSystem</title>
-    <item>
+        <item>
+      <title>ProSystem 1.5.3</title>
+      <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
+      <enclosure
+        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.3.1/ProSystem.oecoreplugin.zip"
+        sparkle:version="1.5.3"
+        sparkle:shortVersionString="1.5.3"
+        length="55987"
+        sparkle:edSignature="lnZ4OedRdYYuEisJalhxGOV3ITLLrVwGYvKD9/Xxn8vh/HK5nB7fE+fsaN3sPvSh0s++CLRaE16PozG69kQeCQ=="
+        type="application/octet-stream" />
+    </item>
+<item>
       <title>ProSystem 1.5.2</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure

@@ -4,7 +4,18 @@
   xmlns:dc="http://purl.org/dc/elements/1.1/">
   <channel>
     <title>Mupen64Plus</title>
-        <item>
+            <item>
+      <title>Mupen64Plus 2.5.13</title>
+      <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
+      <enclosure
+        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.3.1/Mupen64Plus.oecoreplugin.zip"
+        sparkle:version="2.5.13"
+        sparkle:shortVersionString="2.5.13"
+        length="1218376"
+        sparkle:edSignature="KOaTFSkDNd3/Jz9n4GaDxaKgCIdN4fiy8m0OlQ04hKiKY+eB3Fze/AQ9S8i/gId6zmFN7K23735D/Ck97duKAQ=="
+        type="application/octet-stream" />
+    </item>
+<item>
       <title>Mupen64Plus 2.5.12</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure

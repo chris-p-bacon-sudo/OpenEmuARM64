@@ -4,7 +4,18 @@
   xmlns:dc="http://purl.org/dc/elements/1.1/">
   <channel>
     <title>Picodrive</title>
-    <item>
+        <item>
+      <title>Picodrive 1.93.1</title>
+      <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
+      <enclosure
+        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.3.1/Picodrive.oecoreplugin.zip"
+        sparkle:version="1.93.1"
+        sparkle:shortVersionString="1.93.1"
+        length="304136"
+        sparkle:edSignature="SkrIriB2nnqLDKi3Jj/igiZY43fDD9PWAAcp1zNKkU+kPnQhH3uITCfI3J8L/845/HWD3KFvFpzM0enY4w8eBw=="
+        type="application/octet-stream" />
+    </item>
+<item>
       <title>Picodrive 1.93</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure

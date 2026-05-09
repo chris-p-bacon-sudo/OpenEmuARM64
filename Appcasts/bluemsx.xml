@@ -4,7 +4,18 @@
   xmlns:dc="http://purl.org/dc/elements/1.1/">
   <channel>
     <title>blueMSX</title>
-    <item>
+        <item>
+      <title>blueMSX 2.9.1294</title>
+      <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
+      <enclosure
+        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.3.1/blueMSX.oecoreplugin.zip"
+        sparkle:version="2.9.1294"
+        sparkle:shortVersionString="2.9.1294"
+        length="995788"
+        sparkle:edSignature="vY78tCseJrO+7JQdhyrT37BZA1Qgr8XNDBN6GkbJi1ezTdNHzpwOoZwQYJuJ8dDmqBjuColW6kIUM42JKh82CQ=="
+        type="application/octet-stream" />
+    </item>
+<item>
       <title>blueMSX 2.9.1293</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure

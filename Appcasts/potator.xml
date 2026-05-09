@@ -4,7 +4,18 @@
   xmlns:dc="http://purl.org/dc/elements/1.1/">
   <channel>
     <title>Potator</title>
-    <item>
+        <item>
+      <title>Potator 0.1.1</title>
+      <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
+      <enclosure
+        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.3.1/Potator.oecoreplugin.zip"
+        sparkle:version="0.1.1"
+        sparkle:shortVersionString="0.1.1"
+        length="28859"
+        sparkle:edSignature="Yi1QalW5DUGiHD5WyNq/mwio0mvzwfXnh2xunLbCTAxzs46y9cQkZOGtViCAlL2ieykxma0gJG+82+6aXFLHBA=="
+        type="application/octet-stream" />
+    </item>
+<item>
       <title>Potator 0.1</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure

@@ -38,6 +38,7 @@
 #include <mgba-util/memory.h>
 #include <mgba-util/vfs.h>
 
+#import <OpenEmuBase/OEGameCoreController.h>
 #import <OpenEmuBase/OERingBuffer.h>
 #import "OEGBASystemResponderClient.h"
 #import <OpenGL/gl.h>

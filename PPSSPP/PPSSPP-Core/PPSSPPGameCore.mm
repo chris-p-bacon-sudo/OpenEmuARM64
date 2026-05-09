@@ -25,6 +25,7 @@
  */
 
 #import "PPSSPPGameCore.h"
+#import <OpenEmuBase/OEGameCoreController.h>
 #import <OpenEmuBase/OERingBuffer.h>
 #import <OpenGL/gl.h>
 

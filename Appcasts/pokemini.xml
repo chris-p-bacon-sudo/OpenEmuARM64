@@ -4,7 +4,18 @@
   xmlns:dc="http://purl.org/dc/elements/1.1/">
   <channel>
     <title>PokeMini</title>
-    <item>
+        <item>
+      <title>PokeMini 0.6.1</title>
+      <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
+      <enclosure
+        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.3.1/PokeMini.oecoreplugin.zip"
+        sparkle:version="0.6.1"
+        sparkle:shortVersionString="0.6.1"
+        length="63889"
+        sparkle:edSignature="lOJunFmH9PDQccLnqg1SH9mV9g3lxR7pViOg9HDR81xWP8aJeIYNG3M7aLKs3t3W5PyYJlV0+mz1anOoDqzODA=="
+        type="application/octet-stream" />
+    </item>
+<item>
       <title>PokeMini 0.6</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure

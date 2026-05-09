@@ -28,6 +28,7 @@
 #import "ProSystemGameCore.h"
 #import "OE7800SystemResponderClient.h"
 
+#import <OpenEmuBase/OEGameCoreController.h>
 #import <OpenEmuBase/OERingBuffer.h>
 #import <OpenGL/gl.h>
 

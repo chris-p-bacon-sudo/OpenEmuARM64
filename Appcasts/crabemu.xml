@@ -4,7 +4,18 @@
   xmlns:dc="http://purl.org/dc/elements/1.1/">
   <channel>
     <title>CrabEmu</title>
-    <item>
+        <item>
+      <title>CrabEmu 0.2.1.270</title>
+      <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
+      <enclosure
+        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.3.1/CrabEmu.oecoreplugin.zip"
+        sparkle:version="0.2.1.270"
+        sparkle:shortVersionString="0.2.1.270"
+        length="128554"
+        sparkle:edSignature="5JQgBPO5uqtLE1OJWt73/PUpgq1eBRwfka+vYhigSNAs+N+Abh654TmhbIDBUrv5H/YUeY8KCiyv7EPks+XDAw=="
+        type="application/octet-stream" />
+    </item>
+<item>
       <title>CrabEmu 0.2.1.269</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure

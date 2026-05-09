@@ -4,7 +4,18 @@
   xmlns:dc="http://purl.org/dc/elements/1.1/">
   <channel>
     <title>Bliss</title>
-    <item>
+        <item>
+      <title>Bliss 2.1.3</title>
+      <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
+      <enclosure
+        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.3.1/Bliss.oecoreplugin.zip"
+        sparkle:version="2.1.3"
+        sparkle:shortVersionString="2.1.3"
+        length="110105"
+        sparkle:edSignature="GU3CZsk73k4keXOTUVuqGKg65Ga8qQxqVL24y4MykEDPJay4v2L3yXmedXoEnfc8DFdm867iIfqTOj6EkeynCQ=="
+        type="application/octet-stream" />
+    </item>
+<item>
       <title>Bliss 2.1.2</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
