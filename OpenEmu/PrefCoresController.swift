@@ -357,8 +357,15 @@ extension PrefCoresController: NSTableViewDelegate {
                 cell.textField?.stringValue = ra.displayName
                 cell.textField?.textColor = .secondaryLabelColor
             } else if let core = entry.activeCore {
-                cell.textField?.stringValue = core.name
+                let supportsRA = OECorePlugin
+                    .corePlugin(bundleIdentifier: core.bundleIdentifier)?
+                    .supportsRetroAchievements(forSystemIdentifier: entry.systemIdentifier) ?? false
+                cell.textField?.stringValue = supportsRA ? "\(core.name) 🏆" : core.name
                 cell.textField?.textColor = .labelColor
+                cell.toolTip = supportsRA
+                    ? NSLocalizedString("This core supports RetroAchievements for this system.",
+                                        comment: "Tooltip for the trophy badge in the cores preferences list")
+                    : nil
             } else {
                 cell.textField?.stringValue = NSLocalizedString("None", comment: "")
                 cell.textField?.textColor = .tertiaryLabelColor

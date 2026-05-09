@@ -65,6 +65,10 @@ extern NSString *const OEGameCoreRewindIntervalKey;
 extern NSString *const OEGameCoreRewindBufferSecondsKey;
 extern NSString *const OEGameCoreSupportsFileInsertionKey;
 extern NSString *const OEGameCoreSupportsDisplayModeChangeKey;
+/// Boolean key. When YES, the core has the RetroAchievements client (rcheevos)
+/// integrated for the given system, so achievements can trigger when supported
+/// games are loaded. The flag describes wiring, not per-game coverage.
+extern NSString *const OEGameCoreSupportsRetroAchievementsKey;
 
 @class OEGameCore, OESystemResponder;
 

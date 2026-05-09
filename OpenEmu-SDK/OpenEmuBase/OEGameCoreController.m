@@ -53,6 +53,7 @@ NSString *const OEGameCoreRewindIntervalKey = @"OEGameCoreRewindInterval";
 NSString *const OEGameCoreRewindBufferSecondsKey = @"OEGameCoreRewindBufferSeconds";
 NSString *const OEGameCoreSupportsFileInsertionKey = @"OEGameCoreSupportsFileInsertion";
 NSString *const OEGameCoreSupportsDisplayModeChangeKey = @"OEGameCoreSupportsDisplayModeChange";
+NSString *const OEGameCoreSupportsRetroAchievementsKey = @"OEGameCoreSupportsRetroAchievements";
 
 NSString *OEEventNamespaceKeys[] = { @"", @"OEGlobalNamespace", @"OEKeyboardNamespace", @"OEHIDNamespace", @"OEMouseNamespace", @"OEOtherNamespace" };
 

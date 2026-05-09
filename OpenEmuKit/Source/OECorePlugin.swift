@@ -262,6 +262,11 @@ public extension OECorePlugin {
         let options = coreOptions[systemIdentifier]
         return options?[OEGameCoreSupportsDisplayModeChangeKey] as? Bool ?? false
     }
+
+    func supportsRetroAchievements(forSystemIdentifier systemIdentifier: String) -> Bool {
+        let options = coreOptions[systemIdentifier]
+        return options?[OEGameCoreSupportsRetroAchievementsKey] as? Bool ?? false
+    }
     
     func rewindInterval(forSystemIdentifier systemIdentifier: String) -> Int {
         let options = coreOptions[systemIdentifier]
