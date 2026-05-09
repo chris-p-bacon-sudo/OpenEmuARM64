@@ -101,4 +101,12 @@ import AudioToolbox
     ///   - token: The stored RA token, or `nil` to log out.
     ///   - username: The RA username associated with the token.
     func setRetroAchievementsToken(_ token: String?, username: String?)
+
+    /// Toggle RetroAchievements hardcore mode in the helper process.
+    ///
+    /// The helper posts a notification received by active cores, which call
+    /// `rc_client_set_hardcore_enabled` with the new value.
+    ///
+    /// - Parameter enabled: `true` to enable hardcore mode, `false` for softcore.
+    func setHardcoreEnabled(_ enabled: Bool)
 }

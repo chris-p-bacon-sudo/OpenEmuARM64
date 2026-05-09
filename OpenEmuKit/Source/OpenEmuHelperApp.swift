@@ -94,6 +94,10 @@ extension OSLog {
     // Stored here so the core can pick it up at load time and on mid-session token delivery.
     var _retroAchievementsToken: String?
 
+    // RA hardcore mode flag received from the main app via XPC. Defaults to true
+    // (RA's recommended default); cores read this at load time and on mid-session toggles.
+    var _hardcoreEnabled: Bool = true
+
     // Observer for achievement unlock notifications posted by the active core plugin.
     var _achievementObserver: Any?
 
@@ -500,7 +504,16 @@ extension OSLog {
             userInfo: userInfo
         )
     }
-    
+
+    public func setHardcoreEnabled(_ enabled: Bool) {
+        _hardcoreEnabled = enabled
+        NotificationCenter.default.post(
+            name: .OEHardcoreModeDidChange,
+            object: nil,
+            userInfo: [OEHardcoreEnabledKey: enabled]
+        )
+    }
+
     public func saveStateToFile(at fileURL: URL, completionHandler block: @escaping (Bool, Error?) -> Void) {
         gameCore.perform {
             self.gameCore.saveStateToFile(at: fileURL, completionHandler: block)

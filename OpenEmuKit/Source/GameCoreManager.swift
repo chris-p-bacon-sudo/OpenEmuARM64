@@ -228,6 +228,10 @@ extension GameCoreManager: OEGameCoreHelper {
     public func setRetroAchievementsToken(_ token: String?, username: String?) {
         gameCoreHelper?.setRetroAchievementsToken(token, username: username)
     }
+
+    public func setHardcoreEnabled(_ enabled: Bool) {
+        gameCoreHelper?.setHardcoreEnabled(enabled)
+    }
 }
 
 // MARK: - Synchronous image capture APIs

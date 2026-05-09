@@ -23,6 +23,7 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import Cocoa
+import OpenEmuKit
 
 // MARK: - Notification
 
@@ -53,11 +54,14 @@ final class PrefRetroAchievementsController: NSViewController {
     private let signOutButton   = NSButton()
     private let statusLabel     = NSTextField(labelWithString: "")
     private let registerLabel   = NSTextField(labelWithString: "")
+    private let hardcoreDivider = NSBox()
+    private let hardcoreCheckbox = NSButton(checkboxWithTitle: "Hardcore mode (recommended)", target: nil, action: nil)
+    private let hardcoreSubtitle = NSTextField(wrappingLabelWithString: "")
 
     // MARK: - Lifecycle
 
     override func loadView() {
-        view = NSView(frame: NSRect(x: 0, y: 0, width: 468, height: 300))
+        view = NSView(frame: NSRect(x: 0, y: 0, width: 468, height: 400))
         buildUI()
     }
 
@@ -131,6 +135,22 @@ final class PrefRetroAchievementsController: NSViewController {
         registerLabel.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(registerLabel)
 
+        hardcoreDivider.boxType = .separator
+        hardcoreDivider.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(hardcoreDivider)
+
+        hardcoreCheckbox.target = self
+        hardcoreCheckbox.action = #selector(toggleHardcore(_:))
+        hardcoreCheckbox.state = UserDefaults.standard.bool(forKey: RAHardcoreEnabledKey) ? .on : .off
+        hardcoreCheckbox.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(hardcoreCheckbox)
+
+        hardcoreSubtitle.stringValue = "Disables save state loading, rewind, frame advance, and cheats. Required for ranked achievements."
+        hardcoreSubtitle.font = .systemFont(ofSize: 11)
+        hardcoreSubtitle.textColor = .secondaryLabelColor
+        hardcoreSubtitle.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(hardcoreSubtitle)
+
         NSLayoutConstraint.activate([
             headerLabel.topAnchor.constraint(equalTo: view.topAnchor, constant: 32),
             headerLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 36),
@@ -171,7 +191,30 @@ final class PrefRetroAchievementsController: NSViewController {
             registerLabel.topAnchor.constraint(equalTo: statusLabel.bottomAnchor, constant: 8),
             registerLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 36),
             registerLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -36),
+
+            hardcoreDivider.topAnchor.constraint(equalTo: registerLabel.bottomAnchor, constant: 24),
+            hardcoreDivider.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 36),
+            hardcoreDivider.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -36),
+            hardcoreDivider.heightAnchor.constraint(equalToConstant: 1),
+
+            hardcoreCheckbox.topAnchor.constraint(equalTo: hardcoreDivider.bottomAnchor, constant: 16),
+            hardcoreCheckbox.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 36),
+            hardcoreCheckbox.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -36),
+
+            hardcoreSubtitle.topAnchor.constraint(equalTo: hardcoreCheckbox.bottomAnchor, constant: 4),
+            hardcoreSubtitle.leadingAnchor.constraint(equalTo: hardcoreCheckbox.leadingAnchor, constant: 20),
+            hardcoreSubtitle.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -36),
         ])
+    }
+
+    @objc private func toggleHardcore(_ sender: NSButton) {
+        let enabled = (sender.state == .on)
+        UserDefaults.standard.set(enabled, forKey: RAHardcoreEnabledKey)
+        NotificationCenter.default.post(
+            name: .OERAHardcoreDidChange,
+            object: nil,
+            userInfo: [OEHardcoreEnabledKey: enabled]
+        )
     }
 
     // MARK: - Credential Management
@@ -274,7 +317,7 @@ extension PrefRetroAchievementsController: PreferencePane {
 
     var panelTitle: String { "Achievements" }
 
-    var viewSize: NSSize { NSSize(width: 468, height: 300) }
+    var viewSize: NSSize { NSSize(width: 468, height: 400) }
 }
 
 

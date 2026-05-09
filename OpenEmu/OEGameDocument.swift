@@ -44,6 +44,17 @@ let OEScreenshotAspectRatioCorrectionDisabled = "disableScreenshotAspectRatioCor
 
 let OEGameCoreManagerModePreferenceKey = "OEGameCoreManagerModePreference"
 
+/// User preference key controlling whether RetroAchievements hardcore mode is on.
+/// Default `true` per RA's recommendation. Disables save state loading, rewind,
+/// frame advance, and cheats while enabled.
+let RAHardcoreEnabledKey = "RAHardcoreEnabled"
+
+/// Posted by `PrefRetroAchievementsController` when the user toggles hardcore mode.
+/// `userInfo[OEHardcoreEnabledKey]` carries the new `Bool`.
+extension Notification.Name {
+    static let OERAHardcoreDidChange = Notification.Name("OERAHardcoreDidChange")
+}
+
 @objc
 final class OEGameDocument: NSDocument {
     
@@ -132,6 +143,7 @@ final class OEGameDocument: NSDocument {
         UserDefaults.standard.register(defaults: [
             OEScreenshotFileFormatKey : NSBitmapImageRep.FileType.png.rawValue,
             OEScreenshotPropertiesKey : [NSBitmapImageRep.PropertyKey : Any](),
+            RAHardcoreEnabledKey      : true,
         ])
     }()
     
@@ -148,6 +160,13 @@ final class OEGameDocument: NSDocument {
     
     private var gameCoreManager: GameCoreManager?
     private var raCredentialObserver: Any?
+    private var raHardcoreObserver: Any?
+
+    /// Whether RetroAchievements hardcore mode is currently enabled.
+    /// Read from `UserDefaults` — writes go through `PrefRetroAchievementsController`.
+    @objc var isHardcoreModeEnabled: Bool {
+        UserDefaults.standard.bool(forKey: RAHardcoreEnabledKey)
+    }
 
     private var displaySleepAssertionID: IOPMAssertionID = 0
     
@@ -575,6 +594,10 @@ final class OEGameDocument: NSDocument {
                     NotificationCenter.default.removeObserver(observer)
                     self.raCredentialObserver = nil
                 }
+                if let observer = self.raHardcoreObserver {
+                    NotificationCenter.default.removeObserver(observer)
+                    self.raHardcoreObserver = nil
+                }
 
                 self.emulationStatus = .notSetup
                 
@@ -667,6 +690,21 @@ final class OEGameDocument: NSDocument {
                     let token    = note.userInfo?[RACredentialsTokenKey]    as? String
                     let username = note.userInfo?[RACredentialsUsernameKey] as? String
                     self.gameCoreManager?.setRetroAchievementsToken(token, username: username)
+                }
+
+                // Push the current hardcore preference to the helper at game start.
+                self.gameCoreManager?.setHardcoreEnabled(self.isHardcoreModeEnabled)
+
+                // Forward mid-session hardcore toggles. soft→hard requires a reset
+                // (RA spec: switching into hardcore must restart the run).
+                self.raHardcoreObserver = NotificationCenter.default.addObserver(
+                    forName: .OERAHardcoreDidChange,
+                    object: nil,
+                    queue: .main
+                ) { [weak self] note in
+                    guard let self = self else { return }
+                    let enabled = (note.userInfo?[OEHardcoreEnabledKey] as? Bool) ?? self.isHardcoreModeEnabled
+                    self.handleHardcoreToggle(enabled: enabled)
                 }
 
                 handler(true, nil)
@@ -1045,10 +1083,14 @@ final class OEGameDocument: NSDocument {
         emulationStatus = .starting
         gameCoreManager?.startEmulation() {
             self.emulationStatus = .playing
-            self.cheats.filter(\.isEnabled).forEach { self.setCheat($0) }
+            // Cheats are disabled in hardcore mode (RA spec).
+            if !self.isHardcoreModeEnabled {
+                self.cheats.filter(\.isEnabled).forEach { self.setCheat($0) }
+            }
         }
-        
+
         gameViewController.reflectEmulationPaused(false)
+        gameViewController.showHardcoreNotification(isHardcoreModeEnabled)
     }
     
     var isEmulationPaused: Bool {
@@ -1102,6 +1144,34 @@ final class OEGameDocument: NSDocument {
             gameCoreManager?.resetEmulation() {
                 self.isEmulationPaused = false
             }
+        }
+    }
+
+    /// Handle a mid-session hardcore toggle. Soft→hard requires confirming a reset
+    /// (RA spec). Hard→soft drops to softcore immediately with no prompt. Either
+    /// way, the new value is forwarded to the helper and the HUD is updated.
+    private func handleHardcoreToggle(enabled: Bool) {
+        if enabled {
+            isEmulationPaused = true
+            let alert = OEAlert()
+            alert.messageText = NSLocalizedString("Switching to hardcore mode requires restarting the game.", comment: "")
+            alert.informativeText = NSLocalizedString("Save states, rewind, frame advance, and cheats will be disabled.", comment: "")
+            alert.defaultButtonTitle = NSLocalizedString("Restart Game", comment: "")
+            alert.alternateButtonTitle = NSLocalizedString("Cancel", comment: "")
+            if alert.runModal() == .alertFirstButtonReturn {
+                gameCoreManager?.setHardcoreEnabled(true)
+                gameCoreManager?.resetEmulation { [weak self] in
+                    self?.isEmulationPaused = false
+                }
+                gameViewController.showHardcoreNotification(true)
+            } else {
+                // User cancelled — revert the preference so UI and state agree.
+                UserDefaults.standard.set(false, forKey: RAHardcoreEnabledKey)
+                isEmulationPaused = false
+            }
+        } else {
+            gameCoreManager?.setHardcoreEnabled(false)
+            gameViewController.showHardcoreNotification(false)
         }
     }
     
@@ -1372,8 +1442,9 @@ final class OEGameDocument: NSDocument {
     }
     
     @IBAction func addCheat(_ sender: Any?) {
+        if isHardcoreModeEnabled { return }
         let alert = OEAlert()
-        
+
         alert.otherInputLabelText = NSLocalizedString("Title:", comment: "")
         alert.showsOtherInputField = true
         alert.otherInputPlaceholderText = NSLocalizedString("Cheat Description", comment: "")
@@ -1406,6 +1477,7 @@ final class OEGameDocument: NSDocument {
     
     /// expects `sender.representedObject` to be a `Cheat` object
     @IBAction func toggleCheat(_ sender: AnyObject) {
+        if isHardcoreModeEnabled { return }
         guard let cheat = sender.representedObject as? Cheat
         else { return }
 
@@ -1413,8 +1485,9 @@ final class OEGameDocument: NSDocument {
         setCheat(cheat)
         if cheat.isUserAdded { saveUserCheats() }
     }
-    
+
     func setCheat(_ cheat: Cheat) {
+        if isHardcoreModeEnabled { return }
         gameCoreManager?.setCheat(cheat.code, withType: cheat.type, enabled: cheat.isEnabled)
     }
     
@@ -1833,7 +1906,16 @@ final class OEGameDocument: NSDocument {
         if state.rom != rom {
             return
         }
-        
+
+        if isHardcoreModeEnabled {
+            let alert = OEAlert()
+            alert.messageText = NSLocalizedString("Save state loading is disabled in hardcore mode.", comment: "")
+            alert.informativeText = NSLocalizedString("Turn off hardcore mode in Preferences ▸ RetroAchievements to load save states.", comment: "")
+            alert.defaultButtonTitle = NSLocalizedString("OK", comment: "")
+            alert.runModal()
+            return
+        }
+
         let loadState: (() -> Void) = {
             self.gameCoreManager?.loadStateFromFile(at: state.dataFileURL) { success, error in
                 if !success {
@@ -2055,12 +2137,14 @@ extension OEGameDocument: OESystemBindingsObserver {
     }
     
     func rewindGameplay(_ enable: Bool) {
+        if isHardcoreModeEnabled { return }
         let supportsRewinding = corePlugin.supportsRewinding(forSystemIdentifier: systemIdentifier)
         if !supportsRewinding || emulationStatus != .playing { return }
         gameViewController.showRewindNotification(enable)
     }
-    
+
     func stepGameplayFrameForward() {
+        if isHardcoreModeEnabled { return }
         if emulationStatus == .playing {
             toggleEmulationPaused(self)
         }
@@ -2068,8 +2152,9 @@ extension OEGameDocument: OESystemBindingsObserver {
             gameViewController.showStepForwardNotification()
         }
     }
-    
+
     func stepGameplayFrameBackward() {
+        if isHardcoreModeEnabled { return }
         if emulationStatus == .playing {
             toggleEmulationPaused(self)
         }

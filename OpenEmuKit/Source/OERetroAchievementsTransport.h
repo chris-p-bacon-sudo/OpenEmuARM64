@@ -35,6 +35,11 @@
 #define OERetroAchievementsTokenKey                   @"token"
 #define OERetroAchievementsUsernameKey                @"username"
 
+/// NSNotificationCenter name posted by OpenEmuHelperApp when the RA hardcore mode toggle flips.
+/// userInfo key: `OEHardcoreEnabledKey` (NSNumber boolValue).
+#define OEHardcoreModeDidChangeNotification @"OEHardcoreModeDidChange"
+#define OEHardcoreEnabledKey                @"hardcoreEnabled"
+
 /// NSNotificationCenter name posted by a core plugin when an achievement is unlocked.
 /// userInfo keys: `OEAchievementIDKey` (NSNumber UInt32), `OEAchievementTitleKey` (NSString),
 /// `OEAchievementDescriptionKey` (NSString), `OEAchievementBadgeURLKey` (NSString),

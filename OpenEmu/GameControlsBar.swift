@@ -418,23 +418,27 @@ final class GameControlsBar: NSWindow {
     
     var cheatsMenu: NSMenu {
         let menu = NSMenu()
-        
+        let hardcoreOn = gameViewController.document.isHardcoreModeEnabled
+        if hardcoreOn { menu.autoenablesItems = false }
+
         let item = NSMenuItem(title: NSLocalizedString("Add Cheat…", comment: ""), action: #selector(OEGameDocument.addCheat(_:)), keyEquivalent: "")
+        if hardcoreOn { item.isEnabled = false }
         menu.addItem(item)
-        
+
         let cheats = gameViewController.document.cheats
         if !cheats.isEmpty {
             menu.addItem(.separator())
-            
+
             for cheat in cheats {
                 let item = NSMenuItem(title: cheat.name, action: #selector(OEGameDocument.toggleCheat(_:)), keyEquivalent: "")
                 item.representedObject = cheat
                 item.state = cheat.isEnabled ? .on : .off
-                
+                if hardcoreOn { item.isEnabled = false }
+
                 menu.addItem(item)
             }
         }
-        
+
         return menu
     }
     

@@ -137,9 +137,18 @@ final class OEGameLayerNotificationView: NSImageView {
     lazy var rewindImage        = NSImage(named: "hud_rewind_notification")
     lazy var stepForwardImage   = NSImage(named: "hud_stepforward_notification")
     lazy var stepBackwardImage  = NSImage(named: "hud_stepbackward_notification")
-    
+    /// Hardcore overlay image. Falls back to an SF Symbol when no custom asset exists
+    /// so the indicator works before final art ships.
+    lazy var hardcoreImage: NSImage? = {
+        if let named = NSImage(named: "hud_hardcore_notification") { return named }
+        let config = NSImage.SymbolConfiguration(pointSize: 64, weight: .bold)
+        return NSImage(systemSymbolName: "lock.shield.fill", accessibilityDescription: "Hardcore Mode")?
+            .withSymbolConfiguration(config)
+    }()
+
     var isFastForwarding: Bool  = false
     var isRewinding: Bool       = false
+    var isHardcoreMode: Bool    = false
     
     override var wantsUpdateLayer: Bool { return true }
     
@@ -177,6 +186,13 @@ final class OEGameLayerNotificationView: NSImageView {
         performNotification(img: rewindImage, enabled: enabled, state: &isRewinding)
         if enabled {
             postAccessibilityNotification(announcement: NSLocalizedString("Rewind", tableName: "ControlLabels", comment: ""))
+        }
+    }
+
+    @objc public func showHardcore(enabled: Bool) {
+        performNotification(img: hardcoreImage, enabled: enabled, state: &isHardcoreMode)
+        if enabled {
+            postAccessibilityNotification(announcement: NSLocalizedString("Hardcore Mode", tableName: "ControlLabels", comment: ""))
         }
     }
     

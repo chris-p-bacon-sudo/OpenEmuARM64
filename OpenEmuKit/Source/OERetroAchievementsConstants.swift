@@ -34,6 +34,15 @@ public extension Notification.Name {
 public let OERetroAchievementsTokenKey    = "token"
 public let OERetroAchievementsUsernameKey = "username"
 
+/// Posted by `OpenEmuHelperApp` when the user toggles RA hardcore mode.
+/// - `userInfo[OEHardcoreEnabledKey]`: the new value as `Bool`.
+public extension Notification.Name {
+    static let OEHardcoreModeDidChange = Notification.Name("OEHardcoreModeDidChange")
+}
+
+/// Key in the `OEHardcoreModeDidChange` notification's `userInfo` dictionary.
+public let OEHardcoreEnabledKey = "hardcoreEnabled"
+
 /// Posted by a core plugin when an achievement is earned.
 public extension Notification.Name {
     static let OEAchievementUnlocked = Notification.Name("OEAchievementUnlocked")

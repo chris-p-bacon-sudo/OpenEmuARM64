@@ -122,6 +122,8 @@ typedef NS_ENUM(NSInteger, MultiTapType)
     MultiTapType _multiTapType;
     rc_client_t *_rcClient;
     id _raTokenObserver;
+    BOOL _raHardcoreEnabled;
+    id _raHardcoreObserver;
     int _rcConsole;
 }
 - (void)applyCheat:(NSString *)code;
@@ -297,7 +299,8 @@ static __weak GenPlusGameCore *_current;
     if (_rcClient) {
         rc_client_set_userdata(_rcClient, (__bridge void *)self);
         rc_client_set_event_handler(_rcClient, genplus_rc_event_handler);
-        rc_client_set_hardcore_enabled(_rcClient, 0);
+        _raHardcoreEnabled = YES;
+        rc_client_set_hardcore_enabled(_rcClient, _raHardcoreEnabled ? 1 : 0);
         rc_client_enable_logging(_rcClient, RC_CLIENT_LOG_LEVEL_INFO, genplus_rc_log);
 
         __weak GenPlusGameCore *weakSelf = self;
@@ -318,6 +321,20 @@ static __weak GenPlusGameCore *_current;
                                                  (__bridge void *)s);
             } else {
                 rc_client_logout(s->_rcClient);
+            }
+        }];
+
+        _raHardcoreObserver = [[NSNotificationCenter defaultCenter]
+            addObserverForName:OEHardcoreModeDidChangeNotification
+                        object:nil
+                         queue:nil
+                    usingBlock:^(NSNotification *note) {
+            NSNumber *enabled = note.userInfo[OEHardcoreEnabledKey];
+            if (enabled) {
+                self->_raHardcoreEnabled = enabled.boolValue;
+                if (self->_rcClient) {
+                    rc_client_set_hardcore_enabled(self->_rcClient, self->_raHardcoreEnabled ? 1 : 0);
+                }
             }
         }];
     }
@@ -414,6 +431,10 @@ static __weak GenPlusGameCore *_current;
     if (_raTokenObserver) {
         [[NSNotificationCenter defaultCenter] removeObserver:_raTokenObserver];
         _raTokenObserver = nil;
+    }
+    if (_raHardcoreObserver) {
+        [[NSNotificationCenter defaultCenter] removeObserver:_raHardcoreObserver];
+        _raHardcoreObserver = nil;
     }
     if (_rcClient) {
         rc_client_unload_game(_rcClient);

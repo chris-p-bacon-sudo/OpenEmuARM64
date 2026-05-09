@@ -82,6 +82,8 @@ NSString *MupenControlNames[] = {
 
     rc_client_t *_rcClient;
     id _raTokenObserver;
+    BOOL _raHardcoreEnabled;
+    id _raHardcoreObserver;
     NSString *_romPath;
 }
 
@@ -421,7 +423,8 @@ static void MupenSetAudioSpeed(int percent)
     if (_rcClient) {
         rc_client_set_userdata(_rcClient, (__bridge void *)self);
         rc_client_set_event_handler(_rcClient, mupen_rc_event_handler);
-        rc_client_set_hardcore_enabled(_rcClient, 0);
+        _raHardcoreEnabled = YES;
+        rc_client_set_hardcore_enabled(_rcClient, _raHardcoreEnabled ? 1 : 0);
         // Defer memory validation to do_frame (videoInterrupt) so RDRAM is live before rcheevos
         // validates achievement addresses. Without this, activation runs on the HTTP callback thread
         // before M64CMD_EXECUTE sets up g_dev.rdram.dram, returning 0 for every address and
@@ -447,6 +450,20 @@ static void MupenSetAudioSpeed(int percent)
                                                  (__bridge void *)s);
             } else {
                 rc_client_logout(s->_rcClient);
+            }
+        }];
+
+        _raHardcoreObserver = [[NSNotificationCenter defaultCenter]
+            addObserverForName:OEHardcoreModeDidChangeNotification
+                        object:nil
+                         queue:nil
+                    usingBlock:^(NSNotification *note) {
+            NSNumber *enabled = note.userInfo[OEHardcoreEnabledKey];
+            if (enabled) {
+                self->_raHardcoreEnabled = enabled.boolValue;
+                if (self->_rcClient) {
+                    rc_client_set_hardcore_enabled(self->_rcClient, self->_raHardcoreEnabled ? 1 : 0);
+                }
             }
         }];
     }
@@ -562,6 +579,10 @@ static void MupenSetAudioSpeed(int percent)
     if (_raTokenObserver) {
         [[NSNotificationCenter defaultCenter] removeObserver:_raTokenObserver];
         _raTokenObserver = nil;
+    }
+    if (_raHardcoreObserver) {
+        [[NSNotificationCenter defaultCenter] removeObserver:_raHardcoreObserver];
+        _raHardcoreObserver = nil;
     }
     if (_rcClient) {
         rc_client_unload_game(_rcClient);
