@@ -283,6 +283,7 @@ extension OSLog {
         gameCore.romMD5             = info.romMD5
         gameCore.romHeader          = info.romHeader
         gameCore.romSerial          = info.romSerial
+        gameCore.hardcoreEnabled    = _hardcoreEnabled
         
         _systemResponder.client                 = gameCore
         _systemResponder.globalEventsHandler    = self
@@ -507,6 +508,9 @@ extension OSLog {
 
     public func setHardcoreEnabled(_ enabled: Bool) {
         _hardcoreEnabled = enabled
+        // Gate rewind / fast-forward / frame-step at the core level. The OESystemResponder
+        // calls those directly on the OEGameCore client, bypassing our host-side gates.
+        gameCore?.hardcoreEnabled = enabled
         NotificationCenter.default.post(
             name: .OEHardcoreModeDidChange,
             object: nil,
@@ -839,23 +843,27 @@ extension OSLog {
     }
     
     public func fastForwardGameplay(_ enable: Bool) {
+        if _hardcoreEnabled { return }
         // Required so that _videoLayer.nextDrawable() vends frames faster than the display refresh rate
         // Fixes: https://github.com/OpenEmu/OpenEmu/issues/4780
         _videoLayer.displaySyncEnabled = !enable
         gameCoreOwner.fastForwardGameplay(enable)
     }
-    
+
     public func rewindGameplay(_ enable: Bool) {
+        if _hardcoreEnabled { return }
         // TODO: technically a data race, but it is only updating a single NSInteger
         _filterChain.frameDirection = enable ? -1 : 1
         gameCoreOwner.rewindGameplay(enable)
     }
-    
+
     public func stepGameplayFrameForward(_ sender: Any) {
+        if _hardcoreEnabled { return }
         gameCoreOwner.stepGameplayFrameForward()
     }
-    
+
     public func stepGameplayFrameBackward(_ sender: Any) {
+        if _hardcoreEnabled { return }
         gameCoreOwner.stepGameplayFrameBackward()
     }
     

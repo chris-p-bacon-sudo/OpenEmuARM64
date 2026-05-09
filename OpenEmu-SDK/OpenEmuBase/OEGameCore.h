@@ -240,6 +240,10 @@ OE_EXPORTED_CLASS
 @property(nonatomic, readonly) NSUInteger                     rewindBufferSeconds;
 @property(nonatomic, readonly) OEDiffQueue                   *rewindQueue;
 
+/// When YES, the base implementations of rewind, fast-forward, and frame-step
+/// become no-ops. Set by the helper when RetroAchievements hardcore mode is on.
+@property(nonatomic)           BOOL                           hardcoreEnabled;
+
 @property(nonatomic, copy)     NSString                      *systemIdentifier;
 @property(nonatomic, copy)     NSString                      *systemRegion;
 @property(nonatomic, copy)     NSString                      *ROMMD5 NS_SWIFT_NAME(romMD5);

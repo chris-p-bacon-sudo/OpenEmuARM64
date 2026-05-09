@@ -579,8 +579,9 @@ static Class GameCoreClass = Nil;
 #pragma clang diagnostic ignored "-Wdeprecated-implementations"
 - (void)fastForward:(BOOL)flag
 {
+    if (self.hardcoreEnabled) return;
     float newrate = flag ? 5.0 : 1.0;
-  
+
     if (self.isEmulationPaused) {
         lastRate = newrate;
     } else {
@@ -593,6 +594,7 @@ static Class GameCoreClass = Nil;
 #pragma clang diagnostic ignored "-Wdeprecated-implementations"
 - (void)rewind:(BOOL)flag
 {
+    if (self.hardcoreEnabled) { isRewinding = NO; return; }
     if(flag && [self supportsRewinding] && ![[self rewindQueue] isEmpty])
     {
         isRewinding = YES;
@@ -643,11 +645,13 @@ static Class GameCoreClass = Nil;
 
 - (void)stepFrameForward
 {
+    if (self.hardcoreEnabled) return;
     singleFrameStep = YES;
 }
 
 - (void)stepFrameBackward
 {
+    if (self.hardcoreEnabled) return;
     singleFrameStep = isRewinding = YES;
 }
 

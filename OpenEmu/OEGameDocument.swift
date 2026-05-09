@@ -2132,6 +2132,7 @@ extension OEGameDocument: OESystemBindingsObserver {
     }
     
     func fastForwardGameplay(_ enable: Bool) {
+        if isHardcoreModeEnabled { return }
         if emulationStatus != .playing { return }
         gameViewController.showFastForwardNotification(enable)
     }
