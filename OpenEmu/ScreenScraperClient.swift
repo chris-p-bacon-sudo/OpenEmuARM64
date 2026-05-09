@@ -211,7 +211,7 @@ final class ScreenScraperClient {
         // User credentials — optional, attached when the user has saved their own account.
         // Increases the user's personal rate limit beyond the anonymous shared quota.
         let ssUsername = UserDefaults.standard.string(forKey: "ScreenScraperUsername") ?? ""
-        let ssPassword = ScreenScraperCredentials.storedPassword() ?? ""
+        let ssPassword = OECredentialStore.shared.get(.screenScraperPassword) ?? ""
         if !ssUsername.isEmpty && !ssPassword.isEmpty {
             queryItems.append(URLQueryItem(name: "ssid",       value: ssUsername))
             queryItems.append(URLQueryItem(name: "sspassword", value: ssPassword))

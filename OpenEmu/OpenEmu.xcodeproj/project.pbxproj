@@ -155,14 +155,15 @@
 		1B32151514DDD49E00C5B50A /* OpenEmu.dae in Resources */ = {isa = PBXBuildFile; fileRef = 1B32151214DDD06500C5B50A /* OpenEmu.dae */; };
 		1B32151614DDD49E00C5B50A /* OpenEmuText.dae in Resources */ = {isa = PBXBuildFile; fileRef = 1B32151314DDD06500C5B50A /* OpenEmuText.dae */; };
 		1B6DA4A914DDE6A40067F7F6 /* SetupAssistantQCOpenGLLayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B6DA4A814DDE6A40067F7F6 /* SetupAssistantQCOpenGLLayer.swift */; };
+		1BB9BDE24AAA476991EB4F41 /* Arcade.oesystemplugin in Copy System Plugins to App Plugins */ = {isa = PBXBuildFile; fileRef = 945E42FB1517F2B500057D08 /* Arcade.oesystemplugin */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		1BFC26D0116C1CA300B95689 /* OpenEmuHelperApp in Resources */ = {isa = PBXBuildFile; fileRef = 1BEF2A9411682A530090F72B /* OpenEmuHelperApp */; };
 		1E0E90051A8932BB72161909 /* PrefCloudSyncController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EF37C00BE9099269AB29467 /* PrefCloudSyncController.swift */; };
 		1E2F3DBB10DEAB4C0019AA84 /* OEVersionMigrationController.m in Sources */ = {isa = PBXBuildFile; fileRef = 1E2F3DBA10DEAB4C0019AA84 /* OEVersionMigrationController.m */; };
 		1E4B7FC710DE4156A46DAB79 /* OEWiiSystemController.m in Sources */ = {isa = PBXBuildFile; fileRef = 60C6AA00A0A44B609186B94D /* OEWiiSystemController.m */; };
 		22041F6779860DD69DB04FDD /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 38F89E810430637386DA95E8 /* Cocoa.framework */; };
 		22477F282F81F85500C2A0BD /* Sentry in Frameworks */ = {isa = PBXBuildFile; productRef = 22477F272F81F85500C2A0BD /* Sentry */; };
-		22477F2B2F82A00000C2A0BD /* Sentry in Frameworks */ = {isa = PBXBuildFile; productRef = 22477F2C2F82A00000C2A0BD /* Sentry */; };
 		22477F2A2F81F99300C2A0BD /* SentryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22477F292F81F99300C2A0BD /* SentryService.swift */; };
+		22477F2B2F82A00000C2A0BD /* Sentry in Frameworks */ = {isa = PBXBuildFile; productRef = 22477F2C2F82A00000C2A0BD /* Sentry */; };
 		277CBA3719DE54200059A2C1 /* OpenEmuSystem.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C6D120C417112E1300E868A8 /* OpenEmuSystem.framework */; };
 		277CBA4A19DE54A80059A2C1 /* OEIntellivisionSystemResponder.m in Sources */ = {isa = PBXBuildFile; fileRef = 277CBA4819DE54A80059A2C1 /* OEIntellivisionSystemResponder.m */; };
 		277CBA5A19DE55210059A2C1 /* Keyboard-Mappings.plist in Resources */ = {isa = PBXBuildFile; fileRef = 277CBA5819DE55210059A2C1 /* Keyboard-Mappings.plist */; };
@@ -323,7 +324,6 @@
 		8763A38F1D5694E90089C30B /* OEArcadeSystemController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8763A38E1D5694E90089C30B /* OEArcadeSystemController.swift */; };
 		877EDD191E24BC63004D68E7 /* Controller-Preferences-JAP.plist in Resources */ = {isa = PBXBuildFile; fileRef = 877EDD141E24BC63004D68E7 /* Controller-Preferences-JAP.plist */; };
 		877EDD231E24BEE0004D68E7 /* Controller-Preferences-JAP.plist in Resources */ = {isa = PBXBuildFile; fileRef = 877EDD1E1E24BEE0004D68E7 /* Controller-Preferences-JAP.plist */; };
-		1BB9BDE24AAA476991EB4F41 /* Arcade.oesystemplugin in Copy System Plugins to App Plugins */ = {isa = PBXBuildFile; fileRef = 945E42FB1517F2B500057D08 /* Arcade.oesystemplugin */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		87BD9E241C2A66B1006722DF /* Atari 5200.oesystemplugin in Copy System Plugins to App Plugins */ = {isa = PBXBuildFile; fileRef = 94A224B31707544100098DA0 /* Atari 5200.oesystemplugin */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		87BD9E251C2A66BC006722DF /* Atari 7800.oesystemplugin in Copy System Plugins to App Plugins */ = {isa = PBXBuildFile; fileRef = 941F5A0117A785AD0005D7EA /* Atari 7800.oesystemplugin */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		87BD9E261C2A66CE006722DF /* Lynx.oesystemplugin in Copy System Plugins to App Plugins */ = {isa = PBXBuildFile; fileRef = 94A22453170753C800098DA0 /* Lynx.oesystemplugin */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
@@ -668,6 +668,7 @@
 		EF78E5264D33437A93870DF2 /* OpenEmuSystem.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C6D120C417112E1300E868A8 /* OpenEmuSystem.framework */; };
 		EFBD5D7814EFE19A00FBD1E0 /* NSColor+OEAdditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFBD5D7714EFE19A00FBD1E0 /* NSColor+OEAdditions.swift */; };
 		EFBD5D7F14EFE26300FBD1E0 /* OEGridView.m in Sources */ = {isa = PBXBuildFile; fileRef = EFBD5D7C14EFE26300FBD1E0 /* OEGridView.m */; };
+		F2E3C43668DB03A494D5B16E /* OECredentialStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42A14B489D09FD1B597AD586 /* OECredentialStore.swift */; };
 		FEB66268187B792700D14713 /* OEMSXSystemController.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEB66251187B62CA00D14713 /* OEMSXSystemController.swift */; };
 		FEB66269187B792700D14713 /* OEMSXSystemResponder.m in Sources */ = {isa = PBXBuildFile; fileRef = FEB66254187B751700D14713 /* OEMSXSystemResponder.m */; };
 		FEB6626B187B797600D14713 /* OpenEmuSystem.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C6D120C417112E1300E868A8 /* OpenEmuSystem.framework */; };
@@ -1237,6 +1238,7 @@
 		3E3511CD1C35DA920063E8CA /* nl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.strings; name = nl; path = nl.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		3E3511CE1C35DA920063E8CA /* nl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.strings; name = nl; path = nl.lproj/Localizable.strings; sourceTree = "<group>"; };
 		3E3511CF1C35DA920063E8CA /* nl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.strings; name = nl; path = nl.lproj/ControlLabels.strings; sourceTree = "<group>"; };
+		42A14B489D09FD1B597AD586 /* OECredentialStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OECredentialStore.swift; sourceTree = "<group>"; };
 		4C5E668B27CE43FF88AE57AF /* OEWiiSystemResponder.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = OEWiiSystemResponder.m; sourceTree = "<group>"; };
 		53439A8A13B92C4A005C0CC8 /* OELibraryDatabase.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OELibraryDatabase.h; sourceTree = "<group>"; };
 		53439A9313B92C97005C0CC8 /* OEDBAllGamesCollection.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = OEDBAllGamesCollection.swift; sourceTree = "<group>"; };
@@ -4073,6 +4075,7 @@
 				0EF37C00BE9099269AB29467 /* PrefCloudSyncController.swift */,
 				35F8401C31D685D3E7EAA048 /* OEGoogleDriveSecrets.template.swift */,
 				CC0011223344557201900001 /* ScreenScraperDevCredentials.template.swift */,
+				42A14B489D09FD1B597AD586 /* OECredentialStore.swift */,
 			);
 			name = OpenEmu;
 			sourceTree = "<group>";
@@ -6436,6 +6439,7 @@
 				060837EB57D7C9F44F51156B /* OESyncStatusOverlayView.swift in Sources */,
 				1E0E90051A8932BB72161909 /* PrefCloudSyncController.swift in Sources */,
 				170AA9A84CF138836883E194 /* OEGoogleDriveSecrets.template.swift in Sources */,
+				F2E3C43668DB03A494D5B16E /* OECredentialStore.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

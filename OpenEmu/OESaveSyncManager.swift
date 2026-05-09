@@ -23,7 +23,6 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import Cocoa
-import Security
 import Network
 import os.log
 
@@ -89,13 +88,19 @@ final class OESaveSyncManager: NSObject {
     // MARK: - OAuth Tokens
 
     private var accessToken: String?
-    // In-memory cache for Keychain-backed tokens. Pre-loaded off the main thread in
-    // startMonitoring() so SecItemCopyMatching is never called on the main thread during
-    // timer-driven or FSEvent-driven sync checks (which run on the main actor in Swift 5.x).
+    // In-memory cache backed by OECredentialStore. Pre-loaded in startMonitoring() so the
+    // store's file I/O is never triggered on the main thread during timer or FSEvent callbacks.
     private var _refreshToken: String?
     private var refreshToken: String? {
         get { _refreshToken }
-        set { _refreshToken = newValue; keychainWrite(value: newValue, account: "refreshToken") }
+        set {
+            _refreshToken = newValue
+            if let token = newValue {
+                OECredentialStore.shared.set(token, forKey: .googleDriveRefreshToken)
+            } else {
+                OECredentialStore.shared.remove(.googleDriveRefreshToken)
+            }
+        }
     }
     private var tokenExpiryDate: Date?
 
@@ -168,15 +173,9 @@ final class OESaveSyncManager: NSObject {
         startFSEventStream(for: urls)
         os_log(.info, log: log, "Save Sync Manager started monitoring %d directories.", urls.count)
 
-        // Pre-load persisted tokens from Keychain on a background thread so the main thread
-        // is never blocked by SecItemCopyMatching when the sync timer or FSEvent fires.
-        Task.detached(priority: .utility) { [weak self] in
-            guard let self = self else { return }
-            let token = self.keychainRead(account: "refreshToken")
-            await MainActor.run {
-                self._refreshToken = token
-            }
-        }
+        // Pre-load the refresh token from the credential store. File I/O + AES decrypt is
+        // fast enough to do inline here — no IPC, no securityd, no permission dialogs.
+        _refreshToken = OECredentialStore.shared.get(.googleDriveRefreshToken)
 
         startBackgroundTimer()
     }
@@ -877,48 +876,6 @@ final class OESaveSyncManager: NSObject {
             os_log(.error, log: log, "[%@] HTTP %d: %@", context, http.statusCode, body)
             throw OESaveSyncError.apiError(statusCode: http.statusCode, body: body)
         }
-    }
-    
-    // MARK: - Keychain Helpers
-    
-    private func keychainWrite(value: String?, account: String) {
-        let service = OEGoogleDriveConfig.keychainService
-        
-        // Delete existing entry first.
-        let deleteQuery: [CFString: Any] = [
-            kSecClass:   kSecClassGenericPassword,
-            kSecAttrService: service,
-            kSecAttrAccount: account,
-        ]
-        SecItemDelete(deleteQuery as CFDictionary)
-        
-        guard let value = value, let data = value.data(using: .utf8) else { return }
-        
-        let addQuery: [CFString: Any] = [
-            kSecClass:        kSecClassGenericPassword,
-            kSecAttrService:  service,
-            kSecAttrAccount:  account,
-            kSecValueData:    data,
-            kSecAttrAccessible: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
-        ]
-        let status = SecItemAdd(addQuery as CFDictionary, nil)
-        if status != errSecSuccess {
-            os_log(.error, log: log, "Keychain write failed for '%@': %d", account, status)
-        }
-    }
-    
-    private func keychainRead(account: String) -> String? {
-        let query: [CFString: Any] = [
-            kSecClass:       kSecClassGenericPassword,
-            kSecAttrService: OEGoogleDriveConfig.keychainService,
-            kSecAttrAccount: account,
-            kSecReturnData:  kCFBooleanTrue!,
-            kSecMatchLimit:  kSecMatchLimitOne,
-        ]
-        var result: AnyObject?
-        let status = SecItemCopyMatching(query as CFDictionary, &result)
-        guard status == errSecSuccess, let data = result as? Data else { return nil }
-        return String(data: data, encoding: .utf8)
     }
     
     // MARK: - Utilities

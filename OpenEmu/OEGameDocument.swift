@@ -652,7 +652,7 @@ final class OEGameDocument: NSDocument {
 
                 // Pass stored RA credentials so the core can log in at launch
                 let raUsername = UserDefaults.standard.string(forKey: "RAUsername")
-                let raToken    = RetroAchievementsCredentials.storedToken()
+                let raToken    = OECredentialStore.shared.get(.retroAchievementsToken)
                 if let username = raUsername, let token = raToken {
                     self.gameCoreManager?.setRetroAchievementsToken(token, username: username)
                 }

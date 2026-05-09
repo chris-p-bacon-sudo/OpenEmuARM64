@@ -23,7 +23,6 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import Cocoa
-import Security
 
 /// Preferences pane for ScreenScraper cover art credentials.
 final class PrefScreenScraperController: NSViewController {
@@ -181,46 +180,36 @@ final class PrefScreenScraperController: NSViewController {
 
     private func loadSavedCredentials() {
         usernameField.stringValue = UserDefaults.standard.string(forKey: "ScreenScraperUsername") ?? ""
-        // SecItemCopyMatching blocks on Security daemon — do not call on main thread.
-        Task.detached(priority: .userInitiated) { [weak self] in
-            guard let self else { return }
-            let hasPassword = ScreenScraperCredentials.hasStoredPassword()
-            await MainActor.run {
-                if hasPassword {
-                    self.passwordField.placeholderString = "••••••••  (saved)"
-                }
-            }
+        // Password is stored encrypted — show placeholder only, don't pre-fill for security
+        if OECredentialStore.shared.has(.screenScraperPassword) {
+            passwordField.placeholderString = "••••••••  (saved)"
         }
     }
 
     private func updateStatus() {
         let username = UserDefaults.standard.string(forKey: "ScreenScraperUsername") ?? ""
-        // SecItemCopyMatching blocks on Security daemon — do not call on main thread.
-        Task.detached(priority: .userInitiated) { [weak self] in
-            guard let self else { return }
-            let hasPassword = ScreenScraperCredentials.hasStoredPassword()
-            await MainActor.run {
-                let isSignedIn = !username.isEmpty && hasPassword
-                if isSignedIn {
-                    // Show the last fetch error if one occurred, so users know why art lookup failed.
-                    // If no fetch has been attempted yet, show a neutral "credentials saved" state
-                    // rather than a green "signed in" that implies verified authentication.
-                    if let fetchError = ScreenScraperClient.shared.lastFetchError,
-                       let description = fetchError.errorDescription {
-                        self.statusLabel.stringValue = description
-                        self.statusLabel.textColor = NSColor(red: 0.87, green: 0.20, blue: 0.18, alpha: 1)
-                    } else if ScreenScraperClient.shared.hasVerifiedCredentials {
-                        self.statusLabel.stringValue = "✓  Signed in as \(username)"
-                        self.statusLabel.textColor = NSColor(red: 0.2, green: 0.78, blue: 0.35, alpha: 1)
-                    } else {
-                        self.statusLabel.stringValue = "Credentials saved — not yet verified. Save to confirm."
-                        self.statusLabel.textColor = .secondaryLabelColor
-                    }
+        let isSignedIn = !username.isEmpty && OECredentialStore.shared.has(.screenScraperPassword)
+
+        if isSignedIn {
+            // Show the last fetch error if one occurred, so users know why art lookup failed.
+            // If no fetch has been attempted yet, show a neutral "credentials saved" state
+            // rather than a green "signed in" that implies verified authentication.
+            Task { @MainActor in
+                if let fetchError = ScreenScraperClient.shared.lastFetchError,
+                   let description = fetchError.errorDescription {
+                    self.statusLabel.stringValue = description
+                    self.statusLabel.textColor = NSColor(red: 0.87, green: 0.20, blue: 0.18, alpha: 1)
+                } else if ScreenScraperClient.shared.hasVerifiedCredentials {
+                    self.statusLabel.stringValue = "✓  Signed in as \(username)"
+                    self.statusLabel.textColor = NSColor(red: 0.2, green: 0.78, blue: 0.35, alpha: 1)
                 } else {
-                    self.statusLabel.stringValue = "Not signed in — ScreenScraper will be skipped. OpenVGDB and libretro-thumbnails are still active."
+                    self.statusLabel.stringValue = "Credentials saved — not yet verified. Save to confirm."
                     self.statusLabel.textColor = .secondaryLabelColor
                 }
             }
+        } else {
+            statusLabel.stringValue = "Not signed in — ScreenScraper will be skipped. OpenVGDB and libretro-thumbnails are still active."
+            statusLabel.textColor = .secondaryLabelColor
         }
     }
 
@@ -242,7 +231,7 @@ final class PrefScreenScraperController: NSViewController {
         }
 
         UserDefaults.standard.set(username, forKey: "ScreenScraperUsername")
-        ScreenScraperCredentials.storePassword(password)
+        OECredentialStore.shared.set(password, forKey: .screenScraperPassword)
         passwordField.stringValue = ""
         passwordField.placeholderString = "••••••••  (saved)"
 
@@ -274,7 +263,7 @@ final class PrefScreenScraperController: NSViewController {
 
     @objc private func clearCredentials() {
         UserDefaults.standard.removeObject(forKey: "ScreenScraperUsername")
-        ScreenScraperCredentials.deletePassword()
+        OECredentialStore.shared.remove(.screenScraperPassword)
         usernameField.stringValue = ""
         passwordField.stringValue = ""
         passwordField.placeholderString = "screenscraper.fr password"
@@ -298,58 +287,4 @@ extension PrefScreenScraperController: PreferencePane {
     var viewSize: NSSize { NSSize(width: 468, height: 360) }
 }
 
-// MARK: - Keychain Helper
 
-/// Thin wrapper around SecItem for ScreenScraper password storage.
-enum ScreenScraperCredentials {
-
-    private static let service = "com.openemu.ScreenScraper"
-    private static let account = "password"
-
-    static func storedPassword() -> String? {
-        let query: [CFString: Any] = [
-            kSecClass:       kSecClassGenericPassword,
-            kSecAttrService: service,
-            kSecAttrAccount: account,
-            kSecReturnData:  kCFBooleanTrue!,
-            kSecMatchLimit:  kSecMatchLimitOne,
-        ]
-        var result: AnyObject?
-        let status = SecItemCopyMatching(query as CFDictionary, &result)
-        guard status == errSecSuccess, let data = result as? Data else { return nil }
-        return String(data: data, encoding: .utf8)
-    }
-
-    static func hasStoredPassword() -> Bool {
-        return storedPassword() != nil
-    }
-
-    static func storePassword(_ password: String) {
-        // Delete any existing entry first
-        let deleteQuery: [CFString: Any] = [
-            kSecClass:       kSecClassGenericPassword,
-            kSecAttrService: service,
-            kSecAttrAccount: account,
-        ]
-        SecItemDelete(deleteQuery as CFDictionary)
-
-        guard let data = password.data(using: .utf8) else { return }
-        let addQuery: [CFString: Any] = [
-            kSecClass:          kSecClassGenericPassword,
-            kSecAttrService:    service,
-            kSecAttrAccount:    account,
-            kSecValueData:      data,
-            kSecAttrAccessible: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
-        ]
-        SecItemAdd(addQuery as CFDictionary, nil)
-    }
-
-    static func deletePassword() {
-        let query: [CFString: Any] = [
-            kSecClass:       kSecClassGenericPassword,
-            kSecAttrService: service,
-            kSecAttrAccount: account,
-        ]
-        SecItemDelete(query as CFDictionary)
-    }
-}

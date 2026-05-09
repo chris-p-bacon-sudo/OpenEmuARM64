@@ -23,7 +23,6 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import Cocoa
-import Security
 
 // MARK: - Notification
 
@@ -179,14 +178,14 @@ final class PrefRetroAchievementsController: NSViewController {
 
     private func loadSavedCredentials() {
         usernameField.stringValue = UserDefaults.standard.string(forKey: "RAUsername") ?? ""
-        if RetroAchievementsCredentials.hasStoredToken() {
+        if OECredentialStore.shared.has(.retroAchievementsToken) {
             passwordField.placeholderString = "••••••••  (saved)"
         }
     }
 
     private func updateStatus() {
         let username = UserDefaults.standard.string(forKey: "RAUsername") ?? ""
-        let isSignedIn = !username.isEmpty && RetroAchievementsCredentials.hasStoredToken()
+        let isSignedIn = !username.isEmpty && OECredentialStore.shared.has(.retroAchievementsToken)
         if isSignedIn {
             statusLabel.stringValue = "✓  Signed in as \(username)"
             statusLabel.textColor = NSColor(red: 0.2, green: 0.78, blue: 0.35, alpha: 1)
@@ -233,7 +232,7 @@ final class PrefRetroAchievementsController: NSViewController {
             guard let self = self else { return }
             switch result {
             case .success(let token):
-                RetroAchievementsCredentials.storeToken(token)
+                OECredentialStore.shared.set(token, forKey: .retroAchievementsToken)
                 UserDefaults.standard.set(username, forKey: "RAUsername")
                 self.passwordField.stringValue = ""
                 self.passwordField.placeholderString = "••••••••  (saved)"
@@ -253,7 +252,7 @@ final class PrefRetroAchievementsController: NSViewController {
 
     @objc private func signOut() {
         UserDefaults.standard.removeObject(forKey: "RAUsername")
-        RetroAchievementsCredentials.deleteToken()
+        OECredentialStore.shared.remove(.retroAchievementsToken)
         usernameField.stringValue = ""
         passwordField.stringValue = ""
         passwordField.placeholderString = "retroachievements.org password"
@@ -278,61 +277,7 @@ extension PrefRetroAchievementsController: PreferencePane {
     var viewSize: NSSize { NSSize(width: 468, height: 300) }
 }
 
-// MARK: - Keychain Helper
 
-/// Thin wrapper around SecItem for RetroAchievements token storage.
-/// Stores the login token (not the password — the password is used only once to obtain the token).
-enum RetroAchievementsCredentials {
-
-    private static let service = "com.openemu.RetroAchievements"
-    private static let account = "token"
-
-    static func storedToken() -> String? {
-        let query: [CFString: Any] = [
-            kSecClass:       kSecClassGenericPassword,
-            kSecAttrService: service,
-            kSecAttrAccount: account,
-            kSecReturnData:  kCFBooleanTrue!,
-            kSecMatchLimit:  kSecMatchLimitOne,
-        ]
-        var result: AnyObject?
-        let status = SecItemCopyMatching(query as CFDictionary, &result)
-        guard status == errSecSuccess, let data = result as? Data else { return nil }
-        return String(data: data, encoding: .utf8)
-    }
-
-    static func hasStoredToken() -> Bool {
-        return storedToken() != nil
-    }
-
-    static func storeToken(_ token: String) {
-        let deleteQuery: [CFString: Any] = [
-            kSecClass:       kSecClassGenericPassword,
-            kSecAttrService: service,
-            kSecAttrAccount: account,
-        ]
-        SecItemDelete(deleteQuery as CFDictionary)
-
-        guard let data = token.data(using: .utf8) else { return }
-        let addQuery: [CFString: Any] = [
-            kSecClass:          kSecClassGenericPassword,
-            kSecAttrService:    service,
-            kSecAttrAccount:    account,
-            kSecValueData:      data,
-            kSecAttrAccessible: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
-        ]
-        SecItemAdd(addQuery as CFDictionary, nil)
-    }
-
-    static func deleteToken() {
-        let query: [CFString: Any] = [
-            kSecClass:       kSecClassGenericPassword,
-            kSecAttrService: service,
-            kSecAttrAccount: account,
-        ]
-        SecItemDelete(query as CFDictionary)
-    }
-}
 
 // MARK: - RA API
 

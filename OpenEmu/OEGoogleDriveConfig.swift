@@ -57,10 +57,6 @@ enum OEGoogleDriveConfig {
     /// Fixed identifier for the Drive hidden App Data folder.
     static let appDataFolderName = "appDataFolder"
     
-    // MARK: - Keychain
-    
-    static let keychainService = "com.openemu.GoogleDriveSaveSync"
-    
     // MARK: - Sync Settings
     
     /// How long (in seconds) between automated background sync checks when a game is running.

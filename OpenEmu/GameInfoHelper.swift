@@ -50,7 +50,7 @@ final class GameInfoHelper {
             lazy var hasSScredentials: Bool = {
                 let user = UserDefaults.standard.string(forKey: "ScreenScraperUsername") ?? ""
                 guard !user.isEmpty else { return false }
-                return !(ScreenScraperCredentials.storedPassword() ?? "").isEmpty
+                return OECredentialStore.shared.has(.screenScraperPassword)
             }()
 
             guard let database = database else {
