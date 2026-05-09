@@ -1084,7 +1084,7 @@ final class OEGameDocument: NSDocument {
         gameCoreManager?.startEmulation() {
             self.emulationStatus = .playing
             // Cheats are disabled in hardcore mode (RA spec).
-            if !self.isHardcoreModeEnabled {
+            if HardcoreModePolicy.allows(.cheats, hardcoreEnabled: self.isHardcoreModeEnabled) {
                 self.cheats.filter(\.isEnabled).forEach { self.setCheat($0) }
             }
         }
@@ -1151,7 +1151,7 @@ final class OEGameDocument: NSDocument {
     /// (RA spec). Hard→soft drops to softcore immediately with no prompt. Either
     /// way, the new value is forwarded to the helper and the HUD is updated.
     private func handleHardcoreToggle(enabled: Bool) {
-        if enabled {
+        if enabled && HardcoreModePolicy.requiresResetWhenEnabling {
             isEmulationPaused = true
             let alert = OEAlert()
             alert.messageText = NSLocalizedString("Switching to hardcore mode requires restarting the game.", comment: "")
@@ -1169,9 +1169,16 @@ final class OEGameDocument: NSDocument {
                 UserDefaults.standard.set(false, forKey: RAHardcoreEnabledKey)
                 isEmulationPaused = false
             }
-        } else {
+        } else if !enabled && HardcoreModePolicy.requiresResetWhenDisabling {
+            // Reserved branch for future spec changes — currently unreachable.
             gameCoreManager?.setHardcoreEnabled(false)
+            gameCoreManager?.resetEmulation { [weak self] in
+                self?.isEmulationPaused = false
+            }
             gameViewController.showHardcoreNotification(false)
+        } else {
+            gameCoreManager?.setHardcoreEnabled(enabled)
+            gameViewController.showHardcoreNotification(enabled)
         }
     }
     
@@ -1907,7 +1914,7 @@ final class OEGameDocument: NSDocument {
             return
         }
 
-        if isHardcoreModeEnabled {
+        if !HardcoreModePolicy.allows(.loadState, hardcoreEnabled: isHardcoreModeEnabled) {
             let alert = OEAlert()
             alert.messageText = NSLocalizedString("Save state loading is disabled in hardcore mode.", comment: "")
             alert.informativeText = NSLocalizedString("Turn off hardcore mode in Preferences ▸ RetroAchievements to load save states.", comment: "")

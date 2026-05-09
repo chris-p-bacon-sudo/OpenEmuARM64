@@ -525,12 +525,26 @@ extension OSLog {
     }
     
     public func loadStateFromFile(at fileURL: URL, completionHandler block: @escaping (Bool, Error?) -> Void) {
+        // Defense in depth: the document layer also blocks this with a user
+        // alert, but the contract with RA is that the helper must never
+        // restore prior state during a hardcore session, regardless of how
+        // the call arrives. See HardcoreModePolicy.
+        guard HardcoreModePolicy.allows(.loadState, hardcoreEnabled: _hardcoreEnabled) else {
+            block(false, NSError(domain: OEGameCoreErrorDomain,
+                                 code: 0,
+                                 userInfo: [NSLocalizedDescriptionKey: "Loading save states is disabled in hardcore mode."]))
+            return
+        }
         gameCore.perform {
             self.gameCore.loadStateFromFile(at: fileURL, completionHandler: block)
         }
     }
-    
+
     public func setCheat(_ cheatCode: String, withType type: String, enabled: Bool) {
+        // Defense in depth: the document layer skips applying cheats when
+        // hardcore is on, but enforce here too so a refactor of the document
+        // can't silently let cheats through. See HardcoreModePolicy.
+        guard HardcoreModePolicy.allows(.cheats, hardcoreEnabled: _hardcoreEnabled) else { return }
         gameCore.perform {
             self.gameCore.setCheat(cheatCode, setType: type, setEnabled: enabled)
         }
