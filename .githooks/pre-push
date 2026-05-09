@@ -30,6 +30,21 @@ if [ ! -x ./Scripts/verify.sh ]; then
   exit 0
 fi
 
+# Skip verify if the exact HEAD being pushed already passed verification and
+# the tree is clean. verify.sh writes this stamp on a successful run. This
+# avoids re-running verify back-to-back, which races on Xcode's build.db lock
+# (SWBBuildService stays alive ~30s after xcodebuild exits and holds the DB).
+STAMP_FILE=$(git rev-parse --git-path verify-passed 2>/dev/null || true)
+HEAD_SHA=$(git rev-parse HEAD 2>/dev/null || echo "")
+if [ -n "$STAMP_FILE" ] && [ -f "$STAMP_FILE" ] && [ -n "$HEAD_SHA" ]; then
+  STAMPED_SHA=$(cat "$STAMP_FILE" 2>/dev/null || echo "")
+  if [ "$STAMPED_SHA" = "$HEAD_SHA" ] && git diff --quiet && git diff --cached --quiet; then
+    echo "[pre-push] verify.sh PASSED earlier for $HEAD_SHA — skipping"
+    echo "[pre-push] (delete $STAMP_FILE to force a re-run)"
+    exit 0
+  fi
+fi
+
 echo "[pre-push] Running Scripts/verify.sh ..."
 if ./Scripts/verify.sh; then
   echo "[pre-push] verify.sh PASSED — push allowed"
