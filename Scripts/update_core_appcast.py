@@ -22,12 +22,96 @@
 
 import argparse
 import os
+import plistlib
 import re
 import subprocess
 import sys
+import tempfile
+import zipfile
 
 
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
+
+
+def verify_zip_version(zip_path, expected_version):
+    """Open the zip's Info.plist and confirm CFBundleVersion matches.
+
+    This is the mechanical enforcement of release-core.md Step 7b. It exists
+    because cores-v1.2.0 (Apr 30, 2026) shipped 5 cores whose appcast advertised
+    bumped versions but whose zipped binaries' Info.plist still reported the
+    previous version. Sparkle entered an infinite "update available" loop and
+    the May 6 revert (98141d56) had to roll the appcasts back, leaving every
+    user on the older binary. The release-core skill grew a documented Step 7b
+    after that, but a human or agent could still skip it. This function makes
+    it impossible to skip when --sign-zip is in play.
+
+    Refuses (sys.exit(1)) on mismatch. Returns silently on match.
+    """
+    if not os.path.isfile(zip_path):
+        print(f'ERROR: --sign-zip path does not exist: {zip_path}',
+              file=sys.stderr)
+        sys.exit(1)
+
+    try:
+        with zipfile.ZipFile(zip_path) as zf:
+            # The bundle root inside the zip is e.g. "Foo.oecoreplugin/".
+            # Find the Info.plist at the top of any *.oecoreplugin/Contents/.
+            info_plist_paths = [
+                n for n in zf.namelist()
+                if n.endswith('.oecoreplugin/Contents/Info.plist')
+            ]
+            if not info_plist_paths:
+                print(f'ERROR: no .oecoreplugin/Contents/Info.plist found '
+                      f'inside {zip_path}', file=sys.stderr)
+                sys.exit(1)
+            if len(info_plist_paths) > 1:
+                print(f'ERROR: multiple .oecoreplugin bundles inside '
+                      f'{zip_path}: {info_plist_paths}', file=sys.stderr)
+                sys.exit(1)
+            with zf.open(info_plist_paths[0]) as plist_f:
+                info = plistlib.load(plist_f)
+    except (zipfile.BadZipFile, plistlib.InvalidFileException) as exc:
+        print(f'ERROR: could not read Info.plist from {zip_path}: {exc}',
+              file=sys.stderr)
+        sys.exit(1)
+
+    bundle_version = info.get('CFBundleVersion')
+    short_version = info.get('CFBundleShortVersionString')
+
+    # The appcast's sparkle:version is what Sparkle compares against the
+    # installed bundle's CFBundleVersion. CFBundleVersion is the authoritative
+    # check. CFBundleShortVersionString is a softer match — when present, it
+    # should also agree, but some cores omit it entirely.
+    if bundle_version != expected_version:
+        print(f'ERROR: version mismatch — refusing to write appcast.\n'
+              f'  Appcast about to advertise: sparkle:version="{expected_version}"\n'
+              f'  Zip\'s Info.plist reports:   CFBundleVersion="{bundle_version}"\n'
+              f'\n'
+              f'This is the cores-v1.2.0 class of bug. If we write the appcast\n'
+              f'as requested, every user already on "{bundle_version}" will see\n'
+              f'an update prompt, download this zip, install it, still report\n'
+              f'"{bundle_version}" internally, and loop on the same prompt forever.\n'
+              f'\n'
+              f'Likely causes:\n'
+              f'  - The Info.plist version bump was saved to the wrong path.\n'
+              f'  - The build cached an old binary; clean and rebuild.\n'
+              f'  - Info.plist uses $(CURRENT_PROJECT_VERSION); also bump\n'
+              f'    CURRENT_PROJECT_VERSION in the .xcodeproj/project.pbxproj.\n'
+              f'\n'
+              f'Fix the bundle, rebuild, then re-run this script. Do not edit\n'
+              f'the appcast to match the wrong zip.',
+              file=sys.stderr)
+        sys.exit(1)
+
+    if short_version is not None and short_version != expected_version:
+        print(f'WARNING: CFBundleShortVersionString="{short_version}" inside '
+              f'the zip does not match the version about to be advertised '
+              f'("{expected_version}"). Proceeding because CFBundleVersion '
+              f'matches, but consider aligning both fields.',
+              file=sys.stderr)
+
+    print(f'Verified: zip\'s CFBundleVersion="{bundle_version}" matches '
+          f'requested sparkle:version="{expected_version}".')
 
 
 def find_sign_update():
@@ -92,6 +176,10 @@ def main():
     ed_sig = None
     length = args.length
     if args.sign_zip:
+        # Enforce the cores-v1.2.0 class of bug at the script level. Refuses
+        # to continue if the zip's CFBundleVersion does not match the version
+        # we're about to advertise in the appcast. See verify_zip_version().
+        verify_zip_version(args.sign_zip, args.version)
         ed_sig, length = sign_zip(args.sign_update, args.sign_zip)
 
     sig_attr = f'\n        sparkle:edSignature="{ed_sig}"' if ed_sig else ''

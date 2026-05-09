@@ -141,6 +141,12 @@ contain (because the plist bump didn't take, or an old zip got reused).
 Stop here if it fails — the appcast must never claim a version that
 isn't in the zip.
 
+**Note:** since `chore/release-skill-version-precondition`,
+`Scripts/update_core_appcast.py` ALSO enforces this check automatically
+whenever `--sign-zip` is passed (Step 10 below). The manual check here
+is kept as defense-in-depth and to surface the failure earlier in the
+pipeline (before signing/uploading rather than after).
+
 ```bash
 VERIFY_DIR=$(mktemp -d)
 ditto -x -k "$ZIP" "$VERIFY_DIR"
