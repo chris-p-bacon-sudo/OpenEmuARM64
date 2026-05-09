@@ -10,6 +10,7 @@
 		B5AE7A121710BD6200ED5801 /* OELibretroCoreTranslator.m in Sources */ = {isa = PBXBuildFile; fileRef = B5AE7A111710BD6200ED5801 /* OELibretroCoreTranslator.m */; };
 		B5AE7A141710BD6200ED5801 /* OELibretroCoreTranslator.h in Headers */ = {isa = PBXBuildFile; fileRef = B5AE7A131710BD6200ED5801 /* OELibretroCoreTranslator.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		0109BBA5209F25EB002419C1 /* OEDiffQueueTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 0109BBA4209F25EB002419C1 /* OEDiffQueueTests.m */; };
+		0442B0011A2F4E6C00442001 /* OEGameCoreHardcoreTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 0442B0001A2F4E6C00442001 /* OEGameCoreHardcoreTests.m */; };
 		0109BBA7209F25EB002419C1 /* OpenEmuBase.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C6772A261710A4BA00ED580A /* OpenEmuBase.framework */; };
 		011829A720ACA8AA0030B347 /* OEAudioBuffer.h in Headers */ = {isa = PBXBuildFile; fileRef = 011829A620ACA8AA0030B347 /* OEAudioBuffer.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		011FAED42325B8F900DBEC62 /* NSDictionary+OpenEmuSDK.h in Headers */ = {isa = PBXBuildFile; fileRef = 011FAED22325B8F900DBEC62 /* NSDictionary+OpenEmuSDK.h */; settings = {ATTRIBUTES = (Public, ); }; };
@@ -149,6 +150,7 @@
 		B5AE7A151710BD6200ED5801 /* libretro.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = libretro.h; sourceTree = "<group>"; };
 		0109BBA2209F25EB002419C1 /* OpenEmuBaseTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = OpenEmuBaseTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		0109BBA4209F25EB002419C1 /* OEDiffQueueTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = OEDiffQueueTests.m; sourceTree = "<group>"; };
+		0442B0001A2F4E6C00442001 /* OEGameCoreHardcoreTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = OEGameCoreHardcoreTests.m; sourceTree = "<group>"; };
 		011829A620ACA8AA0030B347 /* OEAudioBuffer.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = OEAudioBuffer.h; sourceTree = "<group>"; };
 		011FAED22325B8F900DBEC62 /* NSDictionary+OpenEmuSDK.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "NSDictionary+OpenEmuSDK.h"; sourceTree = "<group>"; };
 		011FAED32325B8F900DBEC62 /* NSDictionary+OpenEmuSDK.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "NSDictionary+OpenEmuSDK.m"; sourceTree = "<group>"; };
@@ -301,6 +303,7 @@
 			isa = PBXGroup;
 			children = (
 				0109BBA4209F25EB002419C1 /* OEDiffQueueTests.m */,
+				0442B0001A2F4E6C00442001 /* OEGameCoreHardcoreTests.m */,
 			);
 			path = OpenEmuBaseTests;
 			sourceTree = "<group>";
@@ -757,6 +760,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				0109BBA5209F25EB002419C1 /* OEDiffQueueTests.m in Sources */,
+				0442B0011A2F4E6C00442001 /* OEGameCoreHardcoreTests.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
