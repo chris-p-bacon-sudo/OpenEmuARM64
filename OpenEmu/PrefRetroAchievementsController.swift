@@ -58,6 +58,8 @@ final class PrefRetroAchievementsController: NSViewController {
     private let hardcoreCheckbox = NSButton(checkboxWithTitle: "Hardcore mode (recommended)", target: nil, action: nil)
     private let hardcoreSubtitle = NSTextField(wrappingLabelWithString: "")
 
+    private var hardcoreObserver: Any?
+
     // MARK: - Lifecycle
 
     override func loadView() {
@@ -69,11 +71,34 @@ final class PrefRetroAchievementsController: NSViewController {
         super.viewDidLoad()
         loadSavedCredentials()
         updateStatus()
+
+        // Resync the checkbox when hardcore state is changed externally — most
+        // importantly when the user cancels the reset prompt mid-session and
+        // OEGameDocument rolls the preference back to false (#446).
+        hardcoreObserver = NotificationCenter.default.addObserver(
+            forName: .OERAHardcoreDidChange,
+            object: nil,
+            queue: .main
+        ) { [weak self] note in
+            let enabled = (note.userInfo?[OEHardcoreEnabledKey] as? Bool)
+                ?? UserDefaults.standard.bool(forKey: RAHardcoreEnabledKey)
+            self?.hardcoreCheckbox.state = enabled ? .on : .off
+        }
+    }
+
+    deinit {
+        if let observer = hardcoreObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
     }
 
     override func viewWillAppear() {
         super.viewWillAppear()
         updateStatus()
+        // Cover the case where the preference was changed while this view
+        // wasn't loaded (e.g. another controller wrote to UserDefaults). The
+        // observer above handles in-session changes; this handles the gap.
+        hardcoreCheckbox.state = UserDefaults.standard.bool(forKey: RAHardcoreEnabledKey) ? .on : .off
     }
 
     // MARK: - Build UI
