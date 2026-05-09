@@ -5,12 +5,12 @@
   <channel>
     <title>CrabEmu</title>
     <item>
-      <title>CrabEmu 0.2.1</title>
+      <title>CrabEmu 0.2.1.269</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
         url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.0.0/CrabEmu.oecoreplugin.zip"
-        sparkle:version="0.2.1"
-        sparkle:shortVersionString="0.2.1"
+        sparkle:version="0.2.1.269"
+        sparkle:shortVersionString="0.2.1.269"
         length="128551"
         type="application/octet-stream" />
     </item>
