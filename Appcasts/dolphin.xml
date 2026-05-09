@@ -5,12 +5,12 @@
   <channel>
     <title>Dolphin</title>
     <item>
-      <title>Dolphin 2412</title>
+      <title>Dolphin 5.0.16211</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
         url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.1.0/Dolphin.oecoreplugin.zip"
-        sparkle:version="2412"
-        sparkle:shortVersionString="2412"
+        sparkle:version="5.0.16211"
+        sparkle:shortVersionString="5.0.16211"
         length="8950726"
         type="application/octet-stream" />
     </item>
