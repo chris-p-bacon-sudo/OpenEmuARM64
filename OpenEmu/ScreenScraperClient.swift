@@ -93,7 +93,17 @@ final class ScreenScraperClient {
         return ok
     }
 
-    // ScreenScraper numeric system IDs keyed by OpenEmu system identifier
+    // ScreenScraper numeric system IDs keyed by OpenEmu system identifier.
+    //
+    // Verified against https://www.screenscraper.fr/api2/systemesListe.php (May 2026).
+    // Each entry's SS ID was confirmed by name match; previously several were wrong
+    // and silently sent lookups to the wrong databases (c64 → Amiga, sg1000 → Xbox,
+    // wii → nonexistent ID 38, sv → nonexistent ID 24).
+    //
+    // Some OpenEmu identifiers cover multiple SS systems (e.g. "gb" handles both
+    // Game Boy and GBC carts because they share the Gambatte core). For those, the
+    // base ID below is the broader/older system; `resolveSystemID(for:romName:)`
+    // upgrades to the variant ID based on file extension at lookup time.
     static let systemIDs: [String: Int] = [
         // Nintendo
         "openemu.system.nes":           3,
@@ -101,8 +111,8 @@ final class ScreenScraperClient {
         "openemu.system.snes":          4,
         "openemu.system.n64":          14,
         "openemu.system.gc":           13,   // GameCube
-        "openemu.system.wii":          38,
-        "openemu.system.gb":            9,   // Game Boy (also covers GBC — no separate GBC plugin)
+        "openemu.system.wii":          16,   // Wii (was 38 — nonexistent)
+        "openemu.system.gb":            9,   // Game Boy — .gbc routes to 10 via resolveSystemID
         "openemu.system.gba":          12,
         "openemu.system.nds":          15,
         "openemu.system.vb":           11,   // Virtual Boy
@@ -115,7 +125,7 @@ final class ScreenScraperClient {
 
         // Sega
         "openemu.system.sg":            1,   // Mega Drive / Genesis
-        "openemu.system.sg1000":       32,   // Sega SG-1000
+        "openemu.system.sg1000":      109,   // Sega SG-1000 (was 32 — that's Xbox)
         "openemu.system.sms":           2,
         "openemu.system.gg":           21,
         "openemu.system.scd":          20,
@@ -137,10 +147,10 @@ final class ScreenScraperClient {
         "openemu.system.pcfx":         72,
 
         // SNK
-        "openemu.system.ngp":          82,   // Neo Geo Pocket / Color
+        "openemu.system.ngp":          25,   // Neo Geo Pocket — .ngc routes to 82 (NGPC)
 
         // Bandai
-        "openemu.system.ws":           45,   // WonderSwan / WonderSwan Color
+        "openemu.system.ws":           45,   // WonderSwan — .wsc routes to 46 (WS Color)
 
         // Other home consoles
         "openemu.system.3do":          29,
@@ -148,15 +158,34 @@ final class ScreenScraperClient {
         "openemu.system.intellivision": 115,
         "openemu.system.odyssey2":    104,
         "openemu.system.vectrex":     102,
-        "openemu.system.sv":           24,   // Watara Supervision
+        "openemu.system.sv":          207,   // Watara Supervision (was 24 — nonexistent)
 
         // Computer / MSX
         "openemu.system.msx":         113,
-        "openemu.system.c64":          64,
+        "openemu.system.c64":          66,   // Commodore 64 (was 64 — that's Amiga)
 
         // Arcade
         "openemu.system.arcade":       75,
     ]
+
+    /// Returns the most specific ScreenScraper system ID for a given OpenEmu identifier,
+    /// upgrading to a variant ID when the ROM's file extension indicates a sub-platform.
+    ///
+    /// OpenEmu treats Game Boy Color, WonderSwan Color, and Neo-Geo Pocket Color as the
+    /// same logical system as their predecessors (single core handles both). ScreenScraper
+    /// tracks them as separate systems with separate cover art catalogs. This routes
+    /// `.gbc`/`.wsc`/`.ngc` ROMs to the correct color-variant database.
+    static func resolveSystemID(for systemIdentifier: String, romName: String?) -> Int? {
+        guard let baseID = systemIDs[systemIdentifier] else { return nil }
+        guard let name = romName?.lowercased() else { return baseID }
+        let ext = (name as NSString).pathExtension
+        switch (systemIdentifier, ext) {
+        case ("openemu.system.gb",  "gbc"): return 10   // Game Boy Color
+        case ("openemu.system.ws",  "wsc"): return 46   // WonderSwan Color
+        case ("openemu.system.ngp", "ngc"): return 82   // Neo Geo Pocket Color
+        default: return baseID
+        }
+    }
 
     // Preferred region tags in priority order, per OELocalizationHelper region
     private func preferredRegions() -> [String] {
@@ -190,9 +219,48 @@ final class ScreenScraperClient {
     ///   - debugMode: Developer cache-bypass mode (100/day limit, never use in production).
     func fetchGameInfo(md5: String?, romName: String?, fileSize: Int? = nil, systemIdentifier: String, debugMode: Bool = false) -> Result<ScreenScraperResult?, ScreenScraperFetchError> {
 
-        guard let systemID = ScreenScraperClient.systemIDs[systemIdentifier] else {
+        guard let systemID = ScreenScraperClient.resolveSystemID(for: systemIdentifier, romName: romName) else {
             return .success(nil)
         }
+
+        // First attempt: raw filename as provided.
+        let firstResult = performFetch(md5: md5, romName: romName, fileSize: fileSize, systemID: systemID, debugMode: debugMode)
+
+        // Retry on not-found (success(nil)) using a cleaned filename, if cleaning
+        // actually produces a different name. This catches the very common case of
+        // dump-tagged filenames — "Super Mario World (USA) [!].sfc" — where SS's
+        // index entry uses the No-Intro canonical name without bracketed annotations.
+        // Costs one extra request only on misses, never on hits.
+        if case .success(nil) = firstResult,
+           let raw = romName,
+           !raw.isEmpty {
+            let cleaned = ScreenScraperClient.cleanedROMFileName(raw)
+            if cleaned != raw {
+                let retry = performFetch(md5: md5, romName: cleaned, fileSize: fileSize, systemID: systemID, debugMode: debugMode)
+                return retry
+            }
+        }
+        return firstResult
+    }
+
+    /// Strips parenthesised and bracketed annotations — (USA), [!], (Rev A), (Disc 1) —
+    /// from a ROM filename while preserving the file extension. Used to retry SS lookups
+    /// when the raw filename misses but the canonical No-Intro name would match.
+    static func cleanedROMFileName(_ filename: String) -> String {
+        let ns = filename as NSString
+        let ext  = ns.pathExtension
+        let base = ns.deletingPathExtension
+        var stripped = base
+        stripped = stripped.replacingOccurrences(of: "\\([^)]*\\)", with: "", options: .regularExpression)
+        stripped = stripped.replacingOccurrences(of: "\\[[^\\]]*\\]", with: "", options: .regularExpression)
+        // Collapse runs of spaces and trim
+        stripped = stripped.replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
+        stripped = stripped.trimmingCharacters(in: .whitespaces)
+        if stripped.isEmpty { return filename }
+        return ext.isEmpty ? stripped : "\(stripped).\(ext)"
+    }
+
+    private func performFetch(md5: String?, romName: String?, fileSize: Int?, systemID: Int, debugMode: Bool) -> Result<ScreenScraperResult?, ScreenScraperFetchError> {
 
         var components = URLComponents(string: "https://www.screenscraper.fr/api2/jeuInfos.php")!
         var queryItems: [URLQueryItem] = [
