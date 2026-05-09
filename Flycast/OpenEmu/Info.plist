@@ -26,6 +26,8 @@
 	<string>OEGameCoreController</string>
 	<key>OEGameCoreClass</key>
 	<string>FlycastGameCore</string>
+	<key>SUFeedURL</key>
+	<string>https://raw.githubusercontent.com/nickybmon/OpenEmu-Silicon/main/Appcasts/flycast.xml</string>
 	<key>OEGameCoreOptions</key>
 	<dict>
 		<key>openemu.system.dc</key>

@@ -1,9 +1,15 @@
 #!/usr/bin/env bash
 # check-core-feed-urls.sh — Guardrail against regressing the core update channel.
 #
-# Fails if any tracked Info.plist still references the dormant upstream
-# OpenEmu-Update appcast host, and fails if a core's SUFeedURL points at an
-# Appcasts/<name>.xml file that doesn't exist in the working tree.
+# Three rules:
+#   1. No tracked Info.plist references the dormant upstream OpenEmu-Update
+#      appcast host (raw.github.com/OpenEmu, appcast.openemu.org).
+#   2. Every nickybmon SUFeedURL points at an Appcasts/<name>.xml file that
+#      actually exists in the tree.
+#   3. Every core Info.plist (one that defines OEGameCoreClass) MUST have a
+#      SUFeedURL key. Catches the Flycast-class slip-through where a core was
+#      shipped without any SUFeedURL at all, leaving it dependent on
+#      CoreUpdater's oecores.xml override for updates.
 #
 # Wired into Scripts/verify.sh as a precondition for --core runs. Cheap to run
 # everywhere else too.
@@ -50,8 +56,37 @@ if [ ${#missing[@]} -gt 0 ]; then
   fail=1
 fi
 
+# 3. Every core plist (defines OEGameCoreClass) must have a SUFeedURL key.
+#    Without this, Sparkle's per-plugin update path is broken; the core's
+#    updates only flow through CoreUpdater's oecores.xml override, which is
+#    not guaranteed to exist forever and is silently bypassed by anything
+#    that drives Sparkle directly.
+# OpenEmu/LibretroBridge/ ships bundled inside the host app and updates with
+# the app itself (refreshed at launch via refreshStaleRetroArchStubs in
+# AppDelegate.swift). It legitimately has no per-plugin Sparkle channel.
+missing_sufeedurl=()
+while IFS= read -r plist; do
+  [ -z "$plist" ] && continue
+  case "$plist" in
+    OpenEmu/LibretroBridge/*) continue ;;
+  esac
+  if grep -q '<key>OEGameCoreClass</key>' "$plist" 2>/dev/null \
+     && ! grep -q '<key>SUFeedURL</key>' "$plist" 2>/dev/null; then
+    missing_sufeedurl+=("$plist")
+  fi
+done <<< "$PLISTS"
+
+if [ ${#missing_sufeedurl[@]} -gt 0 ]; then
+  echo "ERROR: core Info.plist (has OEGameCoreClass) is missing SUFeedURL:" >&2
+  for p in "${missing_sufeedurl[@]}"; do
+    echo "  $p" >&2
+  done
+  echo "Add: <key>SUFeedURL</key><string>https://raw.githubusercontent.com/nickybmon/OpenEmu-Silicon/main/Appcasts/<core>.xml</string>" >&2
+  fail=1
+fi
+
 if [ $fail -ne 0 ]; then
   exit 1
 fi
 
-echo "OK: no upstream OpenEmu-Update references; all core SUFeedURLs resolve."
+echo "OK: no upstream references; all core SUFeedURLs resolve; all core plists have SUFeedURL."
