@@ -306,24 +306,22 @@ extension MainWindowController: LibraryControllerDelegate {
                 else if let error = error as? OEGameDocument.Errors,
                         case OEGameDocument.Errors.noCore = error,
                         !retry {
-                    // Try downloading the core list before bailing out definitively
+                    // Try downloading the core list before bailing out definitively.
+                    // Start the download before presenting the sheet so cancelCheckForNewCores()
+                    // always has a live task to cancel, regardless of timing.
                     let alert = OEAlert()
                     alert.messageText = NSLocalizedString("Downloading core list...", comment: "")
                     alert.defaultButtonTitle = NSLocalizedString("Cancel", comment: "")
-                    alert.performBlockInModalSession {
-                        CoreUpdater.shared.checkForNewCores { error in
-                            alert.close(withResult: .alertSecondButtonReturn)
-                        }
+                    CoreUpdater.shared.checkForNewCores { _ in
+                        DispatchQueue.main.async { alert.close(withResult: .alertSecondButtonReturn) }
                     }
-                    if alert.runModal() == .alertFirstButtonReturn {
-                        // user says no
-                        CoreUpdater.shared.cancelCheckForNewCores()
-                        DispatchQueue.main.async {
+                    alert.beginSheetModal(for: window) { response in
+                        if response == .alertFirstButtonReturn {
+                            CoreUpdater.shared.cancelCheckForNewCores()
                             self.presentError(error)
+                        } else {
+                            self.openGameDocument(with: game, saveState: state, secondAttempt: true, disableAutoReload: false)
                         }
-                    } else {
-                        // let's give it another try
-                        self.openGameDocument(with: game, saveState: state, secondAttempt: true, disableAutoReload: false)
                     }
                 }
                 else if let error = error as? OEGameDocument.Errors,

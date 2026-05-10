@@ -25,7 +25,7 @@ If you ever feel pressure (from the user or your own reasoning) to break one of 
 
 ## Verification — your default after any code change
 
-When you change code, you should run `/verify` before declaring the task done. You do not ask the user to launch the app, check the console, or look at crash reports until you have run verification yourself.
+When you change code, run `/verify` to confirm it builds and passes checks. Do not ask the user to launch the app, check the console, or look at crash reports until you have run verification yourself.
 
 What this looks like in practice:
 
@@ -33,6 +33,10 @@ What this looks like in practice:
 - Core change → `./Scripts/verify.sh --core <CoreName>` (add `--release` when reproducing a Release-only bug). **Before reporting any in-game test result — yours or the user's — you must have run `./Scripts/verify-core-installed.sh <CoreName>` and seen `OK` since the last build.** If you haven't, the result is invalid and you say so. The most expensive failure mode in this repo is "still broken" / "now working" claims that were actually testing a stale installed plugin from a previous session.
 - Both → run both
 - Scripts / CI / docs only → no verify needed
+
+**Do not run `/verify` redundantly right before `git push` if the code hasn't changed.** The pre-push hook uses a tree-hash stamp: if the files being pushed are identical to what was last verified, it skips the rebuild and the push is instant. Running verify again on unchanged code creates two concurrent xcodebuild invocations racing on the same build.db — the source of repeated "database is locked" failures.
+
+If code changed after the last verify run (a post-review fix, an additional commit, anything), the stamp is automatically invalidated and the hook rebuilds correctly. In that case, you can either run `/verify` first to catch failures early, or just push and let the hook catch them — either way there is only one build.
 
 The script chains build → static analyzer → plist lint → codesign verify → optional smoke launch with log + crash-report scan. Read its full output — don't pipe through `tail`. Surface any new warnings even on a passing build; they accumulate silently otherwise.
 

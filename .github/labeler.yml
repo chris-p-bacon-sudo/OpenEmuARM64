@@ -1,0 +1,88 @@
+# Maps PR file paths to labels. Uses the actual label names from the repo.
+# sync-labels: false in the workflow — manual labels are preserved.
+
+'core: NES':
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'FCEU/**'
+      - 'Nestopia/**'
+
+'core: SNES':
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'SNES9x/**'
+      - 'BSNES/**'
+
+'core: Sega':
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'GenesisPlus/**'
+      - 'CrabEmu/**'
+
+'core: N64':
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'Mupen64Plus/**'
+
+'core: Atari':
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'Stella/**'
+      - 'ProSystem/**'
+      - 'Atari800/**'
+
+'core: other':
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'mGBA/**'
+      - 'Gambatte/**'
+      - 'Mednafen/**'
+      - 'PPSSPP/**'
+      - 'VirtualJaguar/**'
+      - 'VecXGL/**'
+      - 'Bliss/**'
+      - 'O2EM/**'
+      - '4DO/**'
+      - 'blueMSX/**'
+      - 'PokeMini/**'
+      - 'Potator-Core/**'
+
+'retro-achievements':
+  - changed-files:
+    - any-glob-to-any-file:
+      - '**/rcheevos/**'
+      - '**/*RetroAchievements*'
+      - '**/*rcheevos*'
+      - '**/OERetroAchievements*'
+
+'shaders':
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'OpenEmu-Shaders/**'
+      - '**/*.metal'
+
+'ui':
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'OpenEmu/**/*.xib'
+      - 'OpenEmu/**/*.storyboard'
+      - 'OpenEmu/Preferences/**'
+      - 'OpenEmu/UI/**'
+
+'documentation':
+  - changed-files:
+    - any-glob-to-any-file:
+      - '*.md'
+      - 'docs/**'
+      - '.github/**/*.md'
+      - '.github/ISSUE_TEMPLATE/**'
+
+'chore':
+  - changed-files:
+    - any-glob-to-any-file:
+      - '*.xcodeproj/**'
+      - '*.xcworkspace/**'
+      - '.github/workflows/**'
+      - 'Scripts/**'
+      - 'Vendor/**'
+      - '.gitmodules'

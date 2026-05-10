@@ -1,0 +1,55 @@
+name: Feature Request
+description: New core support, new capability, or meaningful improvement
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before submitting, check [existing feature requests](https://github.com/nickybmon/OpenEmu-Silicon/issues?q=is%3Aopen+label%3Aenhancement) to avoid duplicates. The fastest path to seeing something happen is opening a PR — but requests are welcome even if you can't build it yourself.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: Describe the current behavior and why it's a problem for you. Be specific.
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: What would you like to see happen?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Which area does this affect?
+      options:
+        - Core / emulation accuracy
+        - RetroAchievements integration
+        - Frontend / UI
+        - Performance
+        - New core support
+        - Build / developer tooling
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: Any other approaches you've considered, or workarounds you're currently using?
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: silicon
+    attributes:
+      label: Apple Silicon / macOS Specific
+      options:
+        - label: This is specific to Apple Silicon or macOS (not a general OpenEmu request)

@@ -1,8 +1,12 @@
 Run the full git shipping loop for the current branch.
 
 1. Confirm the branch name matches the work being done. If not, stop and ask.
-2. Run the build check. If it fails, stop and report — do not push a broken build.
-3. **Adversarial review (Swift diffs only).** If `git diff main...HEAD -- '*.swift'` is empty, **skip this step entirely** — markdown, config, scripts, and YAML are not gated. Otherwise, dispatch the `adversarial-reviewer` subagent (`.claude/agents/adversarial-reviewer.md`) once with the Swift diff and direct caller/callee context for changed symbols. For each `block` finding: fix the code (and re-run `/verify`) or rebut with evidence (the falsifiable_check command + its verbatim output). Hand-check is acceptable on rebuttal — do not auto-re-run the gate after a fix unless the fix itself touches Swift. `note` findings are surfaced in the PR body but do not gate. If rebuttals or notes exist, append them to the PR body in step 4 under `## Adversarial review` after the canonical template content.
+2. **Do not run `./Scripts/verify.sh` here.** The pre-push hook runs it automatically during `git push`. Running it separately before pushing creates two concurrent builds that fight over Xcode's build.db lock — which is exactly the failure loop this repo has been stuck in. The hook has a stamp mechanism: if you ran `/verify` during development on the same code, the hook skips the rebuild and the push is fast. If you didn't, the hook runs it once. Either way: one build, one trigger.
+3. **Adversarial review.** Run this command and show the output:
+   ```bash
+   git diff main...HEAD | wc -l
+   ```
+   If the count is `0`, skip this step — there is nothing to review. **You must show the numeric output before deciding to skip.** If the count is greater than 0, dispatch the `adversarial-reviewer` subagent (`.claude/agents/adversarial-reviewer.md`) once with the full diff and direct caller/callee context for changed symbols. For each `block` finding: fix the code (and re-run `/verify`) or rebut with evidence (the falsifiable_check command + its verbatim output). Hand-check is acceptable on rebuttal — do not auto-re-run the gate after a fix unless the fix itself touches compiled code. `note` findings are surfaced in the PR body but do not gate. If rebuttals or notes exist, append them to the PR body in step 4 under `## Adversarial review` after the canonical template content.
 4. Confirm the commit message uses the correct format: `<type>: <description>` with `Fixes #N` in the body if resolving an issue.
 5. **Compose the PR body — always read the canonical template first, never improvise.**
 

@@ -1,0 +1,39 @@
+name: Welcome First-Time Contributors
+
+on:
+  issues:
+    types: [opened]
+  pull_request_target:
+    types: [opened]
+
+jobs:
+  welcome:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+
+    steps:
+      - uses: actions/first-interaction@v1
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+          issue-message: |
+            Thanks for opening your first issue on OpenEmu-Silicon, @${{ github.actor }}!
+
+            A few things that help me triage faster:
+            - Make sure all template fields are filled out, especially macOS version, chip, and app version
+            - Check the [wiki](https://github.com/nickybmon/OpenEmu-Silicon/wiki) — there may already be a documented solution
+            - If this is a RetroAchievements issue, note whether it occurs with RA disabled too
+
+            I'll try to respond within a few days. If I ask for more info and you don't hear back within a week, feel free to ping the thread.
+
+          pr-message: |
+            Thanks for your first contribution to OpenEmu-Silicon, @${{ github.actor }}!
+
+            Before I review, a few things to double-check:
+            - PR description covers what changed, why, and how you tested it
+            - If AI tools were used, that's disclosed in the description (see [CONTRIBUTING.md](../blob/main/.github/CONTRIBUTING.md))
+            - PR is linked to an issue (unless it's a trivial docs or typo fix)
+
+            I aim to review PRs within 1–2 weeks. If you haven't heard back, a polite ping is always welcome.

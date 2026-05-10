@@ -30,22 +30,86 @@ if [ ! -x ./Scripts/verify.sh ]; then
   exit 0
 fi
 
-# Skip verify if the exact HEAD being pushed already passed verification and
-# the tree is clean. verify.sh writes this stamp on a successful run. This
-# avoids re-running verify back-to-back, which races on Xcode's build.db lock
-# (SWBBuildService stays alive ~30s after xcodebuild exits and holds the DB).
+# --- Serialization lock --------------------------------------------------
+# SWBBuildService holds Xcode's build.db for ~30s after xcodebuild exits.
+# Without this lock, retrying a push immediately after a failure (including
+# a network failure mid-push where verify already ran) starts a new
+# xcodebuild that races the previous one's SWBBuildService cleanup, producing
+# "database is locked" and blocking all future push attempts.
+#
+# The lock is a directory; mkdir is atomic on POSIX filesystems. Concurrent
+# hook invocations — retries, parallel worktree pushes — queue here instead
+# of racing. The lock is held until SWBBuildService actually releases
+# build.db, so the next queued invocation always starts with a clean DB.
+LOCK_DIR="$(git rev-parse --git-dir 2>/dev/null)/verify.lock"
+
+acquire_lock() {
+  local timeout=180 waited=0
+  while ! mkdir "$LOCK_DIR" 2>/dev/null; do
+    if [ "$waited" -ge "$timeout" ]; then
+      echo "[pre-push] ERROR: serialization lock timed out after ${timeout}s"
+      echo "[pre-push] Stale lock at: $LOCK_DIR"
+      echo "[pre-push] Remove it and retry: rm -rf '$LOCK_DIR'"
+      exit 1
+    fi
+    [ "$waited" -eq 0 ] && echo "[pre-push] Another verify.sh is running — waiting for build.db to be free..."
+    sleep 5
+    waited=$((waited + 5))
+  done
+}
+
+# Poll until SWBBuildService releases the build.db lock. Called from the
+# EXIT trap so the lock directory is not removed until the DB is free.
+# Worktree builds use ~/Builds/openemu/<branch>/ and aren't affected.
+wait_for_build_db_release() {
+  local dd_path="$HOME/Library/Developer/Xcode/DerivedData"
+  local build_db
+  build_db=$(find "$dd_path" -maxdepth 7 -name "build.db" \
+    -path "*/OpenEmu-metal-*/Build/Intermediates.noindex/XCBuildData/build.db" \
+    -print -quit 2>/dev/null)
+  [ -z "$build_db" ] && return 0
+
+  local max_wait=40 elapsed=0
+  while [ "$elapsed" -lt "$max_wait" ]; do
+    lsof "$build_db" 2>/dev/null | grep -q "SWBBuildService" || return 0
+    [ "$elapsed" -eq 0 ] && echo "[pre-push] Waiting for SWBBuildService to release build.db..."
+    sleep 2
+    elapsed=$((elapsed + 2))
+  done
+  echo "[pre-push] SWBBuildService still active after ${max_wait}s — releasing lock anyway"
+}
+
+# Set to 1 only when verify.sh actually launches. release_lock skips the
+# SWBBuildService wait when this is 0 — otherwise a stamp-hit 'skip' exit
+# would block for up to 40s polling an unrelated Xcode build.db.
+VERIFY_RAN=0
+
+release_lock() {
+  [ "$VERIFY_RAN" -eq 1 ] && wait_for_build_db_release
+  rmdir "$LOCK_DIR" 2>/dev/null || true
+}
+
+trap release_lock EXIT
+acquire_lock
+
+# --- Stamp check ---------------------------------------------------------
+# Skip verify if the tree being pushed is identical to what already passed.
+# verify.sh stamps the tree hash (HEAD^{tree}), not the commit SHA, so the
+# stamp survives a commit made after verify ran — the common case that was
+# causing verify to re-run and pile up concurrent xcodebuild processes.
 STAMP_FILE=$(git rev-parse --git-path verify-passed 2>/dev/null || true)
-HEAD_SHA=$(git rev-parse HEAD 2>/dev/null || echo "")
-if [ -n "$STAMP_FILE" ] && [ -f "$STAMP_FILE" ] && [ -n "$HEAD_SHA" ]; then
+TREE_SHA=$(git rev-parse HEAD^{tree} 2>/dev/null || echo "")
+if [ -n "$STAMP_FILE" ] && [ -f "$STAMP_FILE" ] && [ -n "$TREE_SHA" ]; then
   STAMPED_SHA=$(cat "$STAMP_FILE" 2>/dev/null || echo "")
-  if [ "$STAMPED_SHA" = "$HEAD_SHA" ] && git diff --quiet && git diff --cached --quiet; then
-    echo "[pre-push] verify.sh PASSED earlier for $HEAD_SHA — skipping"
+  if [ "$STAMPED_SHA" = "$TREE_SHA" ] && git diff --quiet && git diff --cached --quiet; then
+    echo "[pre-push] verify.sh PASSED earlier for tree $TREE_SHA — skipping"
     echo "[pre-push] (delete $STAMP_FILE to force a re-run)"
     exit 0
   fi
 fi
 
 echo "[pre-push] Running Scripts/verify.sh ..."
+VERIFY_RAN=1
 if ./Scripts/verify.sh; then
   echo "[pre-push] verify.sh PASSED — push allowed"
   exit 0
