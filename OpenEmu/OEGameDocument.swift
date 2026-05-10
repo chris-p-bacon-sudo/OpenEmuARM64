@@ -1889,7 +1889,10 @@ final class OEGameDocument: NSDocument {
                 saveState = state
             } else {
                 let context = OELibraryDatabase.default!.mainThreadContext
-                saveState = OEDBSaveState.createSaveState(named: stateName, for: rom, core: core, withFile: temporaryStateFileURL, in: context)
+                // Re-fetch rom in the target context to avoid a cross-context relationship crash.
+                // self.rom may have been fetched in a different NSManagedObjectContext.
+                let romInContext = context.object(with: rom.objectID) as! OEDBRom
+                saveState = OEDBSaveState.createSaveState(named: stateName, for: romInContext, core: core, withFile: temporaryStateFileURL, in: context)
             }
             
             guard let state = saveState else {
@@ -1933,7 +1936,11 @@ final class OEGameDocument: NSDocument {
             alert.messageText = NSLocalizedString("Save state loading is disabled in hardcore mode.", comment: "")
             alert.informativeText = NSLocalizedString("Turn off hardcore mode in Preferences ▸ RetroAchievements to load save states.", comment: "")
             alert.defaultButtonTitle = NSLocalizedString("OK", comment: "")
-            alert.runModal()
+            if let win = gameWindowController?.window {
+                alert.beginSheetModal(for: win) { _ in }
+            } else {
+                alert.runModal()
+            }
             return
         }
 
