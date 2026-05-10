@@ -112,6 +112,33 @@ pass() { echo "PASS  $1"; }
 fail() { echo "FAIL  $1"; FAILURES=$((FAILURES+1)); }
 info() { echo "----  $1"; }
 
+# Wait until SWBBuildService releases the build.db at the target path.
+# Called before starting xcodebuild so a concurrent invocation (another hook,
+# a manual xcodebuild call, the IDE) doesn't immediately fail with
+# "database is locked". Checks the worktree path when WORKTREE=1, otherwise
+# the default DerivedData location.
+wait_for_build_db() {
+  local db_path
+  if [ "${WORKTREE:-0}" -eq 1 ] && [ -n "${BUILD_DIR_OVERRIDE:-}" ]; then
+    db_path="$BUILD_DIR_OVERRIDE/Build/Intermediates.noindex/XCBuildData/build.db"
+  else
+    db_path=$(find "$HOME/Library/Developer/Xcode/DerivedData" -maxdepth 7 \
+      -name "build.db" \
+      -path "*/OpenEmu-metal-*/Build/Intermediates.noindex/XCBuildData/build.db" \
+      -print -quit 2>/dev/null)
+  fi
+  [ -z "$db_path" ] || [ ! -f "$db_path" ] && return 0
+
+  local max_wait=40 elapsed=0
+  while [ "$elapsed" -lt "$max_wait" ]; do
+    lsof "$db_path" 2>/dev/null | grep -q "SWBBuildService" || return 0
+    [ "$elapsed" -eq 0 ] && info "build.db locked by SWBBuildService — waiting for it to release..."
+    sleep 2
+    elapsed=$((elapsed + 2))
+  done
+  info "build.db still locked after ${max_wait}s — proceeding anyway (may fail)"
+}
+
 # --- Prune stale DerivedData directories -----------------------------------
 # Xcode rotates OpenEmu-metal-<hash> whenever the workspace path or scheme
 # hash changes, leaving old dirs behind. Keeping only the newest means that
@@ -175,6 +202,8 @@ if [ "$WORKTREE" -eq 1 ]; then
   XCODEBUILD_ARGS+=(-derivedDataPath "$BUILD_DIR_OVERRIDE")
   info "worktree mode — building to $BUILD_DIR_OVERRIDE"
 fi
+
+wait_for_build_db
 
 if xcodebuild "${XCODEBUILD_ARGS[@]}" build > "$BUILD_LOG" 2>&1; then
   pass "build ($SCHEME)"
