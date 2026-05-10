@@ -1,0 +1,130 @@
+name: Bug Report
+description: Something isn't working — crash, wrong behavior, unexpected audio/video
+labels: ["bug", "needs-info"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. Please fill out all required fields — incomplete reports are labeled `needs-info` and may be closed after 30 days without a response.
+
+  - type: dropdown
+    id: core
+    attributes:
+      label: Affected Core / System
+      description: Which emulated system is affected?
+      options:
+        - NES / Famicom (Nestopia / FCEU)
+        - SNES / Super Famicom (BSNES / SNES9x)
+        - Game Boy / Game Boy Color (Gambatte)
+        - Game Boy Advance (mGBA)
+        - Nintendo DS (DeSmuME)
+        - Nintendo 64 (Mupen64Plus)
+        - PlayStation (Mednafen)
+        - PC Engine / TurboGrafx (Mednafen)
+        - Atari Lynx (Mednafen)
+        - Neo Geo Pocket (Mednafen)
+        - Sega Genesis / Mega Drive (GenesisPlus)
+        - Sega Master System / Game Gear (GenesisPlus)
+        - Sega CD (GenesisPlus)
+        - Dreamcast (Flycast)
+        - GameCube / Wii (Dolphin)
+        - PlayStation 2 (PCSX2)
+        - PSP (PPSSPP)
+        - Atari 2600 (Stella)
+        - Atari 7800 (ProSystem)
+        - Atari 5200 / 8-bit (Atari800)
+        - 3DO (4DO)
+        - Jaguar (VirtualJaguar)
+        - Vectrex (VecXGL)
+        - Intellivision (Bliss)
+        - Odyssey² (O2EM)
+        - ColecoVision / MSX (blueMSX)
+        - Pokémon Mini (PokeMini)
+        - Watara Supervision (Potator)
+        - Not core-specific (frontend / UI / library)
+        - Not sure
+    validations:
+      required: true
+
+  - type: input
+    id: game
+    attributes:
+      label: Game Title (if applicable)
+      description: Include region if relevant (e.g., "Super Metroid (USA)")
+    validations:
+      required: false
+
+  - type: dropdown
+    id: macos
+    attributes:
+      label: macOS Version
+      options:
+        - macOS 15 (Sequoia)
+        - macOS 26 (Tahoe)
+        - macOS 14 (Sonoma)
+        - macOS 13 (Ventura)
+        - macOS 12 (Monterey)
+        - macOS 11 (Big Sur)
+        - Other (describe below)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: chip
+    attributes:
+      label: Apple Silicon Chip
+      options:
+        - M1
+        - M1 Pro / Max / Ultra
+        - M2
+        - M2 Pro / Max / Ultra
+        - M3
+        - M3 Pro / Max / Ultra
+        - M4
+        - M4 Pro / Max / Ultra
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: OpenEmu-Silicon Version or Commit
+      description: Found in OpenEmu-Silicon → About, or paste the git commit hash
+      placeholder: e.g., v1.4.2 or a1b2c3d
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: retroachievements
+    attributes:
+      label: RetroAchievements
+      options:
+        - label: RetroAchievements integration was enabled during this session
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: Describe the bug. What did you expect? What actually happened?
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to Reproduce
+      placeholder: |
+        1. Open [game]
+        2. Navigate to [screen]
+        3. Perform [action]
+        4. Observe [behavior]
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs, Crash Reports, or Screenshots
+      description: Paste Console.app output, crash report excerpts, or drag-and-drop images here.
+    validations:
+      required: false

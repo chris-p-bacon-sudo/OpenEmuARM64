@@ -1,35 +1,171 @@
 # Contributing to OpenEmu-Silicon
 
-Issues, PRs, and testing feedback are all welcome.
+OpenEmu-Silicon is a community-maintained Apple Silicon fork of [OpenEmu](https://github.com/OpenEmu/OpenEmu). It's kept alive by a small group of contributors and testers. Contributions of all kinds are welcome — code, documentation, testing, triage, and compatibility reporting.
 
-## Reporting bugs
+---
 
-Use the **Bug report** issue template. Include:
-- Your Mac model and chip (e.g. M2 MacBook Pro)
-- macOS version
-- Which system and game you were running
-- What happened vs. what you expected
+## Ways to Contribute
 
-## Contributing code
+You don't need to write code to make a meaningful contribution.
 
-1. Check open issues for good starting points
-2. Branch from `main`: `git checkout main && git checkout -b fix/your-description`
-3. Make your change — keep it focused on one issue
-4. Build before committing: `xcodebuild -workspace OpenEmu-metal.xcworkspace -scheme OpenEmu -configuration Debug -destination 'platform=macOS,arch=arm64' build`
-5. Open a PR against `main` with a clear description of what it fixes — reference the issue with `Fixes #N`
+| Role | What it involves | How to start |
+|------|-----------------|--------------|
+| **Issue Triager** | Applying labels, asking for repro steps, closing duplicates, flagging `good first issue` candidates | Engage with a few issues, then ask the maintainer for triage permissions |
+| **Compatibility Tester** | Testing games on the latest build, documenting results in the wiki | Open a Discussion and introduce yourself |
+| **RetroAchievements Liaison** | Testing RA integration per-core, filing upstream RA tickets, maintaining the compatibility table | See [docs/retroachievements-community-guide.md](../docs/retroachievements-community-guide.md) |
+| **Wiki / Docs Maintainer** | Keeping installation guides, core pages, and build instructions accurate | Open a PR or comment on a docs issue |
+| **Code Contributor** | Bug fixes, feature work, core updates | Read on |
 
-See `AGENTS.md` for the full workflow and coding rules.
+Not sure where to start? Open a Discussion in the Q&A category and say what you're interested in.
 
-## Working on the libretro bridge
+---
 
-The libretro bridge is a way to load some emulator cores from pre-built libretro binaries instead of building them from source. See [The Libretro Bridge](https://github.com/nickybmon/OpenEmu-Silicon/wiki/The-Libretro-Bridge) on the wiki for what it is and why this fork uses it.
+## Setting Up Your Dev Environment
 
-Bridge work is tracked on the [project board](https://github.com/users/nickybmon/projects/5) using the `Phase` field. Open issues with a `Phase` value are good places to pick up work.
+### Requirements
 
-A few specifics:
+- macOS 11.0 (Big Sur) or later — macOS 14 (Sonoma) or later recommended
+- Xcode with the latest stable toolchain
+- Apple Silicon Mac (M1 or later) — this fork does not target Intel
+- No additional Homebrew dependencies required for the main app
 
-- **Branch from `feat/libretro-bridge` while it exists** (not `main`) — that branch carries the SDK changes the translator depends on. After it merges to `main`, branch from `main` like everything else.
-- **PRs against the bridge branch should target `feat/libretro-bridge`**, not `main`, until the integration branch is gone.
-- **Coordinate before touching `OpenEmu-SDK/OpenEmuBase/OEGameCore.h/.m`** — that file is the base class for every core in the project and is the highest-conflict file in the repo. Open an issue or comment on an existing PR before changing it.
+### Steps
 
-The standard build command above is the gate for any bridge PR — if `xcodebuild` doesn't pass, the PR isn't ready.
+```bash
+# 1. Fork and clone with submodules (cores live in submodules — this will take a few minutes)
+git clone --recursive https://github.com/YOUR_USERNAME/OpenEmu-Silicon.git
+cd OpenEmu-Silicon
+
+# 2. Copy credential stubs (required — real credentials are never committed)
+cp OpenEmu/ScreenScraperDevCredentials.template.swift OpenEmu/ScreenScraperDevCredentials.swift
+cp OpenEmu/OEGoogleDriveSecrets.template.swift OpenEmu/OEGoogleDriveSecrets.swift
+
+# 3. Open the workspace (not the .xcodeproj)
+open OpenEmu-metal.xcworkspace
+```
+
+Select the **OpenEmu** scheme and build for **My Mac**, or verify from the command line:
+
+```bash
+xcodebuild build \
+  -workspace OpenEmu-metal.xcworkspace \
+  -scheme OpenEmu \
+  -configuration Debug \
+  -destination 'platform=macOS,arch=arm64' \
+  CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO
+```
+
+Or use the project's verify script, which also runs a codesign check:
+
+```bash
+./Scripts/verify.sh
+```
+
+### Common Setup Issues
+
+**Submodules not initialized:** If cores are missing from the workspace, run `git submodule update --init --recursive`. This can take 5–10 minutes the first time.
+
+**Missing credential files:** If the build fails with "no such file" errors for Swift credential files, re-run the `cp` commands above. Template files are in the repo; real ones are not and are never committed.
+
+**Wrong architecture:** Make sure the build destination is `arm64`. If Xcode defaults to Rosetta or an Intel simulator, change it in the scheme settings.
+
+### Worktree builds
+
+If you're working in a git worktree, use `./Scripts/build-for-worktree.sh` and `./Scripts/verify.sh --worktree`. Plain `xcodebuild` will break permission persistence between builds. See [docs/worktree-workflow.md](../docs/worktree-workflow.md) for the full workflow.
+
+---
+
+## Submitting a Pull Request
+
+1. **Open an issue first** for anything beyond a trivial fix. This prevents duplicate work and lets us agree on approach before you invest time writing code.
+2. **Branch from `main`**. Name your branch descriptively: `fix/snes-audio-regression` or `feat/retroachievements-badge`.
+3. **Keep PRs focused.** One logical change per PR. If your fix touches three systems, open three PRs.
+4. **Fill out the PR template completely.** It asks what changed, how you tested it, and whether AI tools were used.
+5. **Expect a 1–2 week review window.** This project is maintained by one person. A polite ping after two weeks is welcome.
+
+### PR Checklist
+
+- [ ] Builds cleanly on Apple Silicon with no new warnings (`./Scripts/verify.sh`)
+- [ ] Tested the affected core or system with at least one game
+- [ ] Submodules pinned correctly if cores were updated
+- [ ] AI tool use disclosed in PR description if applicable
+- [ ] No build logs, binaries, or credentials committed
+
+---
+
+## AI-Assisted Contributions
+
+AI tools (Claude, Cursor, Copilot) are used in the development of this project. Contributions using AI assistance are welcome. However, AI-generated code introduces specific risks — subtle regressions, incorrect memory handling, and plausible-looking but wrong emulation behavior that passes a surface review.
+
+**The policy:**
+
+1. **Disclose AI use in your PR description.** "Drafted with Claude Code" or "used Cursor for scaffolding" is sufficient — not a penalty.
+2. **You must be able to explain every line on request.** If a reviewer asks "why does this work?" and you don't know, the PR will be closed. You are responsible for the code you submit.
+3. **AI-only PRs with no issue link will be closed.** Open or comment on an issue first to agree the fix is worth pursuing and discuss approach.
+4. **Low-effort AI PRs — vague description, no testing, no issue link — will be closed without review.** This is a capacity constraint, not a judgment.
+
+---
+
+## Good First Issues
+
+Issues tagged [`good first issue`](https://github.com/nickybmon/OpenEmu-Silicon/issues?q=is%3Aopen+label%3A%22good+first+issue%22) are chosen because:
+
+- The scope is well-defined
+- The relevant file or function is identified in the issue body
+- An approach or known constraints are described
+- No deep codebase knowledge required
+
+Comment on an issue before you start work to avoid duplicates.
+
+---
+
+## Working on RetroAchievements Integration
+
+RA core integration is tracked in [issue #258](https://github.com/nickybmon/OpenEmu-Silicon/issues/258). The implementation pattern and known pitfalls are documented in [docs/retroachievements-implementation-guide.md](../docs/retroachievements-implementation-guide.md). Read that before wiring up a new core.
+
+For testing RA as a user or tester rather than as a developer, see [docs/retroachievements-community-guide.md](../docs/retroachievements-community-guide.md).
+
+---
+
+## Working on the Libretro Bridge
+
+The libretro bridge loads some emulator cores from pre-built libretro binaries instead of building them from source. See [The Libretro Bridge](https://github.com/nickybmon/OpenEmu-Silicon/wiki/The-Libretro-Bridge) on the wiki for context.
+
+Bridge work branches from `main`. The integration branch (`feat/libretro-bridge`) has merged. Coordinate before touching `OpenEmu-SDK/OpenEmuBase/OEGameCore.h/.m` — that file is the base class for every core and is the highest-conflict file in the repo.
+
+---
+
+## Non-Code Roles
+
+### Issue Triage
+
+Triagers can apply and remove labels, close duplicates, mark issues `needs-info`, and flag `good first issue` candidates. They cannot merge PRs or push to main.
+
+Engage with a few issues first — ask clarifying questions, look for duplicates — then ask the maintainer for triage permissions.
+
+### Compatibility Testing
+
+The compatibility list lives in the [project wiki](https://github.com/nickybmon/OpenEmu-Silicon/wiki). To contribute:
+1. Test a game on the latest release build
+2. Note: core name, macOS version, M-chip generation, and what you observed
+3. Submit a PR against the wiki or open a Discussion with your findings
+
+### RetroAchievements Testing
+
+See [docs/retroachievements-community-guide.md](../docs/retroachievements-community-guide.md) for how to test achievement behavior per-core and how to file upstream RA tickets.
+
+---
+
+## Recognition
+
+Every contributor — code or otherwise — is named in release notes and Progress Reports. If you've contributed and weren't credited, open an issue and we'll fix it.
+
+---
+
+## Code of Conduct
+
+This project follows the [Contributor Covenant](https://www.contributor-covenant.org/version/2/1/code_of_conduct/). Be constructive, be patient, be kind to people doing this work for free.
+
+---
+
+*Questions? Open a [Discussion](https://github.com/nickybmon/OpenEmu-Silicon/discussions).*
