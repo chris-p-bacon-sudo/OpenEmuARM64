@@ -79,8 +79,13 @@ wait_for_build_db_release() {
   echo "[pre-push] SWBBuildService still active after ${max_wait}s — releasing lock anyway"
 }
 
+# Set to 1 only when verify.sh actually launches. release_lock skips the
+# SWBBuildService wait when this is 0 — otherwise a stamp-hit 'skip' exit
+# would block for up to 40s polling an unrelated Xcode build.db.
+VERIFY_RAN=0
+
 release_lock() {
-  wait_for_build_db_release
+  [ "$VERIFY_RAN" -eq 1 ] && wait_for_build_db_release
   rmdir "$LOCK_DIR" 2>/dev/null || true
 }
 
@@ -104,6 +109,7 @@ if [ -n "$STAMP_FILE" ] && [ -f "$STAMP_FILE" ] && [ -n "$TREE_SHA" ]; then
 fi
 
 echo "[pre-push] Running Scripts/verify.sh ..."
+VERIFY_RAN=1
 if ./Scripts/verify.sh; then
   echo "[pre-push] verify.sh PASSED — push allowed"
   exit 0
