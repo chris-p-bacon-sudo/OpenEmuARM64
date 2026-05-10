@@ -37,6 +37,11 @@
 #include <sys/types.h>
 #include <sys/mman.h>
 #include <mach/vm_param.h>
+#include <unistd.h>
+// csops is a stable BSD syscall; the header is private/SDK-unavailable in some targets.
+extern "C" int csops(pid_t pid, unsigned int ops, void *useraddr, size_t usersize);
+#define CS_OPS_STATUS  0
+#define CS_RUNTIME     0x10000  // process opted into hardened runtime
 #endif
 
 #ifndef _WIN32
@@ -174,9 +179,23 @@ void *AllocateExecutableMemory(size_t size) {
 
 	int prot = PROT_READ | PROT_WRITE | PROT_EXEC;
 	if (PlatformIsWXExclusive())
-		prot = PROT_READ | PROT_WRITE;  // POST_EXEC is added later in this case.
+		prot = PROT_READ | PROT_WRITE;  // PROT_EXEC is added later in this case.
 
-	void* ptr = mmap(map_hint, size, prot, MAP_ANON | MAP_PRIVATE, -1, 0);
+	int mmap_flags = MAP_ANON | MAP_PRIVATE;
+#if defined(__APPLE__) && PPSSPP_ARCH(ARM64)
+	// On Apple Silicon, the code signature validator rejects execution of any
+	// anonymous page not allocated with MAP_JIT when running under hardened
+	// runtime (CS_RUNTIME). Debug builds work with plain mmap + mprotect.
+	// Release builds need MAP_JIT + RWX; macOS (unlike iOS) does not
+	// hardware-enforce W^X so no pthread_jit_write_protect_np is required.
+	uint32_t cs_flags = 0;
+	if (csops(getpid(), CS_OPS_STATUS, &cs_flags, sizeof(cs_flags)) == 0 &&
+		(cs_flags & CS_RUNTIME)) {
+		mmap_flags |= MAP_JIT;
+		prot = PROT_READ | PROT_WRITE | PROT_EXEC;
+	}
+#endif
+	void* ptr = mmap(map_hint, size, prot, mmap_flags, -1, 0);
 #endif /* defined(_WIN32) */
 
 #if !defined(_WIN32)
@@ -318,6 +337,14 @@ bool ProtectMemoryPages(const void* ptr, size_t size, uint32_t memProtFlags) {
 #endif
 	return true;
 #else
+#if defined(__APPLE__) && PPSSPP_ARCH(ARM64)
+	// Under hardened runtime, JIT pages are MAP_JIT + RWX — mprotect is a no-op.
+	uint32_t cs_flags = 0;
+	if (csops(getpid(), CS_OPS_STATUS, &cs_flags, sizeof(cs_flags)) == 0 &&
+		(cs_flags & CS_RUNTIME)) {
+		return true;
+	}
+#endif
 	uint32_t protect = ConvertProtFlagsUnix(memProtFlags);
 	uintptr_t page_size = GetMemoryProtectPageSize();
 
