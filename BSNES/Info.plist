@@ -38,6 +38,8 @@
 			<true/>
 			<key>OEGameCoreSupportsDisplayModeChange</key>
 			<true/>
+			<key>OEGameCoreSupportsRetroAchievements</key>
+			<true/>
 			<key>OEGameCoreSupportsRewinding</key>
 			<true/>
 			<key>OERequiredFiles</key>
