@@ -162,10 +162,24 @@ final class OEGameDocument: NSDocument {
     private var raCredentialObserver: Any?
     private var raHardcoreObserver: Any?
 
-    /// Whether RetroAchievements hardcore mode is currently enabled.
-    /// Read from `UserDefaults` — writes go through `PrefRetroAchievementsController`.
-    @objc var isHardcoreModeEnabled: Bool {
+    /// The user's hardcore-mode preference, regardless of whether an RA session
+    /// is active. Read from `UserDefaults` — writes go through
+    /// `PrefRetroAchievementsController`. Use this only for displaying or
+    /// recording the user's choice; gate decisions go through
+    /// `isHardcoreEnforcementActive` so users without an RA session don't
+    /// lose save states, rewind, etc. by default.
+    @objc var isHardcoreModePreferenceEnabled: Bool {
         UserDefaults.standard.bool(forKey: RAHardcoreEnabledKey)
+    }
+
+    /// Whether hardcore restrictions should actually be enforced right now.
+    /// True only when the user has the preference on **and** an RA session is
+    /// active (a token is stored). Without a token, no achievements are being
+    /// tracked, so blocking save states, cheats, rewind, etc. would just take
+    /// existing OpenEmu functionality away from non-RA users.
+    @objc var isHardcoreModeEnabled: Bool {
+        guard isHardcoreModePreferenceEnabled else { return false }
+        return OECredentialStore.shared.get(.retroAchievementsToken) != nil
     }
 
     private var displaySleepAssertionID: IOPMAssertionID = 0
@@ -680,7 +694,10 @@ final class OEGameDocument: NSDocument {
                     self.gameCoreManager?.setRetroAchievementsToken(token, username: username)
                 }
 
-                // Forward mid-session credential changes (e.g. user signs in while a game is running)
+                // Forward mid-session credential changes (e.g. user signs in while a game is running).
+                // Whenever the RA session state flips, re-push the hardcore enforcement value too —
+                // signing out should drop hardcore enforcement (see #445), signing in should pick
+                // up the user's preference.
                 self.raCredentialObserver = NotificationCenter.default.addObserver(
                     forName: .OERACredentialsDidChange,
                     object: nil,
@@ -690,9 +707,15 @@ final class OEGameDocument: NSDocument {
                     let token    = note.userInfo?[RACredentialsTokenKey]    as? String
                     let username = note.userInfo?[RACredentialsUsernameKey] as? String
                     self.gameCoreManager?.setRetroAchievementsToken(token, username: username)
+                    // Route through handleHardcoreToggle so that signing in while a game
+                    // is running triggers the required reset — not a direct enforcement
+                    // flip that would let RA track an already-mutated session (#447).
+                    self.handleHardcoreToggle(enabled: self.isHardcoreModePreferenceEnabled)
                 }
 
-                // Push the current hardcore preference to the helper at game start.
+                // Push the effective hardcore state to the helper at game start.
+                // Without an RA session this stays false even if the preference is on,
+                // so non-RA users keep save states, rewind, cheats, etc. (#445).
                 self.gameCoreManager?.setHardcoreEnabled(self.isHardcoreModeEnabled)
 
                 // Forward mid-session hardcore toggles. soft→hard requires a reset
@@ -1148,10 +1171,14 @@ final class OEGameDocument: NSDocument {
     }
 
     /// Handle a mid-session hardcore toggle. Soft→hard requires confirming a reset
-    /// (RA spec). Hard→soft drops to softcore immediately with no prompt. Either
-    /// way, the new value is forwarded to the helper and the HUD is updated.
+    /// (RA spec) — but only when an RA session is actually active; without a
+    /// signed-in session, hardcore wouldn't be enforced anyway, so we skip the
+    /// reset prompt and just record the preference. Hard→soft drops to softcore
+    /// immediately with no prompt.
     private func handleHardcoreToggle(enabled: Bool) {
-        if enabled && HardcoreModePolicy.requiresResetWhenEnabling {
+        let willEnforce = enabled && OECredentialStore.shared.get(.retroAchievementsToken) != nil
+
+        if willEnforce && HardcoreModePolicy.requiresResetWhenEnabling {
             isEmulationPaused = true
             let alert = OEAlert()
             alert.messageText = NSLocalizedString("Switching to hardcore mode requires restarting the game.", comment: "")
@@ -1159,6 +1186,13 @@ final class OEGameDocument: NSDocument {
             alert.defaultButtonTitle = NSLocalizedString("Restart Game", comment: "")
             alert.alternateButtonTitle = NSLocalizedString("Cancel", comment: "")
             if alert.runModal() == .alertFirstButtonReturn {
+                // Flush active cheats from the core before engaging hardcore.
+                // setHardcoreEnabled(true) blocks the document's setCheat guard,
+                // but core cheat lists persist across a reset — they must be
+                // cleared first so the restarted session is clean (#447).
+                cheats.filter(\.isEnabled).forEach {
+                    gameCoreManager?.setCheat($0.code, withType: $0.type, enabled: false)
+                }
                 gameCoreManager?.setHardcoreEnabled(true)
                 gameCoreManager?.resetEmulation { [weak self] in
                     self?.isEmulationPaused = false
@@ -1166,7 +1200,15 @@ final class OEGameDocument: NSDocument {
                 gameViewController.showHardcoreNotification(true)
             } else {
                 // User cancelled — revert the preference so UI and state agree.
+                // Post the change so the prefs checkbox can resync (#446); if we
+                // only write UserDefaults, the imperatively-set checkbox stays
+                // visually checked until the pane is rebuilt.
                 UserDefaults.standard.set(false, forKey: RAHardcoreEnabledKey)
+                NotificationCenter.default.post(
+                    name: .OERAHardcoreDidChange,
+                    object: nil,
+                    userInfo: [OEHardcoreEnabledKey: false]
+                )
                 isEmulationPaused = false
             }
         } else if !enabled && HardcoreModePolicy.requiresResetWhenDisabling {
@@ -1177,8 +1219,10 @@ final class OEGameDocument: NSDocument {
             }
             gameViewController.showHardcoreNotification(false)
         } else {
-            gameCoreManager?.setHardcoreEnabled(enabled)
-            gameViewController.showHardcoreNotification(enabled)
+            // Either turning hardcore off, or turning it on without an RA session
+            // (no enforcement, no reset, just record the preference).
+            gameCoreManager?.setHardcoreEnabled(willEnforce)
+            gameViewController.showHardcoreNotification(willEnforce)
         }
     }
     
@@ -1882,9 +1926,20 @@ final class OEGameDocument: NSDocument {
     
     /// expects `sender` or `sender.representedObject` to be an `OEDBSaveState` object
     @objc private func loadState(_ sender: AnyObject?) {
+        // Check hardcore before pausing — if we pause first and then bail,
+        // the game is left stuck paused with no resume (#447).
+        if !HardcoreModePolicy.allows(.loadState, hardcoreEnabled: isHardcoreModeEnabled) {
+            let alert = OEAlert()
+            alert.messageText = NSLocalizedString("Save state loading is disabled in hardcore mode.", comment: "")
+            alert.informativeText = NSLocalizedString("Turn off hardcore mode in Preferences ▸ RetroAchievements to load save states.", comment: "")
+            alert.defaultButtonTitle = NSLocalizedString("OK", comment: "")
+            alert.runModal()
+            return
+        }
+
         // calling pauseGame here because it might need some time to execute
         pauseEmulationIfNeeded()
-        
+
         let state: OEDBSaveState
         if let sender = sender as? OEDBSaveState {
             state = sender
@@ -1894,7 +1949,7 @@ final class OEGameDocument: NSDocument {
             assertionFailure("Invalid argument passed: \(String(describing: sender))")
             return
         }
-        
+
         loadState(state: state)
     }
     
@@ -1915,11 +1970,6 @@ final class OEGameDocument: NSDocument {
         }
 
         if !HardcoreModePolicy.allows(.loadState, hardcoreEnabled: isHardcoreModeEnabled) {
-            let alert = OEAlert()
-            alert.messageText = NSLocalizedString("Save state loading is disabled in hardcore mode.", comment: "")
-            alert.informativeText = NSLocalizedString("Turn off hardcore mode in Preferences ▸ RetroAchievements to load save states.", comment: "")
-            alert.defaultButtonTitle = NSLocalizedString("OK", comment: "")
-            alert.runModal()
             return
         }
 

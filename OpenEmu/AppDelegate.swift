@@ -160,6 +160,7 @@ class AppDelegate: NSObject, UNUserNotificationCenterDelegate {
             OEAppearance.HUDBar.key: OEAppearance.HUDBar.vibrant.rawValue,
             OEAppearance.ControlsPrefs.key: OEAppearance.ControlsPrefs.wood.rawValue,
             OEGameCoreManagerModePreferenceKey: NSStringFromClass(OEXPCGameCoreManager.self),
+            RAHardcoreEnabledKey: true,
         ])
         
         // Don't let an old setting override automatically checking for app updates.

@@ -49,10 +49,10 @@ sed -i '' 's/MARKETING_VERSION = OLD;/MARKETING_VERSION = NEW;/g' \
   "OpenEmu/OpenEmu.xcodeproj/project.pbxproj"
 ```
 
-**`SECURITY.md`** — update the supported versions table so the new version is listed as supported and the old "latest" row is replaced:
+**`.github/SECURITY.md`** — update the supported versions table so the new version is listed as supported and the old "latest" row is replaced:
 ```bash
-sed -i '' "s/| [0-9][0-9.]* (latest) | ✅ |/| NEW_VERSION (latest) | ✅ |/" SECURITY.md
-sed -i '' "s/| < [0-9][0-9.]* | ❌ |/| < NEW_VERSION | ❌ |/" SECURITY.md
+sed -i '' "s/| [0-9][0-9.]* (latest) | ✅ |/| NEW_VERSION (latest) | ✅ |/" .github/SECURITY.md
+sed -i '' "s/| < [0-9][0-9.]* | ❌ |/| < NEW_VERSION | ❌ |/" .github/SECURITY.md
 ```
 
 Verify by grepping all three files and reporting the new values.
@@ -110,7 +110,7 @@ If the build fails, stop and report the errors. Do not continue.
 This is a config/docs-only change and qualifies for a direct commit to main.
 
 ```bash
-git add OpenEmu/OpenEmu-Info.plist OpenEmu/OpenEmu.xcodeproj/project.pbxproj Releases/notes-VERSION.md SECURITY.md
+git add OpenEmu/OpenEmu-Info.plist OpenEmu/OpenEmu.xcodeproj/project.pbxproj Releases/notes-VERSION.md .github/SECURITY.md
 git commit -m "chore: bump version to VERSION (build BUILD)
 
 Add release notes for VERSION."
