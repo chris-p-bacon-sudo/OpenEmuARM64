@@ -10,6 +10,7 @@
 		B5AE7A121710BD6200ED5801 /* OELibretroCoreTranslator.m in Sources */ = {isa = PBXBuildFile; fileRef = B5AE7A111710BD6200ED5801 /* OELibretroCoreTranslator.m */; };
 		B5AE7A141710BD6200ED5801 /* OELibretroCoreTranslator.h in Headers */ = {isa = PBXBuildFile; fileRef = B5AE7A131710BD6200ED5801 /* OELibretroCoreTranslator.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		0109BBA5209F25EB002419C1 /* OEDiffQueueTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 0109BBA4209F25EB002419C1 /* OEDiffQueueTests.m */; };
+		0442B0011A2F4E6C00442001 /* OEGameCoreHardcoreTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 0442B0001A2F4E6C00442001 /* OEGameCoreHardcoreTests.m */; };
 		0109BBA7209F25EB002419C1 /* OpenEmuBase.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C6772A261710A4BA00ED580A /* OpenEmuBase.framework */; };
 		011829A720ACA8AA0030B347 /* OEAudioBuffer.h in Headers */ = {isa = PBXBuildFile; fileRef = 011829A620ACA8AA0030B347 /* OEAudioBuffer.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		011FAED42325B8F900DBEC62 /* NSDictionary+OpenEmuSDK.h in Headers */ = {isa = PBXBuildFile; fileRef = 011FAED22325B8F900DBEC62 /* NSDictionary+OpenEmuSDK.h */; settings = {ATTRIBUTES = (Public, ); }; };
@@ -25,6 +26,8 @@
 		01F306FC20AA1C64005C8F18 /* NSUserDefaults+OpenEmuSDK.m in Sources */ = {isa = PBXBuildFile; fileRef = 01F306FA20AA1C64005C8F18 /* NSUserDefaults+OpenEmuSDK.m */; };
 		0518D6DD24F17C6E0037101D /* OEGeometry.m in Sources */ = {isa = PBXBuildFile; fileRef = 0518D6DC24F17C6E0037101D /* OEGeometry.m */; };
 		0572A3FF287781BA00AC32F8 /* OEGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0572A3FE287781BA00AC32F8 /* OEGeometry.swift */; };
+		0442B0021A2F4E6C00442002 /* HardcoreModePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0442B0031A2F4E6C00442003 /* HardcoreModePolicy.swift */; };
+		0442B0041A2F4E6C00442004 /* HardcoreModePolicyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0442B0051A2F4E6C00442005 /* HardcoreModePolicyTests.swift */; };
 		05F2F90824EA029900BFAF18 /* Controller-Database.plist in Resources */ = {isa = PBXBuildFile; fileRef = 05F2F90724EA029900BFAF18 /* Controller-Database.plist */; };
 		05FC85B1295E49FE003DED0C /* NSDataCategoryTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 05FC85B0295E49FE003DED0C /* NSDataCategoryTests.m */; };
 		05FC85B2295E49FE003DED0C /* OpenEmuSystem.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C6772A8C1710CD7E00ED580A /* OpenEmuSystem.framework */; };
@@ -149,6 +152,7 @@
 		B5AE7A151710BD6200ED5801 /* libretro.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = libretro.h; sourceTree = "<group>"; };
 		0109BBA2209F25EB002419C1 /* OpenEmuBaseTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = OpenEmuBaseTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		0109BBA4209F25EB002419C1 /* OEDiffQueueTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = OEDiffQueueTests.m; sourceTree = "<group>"; };
+		0442B0001A2F4E6C00442001 /* OEGameCoreHardcoreTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = OEGameCoreHardcoreTests.m; sourceTree = "<group>"; };
 		011829A620ACA8AA0030B347 /* OEAudioBuffer.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = OEAudioBuffer.h; sourceTree = "<group>"; };
 		011FAED22325B8F900DBEC62 /* NSDictionary+OpenEmuSDK.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "NSDictionary+OpenEmuSDK.h"; sourceTree = "<group>"; };
 		011FAED32325B8F900DBEC62 /* NSDictionary+OpenEmuSDK.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "NSDictionary+OpenEmuSDK.m"; sourceTree = "<group>"; };
@@ -163,6 +167,8 @@
 		01F306FA20AA1C64005C8F18 /* NSUserDefaults+OpenEmuSDK.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "NSUserDefaults+OpenEmuSDK.m"; sourceTree = "<group>"; };
 		0518D6DC24F17C6E0037101D /* OEGeometry.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = OEGeometry.m; sourceTree = "<group>"; };
 		0572A3FE287781BA00AC32F8 /* OEGeometry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OEGeometry.swift; sourceTree = "<group>"; };
+		0442B0031A2F4E6C00442003 /* HardcoreModePolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HardcoreModePolicy.swift; sourceTree = "<group>"; };
+		0442B0051A2F4E6C00442005 /* HardcoreModePolicyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HardcoreModePolicyTests.swift; sourceTree = "<group>"; };
 		05F2F90724EA029900BFAF18 /* Controller-Database.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "Controller-Database.plist"; sourceTree = "<group>"; };
 		05FC85AE295E49FE003DED0C /* OpenEmuSystemTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = OpenEmuSystemTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		05FC85B0295E49FE003DED0C /* NSDataCategoryTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = NSDataCategoryTests.m; sourceTree = "<group>"; };
@@ -301,6 +307,8 @@
 			isa = PBXGroup;
 			children = (
 				0109BBA4209F25EB002419C1 /* OEDiffQueueTests.m */,
+				0442B0001A2F4E6C00442001 /* OEGameCoreHardcoreTests.m */,
+				0442B0051A2F4E6C00442005 /* HardcoreModePolicyTests.swift */,
 			);
 			path = OpenEmuBaseTests;
 			sourceTree = "<group>";
@@ -377,6 +385,7 @@
 				8363A433193CA52400F18425 /* OEGeometry.h */,
 				0518D6DC24F17C6E0037101D /* OEGeometry.m */,
 				0572A3FE287781BA00AC32F8 /* OEGeometry.swift */,
+				0442B0031A2F4E6C00442003 /* HardcoreModePolicy.swift */,
 				C694EEC11C2A065400DFD15C /* OEPropertyList.h */,
 				01F306F920AA1C64005C8F18 /* NSUserDefaults+OpenEmuSDK.h */,
 				01F306FA20AA1C64005C8F18 /* NSUserDefaults+OpenEmuSDK.m */,
@@ -757,6 +766,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				0109BBA5209F25EB002419C1 /* OEDiffQueueTests.m in Sources */,
+				0442B0011A2F4E6C00442001 /* OEGameCoreHardcoreTests.m in Sources */,
+				0442B0041A2F4E6C00442004 /* HardcoreModePolicyTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -785,6 +796,7 @@
 				05FF41B822B08C5F00BB7283 /* OELogging.m in Sources */,
 				0518D6DD24F17C6E0037101D /* OEGeometry.m in Sources */,
 				0572A3FF287781BA00AC32F8 /* OEGeometry.swift in Sources */,
+				0442B0021A2F4E6C00442002 /* HardcoreModePolicy.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

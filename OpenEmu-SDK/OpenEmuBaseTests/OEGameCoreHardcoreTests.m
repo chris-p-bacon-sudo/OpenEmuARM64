@@ -1,0 +1,189 @@
+// Copyright (c) 2026, OpenEmu Team
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+//     * Redistributions of source code must retain the above copyright
+//       notice, this list of conditions and the following disclaimer.
+//     * Redistributions in binary form must reproduce the above copyright
+//       notice, this list of conditions and the following disclaimer in the
+//       documentation and/or other materials provided with the distribution.
+//     * Neither the name of the OpenEmu Team nor the
+//       names of its contributors may be used to endorse or promote products
+//       derived from this software without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY OpenEmu Team ''AS IS'' AND ANY
+// EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// DISCLAIMED. IN NO EVENT SHALL OpenEmu Team BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+// (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+// LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+// ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+// Regression tests for RetroAchievements hardcore mode gates at the OEGameCore
+// layer. These gates exist because RA's hardcore contract forbids rewind,
+// fast-forward, frame-step, and other state-rewriting affordances during a
+// hardcore session. The gates are scattered across `OEGameCore.m` and easy to
+// weaken in an unrelated refactor — these tests lock the contract in place.
+//
+// Hardcore gates under test (OEGameCore.m):
+//   - fastForward:          line ~582
+//   - rewind:               line ~597
+//   - stepFrameForward      line ~648
+//   - stepFrameBackward     line ~654
+//
+// Internal flags `isRewinding` and `singleFrameStep` are private ivars; we
+// read them via KVC, which falls back to ivar lookup when no accessor exists.
+// If KVC stops finding them (e.g. the ivars are renamed), these tests fail
+// loudly — which is the desired behavior for a regression suite.
+
+#import <XCTest/XCTest.h>
+#import "OEGameCore.h"
+
+
+@interface OEGameCoreHardcoreTests : XCTestCase
+@end
+
+
+@implementation OEGameCoreHardcoreTests
+
+#pragma mark - Helpers
+
+- (BOOL)isRewindingForCore:(OEGameCore *)core
+{
+    return [[core valueForKey:@"isRewinding"] boolValue];
+}
+
+- (BOOL)singleFrameStepForCore:(OEGameCore *)core
+{
+    return [[core valueForKey:@"singleFrameStep"] boolValue];
+}
+
+#pragma mark - Defaults
+
+- (void)testHardcoreDefaultsOff
+{
+    // OEGameCore default is OFF; the helper opts in by setting it true before
+    // a session starts. If this default ever flipped, every non-RA session
+    // would silently lose rewind/fast-forward/frame-step.
+    OEGameCore *core = [[OEGameCore alloc] init];
+    XCTAssertFalse(core.hardcoreEnabled,
+                   @"OEGameCore.hardcoreEnabled default must remain OFF; the helper sets it true at session start.");
+}
+
+#pragma mark - fastForward:
+
+- (void)testFastForwardBlockedWhenHardcoreEnabled
+{
+    OEGameCore *core = [[OEGameCore alloc] init];
+    core.rate = 1.0f;
+    core.hardcoreEnabled = YES;
+
+    [core fastForward:YES];
+
+    XCTAssertEqualWithAccuracy(core.rate, 1.0f, 0.0001f,
+                               @"fastForward: must be a no-op when hardcoreEnabled is YES — the rate must not change.");
+}
+
+- (void)testFastForwardAllowedWhenHardcoreDisabled
+{
+    OEGameCore *core = [[OEGameCore alloc] init];
+    core.rate = 1.0f;
+    core.hardcoreEnabled = NO;
+
+    [core fastForward:YES];
+
+    XCTAssertGreaterThan(core.rate, 1.0f,
+                         @"fastForward: must increase rate when hardcoreEnabled is NO (sanity check that the gate is the only thing blocking).");
+}
+
+#pragma mark - rewind:
+
+- (void)testRewindBlockedWhenHardcoreEnabled
+{
+    OEGameCore *core = [[OEGameCore alloc] init];
+    core.hardcoreEnabled = YES;
+
+    [core rewind:YES];
+
+    XCTAssertFalse([self isRewindingForCore:core],
+                   @"rewind: must not flip isRewinding to YES when hardcoreEnabled is YES.");
+}
+
+- (void)testRewindForceClearedWhenHardcoreEnabledMidRewind
+{
+    // If a rewind is already in progress and hardcore turns on, the next
+    // rewind: call must clear isRewinding rather than leave it stuck on.
+    OEGameCore *core = [[OEGameCore alloc] init];
+    core.hardcoreEnabled = NO;
+    [core rewindAtSpeed:1.0]; // sets isRewinding = YES via setter path
+    XCTAssertTrue([self isRewindingForCore:core],
+                  @"precondition: rewind must be active before we test the hardcore-on transition.");
+
+    core.hardcoreEnabled = YES;
+    [core rewind:YES];
+
+    XCTAssertFalse([self isRewindingForCore:core],
+                   @"rewind: must force-clear isRewinding when hardcoreEnabled is YES.");
+}
+
+#pragma mark - stepFrameForward / stepFrameBackward
+
+- (void)testStepFrameForwardBlockedWhenHardcoreEnabled
+{
+    OEGameCore *core = [[OEGameCore alloc] init];
+    core.hardcoreEnabled = YES;
+
+    [core stepFrameForward];
+
+    XCTAssertFalse([self singleFrameStepForCore:core],
+                   @"stepFrameForward must be a no-op when hardcoreEnabled is YES.");
+}
+
+- (void)testStepFrameBackwardBlockedWhenHardcoreEnabled
+{
+    OEGameCore *core = [[OEGameCore alloc] init];
+    core.hardcoreEnabled = YES;
+
+    [core stepFrameBackward];
+
+    XCTAssertFalse([self singleFrameStepForCore:core],
+                   @"stepFrameBackward must be a no-op when hardcoreEnabled is YES.");
+    XCTAssertFalse([self isRewindingForCore:core],
+                   @"stepFrameBackward must not flip isRewinding when hardcoreEnabled is YES.");
+}
+
+- (void)testStepFrameForwardAllowedWhenHardcoreDisabled
+{
+    OEGameCore *core = [[OEGameCore alloc] init];
+    core.hardcoreEnabled = NO;
+
+    [core stepFrameForward];
+
+    XCTAssertTrue([self singleFrameStepForCore:core],
+                  @"stepFrameForward must set singleFrameStep when hardcoreEnabled is NO (sanity check).");
+}
+
+#pragma mark - Toggle behavior
+
+- (void)testToggleReEnablesAffordances
+{
+    // Hardcore on → block. Hardcore off → allow. Catches regressions where the
+    // gate is stuck-on (e.g. a refactor that initializes a flag once and never
+    // re-reads it).
+    OEGameCore *core = [[OEGameCore alloc] init];
+
+    core.hardcoreEnabled = YES;
+    [core stepFrameForward];
+    XCTAssertFalse([self singleFrameStepForCore:core],
+                   @"stepFrameForward should be blocked while hardcore is on.");
+
+    core.hardcoreEnabled = NO;
+    [core stepFrameForward];
+    XCTAssertTrue([self singleFrameStepForCore:core],
+                  @"stepFrameForward should be allowed once hardcore is turned off.");
+}
+
+@end

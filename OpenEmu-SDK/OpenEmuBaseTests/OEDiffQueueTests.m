@@ -47,8 +47,8 @@
 - (NSData *)dataByMutatingData:(NSData *)orig withFrequency:(double)freq sizeDifference:(NSInteger)diff
 {
     NSInteger oldsize = orig.length;
-    NSInteger newsize = oldsize + diff;
-    NSInteger commonsize = MIN(newsize, oldsize);
+    NSInteger newsize = MAX(oldsize + diff, (NSInteger)0);
+    NSInteger commonsize = MAX(MIN(newsize, oldsize), (NSInteger)0);
     
     char *newbuf = malloc(newsize);
     memcpy(newbuf, orig.bytes, commonsize);

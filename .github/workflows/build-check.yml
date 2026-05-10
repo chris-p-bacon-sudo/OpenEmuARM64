@@ -37,3 +37,13 @@ jobs:
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO
+
+      - name: Run OpenEmuBaseTests (incl. RA hardcore regression suite)
+        run: |
+          xcodebuild test \
+            -project OpenEmu-SDK/OpenEmu-SDK.xcodeproj \
+            -scheme OpenEmuBase \
+            -destination 'platform=macOS,arch=arm64' \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO
