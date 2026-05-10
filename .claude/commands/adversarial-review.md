@@ -1,4 +1,4 @@
-Run the adversarial reviewer against the current branch's Swift diff.
+Run the adversarial reviewer against the current branch's diff.
 
 Arguments: `[PR_NUMBER]` (optional)
 
@@ -7,11 +7,11 @@ Same gate `/ship` runs internally. Use it standalone to test the agent or sanity
 ## Steps
 
 1. **Get the diff.**
-   - With `$1`: `gh pr checkout $1 --repo nickybmon/OpenEmu-Silicon`, then `git diff main...HEAD -- '*.swift'`.
-   - Without: `git diff main...HEAD -- '*.swift'`.
-   - If the Swift diff is empty, report "no Swift changes — gate skipped" and stop. Markdown/config/script changes are not reviewed.
+   - With `$1`: `gh pr checkout $1 --repo nickybmon/OpenEmu-Silicon`, then `git diff main...HEAD`.
+   - Without: `git diff main...HEAD`.
+   - If the diff is empty, report "no changes — gate skipped" and stop.
 
-2. **Build symbol context.** Extract Swift symbol names from the diff (`func <name>(`, `class <Name>`, `struct <Name>`, `extension <Name>`, `enum <Name>`, `protocol <Name>`). For each, `grep -rn` for direct callers and callees. Cap at ~50 lines per symbol.
+2. **Build symbol context.** Extract symbol names from the diff (Swift: `func <name>(`, `class <Name>`, `struct <Name>`, `extension <Name>`, `enum <Name>`, `protocol <Name>`; ObjC: `- (<type>)<name>`, `+ (<type>)<name>`). For each, `grep -rn` for direct callers and callees. Cap at ~50 lines per symbol.
 
 3. **Dispatch the `adversarial-reviewer` subagent** with the diff and symbol context. Read-only tools; no GitHub state changes.
 
