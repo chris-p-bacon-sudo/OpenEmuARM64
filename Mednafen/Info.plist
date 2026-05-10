@@ -36,8 +36,6 @@
 			<integer>60</integer>
 			<key>OEGameCoreRewindInterval</key>
 			<integer>0</integer>
-			<key>OEGameCoreSupportsRetroAchievements</key>
-			<true/>
 			<key>OEGameCoreSupportsRewinding</key>
 			<true/>
 			<key>OERequiredFiles</key>
@@ -60,8 +58,6 @@
 			<integer>60</integer>
 			<key>OEGameCoreRewindInterval</key>
 			<integer>0</integer>
-			<key>OEGameCoreSupportsRetroAchievements</key>
-			<true/>
 			<key>OEGameCoreSupportsRewinding</key>
 			<true/>
 		</dict>
@@ -71,8 +67,6 @@
 			<integer>60</integer>
 			<key>OEGameCoreRewindInterval</key>
 			<integer>0</integer>
-			<key>OEGameCoreSupportsRetroAchievements</key>
-			<true/>
 			<key>OEGameCoreSupportsRewinding</key>
 			<true/>
 		</dict>
@@ -84,8 +78,6 @@
 			<integer>60</integer>
 			<key>OEGameCoreRewindInterval</key>
 			<integer>0</integer>
-			<key>OEGameCoreSupportsRetroAchievements</key>
-			<true/>
 			<key>OEGameCoreSupportsRewinding</key>
 			<true/>
 			<key>OERequiredFiles</key>
@@ -105,8 +97,6 @@
 		<key>openemu.system.pcfx</key>
 		<dict>
 			<key>OEGameCoreRequiresFiles</key>
-			<true/>
-			<key>OEGameCoreSupportsRetroAchievements</key>
 			<true/>
 			<key>OEGameCoreSupportsMultipleDiscs</key>
 			<true/>
@@ -170,8 +160,6 @@
 		<dict>
 			<key>OEGameCoreRequiresFiles</key>
 			<true/>
-			<key>OEGameCoreSupportsRetroAchievements</key>
-			<true/>
 			<key>OEGameCoreSupportsMultipleDiscs</key>
 			<true/>
 			<key>OERequiredFiles</key>
@@ -204,8 +192,6 @@
 			<integer>60</integer>
 			<key>OEGameCoreRewindInterval</key>
 			<integer>0</integer>
-			<key>OEGameCoreSupportsRetroAchievements</key>
-			<true/>
 			<key>OEGameCoreSupportsDisplayModeChange</key>
 			<true/>
 			<key>OEGameCoreSupportsRewinding</key>
@@ -217,8 +203,6 @@
 			<integer>60</integer>
 			<key>OEGameCoreRewindInterval</key>
 			<integer>0</integer>
-			<key>OEGameCoreSupportsRetroAchievements</key>
-			<true/>
 			<key>OEGameCoreSupportsRewinding</key>
 			<true/>
 		</dict>

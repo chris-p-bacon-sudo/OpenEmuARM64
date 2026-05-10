@@ -58,12 +58,16 @@ final class PrefRetroAchievementsController: NSViewController {
     private let hardcoreCheckbox = NSButton(checkboxWithTitle: "Hardcore mode (recommended)", target: nil, action: nil)
     private let hardcoreSubtitle = NSTextField(wrappingLabelWithString: "")
 
+    private let supportedDivider = NSBox()
+    private let supportedLabel   = NSTextField(labelWithString: "")
+    private let supportedGrid    = NSStackView()
+
     private var hardcoreObserver: Any?
 
     // MARK: - Lifecycle
 
     override func loadView() {
-        view = NSView(frame: NSRect(x: 0, y: 0, width: 468, height: 400))
+        view = NSView(frame: NSRect(x: 0, y: 0, width: 468, height: 580))
         buildUI()
     }
 
@@ -71,6 +75,7 @@ final class PrefRetroAchievementsController: NSViewController {
         super.viewDidLoad()
         loadSavedCredentials()
         updateStatus()
+        populateSupportedSystems()
 
         // Resync the checkbox when hardcore state is changed externally — most
         // importantly when the user cancels the reset prompt mid-session and
@@ -230,6 +235,99 @@ final class PrefRetroAchievementsController: NSViewController {
             hardcoreSubtitle.leadingAnchor.constraint(equalTo: hardcoreCheckbox.leadingAnchor, constant: 20),
             hardcoreSubtitle.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -36),
         ])
+
+        // ── Supported Systems ────────────────────────────────────────────────
+        supportedDivider.boxType = .separator
+        supportedDivider.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(supportedDivider)
+
+        supportedLabel.stringValue = "Supported Systems"
+        supportedLabel.font = .boldSystemFont(ofSize: 13)
+        supportedLabel.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(supportedLabel)
+
+        supportedGrid.orientation = .vertical
+        supportedGrid.alignment = .leading
+        supportedGrid.spacing = 4
+        supportedGrid.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(supportedGrid)
+
+        NSLayoutConstraint.activate([
+            supportedDivider.topAnchor.constraint(equalTo: hardcoreSubtitle.bottomAnchor, constant: 24),
+            supportedDivider.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 36),
+            supportedDivider.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -36),
+            supportedDivider.heightAnchor.constraint(equalToConstant: 1),
+
+            supportedLabel.topAnchor.constraint(equalTo: supportedDivider.bottomAnchor, constant: 16),
+            supportedLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 36),
+            supportedLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -36),
+
+            supportedGrid.topAnchor.constraint(equalTo: supportedLabel.bottomAnchor, constant: 12),
+            supportedGrid.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 36),
+            supportedGrid.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -36),
+        ])
+    }
+
+    private func populateSupportedSystems() {
+        var supportedIDs = Set<String>()
+        for plugin in OECorePlugin.allPlugins {
+            for sysID in plugin.systemIdentifiers {
+                if plugin.supportsRetroAchievements(forSystemIdentifier: sysID) {
+                    supportedIDs.insert(sysID)
+                }
+            }
+        }
+
+        let systems: [(name: String, icon: NSImage)] = supportedIDs
+            .compactMap { id -> (String, NSImage)? in
+                guard let sys = OESystemPlugin.systemPlugin(forIdentifier: id) else { return nil }
+                let name = sys.systemName
+                    .replacingOccurrences(of: #"\s*\([^)]+\)"#, with: "", options: .regularExpression)
+                return (name, sys.systemIcon)
+            }
+            .sorted { $0.0 < $1.0 }
+
+        let columns = 3
+        for rowStart in stride(from: 0, to: systems.count, by: columns) {
+            let rowStack = NSStackView()
+            rowStack.orientation = .horizontal
+            rowStack.spacing = 8
+            rowStack.distribution = .fillEqually
+            rowStack.translatesAutoresizingMaskIntoConstraints = false
+
+            for i in rowStart ..< min(rowStart + columns, systems.count) {
+                let (name, icon) = systems[i]
+
+                let imageView = NSImageView()
+                imageView.image = icon
+                imageView.imageScaling = .scaleProportionallyDown
+                imageView.translatesAutoresizingMaskIntoConstraints = false
+                NSLayoutConstraint.activate([
+                    imageView.widthAnchor.constraint(equalToConstant: 16),
+                    imageView.heightAnchor.constraint(equalToConstant: 16),
+                ])
+
+                let nameLabel = NSTextField(labelWithString: name)
+                nameLabel.font = .systemFont(ofSize: 12)
+                nameLabel.lineBreakMode = .byTruncatingTail
+                nameLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+
+                let cell = NSStackView(views: [imageView, nameLabel])
+                cell.orientation = .horizontal
+                cell.spacing = 6
+                cell.alignment = .centerY
+                cell.translatesAutoresizingMaskIntoConstraints = false
+
+                rowStack.addArrangedSubview(cell)
+            }
+            // Pad partial last row so fillEqually keeps columns consistent
+            if rowStart + columns > systems.count {
+                for _ in systems.count ..< rowStart + columns {
+                    rowStack.addArrangedSubview(NSView())
+                }
+            }
+            supportedGrid.addArrangedSubview(rowStack)
+        }
     }
 
     @objc private func toggleHardcore(_ sender: NSButton) {
@@ -342,7 +440,7 @@ extension PrefRetroAchievementsController: PreferencePane {
 
     var panelTitle: String { "Achievements" }
 
-    var viewSize: NSSize { NSSize(width: 468, height: 400) }
+    var viewSize: NSSize { NSSize(width: 468, height: 580) }
 }
 
 
