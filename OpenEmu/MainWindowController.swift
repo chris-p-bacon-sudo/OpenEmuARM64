@@ -306,22 +306,21 @@ extension MainWindowController: LibraryControllerDelegate {
                 else if let error = error as? OEGameDocument.Errors,
                         case OEGameDocument.Errors.noCore = error,
                         !retry {
-                    // Try downloading the core list before bailing out definitively
+                    // Try downloading the core list before bailing out definitively.
+                    // Start the download before presenting the sheet so cancelCheckForNewCores()
+                    // always has a live task to cancel, regardless of timing.
                     let alert = OEAlert()
                     alert.messageText = NSLocalizedString("Downloading core list...", comment: "")
                     alert.defaultButtonTitle = NSLocalizedString("Cancel", comment: "")
+                    CoreUpdater.shared.checkForNewCores { _ in
+                        DispatchQueue.main.async { alert.close(withResult: .alertSecondButtonReturn) }
+                    }
                     alert.beginSheetModal(for: window) { response in
                         if response == .alertFirstButtonReturn {
                             CoreUpdater.shared.cancelCheckForNewCores()
                             self.presentError(error)
                         } else {
                             self.openGameDocument(with: game, saveState: state, secondAttempt: true, disableAutoReload: false)
-                        }
-                    }
-                    // Start the download on the next run loop turn so the sheet is fully presented first.
-                    DispatchQueue.main.async {
-                        CoreUpdater.shared.checkForNewCores { _ in
-                            DispatchQueue.main.async { alert.close(withResult: .alertSecondButtonReturn) }
                         }
                     }
                 }
