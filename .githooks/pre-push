@@ -88,14 +88,16 @@ trap release_lock EXIT
 acquire_lock
 
 # --- Stamp check ---------------------------------------------------------
-# Skip verify if the exact HEAD being pushed already passed verification and
-# the tree is clean. verify.sh writes this stamp on a successful run.
+# Skip verify if the tree being pushed is identical to what already passed.
+# verify.sh stamps the tree hash (HEAD^{tree}), not the commit SHA, so the
+# stamp survives a commit made after verify ran — the common case that was
+# causing verify to re-run and pile up concurrent xcodebuild processes.
 STAMP_FILE=$(git rev-parse --git-path verify-passed 2>/dev/null || true)
-HEAD_SHA=$(git rev-parse HEAD 2>/dev/null || echo "")
-if [ -n "$STAMP_FILE" ] && [ -f "$STAMP_FILE" ] && [ -n "$HEAD_SHA" ]; then
+TREE_SHA=$(git rev-parse HEAD^{tree} 2>/dev/null || echo "")
+if [ -n "$STAMP_FILE" ] && [ -f "$STAMP_FILE" ] && [ -n "$TREE_SHA" ]; then
   STAMPED_SHA=$(cat "$STAMP_FILE" 2>/dev/null || echo "")
-  if [ "$STAMPED_SHA" = "$HEAD_SHA" ] && git diff --quiet && git diff --cached --quiet; then
-    echo "[pre-push] verify.sh PASSED earlier for $HEAD_SHA — skipping"
+  if [ "$STAMPED_SHA" = "$TREE_SHA" ] && git diff --quiet && git diff --cached --quiet; then
+    echo "[pre-push] verify.sh PASSED earlier for tree $TREE_SHA — skipping"
     echo "[pre-push] (delete $STAMP_FILE to force a re-run)"
     exit 0
   fi

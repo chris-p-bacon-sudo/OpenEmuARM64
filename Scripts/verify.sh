@@ -396,19 +396,19 @@ if [ "$FAILURES" -eq 0 ]; then
   echo "===================="
   echo "verify.sh: ALL PASS"
   echo "===================="
-  # Stamp the current HEAD as verified. The pre-push hook reads this to
-  # skip re-running verify when the exact commit being pushed already
-  # passed — which avoids the build.db lock contention that happens when
-  # two xcodebuild invocations race against the same DerivedData/worktree
-  # build directory in quick succession.
-  # Only stamp when the full app verification ran (no --core, no --release).
-  # Skip stamping for partial/non-default runs so the hook can't be tricked.
+  # Stamp the tree hash of the verified build. The pre-push hook reads this
+  # to skip re-running verify when the code being pushed is identical to what
+  # already passed — regardless of how many commits have been made since.
+  # Using the tree hash (HEAD^{tree}) rather than the commit SHA means the
+  # stamp survives a commit: verify → commit → push hits the cache instead of
+  # re-running a second full build, which is what causes concurrent-xcodebuild
+  # pile-ups. Only stamp for full app Debug runs so partial checks can't trick it.
   if [ -z "$CORE" ] && [ "$CONFIG" = "Debug" ]; then
     STAMP_FILE=$(git rev-parse --git-path verify-passed 2>/dev/null || true)
     if [ -n "$STAMP_FILE" ]; then
-      HEAD_SHA=$(git rev-parse HEAD 2>/dev/null || echo "")
-      if [ -n "$HEAD_SHA" ]; then
-        echo "$HEAD_SHA" > "$STAMP_FILE"
+      TREE_SHA=$(git rev-parse HEAD^{tree} 2>/dev/null || echo "")
+      if [ -n "$TREE_SHA" ]; then
+        echo "$TREE_SHA" > "$STAMP_FILE"
       fi
     fi
   fi
