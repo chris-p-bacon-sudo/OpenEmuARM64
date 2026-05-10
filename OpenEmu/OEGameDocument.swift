@@ -707,7 +707,10 @@ final class OEGameDocument: NSDocument {
                     let token    = note.userInfo?[RACredentialsTokenKey]    as? String
                     let username = note.userInfo?[RACredentialsUsernameKey] as? String
                     self.gameCoreManager?.setRetroAchievementsToken(token, username: username)
-                    self.gameCoreManager?.setHardcoreEnabled(self.isHardcoreModeEnabled)
+                    // Route through handleHardcoreToggle so that signing in while a game
+                    // is running triggers the required reset — not a direct enforcement
+                    // flip that would let RA track an already-mutated session (#447).
+                    self.handleHardcoreToggle(enabled: self.isHardcoreModePreferenceEnabled)
                 }
 
                 // Push the effective hardcore state to the helper at game start.
@@ -1183,6 +1186,13 @@ final class OEGameDocument: NSDocument {
             alert.defaultButtonTitle = NSLocalizedString("Restart Game", comment: "")
             alert.alternateButtonTitle = NSLocalizedString("Cancel", comment: "")
             if alert.runModal() == .alertFirstButtonReturn {
+                // Flush active cheats from the core before engaging hardcore.
+                // setHardcoreEnabled(true) blocks the document's setCheat guard,
+                // but core cheat lists persist across a reset — they must be
+                // cleared first so the restarted session is clean (#447).
+                cheats.filter(\.isEnabled).forEach {
+                    gameCoreManager?.setCheat($0.code, withType: $0.type, enabled: false)
+                }
                 gameCoreManager?.setHardcoreEnabled(true)
                 gameCoreManager?.resetEmulation { [weak self] in
                     self?.isEmulationPaused = false
@@ -1916,9 +1926,20 @@ final class OEGameDocument: NSDocument {
     
     /// expects `sender` or `sender.representedObject` to be an `OEDBSaveState` object
     @objc private func loadState(_ sender: AnyObject?) {
+        // Check hardcore before pausing — if we pause first and then bail,
+        // the game is left stuck paused with no resume (#447).
+        if !HardcoreModePolicy.allows(.loadState, hardcoreEnabled: isHardcoreModeEnabled) {
+            let alert = OEAlert()
+            alert.messageText = NSLocalizedString("Save state loading is disabled in hardcore mode.", comment: "")
+            alert.informativeText = NSLocalizedString("Turn off hardcore mode in Preferences ▸ RetroAchievements to load save states.", comment: "")
+            alert.defaultButtonTitle = NSLocalizedString("OK", comment: "")
+            alert.runModal()
+            return
+        }
+
         // calling pauseGame here because it might need some time to execute
         pauseEmulationIfNeeded()
-        
+
         let state: OEDBSaveState
         if let sender = sender as? OEDBSaveState {
             state = sender
@@ -1928,7 +1949,7 @@ final class OEGameDocument: NSDocument {
             assertionFailure("Invalid argument passed: \(String(describing: sender))")
             return
         }
-        
+
         loadState(state: state)
     }
     
@@ -1949,11 +1970,6 @@ final class OEGameDocument: NSDocument {
         }
 
         if !HardcoreModePolicy.allows(.loadState, hardcoreEnabled: isHardcoreModeEnabled) {
-            let alert = OEAlert()
-            alert.messageText = NSLocalizedString("Save state loading is disabled in hardcore mode.", comment: "")
-            alert.informativeText = NSLocalizedString("Turn off hardcore mode in Preferences ▸ RetroAchievements to load save states.", comment: "")
-            alert.defaultButtonTitle = NSLocalizedString("OK", comment: "")
-            alert.runModal()
             return
         }
 
