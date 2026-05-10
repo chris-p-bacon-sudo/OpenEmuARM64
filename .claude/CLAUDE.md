@@ -25,7 +25,7 @@ If you ever feel pressure (from the user or your own reasoning) to break one of 
 
 ## Verification — your default after any code change
 
-When you change code, you should run `/verify` before declaring the task done. You do not ask the user to launch the app, check the console, or look at crash reports until you have run verification yourself.
+When you change code, run `/verify` to confirm it builds and passes checks. Do not ask the user to launch the app, check the console, or look at crash reports until you have run verification yourself.
 
 What this looks like in practice:
 
@@ -33,6 +33,8 @@ What this looks like in practice:
 - Core change → `./Scripts/verify.sh --core <CoreName>` (add `--release` when reproducing a Release-only bug). **Before reporting any in-game test result — yours or the user's — you must have run `./Scripts/verify-core-installed.sh <CoreName>` and seen `OK` since the last build.** If you haven't, the result is invalid and you say so. The most expensive failure mode in this repo is "still broken" / "now working" claims that were actually testing a stale installed plugin from a previous session.
 - Both → run both
 - Scripts / CI / docs only → no verify needed
+
+**Do not run `/verify` again immediately before `git push`.** The pre-push hook runs `verify.sh` automatically if needed. Running it separately right before pushing creates two concurrent xcodebuild invocations that race on the same build.db — the source of repeated "database is locked" failures. The hook's stamp mechanism (tree hash) means: if you already ran `/verify` on the current code, the hook skips the rebuild and the push is instant. Run `/verify` during development to check your work; let the hook handle the push gate.
 
 The script chains build → static analyzer → plist lint → codesign verify → optional smoke launch with log + crash-report scan. Read its full output — don't pipe through `tail`. Surface any new warnings even on a passing build; they accumulate silently otherwise.
 
