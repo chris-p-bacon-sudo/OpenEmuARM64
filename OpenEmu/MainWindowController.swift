@@ -310,20 +310,19 @@ extension MainWindowController: LibraryControllerDelegate {
                     let alert = OEAlert()
                     alert.messageText = NSLocalizedString("Downloading core list...", comment: "")
                     alert.defaultButtonTitle = NSLocalizedString("Cancel", comment: "")
-                    alert.performBlockInModalSession {
-                        CoreUpdater.shared.checkForNewCores { error in
-                            alert.close(withResult: .alertSecondButtonReturn)
+                    alert.beginSheetModal(for: window) { response in
+                        if response == .alertFirstButtonReturn {
+                            CoreUpdater.shared.cancelCheckForNewCores()
+                            self.presentError(error)
+                        } else {
+                            self.openGameDocument(with: game, saveState: state, secondAttempt: true, disableAutoReload: false)
                         }
                     }
-                    if alert.runModal() == .alertFirstButtonReturn {
-                        // user says no
-                        CoreUpdater.shared.cancelCheckForNewCores()
-                        DispatchQueue.main.async {
-                            self.presentError(error)
+                    // Start the download on the next run loop turn so the sheet is fully presented first.
+                    DispatchQueue.main.async {
+                        CoreUpdater.shared.checkForNewCores { _ in
+                            DispatchQueue.main.async { alert.close(withResult: .alertSecondButtonReturn) }
                         }
-                    } else {
-                        // let's give it another try
-                        self.openGameDocument(with: game, saveState: state, secondAttempt: true, disableAutoReload: false)
                     }
                 }
                 else if let error = error as? OEGameDocument.Errors,
