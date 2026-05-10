@@ -116,7 +116,8 @@ PPSSPPGameCore *_current = 0;
     NSURL *resourceURL = self.owner.bundle.resourceURL;
     NSURL *supportDirectoryURL = [NSURL fileURLWithPath:self.supportDirectoryPath isDirectory:YES];
 
-    // Copy over font files if needed
+    // Copy PSP firmware font files from the plugin bundle into the support directory.
+    // Remove before copying so stale files from older installs don't linger.
     NSFileManager *fileManager = NSFileManager.defaultManager;
     NSURL *fontSourceDirectory = [resourceURL URLByAppendingPathComponent:@"flash0/font" isDirectory:YES];
     NSURL *fontDestinationDirectory = [supportDirectoryURL URLByAppendingPathComponent:@"font" isDirectory:YES];
@@ -125,7 +126,7 @@ PPSSPPGameCore *_current = 0;
     for(NSURL *fontURL in fontFiles)
     {
         NSURL *destinationFontURL = [fontDestinationDirectory URLByAppendingPathComponent:fontURL.lastPathComponent];
-
+        [fileManager removeItemAtURL:destinationFontURL error:nil];
         [fileManager copyItemAtURL:fontURL toURL:destinationFontURL error:nil];
     }
 
@@ -145,26 +146,27 @@ PPSSPPGameCore *_current = 0;
 
     g_Config.Load("");
 
-    // Force a trailing forward slash that PPSSPP requires
+    if (!LogManager::GetInstance()) {
+        LogManager::Init(&g_Config.bEnableLogging);
+    }
+
+    g_Config.SetSearchPath(GetSysDirectory(DIRECTORY_SYSTEM));
+    g_Config.Load();
+
+    // Re-apply path and backend settings after Load() so a stale user config
+    // (e.g. from a previous Rosetta-era install) cannot override them.
+    // Paths must point at OpenEmu's support directory; iGPUBackend must stay
+    // OPENGL because this build has no Metal/Vulkan path.
     NSString *directoryString      = [supportDirectoryURL.path stringByAppendingString:@"/"];
-    //NSURL *directoryURL3            = [supportDirectoryURL URLByAppendingPathComponent:@"/" isDirectory:YES];
     g_Config.currentDirectory      = Path(directoryString.fileSystemRepresentation);
     g_Config.defaultCurrentDirectory = Path(directoryString.fileSystemRepresentation);
     g_Config.memStickDirectory     = Path(directoryString.fileSystemRepresentation);
     g_Config.flash0Directory       = Path(directoryString.fileSystemRepresentation);
     g_Config.internalDataDirectory = Path(directoryString.fileSystemRepresentation);
-    g_Config.appCacheDirectory     = Path([directoryString stringByAppendingString:@"/cache/" ].fileSystemRepresentation);
+    g_Config.appCacheDirectory     = Path([directoryString stringByAppendingString:@"/cache/"].fileSystemRepresentation);
     g_Config.iGPUBackend           = (int)GPUBackend::OPENGL;
     g_Config.bHideStateWarnings    = false;
     g_Config.iLanguage             = PSP_SYSTEMPARAM_LANGUAGE_ENGLISH;
-    
-    
-    if (!LogManager::GetInstance()) {
-        LogManager::Init(&g_Config.bEnableLogging);
-    }
-    
-    g_Config.SetSearchPath(GetSysDirectory(DIRECTORY_SYSTEM));
-    g_Config.Load();
     
     _coreParam.cpuCore      = CPUCore::JIT;
     _coreParam.gpuCore      = GPUCORE_GLES;
@@ -233,12 +235,17 @@ PPSSPPGameCore *_current = 0;
         _shouldReset = NO;
 
         std::string error_string;
-        if(!PSP_Init(_coreParam, &error_string))
-            NSLog(@"[PPSSPP] ERROR: %s", error_string.c_str());
+        if(!PSP_Init(_coreParam, &error_string)) {
+            NSLog(@"[PPSSPP] PSP_Init failed: %s", error_string.c_str());
+            // Shut down cleanly so OpenEmu surfaces "core quit unexpectedly"
+            // rather than crashing via null gpu pointer below.
+            [self performSelectorOnMainThread:@selector(stopEmulation) withObject:nil waitUntilDone:NO];
+            return;
+        }
 
         host->BootDone();
 		host->UpdateDisassembly();
-        
+
         if (PSP_CoreParameter().compat.flags().RequireBufferedRendering && g_Config.bSkipBufferEffects) {
             g_Config.bSkipBufferEffects = false;
         }
@@ -250,9 +257,9 @@ PPSSPPGameCore *_current = 0;
         if (PSP_CoreParameter().compat.flags().RequireDefaultCPUClock && g_Config.iLockedCPUSpeed != 0) {
             g_Config.iLockedCPUSpeed = 0;
         }
-        
+
         gpu->NotifyConfigChanged();
-        
+
         //Start the Emulator Thread
         NativeSetThreadState(OpenEmuCoreThread::EmuThreadState::START_REQUESTED);
         
