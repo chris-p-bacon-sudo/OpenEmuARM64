@@ -267,8 +267,7 @@ final class OECredentialStore {
         if migrated > 0 {
             os_log(.info, log: log,
                    "Migrated %d credential(s) from keychain to encrypted file store.", migrated)
-            // persist() is called by the caller (ensureLoaded → persist via set) after
-            // migrateFromKeychain returns, so we don't need to call it here.
+            persist()
         }
     }
 
