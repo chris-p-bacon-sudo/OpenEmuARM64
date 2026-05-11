@@ -589,6 +589,25 @@ static void MupenSetAudioSpeed(int percent)
         rc_client_destroy(_rcClient);
         _rcClient = NULL;
     }
+    // Break the render-semaphore deadlock before asking the emulation thread to stop.
+    //
+    // The Mupen emulation thread and the OpenEmu core-loop thread synchronize each
+    // rendered frame through two DispatchSemaphores in BaseOpenGLGameRenderer:
+    //
+    //   renderingThreadCanProceed  — signaled by willExecuteFrame (core-loop thread)
+    //   executeThreadCanProceed    — signaled by didRenderFrameOnAlternateThread (Mupen thread)
+    //
+    // When isFPSLimiting is non-zero the Mupen thread blocks inside the VI handler
+    // waiting for renderingThreadCanProceed, while the core-loop thread blocks in
+    // didExecuteFrame waiting for executeThreadCanProceed.  Neither can proceed, so
+    // r4300_stop is never polled and CoreDoCommand(M64CMD_STOP) never takes effect.
+    //
+    // suspendFPSLimiting() sets isFPSLimiting to 0 AND immediately signals
+    // renderingThreadCanProceed once, which unblocks the Mupen thread.  With
+    // isFPSLimiting == 0, both didExecuteFrame and didRenderFrameOnAlternateThread
+    // skip their semaphore waits from that point forward, draining any pending
+    // handshake cleanly before the stop command propagates.
+    [self.renderDelegate suspendFPSLimiting];
     CoreDoCommand(M64CMD_STOP, 0, NULL);
     [super stopEmulation];
 }
