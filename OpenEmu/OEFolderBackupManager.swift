@@ -77,7 +77,7 @@ extension Notification.Name {
         }
     }
 
-    @objc var isEnabled: Bool { backupFolderURL != nil && status != .noFolderSelected }
+    @objc var isEnabled: Bool { backupFolderURL != nil && (status == .idle || status == .failed) }
 
     @objc private(set) var lastBackupDate: Date? {
         get { UserDefaults.standard.object(forKey: kLastBackupDateKey) as? Date }

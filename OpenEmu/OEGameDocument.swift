@@ -2321,7 +2321,11 @@ extension OEGameDocument {
         ) { [weak self] shouldSync, cloudDate in
             guard shouldSync else { completion(); return }
             guard let self else { completion(); return }
-            self.presentSyncAlert(providerName: "Google Drive", gameName: gameName, cloudDate: cloudDate) { download in
+            self.presentSyncAlert(
+                providerName: "Google Drive", gameName: gameName, cloudDate: cloudDate,
+                defaultButtonTitle: NSLocalizedString("Download & Play", comment: "Save Sync: download and play"),
+                alternateButtonTitle: NSLocalizedString("Play Without Syncing", comment: "Save Sync: skip sync")
+            ) { download in
                 if download {
                     syncManager.downloadCloudSave(systemIdentifier: systemId, gameName: gameName) { _, _ in
                         completion()
@@ -2343,7 +2347,11 @@ extension OEGameDocument {
         ) { [weak self] shouldRestore, backupDate in
             guard shouldRestore else { completion(); return }
             guard let self else { completion(); return }
-            self.presentSyncAlert(providerName: "backup folder", gameName: gameName, cloudDate: backupDate) { restore in
+            self.presentSyncAlert(
+                providerName: "backup folder", gameName: gameName, cloudDate: backupDate,
+                defaultButtonTitle: NSLocalizedString("Restore & Play", comment: "Save Sync: restore and play"),
+                alternateButtonTitle: NSLocalizedString("Play Without Restoring", comment: "Save Sync: skip restore")
+            ) { restore in
                 if restore {
                     backupManager.restoreFromBackup(systemIdentifier: systemId, gameName: gameName) { _ in
                         completion()
@@ -2359,6 +2367,8 @@ extension OEGameDocument {
         providerName: String,
         gameName: String,
         cloudDate: Date?,
+        defaultButtonTitle: String,
+        alternateButtonTitle: String,
         completion: @escaping (_ download: Bool) -> Void
     ) {
         let dateStr: String
@@ -2379,8 +2389,8 @@ extension OEGameDocument {
             ),
             gameName, providerName, dateStr
         )
-        alert.defaultButtonTitle   = NSLocalizedString("Restore & Play", comment: "Save Sync: restore and play")
-        alert.alternateButtonTitle = NSLocalizedString("Play Without Restoring", comment: "Save Sync: skip restore")
+        alert.defaultButtonTitle   = defaultButtonTitle
+        alert.alternateButtonTitle = alternateButtonTitle
         completion(alert.runModal() == .alertFirstButtonReturn)
     }
 }
