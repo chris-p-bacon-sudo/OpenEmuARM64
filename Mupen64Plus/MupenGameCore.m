@@ -397,24 +397,25 @@ static void MupenSetAudioSpeed(int percent)
     ConfigSetParameter(config, "SharedDataPath", M64TYPE_STRING, dataURL.fileSystemRepresentation);
     ConfigSaveSection("Core");
 
-    // Use the JIT recompiler on all architectures.
+    // NOTE: The ARM64 dynarec (NEW_DYNAREC_ARM64) is compiled in and the
+    // required JIT infrastructure is in place (MAP_JIT allocation, proper
+    // pthread_jit_write_protect_np scoping, sys_icache_invalidate — see
+    // new_dynarec.c and assem_arm64.c).  However the ARM64 JIT backend
+    // currently produces incorrect results for SM64 and likely other titles:
+    // the game boots but enters an idle spin that it never exits, producing
+    // a black screen with no audio.  This is a dynarec emulation-correctness
+    // bug (not a JIT plumbing issue) that needs a separate investigation.
     //
-    // The original ARM64 port forced EMUMODE_PURE_INTERPRETER on aarch64
-    // with a "for debugging" comment that was never removed.  The dynarec is
-    // fully compiled in (NEW_DYNAREC_ARM64, -DDYNAREC in the build settings)
-    // and the required JIT entitlement (com.apple.security.cs.allow-jit) is
-    // present in OpenEmuHelperApp.entitlements.  The ARM64 backend uses a
-    // shm_open dual-mapping strategy (one RW mapping for emitting code, one RX
-    // mapping of the same pages for executing it) which satisfies Apple
-    // Silicon's W^X requirement without MAP_JIT.
+    // Until that is resolved, keep the pure interpreter on aarch64 so that
+    // games that were working continue to work.  Track as issue #NNN.
     //
-    // The pure interpreter runs at roughly 2-5% of real-time on complex N64
-    // titles; the dynarec reaches 80-110%.  Leaving the pure interpreter in
-    // place made all games unplayably slow and caused a render-semaphore
-    // deadlock on games whose game-loop code is complex enough that VI
-    // interrupts fire far below the renderer's expected 60 Hz cadence.
+    // On x86_64 the dynarec is known-good and is used as before.
     m64p_handle section;
+#ifdef __aarch64__
+    int ival = EMUMODE_PURE_INTERPRETER;
+#else
     int ival = EMUMODE_DYNAREC;
+#endif
 
     ConfigOpenSection("Core", &section);
     ConfigSetParameter(section, "R4300Emulator", M64TYPE_INT, &ival);
