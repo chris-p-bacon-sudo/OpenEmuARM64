@@ -18,6 +18,11 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+#if defined(__APPLE__)
+#include <libkern/OSCacheControl.h>  /* sys_icache_invalidate */
+#include <pthread.h>                /* pthread_jit_write_protect_np */
+#endif
+
 #define fp_cycle_count         (offsetof(struct new_dynarec_hot_state, cycle_count))
 #define fp_invc_ptr            (offsetof(struct new_dynarec_hot_state, invc_ptr))
 #define fp_fcr31               (offsetof(struct new_dynarec_hot_state, fcr31))
@@ -261,6 +266,15 @@ static uintptr_t jump_table_symbols[] = {
 
 static void cache_flush(char* start, char* end)
 {
+#if defined(__APPLE__)
+    /* DC CIVAC / IC IVAU in user mode can fault on Apple Silicon when the JIT
+     * pages are in write-protect mode.  sys_icache_invalidate is the approved
+     * cross-platform cache flush on macOS/iOS and handles the platform details
+     * correctly regardless of JIT write-protect state. */
+    if (start < end)
+        sys_icache_invalidate(start, (size_t)((char*)end - (char*)start));
+    return;
+#else
     // Don't rely on GCC's __clear_cache implementation, as it caches
     // icache/dcache cache line sizes, that can vary between cores on
     // big.LITTLE architectures.
@@ -289,6 +303,7 @@ static void cache_flush(char* start, char* end)
 
     __asm__ volatile("dsb ish" : : : "memory");
     __asm__ volatile("isb" : : : "memory");
+#endif
 }
 
 /* Linker */

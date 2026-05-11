@@ -25,7 +25,8 @@
 #include <assert.h>
 
 #if defined(__APPLE__)
-#include <sys/types.h> // needed for u_int, u_char, etc
+#include <sys/types.h>  // needed for u_int, u_char, etc
+#include <pthread.h>   // pthread_jit_write_protect_np
 #define MAP_ANONYMOUS MAP_ANON
 #endif
 
@@ -1964,7 +1965,13 @@ static void *dyna_linker(void * src, u_int vaddr)
     //TODO: Avoid disabling link between blocks for conditional branches
     int *ptr=(int*)src_rw;
     if((*ptr&0xfc000000)==0x14000000) { //b
+#if defined(__APPLE__)
+      pthread_jit_write_protect_np(0);
+#endif
       add_link(vaddr, add_pointer(src_rw,head->addr));
+#if defined(__APPLE__)
+      pthread_jit_write_protect_np(1);
+#endif
     }
 #else
     add_link(vaddr, add_pointer(src_rw,head->addr));
@@ -7636,7 +7643,15 @@ void new_dynarec_init(void)
     g_dev.r4300.new_dynarec_hot_state.memory_map[n]=(uintptr_t)-1;
 
   tlb_speed_hacks();
+#if defined(__APPLE__) && defined(__aarch64__)
+  /* arch_init writes the ARM64 jump table into the MAP_JIT code buffer.
+   * Switch to write mode for the duration, then back to execute mode. */
+  pthread_jit_write_protect_np(0);
   arch_init();
+  pthread_jit_write_protect_np(1);
+#else
+  arch_init();
+#endif
 }
 
 void new_dynarec_cleanup(void)
@@ -7664,6 +7679,14 @@ void new_dynarec_cleanup(void)
 
 int new_recompile_block(int addr)
 {
+#if defined(__APPLE__) && defined(__aarch64__)
+  /* Each compilation block needs write access to the MAP_JIT code buffer.
+   * pthread_jit_write_protect_np(1) was called after the previous block
+   * was compiled (or after arch_init).  Re-enable writes here.  The
+   * matching pthread_jit_write_protect_np(1) call is just before
+   * cache_flush, after all code generation is complete. */
+  pthread_jit_write_protect_np(0);
+#endif
 #if defined(RECOMPILER_DEBUG) && !defined(RECOMP_DBG)
   recomp_dbg_block(addr);
 #endif
@@ -10895,6 +10918,13 @@ int new_recompile_block(int addr)
   #if NEW_DYNAREC >= NEW_DYNAREC_ARM
   intptr_t beginning_rx=((intptr_t)beginning-(intptr_t)base_addr)+(intptr_t)base_addr_rx;
   intptr_t out_rx=((intptr_t)out-(intptr_t)base_addr)+(intptr_t)base_addr_rx;
+#if defined(__APPLE__) && defined(__aarch64__)
+  /* Code has been written in RW mode.  Switch to RX before cache_flush and
+   * before the caller executes the compiled block.  Future compilations will
+   * call pthread_jit_write_protect_np(0) at the top of new_recompile_block
+   * via the dyna_linker / new_dyna_start entry path. */
+  pthread_jit_write_protect_np(1);
+#endif
   cache_flush((char *)beginning_rx,(char *)out_rx);
   #endif
 
