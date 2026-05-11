@@ -731,11 +731,29 @@ final class ImportOperation: Operation, NSCopying, @unchecked Sendable {
             self.rom = rom
             romLocation = rom.game?.system?.lastLocalizedName
             
-            let isReachable = (try? romURL?.checkResourceIsReachable()) ?? false
+            // romURL being nil means the library volume (e.g. a NAS) is not mounted.
+            // Treat that as unreachable so we don't silently fall through.
+            let isReachable: Bool
+            if let romURL = romURL {
+                isReachable = (try? romURL.checkResourceIsReachable()) ?? false
+            } else {
+                isReachable = false
+            }
+
             if !isReachable {
                 DLog("rom file not available — removing stale entry and re-importing")
                 context.delete(rom)
+                // Save the child context first, then flush to the parent (main-thread
+                // context) so the deletion reaches the SQLite store on disk.  Without
+                // the parent save the deletion lives only in memory; a fresh context
+                // on the next launch re-reads the stale record and blocks re-import.
+                // (Fixes #344 — NAS / relocated-library users.)
                 try? context.save()
+                if let parent = context.parent {
+                    parent.performAndWait {
+                        try? parent.save()
+                    }
+                }
                 self.rom = nil
                 // fall through: let import proceed normally
             } else {
