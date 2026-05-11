@@ -111,8 +111,11 @@ static void *fdcCallback(int procedure, void *data)
         }
         case EXT_PUSH_SAMPLE:
         {
-            current->sampleBuffer[current->sampleCurrent] = (int16_t)(intptr_t)data;
-            current->sampleCurrent++;
+            // _dsp_Loop() returns a packed stereo pair: (right << 16) | left.
+            // Unpack both channels into the interleaved int16 ring buffer.
+            uint32_t stereo = (uint32_t)(uintptr_t)data;
+            current->sampleBuffer[current->sampleCurrent++] = (int16_t)(stereo & 0xFFFF);          // left
+            current->sampleBuffer[current->sampleCurrent++] = (int16_t)((stereo >> 16) & 0xFFFF);  // right
             if(current->sampleCurrent >= TEMP_BUFFER_SIZE)
             {
                 current->sampleCurrent = 0;
