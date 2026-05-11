@@ -397,17 +397,24 @@ static void MupenSetAudioSpeed(int percent)
     ConfigSetParameter(config, "SharedDataPath", M64TYPE_STRING, dataURL.fileSystemRepresentation);
     ConfigSaveSection("Core");
 
-    // Disable dynarec (for debugging)
+    // Use the JIT recompiler on all architectures.
+    //
+    // The original ARM64 port forced EMUMODE_PURE_INTERPRETER on aarch64
+    // with a "for debugging" comment that was never removed.  The dynarec is
+    // fully compiled in (NEW_DYNAREC_ARM64, -DDYNAREC in the build settings)
+    // and the required JIT entitlement (com.apple.security.cs.allow-jit) is
+    // present in OpenEmuHelperApp.entitlements.  The ARM64 backend uses a
+    // shm_open dual-mapping strategy (one RW mapping for emitting code, one RX
+    // mapping of the same pages for executing it) which satisfies Apple
+    // Silicon's W^X requirement without MAP_JIT.
+    //
+    // The pure interpreter runs at roughly 2-5% of real-time on complex N64
+    // titles; the dynarec reaches 80-110%.  Leaving the pure interpreter in
+    // place made all games unplayably slow and caused a render-semaphore
+    // deadlock on games whose game-loop code is complex enough that VI
+    // interrupts fire far below the renderer's expected 60 Hz cadence.
     m64p_handle section;
-//#ifdef DEBUG
-//    int ival = EMUMODE_PURE_INTERPRETER;
-//#else
-#ifdef __aarch64__
-	int ival = EMUMODE_PURE_INTERPRETER;
-#else
     int ival = EMUMODE_DYNAREC;
-#endif
-//#endif
 
     ConfigOpenSection("Core", &section);
     ConfigSetParameter(section, "R4300Emulator", M64TYPE_INT, &ival);
