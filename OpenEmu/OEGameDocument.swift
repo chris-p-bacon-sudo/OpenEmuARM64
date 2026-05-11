@@ -1879,19 +1879,22 @@ final class OEGameDocument: NSDocument {
                 return
             }
             
+            // Re-fetch rom in mainThreadContext for both branches — self.rom may be from a
+            // different NSManagedObjectContext, and calling saveState(withName:) on a
+            // cross-context object crashes (#453 fixed the else branch; this closes the gap
+            // for quicksave/autosave which use the specialNamePrefix branch).
+            let context = OELibraryDatabase.default!.mainThreadContext
+            let romInContext = context.object(with: rom.objectID) as! OEDBRom
+
             var saveState: OEDBSaveState?
             if stateName.hasPrefix(OEDBSaveState.specialNamePrefix),
-               let state = rom.saveState(withName: stateName) {
+               let state = romInContext.saveState(withName: stateName) {
                 state.coreIdentifier = core.bundleIdentifier
                 state.coreVersion = core.version
                 state.replaceStateFileWithFile(at: temporaryStateFileURL)
                 state.timestamp = Date()
                 saveState = state
             } else {
-                let context = OELibraryDatabase.default!.mainThreadContext
-                // Re-fetch rom in the target context to avoid a cross-context relationship crash.
-                // self.rom may have been fetched in a different NSManagedObjectContext.
-                let romInContext = context.object(with: rom.objectID) as! OEDBRom
                 saveState = OEDBSaveState.createSaveState(named: stateName, for: romInContext, core: core, withFile: temporaryStateFileURL, in: context)
             }
             
