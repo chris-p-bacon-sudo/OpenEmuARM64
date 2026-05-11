@@ -28,24 +28,36 @@ import Cocoa
 /// for the Save Sync feature and see the current connection status.
 final class PrefCloudSyncController: NSViewController {
     
-    // MARK: - UI Elements
-    
+    // MARK: - Google Drive UI (retained for future re-enablement)
+
     private let headerLabel       = NSTextField(labelWithString: "")
     private let descLabel         = NSTextField(wrappingLabelWithString: "")
     private let signInButton      = NSButton()
     private let signOutButton     = NSButton()
+    private let divider           = NSBox()
     private let statusDot         = NSTextField(labelWithString: "●")
     private let statusLabel       = NSTextField(labelWithString: "")
-    private let divider           = NSBox()
-    private let lastSyncedLabel   = NSTextField(labelWithString: "")
     private let syncNowButton     = NSButton()
     private let syncInfoLabel     = NSTextField(wrappingLabelWithString: "")
     private let loadingIndicator  = NSProgressIndicator()
-    
     private let scrollView        = NSScrollView()
     private let tableView         = NSTableView()
-    
+    private let lastSyncedLabel   = NSTextField(labelWithString: "")
     private var cloudFiles: [OESaveSyncManager.DriveFile] = []
+
+    // MARK: - Backup Folder UI
+
+    private let bkHeaderLabel     = NSTextField(labelWithString: "")
+    private let bkDescLabel       = NSTextField(wrappingLabelWithString: "")
+    private let bkStatusDot       = NSTextField(labelWithString: "●")
+    private let bkStatusLabel     = NSTextField(labelWithString: "")
+    private let bkFolderPathLabel = NSTextField(labelWithString: "")
+    private let bkChooseButton    = NSButton()
+    private let bkOpenFinderButton = NSButton()
+    private let bkRemoveButton    = NSButton()
+    private let bkLastSyncedLabel = NSTextField(labelWithString: "")
+    private let bkNoteLabel       = NSTextField(wrappingLabelWithString: "")
+    private var bkStatusToken: NSObjectProtocol?
     
     private lazy var dateFormatter: DateFormatter = {
         let df = DateFormatter()
@@ -68,28 +80,26 @@ final class PrefCloudSyncController: NSViewController {
     // MARK: - Lifecycle
     
     override func loadView() {
-        view = NSView(frame: NSRect(x: 0, y: 0, width: 468, height: 480))
+        view = NSView(frame: NSRect(x: 0, y: 0, width: 468, height: 320))
         buildUI()
     }
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        setupTableView()
-        updateStatus()
-        
-        syncStatusToken = NotificationCenter.default.addObserver(
-            forName: .OESaveSyncStatusDidChange,
+        updateBackupStatus()
+
+        bkStatusToken = NotificationCenter.default.addObserver(
+            forName: .OEFolderBackupStatusDidChange,
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            self?.updateStatus()
+            self?.updateBackupStatus()
         }
     }
     
     deinit {
-        if let token = syncStatusToken {
-            NotificationCenter.default.removeObserver(token)
-        }
+        if let token = syncStatusToken  { NotificationCenter.default.removeObserver(token) }
+        if let token = bkStatusToken    { NotificationCenter.default.removeObserver(token) }
     }
     
     // MARK: - TableView Setup
@@ -126,143 +136,112 @@ final class PrefCloudSyncController: NSViewController {
     
     private func buildUI() {
         // ── Header ──────────────────────────────────────────────────
-        headerLabel.stringValue = "Google Drive Cloud Sync"
-        headerLabel.font = .boldSystemFont(ofSize: 15)
-        headerLabel.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(headerLabel)
-        
+        bkHeaderLabel.stringValue = "Backup Folder"
+        bkHeaderLabel.font = .boldSystemFont(ofSize: 15)
+        bkHeaderLabel.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(bkHeaderLabel)
+
         // ── Description ─────────────────────────────────────────────
-        descLabel.stringValue = "Sign in with Google to automatically back up your battery saves and save states. When launching a game, OpenEmu will check whether a newer save is available in the cloud and offer to download it."
-        descLabel.font = .systemFont(ofSize: 12)
-        descLabel.textColor = .secondaryLabelColor
-        descLabel.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(descLabel)
-        
-        // ── Status Row ───────────────────────────────────────────────
-        statusDot.font = .systemFont(ofSize: 14)
-        statusDot.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(statusDot)
-        
-        statusLabel.font = .systemFont(ofSize: 13, weight: .medium)
-        statusLabel.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(statusLabel)
-        
-        // ── Sign In Button ───────────────────────────────────────────
-        signInButton.title = "Sign In with Google"
-        signInButton.bezelStyle = .rounded
-        signInButton.controlSize = .large
-        signInButton.font = .systemFont(ofSize: 13, weight: .semibold)
-        signInButton.target = self
-        signInButton.action = #selector(signIn)
-        signInButton.translatesAutoresizingMaskIntoConstraints = false
-        // Use the Google brand colour as much as AppKit allows.
-        signInButton.contentTintColor = NSColor(red: 0.259, green: 0.522, blue: 0.957, alpha: 1)
-        view.addSubview(signInButton)
-        
-        // ── Sign Out Button ──────────────────────────────────────────
-        signOutButton.title = "Sign Out"
-        signOutButton.bezelStyle = .rounded
-        signOutButton.controlSize = .regular
-        signOutButton.font = .systemFont(ofSize: 12)
-        signOutButton.target = self
-        signOutButton.action = #selector(signOut)
-        signOutButton.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(signOutButton)
-        
-        // ── Divider ──────────────────────────────────────────────────
-        divider.boxType = .separator
-        divider.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(divider)
-        
-        // ── Loading Indicator ────────────────────────────────────────
-        loadingIndicator.style = .spinning
-        loadingIndicator.controlSize = .small
-        loadingIndicator.isDisplayedWhenStopped = false
-        loadingIndicator.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(loadingIndicator)
-        
-        // ── ScrollView / TableView ───────────────────────────────────
-        scrollView.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(scrollView)
-        
-        // ── Sync Now Button ──────────────────────────────────────────
-        syncNowButton.title = "Sync Now"
-        syncNowButton.bezelStyle = .rounded
-        syncNowButton.controlSize = .small
-        syncNowButton.font = .systemFont(ofSize: 11)
-        syncNowButton.target = self
-        syncNowButton.action = #selector(syncNow)
-        syncNowButton.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(syncNowButton)
-        
-        // ── Last Synced Label ────────────────────────────────────────
-        lastSyncedLabel.font = .systemFont(ofSize: 11)
-        lastSyncedLabel.textColor = .secondaryLabelColor
-        lastSyncedLabel.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(lastSyncedLabel)
-        
-        // ── Sync Info ────────────────────────────────────────────────
-        syncInfoLabel.stringValue = "Saves are stored in a hidden App Data folder in your Google Drive."
-        syncInfoLabel.font = .systemFont(ofSize: 11)
-        syncInfoLabel.textColor = .tertiaryLabelColor
-        syncInfoLabel.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(syncInfoLabel)
-        
+        bkDescLabel.stringValue = "Automatically back up save states, battery saves, and BIOS files to any folder. Choose a folder inside iCloud Drive to sync across your Macs, or use Dropbox, an external drive, or any local path."
+        bkDescLabel.font = .systemFont(ofSize: 12)
+        bkDescLabel.textColor = .secondaryLabelColor
+        bkDescLabel.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(bkDescLabel)
+
+        // ── Status row ───────────────────────────────────────────────
+        bkStatusDot.font = .systemFont(ofSize: 14)
+        bkStatusDot.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(bkStatusDot)
+
+        bkStatusLabel.font = .systemFont(ofSize: 13, weight: .medium)
+        bkStatusLabel.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(bkStatusLabel)
+
+        // ── Folder path ──────────────────────────────────────────────
+        bkFolderPathLabel.font = .monospacedSystemFont(ofSize: 11, weight: .regular)
+        bkFolderPathLabel.textColor = .secondaryLabelColor
+        bkFolderPathLabel.lineBreakMode = .byTruncatingMiddle
+        bkFolderPathLabel.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(bkFolderPathLabel)
+
+        // ── Buttons ──────────────────────────────────────────────────
+        bkChooseButton.title = "Choose Folder…"
+        bkChooseButton.bezelStyle = .rounded
+        bkChooseButton.controlSize = .regular
+        bkChooseButton.font = .systemFont(ofSize: 13)
+        bkChooseButton.target = self
+        bkChooseButton.action = #selector(chooseBackupFolder)
+        bkChooseButton.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(bkChooseButton)
+
+        bkOpenFinderButton.title = "Show in Finder"
+        bkOpenFinderButton.bezelStyle = .rounded
+        bkOpenFinderButton.controlSize = .regular
+        bkOpenFinderButton.font = .systemFont(ofSize: 13)
+        bkOpenFinderButton.target = self
+        bkOpenFinderButton.action = #selector(openBackupInFinder)
+        bkOpenFinderButton.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(bkOpenFinderButton)
+
+        bkRemoveButton.title = "Remove"
+        bkRemoveButton.bezelStyle = .rounded
+        bkRemoveButton.controlSize = .regular
+        bkRemoveButton.font = .systemFont(ofSize: 13)
+        bkRemoveButton.target = self
+        bkRemoveButton.action = #selector(removeBackupFolder)
+        bkRemoveButton.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(bkRemoveButton)
+
+        // ── Last synced ──────────────────────────────────────────────
+        bkLastSyncedLabel.font = .systemFont(ofSize: 11)
+        bkLastSyncedLabel.textColor = .secondaryLabelColor
+        bkLastSyncedLabel.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(bkLastSyncedLabel)
+
+        // ── Note ─────────────────────────────────────────────────────
+        bkNoteLabel.stringValue = "ROMs are not included in the backup."
+        bkNoteLabel.font = .systemFont(ofSize: 11)
+        bkNoteLabel.textColor = .tertiaryLabelColor
+        bkNoteLabel.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(bkNoteLabel)
+
         // ── Layout ───────────────────────────────────────────────────
         NSLayoutConstraint.activate([
-            // Header
-            headerLabel.topAnchor.constraint(equalTo: view.topAnchor, constant: 32),
-            headerLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 36),
-            headerLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -36),
-            
-            // Description
-            descLabel.topAnchor.constraint(equalTo: headerLabel.bottomAnchor, constant: 10),
-            descLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 36),
-            descLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -36),
-            
-            // Status dot + label
-            statusDot.topAnchor.constraint(equalTo: descLabel.bottomAnchor, constant: 24),
-            statusDot.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 36),
-            
-            statusLabel.centerYAnchor.constraint(equalTo: statusDot.centerYAnchor),
-            statusLabel.leadingAnchor.constraint(equalTo: statusDot.trailingAnchor, constant: 6),
-            
-            // Sign In button
-            signInButton.topAnchor.constraint(equalTo: statusDot.bottomAnchor, constant: 20),
-            signInButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 36),
-            signInButton.widthAnchor.constraint(equalToConstant: 180),
-            
-            // Sign Out button
-            signOutButton.centerYAnchor.constraint(equalTo: signInButton.centerYAnchor),
-            signOutButton.leadingAnchor.constraint(equalTo: signInButton.trailingAnchor, constant: 12),
-            
-            // Divider
-            divider.topAnchor.constraint(equalTo: signInButton.bottomAnchor, constant: 24),
-            divider.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
-            divider.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
-            
-            // Loading Indicator
-            loadingIndicator.centerYAnchor.constraint(equalTo: statusDot.centerYAnchor),
-            loadingIndicator.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -36),
-            
-            // ScrollView (Cloud Files List)
-            scrollView.topAnchor.constraint(equalTo: divider.bottomAnchor, constant: 16),
-            scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 36),
-            scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -36),
-            scrollView.heightAnchor.constraint(equalToConstant: 180),
-            
-            // Sync Now
-            syncNowButton.topAnchor.constraint(equalTo: scrollView.bottomAnchor, constant: 12),
-            syncNowButton.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor),
-            
-            // Last Synced
-            lastSyncedLabel.centerYAnchor.constraint(equalTo: syncNowButton.centerYAnchor),
-            lastSyncedLabel.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor),
-            
-            // Privacy Note
-            syncInfoLabel.topAnchor.constraint(equalTo: syncNowButton.bottomAnchor, constant: 12),
-            syncInfoLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 36),
-            syncInfoLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -36),
+            bkHeaderLabel.topAnchor.constraint(equalTo: view.topAnchor, constant: 24),
+            bkHeaderLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 36),
+            bkHeaderLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -36),
+
+            bkDescLabel.topAnchor.constraint(equalTo: bkHeaderLabel.bottomAnchor, constant: 8),
+            bkDescLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 36),
+            bkDescLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -36),
+
+            bkStatusDot.topAnchor.constraint(equalTo: bkDescLabel.bottomAnchor, constant: 18),
+            bkStatusDot.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 36),
+
+            bkStatusLabel.centerYAnchor.constraint(equalTo: bkStatusDot.centerYAnchor),
+            bkStatusLabel.leadingAnchor.constraint(equalTo: bkStatusDot.trailingAnchor, constant: 6),
+            bkStatusLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -36),
+
+            bkFolderPathLabel.topAnchor.constraint(equalTo: bkStatusDot.bottomAnchor, constant: 10),
+            bkFolderPathLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 36),
+            bkFolderPathLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -36),
+
+            bkChooseButton.topAnchor.constraint(equalTo: bkFolderPathLabel.bottomAnchor, constant: 14),
+            bkChooseButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 34),
+
+            bkOpenFinderButton.centerYAnchor.constraint(equalTo: bkChooseButton.centerYAnchor),
+            bkOpenFinderButton.leadingAnchor.constraint(equalTo: bkChooseButton.trailingAnchor, constant: 8),
+
+            bkRemoveButton.centerYAnchor.constraint(equalTo: bkChooseButton.centerYAnchor),
+            bkRemoveButton.leadingAnchor.constraint(equalTo: bkOpenFinderButton.trailingAnchor, constant: 8),
+
+            bkLastSyncedLabel.topAnchor.constraint(equalTo: bkChooseButton.bottomAnchor, constant: 12),
+            bkLastSyncedLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 36),
+            bkLastSyncedLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -36),
+
+            bkNoteLabel.topAnchor.constraint(equalTo: bkLastSyncedLabel.bottomAnchor, constant: 8),
+            bkNoteLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 36),
+            bkNoteLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -36),
         ])
     }
     
@@ -321,8 +300,68 @@ final class PrefCloudSyncController: NSViewController {
         }
     }
     
+    private func updateBackupStatus() {
+        let mgr    = OEFolderBackupManager.shared
+        let green  = NSColor(red: 0.2,  green: 0.78, blue: 0.35, alpha: 1)
+        let red    = NSColor(red: 0.87, green: 0.20, blue: 0.18, alpha: 1)
+        let yellow = NSColor(red: 0.95, green: 0.73, blue: 0.00, alpha: 1)
+        let gray   = NSColor.secondaryLabelColor
+
+        let hasFolderURL = mgr.backupFolderURL != nil
+
+        switch mgr.status {
+        case .noFolderSelected:
+            bkStatusDot.textColor     = gray
+            bkStatusLabel.stringValue = "No folder selected"
+            bkStatusLabel.textColor   = gray
+        case .idle:
+            bkStatusDot.textColor     = green
+            bkStatusLabel.stringValue = "Active"
+            bkStatusLabel.textColor   = green
+        case .syncing:
+            bkStatusDot.textColor     = yellow
+            bkStatusLabel.stringValue = "Syncing…"
+            bkStatusLabel.textColor   = yellow
+        case .failed:
+            bkStatusDot.textColor     = red
+            bkStatusLabel.stringValue = "Last backup failed"
+            bkStatusLabel.textColor   = red
+        @unknown default:
+            break
+        }
+
+        bkFolderPathLabel.stringValue  = mgr.backupFolderURL?.path ?? ""
+        bkOpenFinderButton.isHidden    = !hasFolderURL
+        bkRemoveButton.isHidden        = !hasFolderURL
+
+        if let date = mgr.lastBackupDate {
+            bkLastSyncedLabel.stringValue = "Last backed up: \(dateFormatter.string(from: date))"
+        } else if hasFolderURL {
+            bkLastSyncedLabel.stringValue = "No backup yet"
+        } else {
+            bkLastSyncedLabel.stringValue = ""
+        }
+    }
+
+    @objc private func chooseBackupFolder() {
+        guard let window = view.window else { return }
+        OEFolderBackupManager.shared.chooseFolder(relativeTo: window) { [weak self] _ in
+            self?.updateBackupStatus()
+        }
+    }
+
+    @objc private func openBackupInFinder() {
+        guard let url = OEFolderBackupManager.shared.backupFolderURL else { return }
+        NSWorkspace.shared.open(url)
+    }
+
+    @objc private func removeBackupFolder() {
+        OEFolderBackupManager.shared.removeFolder()
+        updateBackupStatus()
+    }
+
     // MARK: - Actions
-    
+
     @objc private func signIn() {
         OESaveSyncManager.shared.signIn()
     }
@@ -415,5 +454,5 @@ extension PrefCloudSyncController: PreferencePane {
     
     var panelTitle: String { "Cloud Sync" }
     
-    var viewSize: NSSize { NSSize(width: 468, height: 480) }
+    var viewSize: NSSize { NSSize(width: 468, height: 320) }
 }
