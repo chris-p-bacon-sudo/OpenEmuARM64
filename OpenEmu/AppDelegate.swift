@@ -1270,7 +1270,8 @@ extension AppDelegate: NSMenuDelegate {
         
         // Start Save Sync Manager
         OESaveSyncManager.shared.startMonitoring()
-        
+        OEFolderBackupManager.shared.start()
+
         // Replace quicksave/quickload items with menus if required.
         updateControlsMenu()
         
