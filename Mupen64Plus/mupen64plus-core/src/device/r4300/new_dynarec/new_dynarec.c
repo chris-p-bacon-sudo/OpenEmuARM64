@@ -2029,7 +2029,13 @@ static void *dyna_linker_ds(void * src, u_int vaddr)
     //TODO: Avoid disabling link between blocks for conditional branches
     int *ptr=(int*)src_rw;
     if((*ptr&0xfc000000)==0x14000000) { //b
+#if defined(__APPLE__)
+      pthread_jit_write_protect_np(0);
+#endif
       add_link(vaddr, add_pointer(src_rw,head->addr));
+#if defined(__APPLE__)
+      pthread_jit_write_protect_np(1);
+#endif
     }
 #else
     add_link(vaddr, add_pointer(src_rw,head->addr));
@@ -2209,6 +2215,13 @@ static void *check_addr(u_int vaddr)
 // This is called when we write to a compiled block (see do_invstub)
 static void invalidate_page(u_int page)
 {
+#if defined(__APPLE__) && defined(__aarch64__)
+  /* kill_pointer / set_jump_target writes branch instructions into JIT pages.
+   * These calls happen at runtime (outside new_recompile_block) so the pages
+   * are currently in RX mode.  Switch to RW for the duration of this function
+   * then back to RX before returning. */
+  pthread_jit_write_protect_np(0);
+#endif
   struct ll_entry *head;
   struct ll_entry *next;
   head=jump_in[page];
@@ -2235,6 +2248,9 @@ static void invalidate_page(u_int page)
     free(head);
     head=next;
   }
+#if defined(__APPLE__) && defined(__aarch64__)
+  pthread_jit_write_protect_np(1);
+#endif
 }
 void invalidate_block(u_int block)
 {
