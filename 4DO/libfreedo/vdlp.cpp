@@ -277,6 +277,22 @@ void _vdl_DoLineNew(int line2x, VDLFrame *frame)
 
                 if(CLUTDMA.dmaw.enadma)
                 {
+#ifdef DEBUG_4DO_VIDEO
+                        static bool loggedFirstPixel = false;
+                        if(!loggedFirstPixel) {
+                            unsigned int firstSrc = *(unsigned int*)(vram+((PREVIOUSBMP^2) & 0x0FFFFF));
+                            if(firstSrc != 0) {
+                                loggedFirstPixel = true;
+                                fprintf(stderr, "[4DO] vdlp: enadma=1, line=%d, PREVIOUSBMP=0x%08X, first pixel word=0x%08X\n",
+                                        y, PREVIOUSBMP, firstSrc);
+                            } else {
+                                static int zeroDmaCount = 0;
+                                if(++zeroDmaCount == 1 || zeroDmaCount == 100 || zeroDmaCount == 1000)
+                                    fprintf(stderr, "[4DO] vdlp: enadma=1 but VRAM still zero (count=%d, line=%d, PREVIOUSBMP=0x%08X)\n",
+                                            zeroDmaCount, y, PREVIOUSBMP);
+                            }
+                        }
+#endif
                         if(RESSCALE)
                         {
                                         unsigned short *dst1,*dst2;

@@ -46,6 +46,9 @@ Felix Lazarev
 	#define RESSCALE        HightResMode
 	#define DEBUG_CORE
 	#define _T(a) (a)
+#ifdef DEBUG
+	#define DEBUG_4DO_VIDEO
+#endif
 #endif
 
 #include "types.h"

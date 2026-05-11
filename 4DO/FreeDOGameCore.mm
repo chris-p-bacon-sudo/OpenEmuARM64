@@ -74,8 +74,7 @@ inputState internal_input_state[6];
     
     uint32_t *videoBuffer;
     int videoWidth, videoHeight;
-    //uintptr_t sampleBuffer[TEMP_BUFFER_SIZE];
-    int32_t sampleBuffer[TEMP_BUFFER_SIZE];
+    int16_t sampleBuffer[TEMP_BUFFER_SIZE];
     uint sampleCurrent;
 }
 @end
@@ -104,17 +103,21 @@ static void *fdcCallback(int procedure, void *data)
         case EXT_SWAPFRAME:
         {
             current->isSwapFrameSignaled = YES;
+#ifdef DEBUG_4DO_VIDEO
+            static int swapCount = 0;
+            if(++swapCount <= 5) NSLog(@"[4DO] EXT_SWAPFRAME fired (frame %d)", swapCount);
+#endif
             return current->frame;
         }
         case EXT_PUSH_SAMPLE:
         {
-            current->sampleBuffer[current->sampleCurrent] = (uintptr_t)data;
+            current->sampleBuffer[current->sampleCurrent] = (int16_t)(intptr_t)data;
             current->sampleCurrent++;
             if(current->sampleCurrent >= TEMP_BUFFER_SIZE)
             {
                 current->sampleCurrent = 0;
-                [[current ringBufferAtIndex:0] write:current->sampleBuffer maxLength:sizeof(int32_t) * TEMP_BUFFER_SIZE];
-                memset(current->sampleBuffer, 0, sizeof(int32_t) * TEMP_BUFFER_SIZE);
+                [[current ringBufferAtIndex:0] write:current->sampleBuffer maxLength:sizeof(int16_t) * TEMP_BUFFER_SIZE];
+                memset(current->sampleBuffer, 0, sizeof(int16_t) * TEMP_BUFFER_SIZE);
             }
             
             break;
@@ -247,7 +250,7 @@ static void writeSaveFile(const char* path)
     
     currentSector = 0;
     sampleCurrent = 0;
-    memset(sampleBuffer, 0, sizeof(int32_t) * TEMP_BUFFER_SIZE);
+    memset(sampleBuffer, 0, sizeof(int16_t) * TEMP_BUFFER_SIZE);
     
     NSString *cue = [NSString stringWithContentsOfFile:path encoding:NSUTF8StringEncoding error:&errorCue];
     
@@ -284,7 +287,7 @@ static void writeSaveFile(const char* path)
     [self loadBIOSes];
     [self initVideo];
     
-    memset(sampleBuffer, 0, sizeof(int32_t) * TEMP_BUFFER_SIZE);
+    memset(sampleBuffer, 0, sizeof(int16_t) * TEMP_BUFFER_SIZE);
     
     _freedo_Interface(FDP_INIT, (void*)*fdcCallback);
     
@@ -445,7 +448,7 @@ static void writeSaveFile(const char* path)
         int rw, rh;
         Get_Frame_Bitmap((VDLFrame *)frame, hint, 0, &bmpcrop, videoWidth, videoHeight, false, true, false, sca, &rw, &rh);
     }
-    return videoBuffer;
+    return hint;
 }
 
 - (OEIntRect)screenRect
