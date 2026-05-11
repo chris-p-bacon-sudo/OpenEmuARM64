@@ -7554,10 +7554,23 @@ void new_dynarec_init(void)
   assert(base_addr_rx!=(void*)-1);
   close(fd);
 #elif CACHE_ADDR==FIXED_CACHE_ADDR
+#if defined(__APPLE__)
+  /* MAP_FIXED | PROT_EXEC on an anonymous mapping is blocked by Apple Silicon's
+   * hardened runtime even with the com.apple.security.cs.allow-jit entitlement.
+   * MAP_JIT is the only permitted mechanism for anonymous executable pages on
+   * macOS/arm64.  MAP_JIT is incompatible with MAP_FIXED, so we let the kernel
+   * choose the address.  The emulation thread calls pthread_jit_write_protect_np
+   * before any JIT writes (see MupenGameCore.m:runMupenEmuThread). */
+  base_addr = mmap (NULL, 1<<TARGET_SIZE_2,
+                    PROT_READ | PROT_WRITE | PROT_EXEC,
+                    MAP_PRIVATE | MAP_ANONYMOUS | MAP_JIT,
+                    -1, 0);
+#else
   base_addr = mmap ((u_char *)g_dev.r4300.extra_memory, 1<<TARGET_SIZE_2,
                     PROT_READ | PROT_WRITE | PROT_EXEC,
                     MAP_FIXED | MAP_PRIVATE | MAP_ANONYMOUS,
                     -1, 0);
+#endif
   base_addr_rx = base_addr;
 #else /*DYNAMIC_CACHE_ADDR*/
   base_addr = mmap (NULL, 1<<TARGET_SIZE_2,

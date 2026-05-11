@@ -54,6 +54,7 @@
 #import "plugin/plugin.h"
 
 #import <dlfcn.h>
+#import <pthread.h>
 #include <os/log.h>
 #define RC_CLIENT_SUPPORTS_HASH 1
 #include <rc_client.h>
@@ -554,6 +555,15 @@ static void MupenSetAudioSpeed(int percent)
     {
         OESetThreadRealtime(1. / 50, .007, .03); // guessed from bsnes
         [self.renderDelegate willRenderFrameOnAlternateThread];
+
+#if defined(__aarch64__)
+        // On Apple Silicon the JIT code cache is allocated with MAP_JIT.
+        // MAP_JIT pages start write-protected (RX only) per-thread.  Unlock
+        // writes on this thread so new_dynarec_init and every subsequent
+        // JIT compilation block can write to the code buffer.  This call is
+        // per-thread and covers all writes for the lifetime of this thread.
+        pthread_jit_write_protect_np(0);
+#endif
 
         CoreDoCommand(M64CMD_EXECUTE, 0, NULL);
     }

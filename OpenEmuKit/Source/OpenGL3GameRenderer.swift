@@ -141,10 +141,19 @@ final class OpenGL3GameRenderer: BaseOpenGLGameRenderer {
     
     override func didExecuteFrame() {
         if alternateContext != nil {
-            // Wait for the rendering thread to complete this frame.
-            // Most cores with rendering threads don't seem to handle timing themselves - they're probably relying on Vsync.
-            if isFPSLimiting.load(ordering: .sequentiallyConsistent) != 0 {
-                executeThreadCanProceed.wait()
+            // Wait for the rendering thread to complete this frame, but use a
+            // short timed wait instead of DISPATCH_TIME_FOREVER.  A forever-wait
+            // permanently blocks the core-loop thread whenever the emulation
+            // thread is not in its VI handler — e.g. during JIT initialisation,
+            // a slow interpreter loop, or any other non-VI execution path.
+            // The 100 ms timeout lets us re-check isFPSLimiting on each lap so
+            // that stopEmulation's suspendFPSLimiting() call drains cleanly
+            // regardless of where the emulation thread is at that moment.
+            while isFPSLimiting.load(ordering: .sequentiallyConsistent) != 0 {
+                if executeThreadCanProceed.wait(timeout: .now() + .milliseconds(100)) == .success {
+                    break
+                }
+                // Timed out — loop and re-check isFPSLimiting.
             }
             
             // Don't do any other work.
