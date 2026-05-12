@@ -50,6 +50,11 @@ class BaseOpenGLGameRenderer: OpenGLGameRenderer {
     var renderingThreadCanProceed = DispatchSemaphore(value: 0)
     var executeThreadCanProceed = DispatchSemaphore(value: 0)
     
+    // HW render shared context — set up on demand by prepareHWRenderSharedContext().
+    // Nil until a libretro core accepts RETRO_ENVIRONMENT_SET_HW_RENDER.
+    var hwSharedContext: CGLContextObj?
+    var hwSharedFBO: GLuint = 0
+
     var isFPSLimiting = ManagedAtomic(0)
     
     init(withInteropTexture texture: CoreVideoTexture, gameCore: OEGameCore) {
@@ -139,6 +144,17 @@ class BaseOpenGLGameRenderer: OpenGLGameRenderer {
     func setupDoubleBufferedFBO() {
         fatalError("Not implemented")
     }
+
+    // MARK: - HW render shared context (Phase 2 — GL work added in OpenGL3GameRenderer)
+
+    func prepareHWRenderSharedContext() {
+        // Implemented in concrete subclass (OpenGL3GameRenderer).
+        // Base does nothing so non-HW renderers satisfy the protocol without crashing.
+    }
+
+    var hwRenderFramebuffer: UInt {
+        UInt(hwSharedFBO)
+    }
     
     func clearFramebuffer() {
         glClearColor(0.0, 0.0, 0.0, 0.0)
@@ -162,6 +178,17 @@ class BaseOpenGLGameRenderer: OpenGLGameRenderer {
             CGLReleaseContext(glContext)
         }
         
+        if let hwSharedContext = hwSharedContext {
+            CGLSetCurrentContext(hwSharedContext)
+            if hwSharedFBO != 0 {
+                glDeleteFramebuffers(1, &hwSharedFBO)
+                hwSharedFBO = 0
+            }
+            CGLSetCurrentContext(nil)
+            CGLReleaseContext(hwSharedContext)
+        }
+        hwSharedContext = nil
+
         alternateContext        = nil
         texture.openGLContext   = nil
         glContext               = nil

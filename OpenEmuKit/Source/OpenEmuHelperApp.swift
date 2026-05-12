@@ -639,6 +639,14 @@ extension OSLog {
     public var presentationFramebuffer: Any? {
         _openGLGameRenderer?.presentationFramebuffer
     }
+
+    public func prepareHWRenderSharedContext() {
+        _openGLGameRenderer?.prepareHWRenderSharedContext()
+    }
+
+    public var hwRenderFramebuffer: UInt {
+        _openGLGameRenderer?.hwRenderFramebuffer ?? 0
+    }
     
     public func willExecute() {
         _gameRenderer.willExecuteFrame()

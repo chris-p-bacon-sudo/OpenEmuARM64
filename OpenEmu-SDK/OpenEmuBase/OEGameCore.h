@@ -171,6 +171,28 @@ typedef NS_ENUM(NSUInteger, OEGameCoreRendering) {
  */
 @property (nonatomic, readonly, nullable) id presentationFramebuffer;
 
+/*!
+ * @method prepareHWRenderSharedContext
+ * @discussion
+ * Called by the libretro translator when it accepts a RETRO_ENVIRONMENT_SET_HW_RENDER
+ * request. The renderer must create a CGL context that shares the texture namespace
+ * of its primary glContext, then create an FBO on that shared context backed by the
+ * same IOSurface texture. Subsequent calls to hwRenderFramebuffer will return that
+ * FBO. The shared context is also used as the current context for context_reset and
+ * retro_run so that the core's GL plugin (e.g. GLideN64) operates within the correct
+ * sharegroup.
+ */
+- (void)prepareHWRenderSharedContext;
+
+/*!
+ * @property hwRenderFramebuffer
+ * @discussion
+ * Returns the OpenGL FBO name that is valid on the shared HW render context.
+ * Only meaningful after -prepareHWRenderSharedContext has been called.
+ * The libretro translator returns this value from libretro_get_current_framebuffer.
+ */
+@property (nonatomic, readonly) NSUInteger hwRenderFramebuffer;
+
 // For internal use only.
 - (void)willExecute;
 - (void)didExecute;

@@ -51,6 +51,15 @@ protocol GameRenderer {
 protocol OpenGLGameRenderer: GameRenderer {
     var presentationFramebuffer: Any? { get }
 
+    /// Called by the libretro translator when it accepts SET_HW_RENDER.
+    /// Creates a CGL shared context (sharing textures with the primary glContext)
+    /// and an FBO on that context backed by the same IOSurface texture.
+    func prepareHWRenderSharedContext()
+
+    /// The FBO number valid on the HW render shared context.
+    /// Only meaningful after prepareHWRenderSharedContext() has been called.
+    var hwRenderFramebuffer: UInt { get }
+
     func presentDoubleBufferedFBO()
     func willRenderFrameOnAlternateThread()
     func didRenderFrameOnAlternateThread()
