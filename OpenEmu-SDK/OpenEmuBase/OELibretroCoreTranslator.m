@@ -67,6 +67,7 @@ NSString * const OELibretroBridgeVersion = @"4";
 @property (nonatomic, assign) BOOL isBufferSizeLocked;
 @property (nonatomic, assign) BOOL isHW;
 @property (nonatomic, assign) BOOL needsContextReset;
+@property (nonatomic, assign) BOOL needsHWContextSetup;
 @property (nonatomic, assign) int clearFramesRemaining;
 @property (nonatomic, assign) uint64_t serializationQuirks;
 @property (atomic, assign) int touchX;
@@ -761,10 +762,12 @@ static bool libretro_environment_cb(unsigned cmd, void *data) {
                 _current->_hw_callback = *hw;
                 _current.isHW = YES;
 
-                // Tell the renderer to create the shared CGL context and FBO now,
-                // while we still have the render delegate. The shared context will
-                // be made current before context_reset and every retro_run call.
-                [_current.renderDelegate prepareHWRenderSharedContext];
+                // Defer shared context setup to the first executeFrame call.
+                // glContext / glPixelFormat don't exist yet at retro_load_game time
+                // (they're initialised when the render loop starts). Setting this flag
+                // tells executeFrame to call prepareHWRenderSharedContext on the
+                // emulation thread, where GL is guaranteed to be ready.
+                _current.needsHWContextSetup = YES;
 
 #if DEBUG
                 NSLog(@"[OELibretro] Accepted HW Rendering (Type: %d, Version: %u.%u)", hw->context_type, hw->version_major, hw->version_minor);
@@ -1320,8 +1323,9 @@ static void* bridge_dlsym(void *handle, const char *symbol) {
     // To add a new system, extend OELibretroSystemPolicyForSystemID().
     NSString *systemID = [self systemIdentifier];
     _policy = OELibretroSystemPolicyForSystemID(systemID);
-    _isHW          = NO;  // Reset — core will re-request via SET_HW_RENDER if needed
-    _hwSharedContext = NULL;  // Renderer teardown (destroyGLResources) owns the CGL lifetime
+    _isHW               = NO;    // Reset — core will re-request via SET_HW_RENDER if needed
+    _hwSharedContext    = NULL;   // Renderer teardown (destroyGLResources) owns the CGL lifetime
+    self.needsHWContextSetup = NO;
 
     // Reset declared option defaults so a re-load doesn't carry stale entries
     // from a previous game/core into the new core's environment callbacks.
@@ -1500,32 +1504,50 @@ static void* bridge_dlsym(void *handle, const char *symbol) {
 - (void)executeFrame {
     _current = self;
 
-    // The OpenGL context is only guaranteed to be bound to this thread AFTER startEmulation,
-    // right at the beginning of the first frame execution. This is the latest and safest
-    // place to initialize the core's hardware context.
     if (self.isHW) {
-        // Switch to the shared context before context_reset and before every retro_run.
-        // This ensures GLideN64 (or any core GL plugin) operates within the shared
-        // CGL context that shares the texture namespace with OpenEmu's primary context.
-        // willExecuteFrame() is a no-op in HW render mode (it returns early when
-        // hwSharedContext != nil), so we own context management completely here.
-        NSUInteger hwFBO = self.renderDelegate.hwRenderFramebuffer;
-        if (hwFBO != 0) {
-            // hwRenderFramebuffer non-zero means prepareHWRenderSharedContext succeeded.
-            // The shared context is the one currently set by the renderer — query it
-            // so we can re-assert it before each call.
-            _hwSharedContext = CGLGetCurrentContext();
+        // --- Deferred HW context setup (runs exactly once on the first HW frame) ---
+        // prepareHWRenderSharedContext couldn't run at SET_HW_RENDER time because
+        // glContext / glPixelFormat don't exist until the render loop starts.
+        // Now we're on the emulation thread with GL fully initialised.
+        if (self.needsHWContextSetup) {
+            self.needsHWContextSetup = NO;
+            [self.renderDelegate prepareHWRenderSharedContext];
+
+            // Retrieve the shared context pointer directly from the renderer.
+            // Do NOT use CGLGetCurrentContext() — that returns the current context
+            // on this thread, which may be nil or glContext at this point.
+            NSUInteger ctxPtr = self.renderDelegate.hwRenderSharedContextPtr;
+            _hwSharedContext = ctxPtr ? (CGLContextObj)(uintptr_t)ctxPtr : NULL;
+
+            if (!_hwSharedContext) {
+                // Setup failed: glContext was nil, FBO was incomplete, or the
+                // renderer doesn't support HW render. Reset to software mode so
+                // the game runs (without HW acceleration) rather than crashing.
+                os_log_fault(OE_LOG_DEFAULT,
+                    "[OELibretro] prepareHWRenderSharedContext failed — "
+                    "falling back to software render for this session");
+                self.isHW = NO;
+                if (self.needsContextReset) {
+                    self.needsContextReset = NO;
+                    // Skip context_reset — GLideN64 won't get its GL context,
+                    // but at least we won't crash with no context active.
+                }
+                if (_retro_run) _retro_run();
+                return;
+            }
         }
 
+        // --- Per-frame context management ---
+        // Re-assert the shared context before context_reset and before retro_run.
+        // GLideN64 may have changed the current context internally; we need
+        // the shared context active so its GL calls land in the correct sharegroup.
         if (self.needsContextReset) {
             self.needsContextReset = NO;
+            CGLSetCurrentContext(_hwSharedContext);
             if (_hw_callback.context_reset) {
-                if (_hwSharedContext) CGLSetCurrentContext(_hwSharedContext);
                 _hw_callback.context_reset();
             }
-        } else if (_hwSharedContext) {
-            // Re-assert the shared context on every frame. GLideN64 may have
-            // changed it internally; we need it current before retro_run.
+        } else {
             CGLSetCurrentContext(_hwSharedContext);
         }
     } else if (self.needsContextReset) {

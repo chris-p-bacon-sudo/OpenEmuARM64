@@ -60,6 +60,10 @@ protocol OpenGLGameRenderer: GameRenderer {
     /// Only meaningful after prepareHWRenderSharedContext() has been called.
     var hwRenderFramebuffer: UInt { get }
 
+    /// The CGLContextObj of the shared context, bit-cast to UInt for protocol crossing.
+    /// Zero if prepareHWRenderSharedContext() has not been called or failed.
+    var hwRenderSharedContextPtr: UInt { get }
+
     func presentDoubleBufferedFBO()
     func willRenderFrameOnAlternateThread()
     func didRenderFrameOnAlternateThread()

@@ -193,6 +193,17 @@ typedef NS_ENUM(NSUInteger, OEGameCoreRendering) {
  */
 @property (nonatomic, readonly) NSUInteger hwRenderFramebuffer;
 
+/*!
+ * @property hwRenderSharedContextPtr
+ * @discussion
+ * The CGLContextObj of the shared HW render context, transmitted as a
+ * NSUInteger (uintptr_t) to avoid importing CGL types into this header.
+ * Zero if -prepareHWRenderSharedContext has not been called or failed.
+ * The libretro translator casts this back to CGLContextObj and stores it
+ * for per-frame CGLSetCurrentContext calls on the emulation thread.
+ */
+@property (nonatomic, readonly) NSUInteger hwRenderSharedContextPtr;
+
 // For internal use only.
 - (void)willExecute;
 - (void)didExecute;

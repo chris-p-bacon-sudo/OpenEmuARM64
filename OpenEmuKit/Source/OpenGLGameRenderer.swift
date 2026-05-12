@@ -149,12 +149,23 @@ class BaseOpenGLGameRenderer: OpenGLGameRenderer {
     // MARK: - HW render shared context (Phase 2 — GL work added in OpenGL3GameRenderer)
 
     func prepareHWRenderSharedContext() {
-        // Implemented in concrete subclass (OpenGL3GameRenderer).
-        // Base does nothing so non-HW renderers satisfy the protocol without crashing.
+        // Concrete subclasses (OpenGL3GameRenderer) override this.
+        // The base no-op means non-HW-capable renderers (e.g. GL2) satisfy the
+        // protocol without crashing, but hwSharedFBO stays 0 — the translator
+        // treats a zero hwRenderFramebuffer as a setup failure and resets isHW.
+        os_log(.error, log: .renderer,
+               "prepareHWRenderSharedContext called on base renderer — HW render not supported on this renderer type")
     }
 
     var hwRenderFramebuffer: UInt {
         UInt(hwSharedFBO)
+    }
+
+    var hwRenderSharedContextPtr: UInt {
+        guard let ctx = hwSharedContext else { return 0 }
+        // CGLContextObj is an opaque C pointer. Transmit as UInt so the ObjC
+        // protocol header doesn't need to import CGL types.
+        return UInt(bitPattern: OpaquePointer(ctx))
     }
     
     func clearFramebuffer() {
@@ -171,14 +182,9 @@ class BaseOpenGLGameRenderer: OpenGLGameRenderer {
     }
     
     func destroyGLResources() {
-        if let glContext = glContext {
-            if let alternateContext = alternateContext {
-                CGLReleaseContext(alternateContext)
-            }
-            CGLReleasePixelFormat(glPixelFormat)
-            CGLReleaseContext(glContext)
-        }
-        
+        // IMPORTANT: clean up hwSharedContext BEFORE releasing glContext.
+        // hwSharedContext was created sharing glContext's sharegroup; using it
+        // after glContext has been released is undefined behaviour.
         if let hwSharedContext = hwSharedContext {
             CGLSetCurrentContext(hwSharedContext)
             if hwSharedFBO != 0 {
@@ -193,6 +199,14 @@ class BaseOpenGLGameRenderer: OpenGLGameRenderer {
             CGLReleaseContext(hwSharedContext)
         }
         hwSharedContext = nil
+
+        if let glContext = glContext {
+            if let alternateContext = alternateContext {
+                CGLReleaseContext(alternateContext)
+            }
+            CGLReleasePixelFormat(glPixelFormat)
+            CGLReleaseContext(glContext)
+        }
 
         alternateContext        = nil
         texture.openGLContext   = nil
