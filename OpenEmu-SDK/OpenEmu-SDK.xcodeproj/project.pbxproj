@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		B5AE7A121710BD6200ED5801 /* OELibretroCoreTranslator.m in Sources */ = {isa = PBXBuildFile; fileRef = B5AE7A111710BD6200ED5801 /* OELibretroCoreTranslator.m */; };
+		F15A000B1710BD6200ED5801 /* fishhook.c in Sources */ = {isa = PBXBuildFile; fileRef = F15A000A1710BD6200ED5801 /* fishhook.c */; };
 		B5AE7A141710BD6200ED5801 /* OELibretroCoreTranslator.h in Headers */ = {isa = PBXBuildFile; fileRef = B5AE7A131710BD6200ED5801 /* OELibretroCoreTranslator.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		0109BBA5209F25EB002419C1 /* OEDiffQueueTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 0109BBA4209F25EB002419C1 /* OEDiffQueueTests.m */; };
 		0442B0011A2F4E6C00442001 /* OEGameCoreHardcoreTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 0442B0001A2F4E6C00442001 /* OEGameCoreHardcoreTests.m */; };
@@ -148,6 +149,8 @@
 
 /* Begin PBXFileReference section */
 		B5AE7A111710BD6200ED5801 /* OELibretroCoreTranslator.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = OELibretroCoreTranslator.m; sourceTree = "<group>"; };
+		F15A000A1710BD6200ED5801 /* fishhook.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = fishhook.c; path = fishhook/fishhook.c; sourceTree = "<group>"; };
+		F15A000C1710BD6200ED5801 /* fishhook.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = fishhook.h; path = fishhook/fishhook.h; sourceTree = "<group>"; };
 		B5AE7A131710BD6200ED5801 /* OELibretroCoreTranslator.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OELibretroCoreTranslator.h; sourceTree = "<group>"; };
 		B5AE7A151710BD6200ED5801 /* libretro.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = libretro.h; sourceTree = "<group>"; };
 		0109BBA2209F25EB002419C1 /* OpenEmuBaseTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = OpenEmuBaseTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -365,6 +368,8 @@
 				C6772A631710BD6200ED580A /* OEGameCore.m */,
 				B5AE7A131710BD6200ED5801 /* OELibretroCoreTranslator.h */,
 				B5AE7A111710BD6200ED5801 /* OELibretroCoreTranslator.m */,
+				F15A000C1710BD6200ED5801 /* fishhook.h */,
+				F15A000A1710BD6200ED5801 /* fishhook.c */,
 				B5AE7A151710BD6200ED5801 /* libretro.h */,
 				013D75CC23BD25CB00D74AD3 /* OEGameCoreDisplayModes.h */,
 				C6772A641710BD6200ED580A /* OEAbstractAdditions.h */,
@@ -785,6 +790,7 @@
 			files = (
 				C6772A711710BD6200ED580A /* OEGameCore.m in Sources */,
 				B5AE7A121710BD6200ED5801 /* OELibretroCoreTranslator.m in Sources */,
+				F15A000B1710BD6200ED5801 /* fishhook.c in Sources */,
 				C6772A731710BD6200ED580A /* OEAbstractAdditions.m in Sources */,
 				27FC95191A92F12700CF1DC6 /* OEDiffQueue.mm in Sources */,
 				C6772A751710BD6200ED580A /* OEGameCoreController.m in Sources */,

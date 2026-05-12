@@ -36,6 +36,8 @@
 #import <arm_neon.h>
 #endif
 #import <stdatomic.h>
+#import <mach-o/dyld.h>
+#import "fishhook/fishhook.h"
 
 // Flip to 1 to dump libretro audio plumbing to the unified log. Off by default —
 // production logs are too chatty otherwise. Filter with:
@@ -56,7 +58,7 @@
 #define RETRO_ENVIRONMENT_GET_AUDIO_VIDEO_ENABLE (47 | 0x10000)
 #endif
 
-NSString * const OELibretroBridgeVersion = @"6";
+NSString * const OELibretroBridgeVersion = @"9";
 
 
 @interface OELibretroCoreTranslator () <OELibretroInputReceiver>
@@ -133,6 +135,72 @@ static glReadBuffer_t                           _glReadBuffer = NULL;
 // Issue #464 — limit diagnostic logging to the first N frames per session.
 // Probing GL state every frame would flood Console.app and slow rendering.
 #define OE_ISSUE_464_DIAG_FRAMES 6
+
+// =============================================================================
+// Issue #464 — fishhook trace of glBindFramebuffer inside the core dylib.
+//
+// All previous diagnostics confirmed our FBO is complete + correctly attached,
+// EnableFBEmulation=True is applied, and the GL context identity is right —
+// yet zero pixels reach our FBO. We have no visibility into the actual
+// glBindFramebuffer call sequence the core dylib issues during a frame.
+//
+// fishhook (vendored under fishhook/) rebinds the lazy symbol slot for
+// glBindFramebuffer inside the loaded mupen64plus_next_libretro.dylib so
+// every call from inside the core (including GLSM's bindFBO()) is logged
+// with (target, fbo, sequence). The wrapper forwards to the original system
+// glBindFramebuffer so behaviour is unchanged.
+//
+// Gated to the first OE_GL_BIND_HOOK_LOG_LIMIT calls per session.
+// =============================================================================
+typedef void (*pfn_glBindFramebuffer_t)(uint32_t target, uint32_t framebuffer);
+static pfn_glBindFramebuffer_t _orig_glBindFramebuffer = NULL;
+static atomic_int _bind_hook_seq = 0;
+#define OE_GL_BIND_HOOK_LOG_LIMIT 200
+
+static void oe_hook_glBindFramebuffer(uint32_t target, uint32_t framebuffer)
+{
+    int seq = atomic_fetch_add_explicit(&_bind_hook_seq, 1, memory_order_relaxed);
+    if (seq < OE_GL_BIND_HOOK_LOG_LIMIT) {
+        const char *t = "?";
+        switch (target) {
+            case 0x8D40: t = "FB";       break;  // GL_FRAMEBUFFER
+            case 0x8CA8: t = "READ_FB";  break;  // GL_READ_FRAMEBUFFER
+            case 0x8CA9: t = "DRAW_FB";  break;  // GL_DRAW_FRAMEBUFFER
+        }
+        NSLog(@"[OELibretro][#464 hook] glBindFramebuffer #%d %s -> %u",
+              seq, t, framebuffer);
+    }
+    if (_orig_glBindFramebuffer) {
+        _orig_glBindFramebuffer(target, framebuffer);
+    }
+}
+
+// Walks the dyld image list to find the loaded image whose path matches
+// (or ends with) the supplied substring, then rebinds glBindFramebuffer in
+// that image only.
+static void oe_install_bind_hook_for_image(const char *path_substr)
+{
+    if (!path_substr) return;
+    uint32_t count = _dyld_image_count();
+    for (uint32_t i = 0; i < count; i++) {
+        const char *name = _dyld_get_image_name(i);
+        if (!name) continue;
+        if (strstr(name, path_substr) == NULL) continue;
+        const struct mach_header *hdr = _dyld_get_image_header(i);
+        intptr_t slide = _dyld_get_image_vmaddr_slide(i);
+        struct rebinding rb[] = {
+            { "glBindFramebuffer",
+              (void *)oe_hook_glBindFramebuffer,
+              (void **)&_orig_glBindFramebuffer },
+        };
+        int rc = rebind_symbols_image((void *)hdr, slide, rb, 1);
+        NSLog(@"[OELibretro][#464 hook] installed glBindFramebuffer hook on %s (rc=%d, orig=%p)",
+              name, rc, _orig_glBindFramebuffer);
+        return;
+    }
+    NSLog(@"[OELibretro][#464 hook] no loaded image matching '%s' — hook NOT installed",
+          path_substr);
+}
 
 // GL constants (we don't link OpenGL headers in this TU).
 #define OE_GL_NO_ERROR                       0x0000
@@ -397,6 +465,15 @@ static const OELibretroVariableDefault kN64VariableDefaults[] = {
     // GLideN64's threaded renderer needs a shared GL context we don't provide;
     // crashes in TextureCache::_addTexture without this.
     { "mupen64plus-ThreadedRenderer",             "False" },
+    // Framebuffer emulation: REQUIRED for any rendering to reach our shared
+    // FBO. The libretro option default is "True" (libretro_core_options.h),
+    // but mupen64plus-next only applies that default when the front-end
+    // explicitly returns it from RETRO_ENVIRONMENT_GET_VARIABLE. The core's
+    // static initialiser is `uint32_t EnableFBEmulation = 0;`, so without
+    // this entry the core boots in non-FBE mode and never issues the
+    // glBindFramebuffer(GL_FRAMEBUFFER, default_framebuffer) call in
+    // glsm_state_bind — the screen stays black. See issue #464.
+    { "mupen64plus-EnableFBEmulation",            "True" },
     { "mupen64plus-MaxTxCacheSize",               "1500" },
     { "mupen64plus-txHiresEnable",                "False" },
     { "mupen64plus-EnableEnhancedTextureStorage", "False" },
@@ -1448,6 +1525,15 @@ static void* bridge_dlsym(void *handle, const char *symbol) {
             *error = [NSError errorWithDomain:OEGameCoreErrorDomain code:OEGameCoreCouldNotLoadROMError userInfo:@{NSLocalizedDescriptionKey: [NSString stringWithFormat:@"Failed to load libretro core: %s", err ?: "unknown error"]}];
         }
         return NO;
+    }
+
+    // Issue #464 — install fishhook trace on the loaded core dylib so we can
+    // observe the actual glBindFramebuffer call sequence during retro_run.
+    // The image is identified by file name (last path component); using the
+    // bare name keeps this resilient to install-location changes.
+    {
+        NSString *imageName = [corePath lastPathComponent];
+        oe_install_bind_hook_for_image([imageName UTF8String]);
     }
     
     // Resolve all mandatory symbols with fallback
