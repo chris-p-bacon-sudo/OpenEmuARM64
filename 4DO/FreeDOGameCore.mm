@@ -388,7 +388,21 @@ static void writeSaveFile(const char* path)
 
 - (void)executeFrame
 {
-    _freedo_Interface(FDP_DO_EXECFRAME, frame); // FDP_DO_EXECFRAME_MT ?
+    _freedo_Interface(FDP_DO_EXECFRAME, frame);
+
+    // Copy the VDL frame into the video buffer every frame.
+    // getVideoBufferWithHint: only stores the hint pointer; the actual pixel
+    // copy must happen here so it runs in both Debug and Release builds.
+    // (In Debug, the MTLGameRenderer assert was accidentally calling
+    // getVideoBufferWithHint: every frame — that side-effect is gone in Release.)
+    if (isSwapFrameSignaled && videoBuffer) {
+        isSwapFrameSignaled = NO;
+        struct BitmapCrop bmpcrop;
+        ScalingAlgorithm sca;
+        int rw, rh;
+        Get_Frame_Bitmap((VDLFrame *)frame, videoBuffer, 0, &bmpcrop,
+                         videoWidth, videoHeight, false, true, false, sca, &rw, &rh);
+    }
 }
 
 - (void)resetEmulation
@@ -438,20 +452,14 @@ static void writeSaveFile(const char* path)
 #pragma mark Video
 - (const void *)getVideoBufferWithHint:(void *)hint
 {
-    if(!hint) {
-        if (!videoBuffer) videoBuffer = (uint32_t*)malloc(videoWidth * videoHeight * 4);
-        hint = videoBuffer;
+    // Store the hint as our video buffer so executeFrame writes directly into
+    // OpenEmu's backing store. Fall back to our own allocation if no hint.
+    if (hint) {
+        videoBuffer = (uint32_t *)hint;
+    } else {
+        if (!videoBuffer) videoBuffer = (uint32_t *)malloc(videoWidth * videoHeight * 4);
     }
-
-    if(isSwapFrameSignaled)
-    {
-        isSwapFrameSignaled = NO;
-        struct BitmapCrop bmpcrop;
-        ScalingAlgorithm sca;
-        int rw, rh;
-        Get_Frame_Bitmap((VDLFrame *)frame, hint, 0, &bmpcrop, videoWidth, videoHeight, false, true, false, sca, &rw, &rh);
-    }
-    return hint;
+    return videoBuffer;
 }
 
 - (OEIntRect)screenRect
