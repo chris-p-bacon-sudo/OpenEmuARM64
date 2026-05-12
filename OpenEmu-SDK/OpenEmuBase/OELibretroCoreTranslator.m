@@ -56,7 +56,7 @@
 #define RETRO_ENVIRONMENT_GET_AUDIO_VIDEO_ENABLE (47 | 0x10000)
 #endif
 
-NSString * const OELibretroBridgeVersion = @"3";
+NSString * const OELibretroBridgeVersion = @"4";
 
 
 @interface OELibretroCoreTranslator () <OELibretroInputReceiver>
@@ -127,9 +127,16 @@ static void* get_gl_handle(void) {
 }
 
 static uintptr_t libretro_get_current_framebuffer(void) {
-    // 1. Ask OpenEmu's renderer for the authoritative FBO
     @autoreleasepool {
         if (_current && _current.renderDelegate) {
+            // HW render mode: return the FBO on the shared context.
+            // This FBO was created by prepareHWRenderSharedContext and is
+            // valid in the context that GLideN64 / the core GL plugin uses.
+            if (_current.isHW) {
+                return (uintptr_t)_current.renderDelegate.hwRenderFramebuffer;
+            }
+
+            // Software / bitmap path: ask for the standard presentation FBO.
             id fb = _current.renderDelegate.presentationFramebuffer;
             if (fb && [fb isKindOfClass:[NSNumber class]]) {
                 return (uintptr_t)[(NSNumber *)fb unsignedLongValue];
@@ -137,7 +144,7 @@ static uintptr_t libretro_get_current_framebuffer(void) {
         }
     }
 
-    // 2. Fall back to querying the active CGL context
+    // Last resort: query whatever FBO is currently bound.
     if (get_gl_handle() && _glGetIntegerv) {
         int fbo = 0;
         _glGetIntegerv(0x8CA6, &fbo); // GL_FRAMEBUFFER_BINDING
@@ -463,6 +470,12 @@ static OELibretroSystemPolicy OELibretroSystemPolicyForSystemID(NSString *system
 
     os_unfair_lock _avInfoLock;
 
+    // HW render shared context — stored here so executeFrame can re-assert it
+    // each frame without going through the render delegate on every call.
+    // Set on the first HW frame after prepareHWRenderSharedContext succeeds.
+    // Only touched on the emulation thread.
+    CGLContextObj _hwSharedContext;
+
     // Per-system policy — set once in -loadFileAtPath:, consulted everywhere
     // else. Adding a new system: extend OELibretroSystemPolicyForSystemID().
     OELibretroSystemPolicy _policy;
@@ -747,6 +760,12 @@ static bool libretro_environment_cb(unsigned cmd, void *data) {
                 hw->get_proc_address = libretro_get_proc_address;
                 _current->_hw_callback = *hw;
                 _current.isHW = YES;
+
+                // Tell the renderer to create the shared CGL context and FBO now,
+                // while we still have the render delegate. The shared context will
+                // be made current before context_reset and every retro_run call.
+                [_current.renderDelegate prepareHWRenderSharedContext];
+
 #if DEBUG
                 NSLog(@"[OELibretro] Accepted HW Rendering (Type: %d, Version: %u.%u)", hw->context_type, hw->version_major, hw->version_minor);
 #endif
@@ -1301,7 +1320,8 @@ static void* bridge_dlsym(void *handle, const char *symbol) {
     // To add a new system, extend OELibretroSystemPolicyForSystemID().
     NSString *systemID = [self systemIdentifier];
     _policy = OELibretroSystemPolicyForSystemID(systemID);
-    _isHW   = NO;  // Reset — core will re-request via SET_HW_RENDER if needed
+    _isHW          = NO;  // Reset — core will re-request via SET_HW_RENDER if needed
+    _hwSharedContext = NULL;  // Renderer teardown (destroyGLResources) owns the CGL lifetime
 
     // Reset declared option defaults so a re-load doesn't carry stale entries
     // from a previous game/core into the new core's environment callbacks.
@@ -1479,18 +1499,39 @@ static void* bridge_dlsym(void *handle, const char *symbol) {
 
 - (void)executeFrame {
     _current = self;
-    
+
     // The OpenGL context is only guaranteed to be bound to this thread AFTER startEmulation,
-    // right at the beginning of the first frame execution. This is the latest and safest 
+    // right at the beginning of the first frame execution. This is the latest and safest
     // place to initialize the core's hardware context.
-    if (self.needsContextReset) {
-        self.needsContextReset = NO;
-        
-        if (self.isHW && _hw_callback.context_reset) {
-            _hw_callback.context_reset();
+    if (self.isHW) {
+        // Switch to the shared context before context_reset and before every retro_run.
+        // This ensures GLideN64 (or any core GL plugin) operates within the shared
+        // CGL context that shares the texture namespace with OpenEmu's primary context.
+        // willExecuteFrame() is a no-op in HW render mode (it returns early when
+        // hwSharedContext != nil), so we own context management completely here.
+        NSUInteger hwFBO = self.renderDelegate.hwRenderFramebuffer;
+        if (hwFBO != 0) {
+            // hwRenderFramebuffer non-zero means prepareHWRenderSharedContext succeeded.
+            // The shared context is the one currently set by the renderer — query it
+            // so we can re-assert it before each call.
+            _hwSharedContext = CGLGetCurrentContext();
         }
+
+        if (self.needsContextReset) {
+            self.needsContextReset = NO;
+            if (_hw_callback.context_reset) {
+                if (_hwSharedContext) CGLSetCurrentContext(_hwSharedContext);
+                _hw_callback.context_reset();
+            }
+        } else if (_hwSharedContext) {
+            // Re-assert the shared context on every frame. GLideN64 may have
+            // changed it internally; we need it current before retro_run.
+            CGLSetCurrentContext(_hwSharedContext);
+        }
+    } else if (self.needsContextReset) {
+        self.needsContextReset = NO;
     }
-    
+
     if (_retro_run) _retro_run();
 }
 
