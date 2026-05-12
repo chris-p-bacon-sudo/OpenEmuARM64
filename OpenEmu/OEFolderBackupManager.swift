@@ -87,8 +87,14 @@ extension Notification.Name {
     // MARK: - Private
 
     private var eventStream: FSEventStreamRef?
+    /// Dedicated serial queue for all backup copy operations.
+    /// Serialising writes prevents I/O saturation on slow external/NAS destinations
+    /// when several FSEvents fire simultaneously (e.g. auto-save + screenshot + Info.plist).
+    private let copyQueue = DispatchQueue(label: "org.openemu.OpenEmu.FolderBackup.copy", qos: .utility)
 
     private override init() { super.init() }
+
+    deinit { stopFSEventStream() }
 
     // MARK: - Lifecycle
 
@@ -128,6 +134,18 @@ extension Notification.Name {
         panel.beginSheetModal(for: window) { [weak self] response in
             guard response == .OK, let url = panel.url else {
                 completion(false)
+                return
+            }
+            // Reject a folder that lives inside the OpenEmu support directory.
+            // If the user picks a subfolder of Save States as the destination,
+            // every copy would trigger another FSEvent → infinite copy loop.
+            let supportPath = URL.oeApplicationSupportDirectory.standardized.path
+            if url.standardized.path.hasPrefix(supportPath) {
+                let alert = NSAlert()
+                alert.messageText = "Invalid Backup Folder"
+                alert.informativeText = "The backup folder cannot be inside the OpenEmu data folder. Please choose a different location, such as a folder on an external drive or inside iCloud Drive."
+                alert.alertStyle = .warning
+                alert.beginSheetModal(for: window) { _ in completion(false) }
                 return
             }
             self?.stop()
@@ -213,7 +231,7 @@ extension Notification.Name {
         }
         for localURL in roots {
             guard let dest = backupURL(for: localURL, backupFolder: backupFolder) else { continue }
-            DispatchQueue.global(qos: .utility).async { [weak self] in
+            copyQueue.async { [weak self] in
                 self?.copyToBackupIfNewer(from: localURL, to: dest)
             }
         }
@@ -274,7 +292,19 @@ extension Notification.Name {
         copyFile(from: localURL, to: destURL, direction: "→")
     }
 
-    private func copyFile(from src: URL, to dest: URL, direction: String) {
+    // MARK: - Name sanitisation
+
+    /// Returns a filesystem-safe version of a game name.
+    /// Replaces `/` (path separator) and `..` (parent-directory traversal) so a
+    /// crafted game name cannot write outside the backup folder.
+    private func sanitizedName(_ name: String) -> String {
+        name
+            .replacingOccurrences(of: "/",  with: "_")
+            .replacingOccurrences(of: "..", with: "__")
+    }
+
+    @discardableResult
+    private func copyFile(from src: URL, to dest: URL, direction: String) -> Bool {
         let fm = FileManager.default
         try? fm.createDirectory(at: dest.deletingLastPathComponent(), withIntermediateDirectories: true)
         let temp = dest.deletingLastPathComponent().appendingPathComponent("." + UUID().uuidString)
@@ -291,7 +321,9 @@ extension Notification.Name {
             try? fm.removeItem(at: temp)
             os_log(.error, log: log, "Copy failed (%@ %@): %@", direction, src.lastPathComponent, error.localizedDescription)
             DispatchQueue.main.async { [weak self] in self?.status = .failed }
+            return false
         }
+        return true
     }
 
     // MARK: - Pre-launch check
@@ -330,11 +362,12 @@ extension Notification.Name {
     ) {
         guard let backupFolder = backupFolderURL else { completion(false); return }
         let systemShort = systemIdentifier.replacingOccurrences(of: "openemu.system.", with: "")
-        let safeName    = gameName.replacingOccurrences(of: "/", with: "_")
+        let safeName    = sanitizedName(gameName)
         let fm = FileManager.default
 
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             guard let self else { completion(false); return }
+            var allSucceeded = true
 
             // Save states
             let backupStateDir = backupFolder
@@ -344,7 +377,7 @@ extension Notification.Name {
             if let states = try? fm.contentsOfDirectory(at: backupStateDir, includingPropertiesForKeys: nil, options: .skipsHiddenFiles) {
                 for f in states where f.pathExtension.lowercased() == "oesavestate" {
                     if let local = self.localURL(for: f, backupFolder: backupFolder) {
-                        self.copyFile(from: f, to: local, direction: "←")
+                        if !self.copyFile(from: f, to: local, direction: "←") { allSucceeded = false }
                     }
                 }
             }
@@ -360,13 +393,13 @@ extension Notification.Name {
                           let files = try? fm.contentsOfDirectory(at: bsDir, includingPropertiesForKeys: nil, options: .skipsHiddenFiles) else { continue }
                     for f in files where f.deletingPathExtension().lastPathComponent == safeName {
                         if let local = self.localURL(for: f, backupFolder: backupFolder) {
-                            self.copyFile(from: f, to: local, direction: "←")
+                            if !self.copyFile(from: f, to: local, direction: "←") { allSucceeded = false }
                         }
                     }
                 }
             }
 
-            DispatchQueue.main.async { completion(true) }
+            DispatchQueue.main.async { completion(allSucceeded) }
         }
     }
 
@@ -408,7 +441,7 @@ extension Notification.Name {
 
     private func newestBackupDate(backupFolder: URL, systemIdentifier: String, gameName: String) -> Date? {
         let systemShort = systemIdentifier.replacingOccurrences(of: "openemu.system.", with: "")
-        let safeName    = gameName.replacingOccurrences(of: "/", with: "_")
+        let safeName    = sanitizedName(gameName)
         let fm = FileManager.default
         var dates: [Date] = []
 
@@ -442,7 +475,7 @@ extension Notification.Name {
 
     private func newestLocalDate(systemIdentifier: String, gameName: String) -> Date? {
         let systemShort = systemIdentifier.replacingOccurrences(of: "openemu.system.", with: "")
-        let safeName    = gameName.replacingOccurrences(of: "/", with: "_")
+        let safeName    = sanitizedName(gameName)
         let supportDir  = URL.oeApplicationSupportDirectory
         let fm = FileManager.default
         var dates: [Date] = []

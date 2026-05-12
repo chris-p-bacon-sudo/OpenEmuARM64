@@ -223,6 +223,13 @@ final class OECredentialStore {
             // .atomic writes to a temp file first then renames, preventing a partial write
             // from corrupting the store if the app quits mid-write.
             try combined.write(to: url, options: .atomic)
+            // Restrict to owner-read/write only (0600). The key is derived from the hardware
+            // UUID so any local user who can read the file could also derive the key — 0600
+            // closes that gap and matches what the Keychain enforced for us automatically.
+            try FileManager.default.setAttributes(
+                [.posixPermissions: NSNumber(value: Int16(0o600))],
+                ofItemAtPath: url.path
+            )
             os_log(.info, log: log, "Credential store persisted (%d entries).", cache.count)
         } catch {
             os_log(.error, log: log,

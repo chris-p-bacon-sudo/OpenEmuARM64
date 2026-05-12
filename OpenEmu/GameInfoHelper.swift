@@ -29,13 +29,18 @@ final class GameInfoHelper {
 
     static let shared = GameInfoHelper()
 
+    /// Shared serial queue for all ROM info lookups.
+    /// Previously a new queue was created per call, which allocates a kernel thread
+    /// resource per ROM and can stall the thread pool during large library scans.
+    private let lookupQueue = DispatchQueue(label: "org.openemu.OpenEmu.GameInfoHelper", qos: .userInitiated)
+
     var database: OpenVGDB? {
         return OpenVGDB.shared.isAvailable ? OpenVGDB.shared : nil
     }
 
     func gameInfo(withDictionary gameInfo: [String : Any]) -> [String : Any] {
 
-        DispatchQueue(label: "org.openemu.OpenEmu.GameInfoHelper").sync {
+        lookupQueue.sync {
 
             lazy var resultDict: [String : Any] = [:]
 

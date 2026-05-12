@@ -378,6 +378,11 @@ static void gambatte_rc_event_handler(const rc_client_event_t *event, rc_client_
 - (void)loadStateFromFileAtPath:(NSString *)fileName completionHandler:(void (^)(BOOL, NSError *))block
 {
     int success = gb.loadState(fileName.fileSystemRepresentation);
+    // Notify the rcheevos client that emulator state has been externally replaced.
+    // Without this, the RA library keeps evaluating achievement conditions against
+    // stale pre-load state. Matches the reset already present in deserializeState:.
+    if (success == 1 && _rcClient)
+        rc_client_reset(_rcClient);
     if(block) block(success==1, nil);
 }
 

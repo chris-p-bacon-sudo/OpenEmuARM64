@@ -625,6 +625,11 @@ static __weak NESGameCore *_current;
         return;
     }
 
+    // Notify the rcheevos client that emulator state has been externally replaced.
+    // Without this, the RA library keeps evaluating achievement conditions against
+    // stale pre-load state. Matches the reset already present in deserializeState:.
+    if (_rcClient)
+        rc_client_reset(_rcClient);
     block(YES, nil);
 }
 

@@ -487,7 +487,7 @@ private enum RetroAchievementsAPI {
                 DispatchQueue.main.async { completion(.failure(.networkError(error))) }
                 return
             }
-            if let raw = data { NSLog("[RA] Raw response: %@", String(data: raw, encoding: .utf8) ?? "<non-utf8>") }
+
             guard let data = data,
                   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
             else {

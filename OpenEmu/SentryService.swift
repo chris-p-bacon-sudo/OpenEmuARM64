@@ -133,7 +133,7 @@ enum SentryService {
     private static func showConsentPrompt() {
         let alert = NSAlert()
         alert.messageText = "Help Improve OpenEmu"
-        alert.informativeText = "Would you like to automatically send crash reports when OpenEmu crashes? This helps the team find and fix bugs faster.\n\nNo personal data, game files, or save data is ever included."
+        alert.informativeText = "Would you like to automatically send crash reports when OpenEmu crashes? This helps the team find and fix bugs faster.\n\nReports include the game title, system, and core in use at the time of the crash. No game files, save data, or passwords are ever included."
         alert.addButton(withTitle: "Send Crash Reports")
         alert.addButton(withTitle: "Don't Send")
         alert.alertStyle = .informational
