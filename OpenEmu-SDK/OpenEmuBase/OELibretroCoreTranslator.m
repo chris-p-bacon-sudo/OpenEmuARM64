@@ -56,7 +56,7 @@
 #define RETRO_ENVIRONMENT_GET_AUDIO_VIDEO_ENABLE (47 | 0x10000)
 #endif
 
-NSString * const OELibretroBridgeVersion = @"4";
+NSString * const OELibretroBridgeVersion = @"5";
 
 
 @interface OELibretroCoreTranslator () <OELibretroInputReceiver>
@@ -111,17 +111,45 @@ static char *_contentDirCStr     = NULL;
 static __unsafe_unretained OELibretroCoreTranslator *_current = nil;
 
 // HW Callbacks
-typedef void (*glGetIntegerv_t)(uint32_t pname, int *params);
+typedef void     (*glGetIntegerv_t)(uint32_t pname, int *params);
+typedef void     (*glBindFramebuffer_t)(uint32_t target, uint32_t framebuffer);
+typedef void     (*glGetFramebufferAttachmentParameteriv_t)(uint32_t target, uint32_t attachment, uint32_t pname, int *params);
+typedef uint32_t (*glCheckFramebufferStatus_t)(uint32_t target);
+typedef uint32_t (*glGetError_t)(void);
 
 static void *_gl_handle = NULL;
-static glGetIntegerv_t _glGetIntegerv = NULL;
+static glGetIntegerv_t                          _glGetIntegerv = NULL;
+static glBindFramebuffer_t                      _glBindFramebuffer = NULL;
+static glGetFramebufferAttachmentParameteriv_t  _glGetFramebufferAttachmentParameteriv = NULL;
+static glCheckFramebufferStatus_t               _glCheckFramebufferStatus = NULL;
+static glGetError_t                             _glGetError = NULL;
+
+// Issue #464 — limit diagnostic logging to the first N frames per session.
+// Probing GL state every frame would flood Console.app and slow rendering.
+#define OE_ISSUE_464_DIAG_FRAMES 6
+
+// GL constants (we don't link OpenGL headers in this TU).
+#define OE_GL_NO_ERROR                       0x0000
+#define OE_GL_FRAMEBUFFER                    0x8D40
+#define OE_GL_READ_FRAMEBUFFER               0x8CA8
+#define OE_GL_DRAW_FRAMEBUFFER               0x8CA9
+#define OE_GL_FRAMEBUFFER_BINDING            0x8CA6  // alias of GL_DRAW_FRAMEBUFFER_BINDING
+#define OE_GL_READ_FRAMEBUFFER_BINDING       0x8CAA
+#define OE_GL_COLOR_ATTACHMENT0              0x8CE0
+#define OE_GL_FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE 0x8CD0
+#define OE_GL_FRAMEBUFFER_ATTACHMENT_OBJECT_NAME 0x8CD1
+#define OE_GL_FRAMEBUFFER_COMPLETE           0x8CD5
 
 static void* get_gl_handle(void) {
     static dispatch_once_t once;
     dispatch_once(&once, ^{
         _gl_handle = dlopen("/System/Library/Frameworks/OpenGL.framework/Versions/Current/OpenGL", RTLD_LAZY | RTLD_LOCAL);
         if (_gl_handle) {
-            _glGetIntegerv = (glGetIntegerv_t)dlsym(_gl_handle, "glGetIntegerv");
+            _glGetIntegerv                          = (glGetIntegerv_t)                         dlsym(_gl_handle, "glGetIntegerv");
+            _glBindFramebuffer                      = (glBindFramebuffer_t)                     dlsym(_gl_handle, "glBindFramebuffer");
+            _glGetFramebufferAttachmentParameteriv  = (glGetFramebufferAttachmentParameteriv_t) dlsym(_gl_handle, "glGetFramebufferAttachmentParameteriv");
+            _glCheckFramebufferStatus               = (glCheckFramebufferStatus_t)              dlsym(_gl_handle, "glCheckFramebufferStatus");
+            _glGetError                             = (glGetError_t)                            dlsym(_gl_handle, "glGetError");
         }
     });
     return _gl_handle;
@@ -137,9 +165,49 @@ static uintptr_t libretro_get_current_framebuffer(void) {
                 NSUInteger fbo = _current.renderDelegate.hwRenderFramebuffer;
                 CGLContextObj activeCTX = CGLGetCurrentContext();
                 CGLContextObj sharedCTX = (CGLContextObj)(uintptr_t)_current.renderDelegate.hwRenderSharedContextPtr;
+
+                // Issue #464 — Diag 1: context identity check.
+                // glsm_state_setup will capture default_framebuffer = <our FBO> against
+                // whatever context is current at the moment of this call. If activeCTX
+                // != sharedCTX, the FBO number we return is meaningless on the active
+                // context and rendering will go nowhere (or somewhere wrong).
+                if (activeCTX != sharedCTX) {
+                    os_log_fault(OE_LOG_DEFAULT,
+                                 "[OELibretro][#464 diag1] CTX MISMATCH in get_current_framebuffer: active %p != shared %p, FBO %lu",
+                                 activeCTX, sharedCTX, (unsigned long)fbo);
+                }
+
+                // Issue #464 — Diag 2: confirm the FBO's color attachment is the
+                // texture name we expect. If the renderer recreated the IOSurface
+                // texture under us, the FBO would still reference the now-dead name.
                 static int _fbDiagCount = 0;
-                if (++_fbDiagCount <= 5) {
-                    NSLog(@"[OELibretro] get_current_framebuffer[%d] -> FBO %lu, active ctx %p, shared ctx %p",
+                if (++_fbDiagCount <= OE_ISSUE_464_DIAG_FRAMES
+                    && get_gl_handle() && _glGetFramebufferAttachmentParameteriv
+                    && _glCheckFramebufferStatus && _glBindFramebuffer && _glGetError) {
+                    // Save current binding, bind ours, query, restore.
+                    int prevDraw = 0;
+                    int prevRead = 0;
+                    if (_glGetIntegerv) {
+                        _glGetIntegerv(OE_GL_FRAMEBUFFER_BINDING,      &prevDraw);
+                        _glGetIntegerv(OE_GL_READ_FRAMEBUFFER_BINDING, &prevRead);
+                    }
+                    (void)_glGetError(); // clear any pre-existing error
+                    _glBindFramebuffer(OE_GL_FRAMEBUFFER, (uint32_t)fbo);
+                    int attachName = 0;
+                    int attachType = 0;
+                    _glGetFramebufferAttachmentParameteriv(OE_GL_FRAMEBUFFER, OE_GL_COLOR_ATTACHMENT0, OE_GL_FRAMEBUFFER_ATTACHMENT_OBJECT_NAME, &attachName);
+                    _glGetFramebufferAttachmentParameteriv(OE_GL_FRAMEBUFFER, OE_GL_COLOR_ATTACHMENT0, OE_GL_FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE, &attachType);
+                    uint32_t fbStatus = _glCheckFramebufferStatus(OE_GL_FRAMEBUFFER);
+                    uint32_t glErr = _glGetError();
+                    NSLog(@"[OELibretro][#464 diag2] get_current_framebuffer[%d] -> FBO %lu, active ctx %p, shared ctx %p, color-attach name=%d type=0x%04X, fbStatus=0x%04X (complete=%@), glErr=0x%04X",
+                          _fbDiagCount, (unsigned long)fbo, activeCTX, sharedCTX,
+                          attachName, (unsigned)attachType, fbStatus,
+                          (fbStatus == OE_GL_FRAMEBUFFER_COMPLETE ? @"YES" : @"NO"), glErr);
+                    // Restore previous binding so this query is invisible to the core.
+                    _glBindFramebuffer(OE_GL_DRAW_FRAMEBUFFER, (uint32_t)prevDraw);
+                    _glBindFramebuffer(OE_GL_READ_FRAMEBUFFER, (uint32_t)prevRead);
+                } else if (_fbDiagCount <= OE_ISSUE_464_DIAG_FRAMES) {
+                    NSLog(@"[OELibretro][#464 diag2] get_current_framebuffer[%d] -> FBO %lu, active ctx %p, shared ctx %p (gl probes unavailable)",
                           _fbDiagCount, (unsigned long)fbo, activeCTX, sharedCTX);
                 }
                 return (uintptr_t)fbo;
@@ -1574,6 +1642,45 @@ static void* bridge_dlsym(void *handle, const char *symbol) {
     }
 
     if (_retro_run) _retro_run();
+
+    // Issue #464 — Diag 3: post-retro_run state probe.
+    // With the shared context still current, observe what the core actually
+    // left bound and whether our FBO is complete + still pointing at the
+    // expected texture. Limit to the first N frames per session to avoid
+    // flooding logs and slowing rendering.
+    if (self.isHW && _hwSharedContext && get_gl_handle()
+        && _glGetIntegerv && _glBindFramebuffer && _glGetFramebufferAttachmentParameteriv
+        && _glCheckFramebufferStatus && _glGetError) {
+        static int _postRunDiagCount = 0;
+        if (++_postRunDiagCount <= OE_ISSUE_464_DIAG_FRAMES) {
+            CGLContextObj activeCTX = CGLGetCurrentContext();
+            NSUInteger ourFBO = self.renderDelegate.hwRenderFramebuffer;
+            int drawBinding = 0;
+            int readBinding = 0;
+            _glGetIntegerv(OE_GL_FRAMEBUFFER_BINDING,      &drawBinding);
+            _glGetIntegerv(OE_GL_READ_FRAMEBUFFER_BINDING, &readBinding);
+            (void)_glGetError(); // clear pre-existing error
+            _glBindFramebuffer(OE_GL_FRAMEBUFFER, (uint32_t)ourFBO);
+            int attachName = 0;
+            _glGetFramebufferAttachmentParameteriv(OE_GL_FRAMEBUFFER, OE_GL_COLOR_ATTACHMENT0, OE_GL_FRAMEBUFFER_ATTACHMENT_OBJECT_NAME, &attachName);
+            uint32_t fbStatus = _glCheckFramebufferStatus(OE_GL_FRAMEBUFFER);
+            uint32_t glErr = _glGetError();
+            // Restore whatever the core left bound, so post-frame work
+            // (didExecuteFrame's glFinish/flush path) sees the same state.
+            _glBindFramebuffer(OE_GL_DRAW_FRAMEBUFFER, (uint32_t)drawBinding);
+            _glBindFramebuffer(OE_GL_READ_FRAMEBUFFER, (uint32_t)readBinding);
+            NSLog(@"[OELibretro][#464 diag3] post-retro_run[%d] active=%p shared=%p drawBinding=%d readBinding=%d ourFBO=%lu attach=%d fbStatus=0x%04X (complete=%@) glErr=0x%04X",
+                  _postRunDiagCount, activeCTX, _hwSharedContext,
+                  drawBinding, readBinding, (unsigned long)ourFBO,
+                  attachName, fbStatus,
+                  (fbStatus == OE_GL_FRAMEBUFFER_COMPLETE ? @"YES" : @"NO"), glErr);
+            if (activeCTX != _hwSharedContext) {
+                os_log_fault(OE_LOG_DEFAULT,
+                             "[OELibretro][#464 diag3] CTX MISMATCH after retro_run: active %p != shared %p",
+                             activeCTX, _hwSharedContext);
+            }
+        }
+    }
 }
 
 - (void)resetEmulation {
