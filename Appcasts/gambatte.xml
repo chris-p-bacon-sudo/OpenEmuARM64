@@ -4,7 +4,18 @@
   xmlns:dc="http://purl.org/dc/elements/1.1/">
   <channel>
     <title>Gambatte</title>
-            <item>
+                <item>
+      <title>Gambatte 0.5.3</title>
+      <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
+      <enclosure
+        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.3.2/Gambatte.oecoreplugin.zip"
+        sparkle:version="0.5.3"
+        sparkle:shortVersionString="0.5.3"
+        length="726838"
+        sparkle:edSignature="NdwaejjCYujp3Vz+MBLWnAF95s1pAg4wtRogLdoYMyTqz1Ez5fpN21hFHghi16QQTPrNml8kRBXTzy7CIFI9Bg=="
+        type="application/octet-stream" />
+    </item>
+<item>
       <title>Gambatte 0.5.2</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure

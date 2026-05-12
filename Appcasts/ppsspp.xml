@@ -4,7 +4,18 @@
   xmlns:dc="http://purl.org/dc/elements/1.1/">
   <channel>
     <title>PPSSPP</title>
-        <item>
+            <item>
+      <title>PPSSPP 1.14.6</title>
+      <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
+      <enclosure
+        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.3.2/PPSSPP.oecoreplugin.zip"
+        sparkle:version="1.14.6"
+        sparkle:shortVersionString="1.14.6"
+        length="12709006"
+        sparkle:edSignature="1wbCIDumdrfnabsiIB1BI6X5X+ZYUu6+tCEWGqiN/XHmdztslsSiYM8qyoaFsvyJDxgm5L0VcNbbfBiD2hMdBg=="
+        type="application/octet-stream" />
+    </item>
+<item>
       <title>PPSSPP 1.14.5</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure

@@ -4,7 +4,18 @@
   xmlns:dc="http://purl.org/dc/elements/1.1/">
   <channel>
     <title>Flycast</title>
-        <item>
+            <item>
+      <title>Flycast 2.4.3</title>
+      <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
+      <enclosure
+        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.3.2/Flycast.oecoreplugin.zip"
+        sparkle:version="2.4.3"
+        sparkle:shortVersionString="2.4.3"
+        length="3094106"
+        sparkle:edSignature="2n2HaKpkBbdRJw0IMtNVX92+PucjCQMxHyP3lBM/UCkHCHbC2MtytDTFLPYh2+vCcmKtgsb935Ab2kKn99rYDw=="
+        type="application/octet-stream" />
+    </item>
+<item>
       <title>Flycast 2.4.2</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure

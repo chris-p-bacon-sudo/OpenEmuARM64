@@ -407,7 +407,7 @@ static void MupenSetAudioSpeed(int percent)
     // bug (not a JIT plumbing issue) that needs a separate investigation.
     //
     // Until that is resolved, keep the pure interpreter on aarch64 so that
-    // games that were working continue to work.  Track as issue #NNN.
+    // games that were working continue to work.  Track as issue #463.
     //
     // On x86_64 the dynarec is known-good and is used as before.
     m64p_handle section;

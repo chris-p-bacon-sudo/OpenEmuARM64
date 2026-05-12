@@ -4,7 +4,18 @@
   xmlns:dc="http://purl.org/dc/elements/1.1/">
   <channel>
     <title>SNES9x</title>
-            <item>
+                <item>
+      <title>SNES9x 1.63.2</title>
+      <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
+      <enclosure
+        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.3.2/SNES9x.oecoreplugin.zip"
+        sparkle:version="1.63.2"
+        sparkle:shortVersionString="1.63.2"
+        length="1931866"
+        sparkle:edSignature="2xuCUBVYYfb1aYF775XSIlr/IVYm7dhnMSGqOrHTCdW0CVD1Uolzu4jIvsXLH4zJyou4cn+CZyRTl2wyDRevBQ=="
+        type="application/octet-stream" />
+    </item>
+<item>
       <title>SNES9x 1.63.1</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure

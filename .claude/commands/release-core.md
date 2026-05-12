@@ -121,74 +121,36 @@ Verify the built version matches the target:
 /usr/libexec/PlistBuddy -c "Print CFBundleVersion" "$PLUGIN/Contents/Info.plist"
 ```
 
-## Step 7 — Sign and zip the plugin
+## Step 7 — Sign, upload dSYM, and zip the plugin
+
+Run `Scripts/package-core.sh`. It handles all three in order — signing with
+Developer ID, uploading the dSYM to Sentry, zipping, and verifying the zip
+version matches — and prints the byte count you need for Step 10.
 
 ```bash
-codesign --force --sign "Developer ID Application" \
-  --options runtime --timestamp \
-  "$PLUGIN" && echo "Signed OK"
-
-ZIP="/tmp/<CoreName>.oecoreplugin.zip"
-ditto -c -k --keepParent "$PLUGIN" "$ZIP"
-wc -c < "$ZIP" | tr -d ' '   # note the byte count — needed for the appcast
+./Scripts/package-core.sh <CoreName> <NewVersion>
+# e.g. ./Scripts/package-core.sh Gambatte 0.5.3
 ```
 
-### Step 7b — Verify the zip contents match the target version
+**If the script fails the CFBundleVersion check:** the plist bump in Step 3
+didn't make it into the build. Most likely cause: `CURRENT_PROJECT_VERSION`
+in the `.xcodeproj` file overrides the plist literal (see the warning in
+Step 3). Fix it there, rebuild (Step 5), then re-run this step.
 
-This is the guardrail against the cores-v1.2.0 class of bug, where the
-appcast advertised a version that the zipped artifact didn't actually
-contain (because the plist bump didn't take, or an old zip got reused).
-Stop here if it fails — the appcast must never claim a version that
-isn't in the zip.
-
-**Note:** since `chore/release-skill-version-precondition`,
-`Scripts/update_core_appcast.py` ALSO enforces this check automatically
-whenever `--sign-zip` is passed (Step 10 below). The manual check here
-is kept as defense-in-depth and to surface the failure earlier in the
-pipeline (before signing/uploading rather than after).
+**dSYM upload is non-fatal:** the script warns and continues if `sentry-cli`
+is absent or unauthenticated. But Sentry will produce unsymbolicated crash
+traces for this core until the dSYM is uploaded. Upload it manually if the
+automatic step fails:
 
 ```bash
-VERIFY_DIR=$(mktemp -d)
-ditto -x -k "$ZIP" "$VERIFY_DIR"
-ZIP_VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" \
-  "$VERIFY_DIR/<CoreName>.oecoreplugin/Contents/Info.plist")
-echo "Zip CFBundleVersion: $ZIP_VERSION (expected: <NewVersion>)"
-[ "$ZIP_VERSION" = "<NewVersion>" ] || { echo "MISMATCH — stop"; exit 1; }
-rm -rf "$VERIFY_DIR"
+sentry-cli debug-files upload \
+  --org openemu-silicon \
+  --project openemu-silicon \
+  ~/Library/Developer/Xcode/DerivedData/OpenEmu-metal-*/Build/Products/Release/<CoreName>.oecoreplugin.dSYM
 ```
 
-If this fails, the most likely causes are: the plist bump in Step 3 was
-saved to the wrong path, the build cached an old binary, or
-`CURRENT_PROJECT_VERSION` in the project file overrides the literal in
-Info.plist. Investigate before continuing — do not edit the appcast to
-match a wrong zip.
-
-### Step 7c — Upload dSYM to Sentry
-
-```bash
-if command -v sentry-cli &>/dev/null; then
-  DERIVED_DATA=$(find ~/Library/Developer/Xcode/DerivedData \
-    -maxdepth 1 -name "OpenEmu-metal-*" -type d 2>/dev/null | head -1)
-  if [ -n "$DERIVED_DATA" ]; then
-    DSYM="$DERIVED_DATA/Build/Products/Release/<CoreName>.oecoreplugin.dSYM"
-    if [ -d "$DSYM" ]; then
-      sentry-cli debug-files upload \
-        --org openemu-silicon \
-        --project openemu-silicon \
-        "$DSYM" && echo "dSYM uploaded to Sentry" \
-        || echo "WARNING: dSYM upload failed — check sentry-cli auth"
-    else
-      echo "WARNING: dSYM not found at $DSYM — build may not have produced one"
-    fi
-  else
-    echo "WARNING: DerivedData for OpenEmu-metal not found — skipping dSYM upload"
-  fi
-else
-  echo "WARNING: sentry-cli not installed — install with: brew install getsentry/tools/sentry-cli"
-fi
-```
-
-Non-fatal: warns but does not abort the release.
+Note the zip path (`/tmp/<CoreName>.oecoreplugin.zip`) and byte count printed
+at the end — needed for Steps 9 and 10.
 
 ## Step 8 — Determine the release tag
 
@@ -225,27 +187,31 @@ https://github.com/nickybmon/OpenEmu-Silicon/releases/download/<NEXT_TAG>/<CoreN
 
 ## Step 10 — Update the appcast
 
-Edit `Appcasts/<corename-lowercase>.xml`:
-- Add a new `<item>` at the top of the `<channel>` for the new version
-- Keep the previous item as a fallback (do not remove it)
+Run `Scripts/update_core_appcast.py` with `--sign-zip`. It prepends the new
+entry with the correct EdDSA signature, verifies the zip version matches, and
+keeps the previous entry as a fallback. Do **not** edit the appcast XML by hand
+— manual edits miss the `sparkle:edSignature` field and break Sparkle's
+verification.
 
-The new item format:
-```xml
-<item>
-  <title><CoreName> <NewVersion></title>
-  <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
-  <enclosure
-    url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/<NEXT_TAG>/<CoreName>.oecoreplugin.zip"
-    sparkle:version="<NewVersion>"
-    sparkle:shortVersionString="<NewVersion>"
-    length="<BYTE_COUNT_FROM_STEP_7>"
-    type="application/octet-stream" />
-</item>
+```bash
+python3 Scripts/update_core_appcast.py \
+  Appcasts/<corename-lowercase>.xml \
+  "<CoreName>" \
+  "<NewVersion>" \
+  "https://github.com/nickybmon/OpenEmu-Silicon/releases/download/<NEXT_TAG>/<CoreName>.oecoreplugin.zip" \
+  <BYTE_COUNT_FROM_STEP_7> \
+  --sign-zip /tmp/<CoreName>.oecoreplugin.zip
 ```
 
-Verify the XML is valid:
+Verify the XML is valid after the script runs:
 ```bash
-xmllint --noout Appcasts/<corename>.xml && echo "Valid XML"
+xmllint --noout Appcasts/<corename-lowercase>.xml && echo "Valid XML"
+```
+
+Confirm the new entry is at the top with the correct version and a non-empty
+`sparkle:edSignature`:
+```bash
+grep -A8 "<item>" Appcasts/<corename-lowercase>.xml | head -12
 ```
 
 ## Step 11 — Commit, push, and open a PR

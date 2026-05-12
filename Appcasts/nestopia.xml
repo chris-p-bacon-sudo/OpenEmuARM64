@@ -4,7 +4,18 @@
   xmlns:dc="http://purl.org/dc/elements/1.1/">
   <channel>
     <title>Nestopia</title>
-            <item>
+                <item>
+      <title>Nestopia 1.52.2</title>
+      <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
+      <enclosure
+        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.3.2/Nestopia.oecoreplugin.zip"
+        sparkle:version="1.52.2"
+        sparkle:shortVersionString="1.52.2"
+        length="1518192"
+        sparkle:edSignature="J3LKSeuTs09JF8n2E7r/yR+fgJNr4tFszGSpxv5M9QsmIsL5jEIuzYkGOWHdnT+orcnKdMUcXFerL5OVCCO3Bg=="
+        type="application/octet-stream" />
+    </item>
+<item>
       <title>Nestopia 1.52.1</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
