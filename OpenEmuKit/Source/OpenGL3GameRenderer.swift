@@ -131,6 +131,91 @@ final class OpenGL3GameRenderer: BaseOpenGLGameRenderer {
         glBindFramebuffer(GLenum(GL_FRAMEBUFFER), alternateFBO)
     }
     
+    // MARK: - HW render shared context
+
+    override func prepareHWRenderSharedContext() {
+        guard hwSharedContext == nil else {
+            os_log(.debug, log: .renderer, "prepareHWRenderSharedContext: already set up, skipping")
+            return
+        }
+
+        // Create a CGL context that shares the texture namespace of glContext.
+        // Textures (including the IOSurface-backed texture) are shared; FBOs are not.
+        var sharedCtx: CGLContextObj?
+        let err = CGLCreateContext(glPixelFormat, glContext, &sharedCtx)
+        guard err == kCGLNoError, let sharedCtx else {
+            os_log(.error, log: .renderer,
+                   "prepareHWRenderSharedContext: CGLCreateContext failed: %{public}s",
+                   CGLErrorString(err))
+            return
+        }
+
+        CGLSetCurrentContext(sharedCtx)
+
+        // Create the FBO on the shared context.
+        // texture.openGLTexture is a GLuint valid in both glContext and sharedCtx
+        // because they share the texture namespace.
+        var fbo: GLuint = 0
+        glGenFramebuffers(1, &fbo)
+        glBindFramebuffer(GLenum(GL_FRAMEBUFFER), fbo)
+        glFramebufferTexture2D(
+            GLenum(GL_FRAMEBUFFER),
+            GLenum(GL_COLOR_ATTACHMENT0),
+            GLenum(GL_TEXTURE_RECTANGLE),
+            texture.openGLTexture,
+            0
+        )
+        var status = glGetError()
+        if status != 0 {
+            os_log(.error, log: .renderer,
+                   "prepareHWRenderSharedContext: attach color texture, GL error %04X", status)
+        }
+
+        // Depth/stencil renderbuffer — renderbuffers are NOT shared between contexts,
+        // so we create a fresh one on the shared context.
+        var depthRB: GLuint = 0
+        glGenRenderbuffers(1, &depthRB)
+        glBindRenderbuffer(GLenum(GL_RENDERBUFFER), depthRB)
+        glRenderbufferStorage(
+            GLenum(GL_RENDERBUFFER),
+            GLenum(GL_DEPTH24_STENCIL8),
+            GLsizei(texture.size.width),
+            GLsizei(texture.size.height)
+        )
+        glFramebufferRenderbuffer(
+            GLenum(GL_FRAMEBUFFER),
+            GLenum(GL_DEPTH_STENCIL_ATTACHMENT),
+            GLenum(GL_RENDERBUFFER),
+            depthRB
+        )
+        status = glGetError()
+        if status != 0 {
+            os_log(.error, log: .renderer,
+                   "prepareHWRenderSharedContext: attach depth/stencil RB, GL error %04X", status)
+        }
+
+        let fbStatus = glCheckFramebufferStatus(GLenum(GL_FRAMEBUFFER))
+        if fbStatus != GL_FRAMEBUFFER_COMPLETE {
+            os_log(.error, log: .renderer,
+                   "prepareHWRenderSharedContext: FBO incomplete, status %04X", fbStatus)
+            glDeleteFramebuffers(1, &fbo)
+            glDeleteRenderbuffers(1, &depthRB)
+            CGLSetCurrentContext(nil)
+            CGLReleaseContext(sharedCtx)
+            return
+        }
+
+        // Leave the shared context current — the translator will use it
+        // immediately for context_reset on the first frame.
+        hwSharedContext       = sharedCtx
+        hwSharedFBO           = fbo
+        hwSharedDepthStencilRB = depthRB
+
+        os_log(.debug, log: .renderer,
+               "prepareHWRenderSharedContext: shared context %p, FBO %u ready",
+               sharedCtx, fbo)
+    }
+
     override func suspendFPSLimiting() {
         super.suspendFPSLimiting()
         
@@ -160,6 +245,14 @@ final class OpenGL3GameRenderer: BaseOpenGLGameRenderer {
             return
         }
         
+        if hwSharedContext != nil {
+            // HW render mode: the translator left hwSharedContext current after retro_run.
+            // Flush on that context so the IOSurface-backed texture is committed.
+            // glContext is untouched this frame — no need to switch back.
+            glFlushRenderAPPLE()
+            return
+        }
+
         // Update the IOSurface.
         glFlushRenderAPPLE()
     }

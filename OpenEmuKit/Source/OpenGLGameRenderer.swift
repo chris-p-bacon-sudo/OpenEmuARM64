@@ -54,6 +54,7 @@ class BaseOpenGLGameRenderer: OpenGLGameRenderer {
     // Nil until a libretro core accepts RETRO_ENVIRONMENT_SET_HW_RENDER.
     var hwSharedContext: CGLContextObj?
     var hwSharedFBO: GLuint = 0
+    var hwSharedDepthStencilRB: GLuint = 0
 
     var isFPSLimiting = ManagedAtomic(0)
     
@@ -184,6 +185,10 @@ class BaseOpenGLGameRenderer: OpenGLGameRenderer {
                 glDeleteFramebuffers(1, &hwSharedFBO)
                 hwSharedFBO = 0
             }
+            if hwSharedDepthStencilRB != 0 {
+                glDeleteRenderbuffers(1, &hwSharedDepthStencilRB)
+                hwSharedDepthStencilRB = 0
+            }
             CGLSetCurrentContext(nil)
             CGLReleaseContext(hwSharedContext)
         }
@@ -215,6 +220,15 @@ class BaseOpenGLGameRenderer: OpenGLGameRenderer {
             if isFPSLimiting.load(ordering: .sequentiallyConsistent) != 0 {
                 renderingThreadCanProceed.signal()
             }
+            return
+        }
+
+        if hwSharedContext != nil {
+            // HW render mode (libretro cores like mupen64plus-next / GLideN64).
+            // The translator will call CGLSetCurrentContext(_hwSharedContext) immediately
+            // before context_reset and retro_run. Don't touch glContext here — doing so
+            // would clobber the shared context mid-frame and cause GL_INVALID_OPERATION
+            // when the core tries to bind its own FBOs.
             return
         }
         
