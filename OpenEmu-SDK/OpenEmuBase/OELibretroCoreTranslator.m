@@ -56,7 +56,7 @@
 #define RETRO_ENVIRONMENT_GET_AUDIO_VIDEO_ENABLE (47 | 0x10000)
 #endif
 
-NSString * const OELibretroBridgeVersion = @"5";
+NSString * const OELibretroBridgeVersion = @"6";
 
 
 @interface OELibretroCoreTranslator () <OELibretroInputReceiver>
@@ -116,6 +116,9 @@ typedef void     (*glBindFramebuffer_t)(uint32_t target, uint32_t framebuffer);
 typedef void     (*glGetFramebufferAttachmentParameteriv_t)(uint32_t target, uint32_t attachment, uint32_t pname, int *params);
 typedef uint32_t (*glCheckFramebufferStatus_t)(uint32_t target);
 typedef uint32_t (*glGetError_t)(void);
+typedef void     (*glReadPixels_t)(int x, int y, int width, int height, uint32_t format, uint32_t type, void *pixels);
+typedef uint8_t  (*glIsFramebuffer_t)(uint32_t framebuffer);
+typedef void     (*glReadBuffer_t)(uint32_t mode);
 
 static void *_gl_handle = NULL;
 static glGetIntegerv_t                          _glGetIntegerv = NULL;
@@ -123,6 +126,9 @@ static glBindFramebuffer_t                      _glBindFramebuffer = NULL;
 static glGetFramebufferAttachmentParameteriv_t  _glGetFramebufferAttachmentParameteriv = NULL;
 static glCheckFramebufferStatus_t               _glCheckFramebufferStatus = NULL;
 static glGetError_t                             _glGetError = NULL;
+static glReadPixels_t                           _glReadPixels = NULL;
+static glIsFramebuffer_t                        _glIsFramebuffer = NULL;
+static glReadBuffer_t                           _glReadBuffer = NULL;
 
 // Issue #464 — limit diagnostic logging to the first N frames per session.
 // Probing GL state every frame would flood Console.app and slow rendering.
@@ -139,6 +145,9 @@ static glGetError_t                             _glGetError = NULL;
 #define OE_GL_FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE 0x8CD0
 #define OE_GL_FRAMEBUFFER_ATTACHMENT_OBJECT_NAME 0x8CD1
 #define OE_GL_FRAMEBUFFER_COMPLETE           0x8CD5
+#define OE_GL_RGBA                           0x1908
+#define OE_GL_UNSIGNED_BYTE                  0x1401
+#define OE_GL_COLOR_ATTACHMENT0_TARGET       0x8CE0
 
 static void* get_gl_handle(void) {
     static dispatch_once_t once;
@@ -150,6 +159,9 @@ static void* get_gl_handle(void) {
             _glGetFramebufferAttachmentParameteriv  = (glGetFramebufferAttachmentParameteriv_t) dlsym(_gl_handle, "glGetFramebufferAttachmentParameteriv");
             _glCheckFramebufferStatus               = (glCheckFramebufferStatus_t)              dlsym(_gl_handle, "glCheckFramebufferStatus");
             _glGetError                             = (glGetError_t)                            dlsym(_gl_handle, "glGetError");
+            _glReadPixels                           = (glReadPixels_t)                          dlsym(_gl_handle, "glReadPixels");
+            _glIsFramebuffer                        = (glIsFramebuffer_t)                       dlsym(_gl_handle, "glIsFramebuffer");
+            _glReadBuffer                           = (glReadBuffer_t)                          dlsym(_gl_handle, "glReadBuffer");
         }
     });
     return _gl_handle;
@@ -1678,6 +1690,51 @@ static void* bridge_dlsym(void *handle, const char *symbol) {
                 os_log_fault(OE_LOG_DEFAULT,
                              "[OELibretro][#464 diag3] CTX MISMATCH after retro_run: active %p != shared %p",
                              activeCTX, _hwSharedContext);
+            }
+
+            // Issue #464 — Diag 4: read pixel contents from our FBO and from
+            // raw FBO 0. Definitively answers "did the core render into our
+            // FBO?" (the prior session said no, but the bridge version 4->5
+            // and other changes may have shifted things). Bind our FBO as
+            // read source, glReadBuffer(COLOR_ATTACHMENT0), then glReadPixels.
+            // Count nonzero bytes. Repeat for FBO 0 to see if the core wrote
+            // there instead.
+            if (_glReadPixels && _glReadBuffer && _glIsFramebuffer) {
+                uint8_t isOurFBOValid = _glIsFramebuffer((uint32_t)ourFBO);
+                // 16x16 RGBA probe = 1024 bytes. Cheap.
+                uint8_t probe[16 * 16 * 4];
+                int probeNonzeroOurs = -1;
+                int probeNonzeroZero = -1;
+                uint32_t probeErrOurs = 0;
+                uint32_t probeErrZero = 0;
+                if (isOurFBOValid) {
+                    _glBindFramebuffer(OE_GL_READ_FRAMEBUFFER, (uint32_t)ourFBO);
+                    _glReadBuffer(OE_GL_COLOR_ATTACHMENT0);
+                    (void)_glGetError();
+                    memset(probe, 0, sizeof(probe));
+                    _glReadPixels(0, 0, 16, 16, OE_GL_RGBA, OE_GL_UNSIGNED_BYTE, probe);
+                    probeErrOurs = _glGetError();
+                    int nz = 0;
+                    for (size_t i = 0; i < sizeof(probe); i++) if (probe[i]) nz++;
+                    probeNonzeroOurs = nz;
+                }
+                // Probe FBO 0 (raw default framebuffer on shared context).
+                _glBindFramebuffer(OE_GL_READ_FRAMEBUFFER, 0);
+                (void)_glGetError();
+                memset(probe, 0, sizeof(probe));
+                _glReadPixels(0, 0, 16, 16, OE_GL_RGBA, OE_GL_UNSIGNED_BYTE, probe);
+                probeErrZero = _glGetError();
+                if (probeErrZero == 0) {
+                    int nz = 0;
+                    for (size_t i = 0; i < sizeof(probe); i++) if (probe[i]) nz++;
+                    probeNonzeroZero = nz;
+                }
+                // Restore READ binding.
+                _glBindFramebuffer(OE_GL_READ_FRAMEBUFFER, (uint32_t)readBinding);
+                NSLog(@"[OELibretro][#464 diag4] post-retro_run[%d] ourFBO_valid=%d ourFBO_nonzero_bytes=%d (glErr=0x%04X) FBO0_nonzero_bytes=%d (glErr=0x%04X)",
+                      _postRunDiagCount, (int)isOurFBOValid,
+                      probeNonzeroOurs, probeErrOurs,
+                      probeNonzeroZero, probeErrZero);
             }
         }
     }
