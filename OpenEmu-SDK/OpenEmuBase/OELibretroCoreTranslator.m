@@ -134,7 +134,15 @@ static uintptr_t libretro_get_current_framebuffer(void) {
             // This FBO was created by prepareHWRenderSharedContext and is
             // valid in the context that GLideN64 / the core GL plugin uses.
             if (_current.isHW) {
-                return (uintptr_t)_current.renderDelegate.hwRenderFramebuffer;
+                NSUInteger fbo = _current.renderDelegate.hwRenderFramebuffer;
+                CGLContextObj activeCTX = CGLGetCurrentContext();
+                CGLContextObj sharedCTX = (CGLContextObj)(uintptr_t)_current.renderDelegate.hwRenderSharedContextPtr;
+                static int _fbDiagCount = 0;
+                if (++_fbDiagCount <= 5) {
+                    NSLog(@"[OELibretro] get_current_framebuffer[%d] -> FBO %lu, active ctx %p, shared ctx %p",
+                          _fbDiagCount, (unsigned long)fbo, activeCTX, sharedCTX);
+                }
+                return (uintptr_t)fbo;
             }
 
             // Software / bitmap path: ask for the standard presentation FBO.
@@ -1505,17 +1513,29 @@ static void* bridge_dlsym(void *handle, const char *symbol) {
     _current = self;
 
     if (self.isHW) {
-        // --- Deferred HW context setup (runs exactly once on the first HW frame) ---
-        // prepareHWRenderSharedContext couldn't run at SET_HW_RENDER time because
-        // glContext / glPixelFormat don't exist until the render loop starts.
-        // Now we're on the emulation thread with GL fully initialised.
-        if (self.needsHWContextSetup) {
+        // --- HW context setup / re-setup ---
+        // Runs on first frame (needsHWContextSetup) AND whenever the renderer
+        // re-initialises mid-session (e.g. buffer size change triggers update()
+        // → destroyGLResources() → hwSharedContext = nil → hwRenderSharedContextPtr = 0).
+        //
+        // Detect re-init by comparing the stored pointer against what the
+        // renderer currently reports. A mismatch (or zero) means the GL
+        // resources were torn down and must be rebuilt.
+        NSUInteger rendererCtxPtr = self.renderDelegate.hwRenderSharedContextPtr;
+        NSUInteger ourCtxPtr      = (NSUInteger)(uintptr_t)_hwSharedContext;
+
+        if (self.needsHWContextSetup || rendererCtxPtr != ourCtxPtr) {
             self.needsHWContextSetup = NO;
+
+            // Only call context_destroy if the renderer's shared context is still
+            // alive (rendererCtxPtr != 0). If it's already been torn down by
+            // destroyGLResources(), the callback would run with a stale context.
+            if (_hwSharedContext && rendererCtxPtr != 0 && _hw_callback.context_destroy) {
+                _hw_callback.context_destroy();
+            }
+
             [self.renderDelegate prepareHWRenderSharedContext];
 
-            // Retrieve the shared context pointer directly from the renderer.
-            // Do NOT use CGLGetCurrentContext() — that returns the current context
-            // on this thread, which may be nil or glContext at this point.
             NSUInteger ctxPtr = self.renderDelegate.hwRenderSharedContextPtr;
             _hwSharedContext = ctxPtr ? (CGLContextObj)(uintptr_t)ctxPtr : NULL;
 
@@ -1527,20 +1547,19 @@ static void* bridge_dlsym(void *handle, const char *symbol) {
                     "[OELibretro] prepareHWRenderSharedContext failed — "
                     "falling back to software render for this session");
                 self.isHW = NO;
-                if (self.needsContextReset) {
-                    self.needsContextReset = NO;
-                    // Skip context_reset — GLideN64 won't get its GL context,
-                    // but at least we won't crash with no context active.
-                }
+                self.needsContextReset = NO;
                 if (_retro_run) _retro_run();
                 return;
             }
+
+            // Re-fire context_reset so GLideN64 re-initialises its GL state
+            // on the new shared context (new FBO, new texture backing).
+            self.needsContextReset = YES;
         }
 
         // --- Per-frame context management ---
         // Re-assert the shared context before context_reset and before retro_run.
-        // GLideN64 may have changed the current context internally; we need
-        // the shared context active so its GL calls land in the correct sharegroup.
+        // GLideN64 may have changed the current context internally.
         if (self.needsContextReset) {
             self.needsContextReset = NO;
             CGLSetCurrentContext(_hwSharedContext);

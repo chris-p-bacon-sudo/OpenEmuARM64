@@ -246,12 +246,11 @@ final class OpenGL3GameRenderer: BaseOpenGLGameRenderer {
         }
         
         if hwSharedContext != nil {
-            // HW render mode: GLideN64 rendered into hwSharedFBO on hwSharedContext
-            // (which the translator left current after retro_run).
-            // glFinish() drains the shared context's GPU pipeline, then we switch
-            // to glContext — which owns the CVOpenGLTextureCacheRef backing the
-            // IOSurface — and call glFlushRenderAPPLE() to commit the texture
-            // contents to the surface for the Metal compositor to read.
+            // HW render mode: GLideN64 rendered into hwSharedFBO on hwSharedContext.
+            // glFinish() drains the shared context GPU pipeline, then switch to
+            // glContext (which owns the CVOpenGLTextureCacheRef) for glFlushRenderAPPLE()
+            // to commit the texture contents to the IOSurface.
+            CGLSetCurrentContext(hwSharedContext)
             glFinish()
             CGLSetCurrentContext(glContext)
             glFlushRenderAPPLE()
