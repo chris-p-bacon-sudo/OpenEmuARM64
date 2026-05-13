@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>English</string>
+	<key>CFBundleExecutable</key>
+	<string>${EXECUTABLE_NAME}</string>
+	<key>CFBundleIconFile</key>
+	<string>mupen64plus</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>${PRODUCT_NAME}</string>
+	<key>CFBundlePackageType</key>
+	<string>BNDL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>1.0</string>
+	<key>CFBundleSignature</key>
+	<string>????</string>
+	<key>CFBundleVersion</key>
+	<string>1.0</string>
+	<key>NSPrincipalClass</key>
+	<string>OEGameCoreController</string>
+	<key>OEGameCoreClass</key>
+	<string>MupenNextGameCore</string>
+	<key>OEGameCoreOptions</key>
+	<dict>
+		<key>openemu.system.n64</key>
+		<dict>
+			<key>OEGameCoreHasGlitches</key>
+			<true/>
+			<key>OEGameCoreSupportsCheatCode</key>
+			<true/>
+			<key>OEGameCoreSupportsRetroAchievements</key>
+			<true/>
+		</dict>
+	</dict>
+	<key>OEGameCorePlayerCount</key>
+	<string>8</string>
+	<key>OEProjectURL</key>
+	<string>https://github.com/mupen64plus</string>
+	<key>OESystemIdentifiers</key>
+	<array>
+		<string>openemu.system.n64</string>
+	</array>
+	<key>SUEnableAutomaticChecks</key>
+	<string>1</string>
+	<key>SUFeedURL</key>
+	<string>https://raw.githubusercontent.com/nickybmon/OpenEmu-Silicon/main/Appcasts/mupen64plus-next.xml</string>
+</dict>
+</plist>

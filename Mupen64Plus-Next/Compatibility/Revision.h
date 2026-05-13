@@ -1,0 +1,2 @@
+#define PLUGIN_REVISION 0
+#define PLUGIN_REVISION_W 0
