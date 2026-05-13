@@ -2938,9 +2938,9 @@
 			productReference = 8759F0FA1F579625009CBC01 /* mupen64plus-video-angrylion-rdp-plus.so */;
 			productType = "com.apple.product-type.library.dynamic";
 		};
-		8D5B49AC048680CD000E48DA /* Mupen64Plus */ = {
+		8D5B49AC048680CD000E48DA /* Mupen64Plus-Next */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 1DEB913A08733D840010E9CD /* Build configuration list for PBXNativeTarget "Mupen64Plus" */;
+			buildConfigurationList = 1DEB913A08733D840010E9CD /* Build configuration list for PBXNativeTarget "Mupen64Plus-Next" */;
 			buildPhases = (
 				8D5B49B1048680CD000E48DA /* Sources */,
 				8D5B49AF048680CD000E48DA /* Resources */,
@@ -2955,9 +2955,9 @@
 				94E1B94318D0F6F7003ACCFF /* PBXTargetDependency */,
 				3DCABDC4166C4D86002F2066 /* PBXTargetDependency */,
 			);
-			name = Mupen64Plus;
+			name = "Mupen64Plus-Next";
 			productInstallPath = "$(HOME)/Library/Bundles";
-			productName = Mupen64Plus;
+			productName = "Mupen64Plus-Next";
 			productReference = 8D5B49B6048680CD000E48DA /* Mupen64Plus-Next.oecoreplugin */;
 			productType = "com.apple.product-type.bundle";
 		};
@@ -2985,7 +2985,7 @@
 			attributes = {
 				LastUpgradeCheck = 0700;
 			};
-			buildConfigurationList = 1DEB913E08733D840010E9CD /* Build configuration list for PBXProject "Mupen64Plus" */;
+			buildConfigurationList = 1DEB913E08733D840010E9CD /* Build configuration list for PBXProject "Mupen64Plus-Next" */;
 			compatibilityVersion = "Xcode 3.2";
 			developmentRegion = en;
 			hasScannedForEncodings = 1;
@@ -3962,7 +3962,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		1DEB913A08733D840010E9CD /* Build configuration list for PBXNativeTarget "Mupen64Plus" */ = {
+		1DEB913A08733D840010E9CD /* Build configuration list for PBXNativeTarget "Mupen64Plus-Next" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				1DEB913B08733D840010E9CD /* Debug */,
@@ -3971,7 +3971,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		1DEB913E08733D840010E9CD /* Build configuration list for PBXProject "Mupen64Plus" */ = {
+		1DEB913E08733D840010E9CD /* Build configuration list for PBXProject "Mupen64Plus-Next" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				1DEB913F08733D840010E9CD /* Debug */,

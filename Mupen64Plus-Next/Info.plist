@@ -41,7 +41,7 @@
 	<key>OEGameCorePlayerCount</key>
 	<string>8</string>
 	<key>OEProjectURL</key>
-	<string>https://github.com/mupen64plus</string>
+	<string>https://github.com/libretro/mupen64plus-libretro-nx</string>
 	<key>OESystemIdentifiers</key>
 	<array>
 		<string>openemu.system.n64</string>
