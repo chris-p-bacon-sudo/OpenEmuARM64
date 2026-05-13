@@ -104,11 +104,9 @@ if [ -z "$DERIVED" ]; then
   exit 1
 fi
 
+FIRST_INSTALL=0
 if [ ! -d "$DEST" ]; then
-  echo "error: ${CORE}.oecoreplugin not found at:"
-  echo "       $DEST"
-  echo "       Is the core installed? Launch OpenEmu once to install it."
-  exit 1
+  FIRST_INSTALL=1
 fi
 
 if pgrep -xq "OpenEmu"; then
@@ -123,8 +121,15 @@ fi
 
 echo "Installing ${CORE}.oecoreplugin (${CONFIG}) from:"
 echo "  ${DERIVED}"
-cp -f "${DERIVED}/Contents/MacOS/${CORE}" "${DEST}/Contents/MacOS/${CORE}"
-cp -f "${DERIVED}/Contents/Info.plist"    "${DEST}/Contents/Info.plist"
+
+if [ "$FIRST_INSTALL" -eq 1 ]; then
+  # New core — copy the full bundle so PlugIns/ and Resources/ are included.
+  cp -R "${DERIVED}" "${DEST}"
+  echo "(first install — full bundle copied)"
+else
+  cp -f "${DERIVED}/Contents/MacOS/${CORE}" "${DEST}/Contents/MacOS/${CORE}"
+  cp -f "${DERIVED}/Contents/Info.plist"    "${DEST}/Contents/Info.plist"
+fi
 
 SRC_MD5=$(md5 -q "${DERIVED}/Contents/MacOS/${CORE}")
 DST_MD5=$(md5 -q "${DEST}/Contents/MacOS/${CORE}")
