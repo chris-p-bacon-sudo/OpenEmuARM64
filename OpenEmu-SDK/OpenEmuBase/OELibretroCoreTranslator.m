@@ -58,7 +58,7 @@
 #define RETRO_ENVIRONMENT_GET_AUDIO_VIDEO_ENABLE (47 | 0x10000)
 #endif
 
-NSString * const OELibretroBridgeVersion = @"9";
+NSString * const OELibretroBridgeVersion = @"17";
 
 
 @interface OELibretroCoreTranslator () <OELibretroInputReceiver>
@@ -134,7 +134,9 @@ static glReadBuffer_t                           _glReadBuffer = NULL;
 
 // Issue #464 — limit diagnostic logging to the first N frames per session.
 // Probing GL state every frame would flood Console.app and slow rendering.
-#define OE_ISSUE_464_DIAG_FRAMES 6
+// Bumped to 120 to cover ~2s of frames (60fps) so we catch the moment the
+// game starts rendering past its boot/load splash.
+#define OE_ISSUE_464_DIAG_FRAMES 120
 
 // =============================================================================
 // Issue #464 — fishhook trace of glBindFramebuffer inside the core dylib.
@@ -153,9 +155,33 @@ static glReadBuffer_t                           _glReadBuffer = NULL;
 // Gated to the first OE_GL_BIND_HOOK_LOG_LIMIT calls per session.
 // =============================================================================
 typedef void (*pfn_glBindFramebuffer_t)(uint32_t target, uint32_t framebuffer);
-static pfn_glBindFramebuffer_t _orig_glBindFramebuffer = NULL;
-static atomic_int _bind_hook_seq = 0;
-#define OE_GL_BIND_HOOK_LOG_LIMIT 200
+typedef void (*pfn_glClear_t)(uint32_t mask);
+typedef void (*pfn_glDrawArrays_t)(uint32_t mode, int first, int count);
+typedef void (*pfn_glDrawElements_t)(uint32_t mode, int count, uint32_t type, const void *indices);
+typedef void (*pfn_glDrawArraysInstanced_t)(uint32_t mode, int first, int count, int instancecount);
+typedef void (*pfn_glDrawElementsInstanced_t)(uint32_t mode, int count, uint32_t type, const void *indices, int instancecount);
+typedef void (*pfn_glDrawElementsBaseVertex_t)(uint32_t mode, int count, uint32_t type, const void *indices, int basevertex);
+typedef void (*pfn_glDrawRangeElements_t)(uint32_t mode, uint32_t start, uint32_t end, int count, uint32_t type, const void *indices);
+typedef void (*pfn_glClearBufferfv_t)(uint32_t buffer, int drawbuffer, const float *value);
+typedef void (*pfn_glBlitFramebuffer_t)(int sx0, int sy0, int sx1, int sy1, int dx0, int dy0, int dx1, int dy1, uint32_t mask, uint32_t filter);
+
+static pfn_glBindFramebuffer_t           _orig_glBindFramebuffer       = NULL;
+static pfn_glClear_t                     _orig_glClear                 = NULL;
+static pfn_glDrawArrays_t                _orig_glDrawArrays            = NULL;
+static pfn_glDrawElements_t              _orig_glDrawElements          = NULL;
+static pfn_glDrawArraysInstanced_t       _orig_glDrawArraysInstanced   = NULL;
+static pfn_glDrawElementsInstanced_t     _orig_glDrawElementsInstanced = NULL;
+static pfn_glDrawElementsBaseVertex_t    _orig_glDrawElementsBaseVertex= NULL;
+static pfn_glDrawRangeElements_t         _orig_glDrawRangeElements     = NULL;
+static pfn_glClearBufferfv_t             _orig_glClearBufferfv         = NULL;
+static pfn_glBlitFramebuffer_t           _orig_glBlitFramebuffer       = NULL;
+
+static atomic_int _bind_hook_seq  = 0;
+static atomic_int _draw_hook_seq  = 0;
+static atomic_int _clear_hook_seq = 0;
+#define OE_GL_BIND_HOOK_LOG_LIMIT  200
+#define OE_GL_DRAW_HOOK_LOG_LIMIT  60
+#define OE_GL_CLEAR_HOOK_LOG_LIMIT 60
 
 static void oe_hook_glBindFramebuffer(uint32_t target, uint32_t framebuffer)
 {
@@ -175,6 +201,128 @@ static void oe_hook_glBindFramebuffer(uint32_t target, uint32_t framebuffer)
     }
 }
 
+// Snapshots GL state interesting to issue #464 (current draw FBO, viewport).
+static void oe_snapshot_draw_state(int *out_drawFB, int *out_vx, int *out_vy, int *out_vw, int *out_vh)
+{
+    int drawFB = -1; int vp[4] = {-1,-1,-1,-1};
+    if (_glGetIntegerv) {
+        _glGetIntegerv(0x8CA6 /* GL_FRAMEBUFFER_BINDING / GL_DRAW_FRAMEBUFFER_BINDING */, &drawFB);
+        _glGetIntegerv(0x0BA2 /* GL_VIEWPORT */, vp);
+    }
+    *out_drawFB = drawFB; *out_vx = vp[0]; *out_vy = vp[1]; *out_vw = vp[2]; *out_vh = vp[3];
+}
+
+static void oe_hook_glClear(uint32_t mask)
+{
+    int seq = atomic_fetch_add_explicit(&_clear_hook_seq, 1, memory_order_relaxed);
+    if (seq < OE_GL_CLEAR_HOOK_LOG_LIMIT) {
+        int drawFB, vx, vy, vw, vh;
+        oe_snapshot_draw_state(&drawFB, &vx, &vy, &vw, &vh);
+        NSLog(@"[OELibretro][#464 hook] glClear #%d mask=0x%X drawFB=%d viewport=[%d,%d %dx%d]",
+              seq, mask, drawFB, vx, vy, vw, vh);
+    }
+    if (_orig_glClear) _orig_glClear(mask);
+}
+
+static void oe_hook_glDrawArrays(uint32_t mode, int first, int count)
+{
+    int seq = atomic_fetch_add_explicit(&_draw_hook_seq, 1, memory_order_relaxed);
+    if (seq < OE_GL_DRAW_HOOK_LOG_LIMIT) {
+        int drawFB, vx, vy, vw, vh;
+        oe_snapshot_draw_state(&drawFB, &vx, &vy, &vw, &vh);
+        NSLog(@"[OELibretro][#464 hook] glDrawArrays #%d mode=0x%X count=%d drawFB=%d viewport=[%d,%d %dx%d]",
+              seq, mode, count, drawFB, vx, vy, vw, vh);
+    }
+    if (_orig_glDrawArrays) _orig_glDrawArrays(mode, first, count);
+}
+
+static void oe_hook_glDrawElements(uint32_t mode, int count, uint32_t type, const void *indices)
+{
+    int seq = atomic_fetch_add_explicit(&_draw_hook_seq, 1, memory_order_relaxed);
+    if (seq < OE_GL_DRAW_HOOK_LOG_LIMIT) {
+        int drawFB, vx, vy, vw, vh;
+        oe_snapshot_draw_state(&drawFB, &vx, &vy, &vw, &vh);
+        NSLog(@"[OELibretro][#464 hook] glDrawElements #%d mode=0x%X count=%d drawFB=%d viewport=[%d,%d %dx%d]",
+              seq, mode, count, drawFB, vx, vy, vw, vh);
+    }
+    if (_orig_glDrawElements) _orig_glDrawElements(mode, count, type, indices);
+}
+
+static void oe_hook_glDrawArraysInstanced(uint32_t mode, int first, int count, int instancecount)
+{
+    int seq = atomic_fetch_add_explicit(&_draw_hook_seq, 1, memory_order_relaxed);
+    if (seq < OE_GL_DRAW_HOOK_LOG_LIMIT) {
+        int drawFB, vx, vy, vw, vh;
+        oe_snapshot_draw_state(&drawFB, &vx, &vy, &vw, &vh);
+        NSLog(@"[OELibretro][#464 hook] glDrawArraysInstanced #%d mode=0x%X count=%d inst=%d drawFB=%d viewport=[%d,%d %dx%d]",
+              seq, mode, count, instancecount, drawFB, vx, vy, vw, vh);
+    }
+    if (_orig_glDrawArraysInstanced) _orig_glDrawArraysInstanced(mode, first, count, instancecount);
+}
+
+static void oe_hook_glDrawElementsInstanced(uint32_t mode, int count, uint32_t type, const void *indices, int instancecount)
+{
+    int seq = atomic_fetch_add_explicit(&_draw_hook_seq, 1, memory_order_relaxed);
+    if (seq < OE_GL_DRAW_HOOK_LOG_LIMIT) {
+        int drawFB, vx, vy, vw, vh;
+        oe_snapshot_draw_state(&drawFB, &vx, &vy, &vw, &vh);
+        NSLog(@"[OELibretro][#464 hook] glDrawElementsInstanced #%d mode=0x%X count=%d inst=%d drawFB=%d viewport=[%d,%d %dx%d]",
+              seq, mode, count, instancecount, drawFB, vx, vy, vw, vh);
+    }
+    if (_orig_glDrawElementsInstanced) _orig_glDrawElementsInstanced(mode, count, type, indices, instancecount);
+}
+
+static void oe_hook_glDrawElementsBaseVertex(uint32_t mode, int count, uint32_t type, const void *indices, int basevertex)
+{
+    int seq = atomic_fetch_add_explicit(&_draw_hook_seq, 1, memory_order_relaxed);
+    if (seq < OE_GL_DRAW_HOOK_LOG_LIMIT) {
+        int drawFB, vx, vy, vw, vh;
+        oe_snapshot_draw_state(&drawFB, &vx, &vy, &vw, &vh);
+        NSLog(@"[OELibretro][#464 hook] glDrawElementsBaseVertex #%d mode=0x%X count=%d basevtx=%d drawFB=%d viewport=[%d,%d %dx%d]",
+              seq, mode, count, basevertex, drawFB, vx, vy, vw, vh);
+    }
+    if (_orig_glDrawElementsBaseVertex) _orig_glDrawElementsBaseVertex(mode, count, type, indices, basevertex);
+}
+
+static void oe_hook_glDrawRangeElements(uint32_t mode, uint32_t start, uint32_t end, int count, uint32_t type, const void *indices)
+{
+    int seq = atomic_fetch_add_explicit(&_draw_hook_seq, 1, memory_order_relaxed);
+    if (seq < OE_GL_DRAW_HOOK_LOG_LIMIT) {
+        int drawFB, vx, vy, vw, vh;
+        oe_snapshot_draw_state(&drawFB, &vx, &vy, &vw, &vh);
+        NSLog(@"[OELibretro][#464 hook] glDrawRangeElements #%d mode=0x%X count=%d drawFB=%d viewport=[%d,%d %dx%d]",
+              seq, mode, count, drawFB, vx, vy, vw, vh);
+    }
+    if (_orig_glDrawRangeElements) _orig_glDrawRangeElements(mode, start, end, count, type, indices);
+}
+
+static void oe_hook_glClearBufferfv(uint32_t buffer, int drawbuffer, const float *value)
+{
+    int seq = atomic_fetch_add_explicit(&_clear_hook_seq, 1, memory_order_relaxed);
+    if (seq < OE_GL_CLEAR_HOOK_LOG_LIMIT) {
+        int drawFB, vx, vy, vw, vh;
+        oe_snapshot_draw_state(&drawFB, &vx, &vy, &vw, &vh);
+        float v0 = value ? value[0] : 0, v1 = value ? value[1] : 0, v2 = value ? value[2] : 0, v3 = value ? value[3] : 0;
+        NSLog(@"[OELibretro][#464 hook] glClearBufferfv #%d buffer=0x%X drawbuf=%d (%.2f,%.2f,%.2f,%.2f) drawFB=%d viewport=[%d,%d %dx%d]",
+              seq, buffer, drawbuffer, v0, v1, v2, v3, drawFB, vx, vy, vw, vh);
+    }
+    if (_orig_glClearBufferfv) _orig_glClearBufferfv(buffer, drawbuffer, value);
+}
+
+static void oe_hook_glBlitFramebuffer(int sx0, int sy0, int sx1, int sy1, int dx0, int dy0, int dx1, int dy1, uint32_t mask, uint32_t filter)
+{
+    int seq = atomic_fetch_add_explicit(&_draw_hook_seq, 1, memory_order_relaxed);
+    if (seq < OE_GL_DRAW_HOOK_LOG_LIMIT) {
+        int drawFB, vx, vy, vw, vh;
+        oe_snapshot_draw_state(&drawFB, &vx, &vy, &vw, &vh);
+        int readFB = -1;
+        if (_glGetIntegerv) _glGetIntegerv(0x8CAA /* GL_READ_FRAMEBUFFER_BINDING */, &readFB);
+        NSLog(@"[OELibretro][#464 hook] glBlitFramebuffer #%d src=[%d,%d %d,%d] dst=[%d,%d %d,%d] mask=0x%X readFB=%d drawFB=%d",
+              seq, sx0, sy0, sx1, sy1, dx0, dy0, dx1, dy1, mask, readFB, drawFB);
+    }
+    if (_orig_glBlitFramebuffer) _orig_glBlitFramebuffer(sx0, sy0, sx1, sy1, dx0, dy0, dx1, dy1, mask, filter);
+}
+
 // Walks the dyld image list to find the loaded image whose path matches
 // (or ends with) the supplied substring, then rebinds glBindFramebuffer in
 // that image only.
@@ -188,14 +336,34 @@ static void oe_install_bind_hook_for_image(const char *path_substr)
         if (strstr(name, path_substr) == NULL) continue;
         const struct mach_header *hdr = _dyld_get_image_header(i);
         intptr_t slide = _dyld_get_image_vmaddr_slide(i);
+        // glBindFramebuffer is NOT typically an external import (it's redefined
+        // via glsym_gl.h to __rglgen_glBindFramebuffer for libretro/GLSM cores)
+        // — we catch it via libretro_get_proc_address instead. But glClear /
+        // glDrawArrays / glDrawElements ARE direct external imports in
+        // mupen64plus_next_libretro.dylib (see `nm -u`), so fishhook can
+        // rebind them. The wrappers log where each draw lands so we can
+        // pinpoint which FBO the core actually rasterises into.
         struct rebinding rb[] = {
             { "glBindFramebuffer",
               (void *)oe_hook_glBindFramebuffer,
               (void **)&_orig_glBindFramebuffer },
+            { "glClear",
+              (void *)oe_hook_glClear,
+              (void **)&_orig_glClear },
+            { "glDrawArrays",
+              (void *)oe_hook_glDrawArrays,
+              (void **)&_orig_glDrawArrays },
+            { "glDrawElements",
+              (void *)oe_hook_glDrawElements,
+              (void **)&_orig_glDrawElements },
         };
-        int rc = rebind_symbols_image((void *)hdr, slide, rb, 1);
-        NSLog(@"[OELibretro][#464 hook] installed glBindFramebuffer hook on %s (rc=%d, orig=%p)",
-              name, rc, _orig_glBindFramebuffer);
+        int rc = rebind_symbols_image((void *)hdr, slide, rb,
+                                      sizeof(rb) / sizeof(rb[0]));
+        NSLog(@"[OELibretro][#464 hook] fishhook installed on %s (rc=%d) "
+              "orig glBindFramebuffer=%p glClear=%p glDrawArrays=%p glDrawElements=%p",
+              name, rc,
+              _orig_glBindFramebuffer, _orig_glClear,
+              _orig_glDrawArrays, _orig_glDrawElements);
         return;
     }
     NSLog(@"[OELibretro][#464 hook] no loaded image matching '%s' — hook NOT installed",
@@ -318,6 +486,50 @@ static void (*libretro_get_proc_address(const char *sym))(void) {
     void *addr = NULL;
     if (gl) addr = dlsym(gl, sym);
     if (!addr) addr = dlsym(RTLD_DEFAULT, sym);
+
+    // Issue #464 — trace which GL functions the core resolves, and (for the
+    // ones we care about) hand back a wrapper that logs every call. The core
+    // accesses system GL via these function pointers; in particular, GLSM's
+    // bindFBO() uses an rglgen-resolved pointer for glBindFramebuffer, which
+    // means this is the single chokepoint for observing the actual GL bind
+    // sequence inside retro_run.
+    if (sym && addr) {
+        // Generic logging: record (and once-only log) every symbol the core
+        // resolves through us. This catches misses where we hooked the wrong
+        // function name.
+        static CFMutableSetRef seen = NULL;
+        static dispatch_once_t once;
+        dispatch_once(&once, ^{
+            seen = CFSetCreateMutable(NULL, 0, &kCFTypeSetCallBacks);
+        });
+        @synchronized([_current ?: [NSNull null] description]) {
+            NSString *key = [NSString stringWithUTF8String:sym];
+            if (key && !CFSetContainsValue(seen, (__bridge const void *)key)) {
+                CFSetAddValue(seen, (__bridge const void *)key);
+                NSLog(@"[OELibretro][#464 sym] core resolved '%s' -> %p", sym, addr);
+            }
+        }
+
+        #define OE_WRAP(symname, slot, wrapper) \
+            if (strcmp(sym, #symname) == 0) { \
+                (slot) = addr; \
+                NSLog(@"[OELibretro][#464 hook] wrapping '%s'", #symname); \
+                return (void (*)(void))(wrapper); \
+            }
+
+        OE_WRAP(glBindFramebuffer,            _orig_glBindFramebuffer,           oe_hook_glBindFramebuffer)
+        OE_WRAP(glClear,                       _orig_glClear,                     oe_hook_glClear)
+        OE_WRAP(glDrawArrays,                  _orig_glDrawArrays,                oe_hook_glDrawArrays)
+        OE_WRAP(glDrawElements,                _orig_glDrawElements,              oe_hook_glDrawElements)
+        OE_WRAP(glDrawArraysInstanced,         _orig_glDrawArraysInstanced,       oe_hook_glDrawArraysInstanced)
+        OE_WRAP(glDrawElementsInstanced,       _orig_glDrawElementsInstanced,     oe_hook_glDrawElementsInstanced)
+        OE_WRAP(glDrawElementsBaseVertex,      _orig_glDrawElementsBaseVertex,    oe_hook_glDrawElementsBaseVertex)
+        OE_WRAP(glDrawRangeElements,           _orig_glDrawRangeElements,         oe_hook_glDrawRangeElements)
+        OE_WRAP(glClearBufferfv,               _orig_glClearBufferfv,             oe_hook_glClearBufferfv)
+        OE_WRAP(glBlitFramebuffer,             _orig_glBlitFramebuffer,           oe_hook_glBlitFramebuffer)
+
+        #undef OE_WRAP
+    }
     return (void(*)(void))addr;
 }
 
@@ -462,6 +674,15 @@ static const uint8_t kSaturnButtonMap[] = {
 static const OELibretroVariableDefault kN64VariableDefaults[] = {
     // GLideN64 — best-compat renderer on Apple Silicon.
     { "mupen64plus-rdp-plugin",                   "gliden64" },
+    // RSP plugin (Reality Signal Processor): processes graphics microcode
+    // and feeds RDP commands to the RDP plugin (GLideN64). Without an RSP
+    // plugin selected, the core's RSP block never produces graphics work
+    // and GLideN64 receives zero draw commands per frame — the framebuffer
+    // is cleared to black and nothing is rendered. HLE is the standard
+    // fast path; mupen64plus-next's declared default is "hle". Issue #464
+    // diagnostics showed the core clearing FBO every frame with zero draw
+    // calls, which is the signature of RSP-plugin-not-selected.
+    { "mupen64plus-rsp-plugin",                   "hle" },
     // GLideN64's threaded renderer needs a shared GL context we don't provide;
     // crashes in TextureCache::_addTexture without this.
     { "mupen64plus-ThreadedRenderer",             "False" },
@@ -966,6 +1187,7 @@ static bool libretro_environment_cb(unsigned cmd, void *data) {
                 for (NSUInteger i = 0; i < _current->_policy.variableDefaultCount; i++) {
                     if (strcmp(var->key, _current->_policy.variableDefaults[i].key) == 0) {
                         var->value = _current->_policy.variableDefaults[i].value;
+                        NSLog(@"[OELibretro][#464 var] policy: %s = %s", var->key, var->value);
                         return true;
                     }
                 }
@@ -989,6 +1211,7 @@ static bool libretro_environment_cb(unsigned cmd, void *data) {
                 NSData *declaredDefault = declaredKey ? _current.declaredOptionDefaults[declaredKey] : nil;
                 if (declaredDefault) {
                     var->value = (const char *)declaredDefault.bytes;
+                    NSLog(@"[OELibretro][#464 var] declared: %s = %s", var->key, var->value);
                     return true;
                 }
 
@@ -996,6 +1219,7 @@ static bool libretro_environment_cb(unsigned cmd, void *data) {
                 // skip the null-check before strcmp() don't crash. Only fires
                 // for keys the core never declared (rare; usually a core bug).
                 var->value = "";
+                NSLog(@"[OELibretro][#464 var] EMPTY (no policy, no declared default): %s", var->key);
 #if DEBUG
                 NSLog(@"[OELibretro] Core queried variable: %s — no override and no declared default", var->key);
 #endif
@@ -1527,10 +1751,15 @@ static void* bridge_dlsym(void *handle, const char *symbol) {
         return NO;
     }
 
-    // Issue #464 — install fishhook trace on the loaded core dylib so we can
-    // observe the actual glBindFramebuffer call sequence during retro_run.
-    // The image is identified by file name (last path component); using the
-    // bare name keeps this resilient to install-location changes.
+    // Issue #464 — attempt to install a fishhook trace on the loaded core
+    // dylib. For mupen64plus_next the trace returns rc=0 / orig=0x0 because
+    // the core does NOT import glBindFramebuffer as an external symbol —
+    // glsym/glsym_gl.h redefines glBindFramebuffer to __rglgen_glBindFramebuffer,
+    // a function pointer resolved by rglgen via our get_proc_address callback.
+    // The actual interception happens in libretro_get_proc_address above.
+    // We keep this install attempt in place because other GL libretro cores
+    // (e.g. Beetle PSX HW) may bind glBindFramebuffer as an external symbol,
+    // in which case fishhook is the right tool.
     {
         NSString *imageName = [corePath lastPathComponent];
         oe_install_bind_hook_for_image([imageName UTF8String]);
@@ -1787,8 +2016,17 @@ static void* bridge_dlsym(void *handle, const char *symbol) {
             // there instead.
             if (_glReadPixels && _glReadBuffer && _glIsFramebuffer) {
                 uint8_t isOurFBOValid = _glIsFramebuffer((uint32_t)ourFBO);
-                // 16x16 RGBA probe = 1024 bytes. Cheap.
-                uint8_t probe[16 * 16 * 4];
+                // 64x64 RGBA probe = 16 KiB. Read from the centre of the FBO
+                // (we previously read 16x16 from the bottom-left, which sat in
+                // the dead-letterbox of any centred game render).
+                uint8_t probe[64 * 64 * 4];
+                const int probeW = 64, probeH = 64;
+                // Centre point depends on the FBO dimensions; we don't know
+                // them in this TU, but most N64 frames render at <=640x480,
+                // and our staging FBO is sized to max texture dimensions.
+                // Sample from a fixed (x=128, y=128) offset which lands inside
+                // any reasonable render region.
+                const int probeX = 128, probeY = 128;
                 int probeNonzeroOurs = -1;
                 int probeNonzeroZero = -1;
                 uint32_t probeErrOurs = 0;
@@ -1798,7 +2036,7 @@ static void* bridge_dlsym(void *handle, const char *symbol) {
                     _glReadBuffer(OE_GL_COLOR_ATTACHMENT0);
                     (void)_glGetError();
                     memset(probe, 0, sizeof(probe));
-                    _glReadPixels(0, 0, 16, 16, OE_GL_RGBA, OE_GL_UNSIGNED_BYTE, probe);
+                    _glReadPixels(probeX, probeY, probeW, probeH, OE_GL_RGBA, OE_GL_UNSIGNED_BYTE, probe);
                     probeErrOurs = _glGetError();
                     int nz = 0;
                     for (size_t i = 0; i < sizeof(probe); i++) if (probe[i]) nz++;
@@ -1808,7 +2046,7 @@ static void* bridge_dlsym(void *handle, const char *symbol) {
                 _glBindFramebuffer(OE_GL_READ_FRAMEBUFFER, 0);
                 (void)_glGetError();
                 memset(probe, 0, sizeof(probe));
-                _glReadPixels(0, 0, 16, 16, OE_GL_RGBA, OE_GL_UNSIGNED_BYTE, probe);
+                _glReadPixels(probeX, probeY, probeW, probeH, OE_GL_RGBA, OE_GL_UNSIGNED_BYTE, probe);
                 probeErrZero = _glGetError();
                 if (probeErrZero == 0) {
                     int nz = 0;
@@ -1817,10 +2055,19 @@ static void* bridge_dlsym(void *handle, const char *symbol) {
                 }
                 // Restore READ binding.
                 _glBindFramebuffer(OE_GL_READ_FRAMEBUFFER, (uint32_t)readBinding);
-                NSLog(@"[OELibretro][#464 diag4] post-retro_run[%d] ourFBO_valid=%d ourFBO_nonzero_bytes=%d (glErr=0x%04X) FBO0_nonzero_bytes=%d (glErr=0x%04X)",
-                      _postRunDiagCount, (int)isOurFBOValid,
-                      probeNonzeroOurs, probeErrOurs,
-                      probeNonzeroZero, probeErrZero);
+                // Only log when the readback changes — otherwise we'd flood logs
+                // with 120 identical "all zero" lines. Always log first/last few.
+                static int _lastNonzeroOurs = -2;
+                if (probeNonzeroOurs != _lastNonzeroOurs ||
+                    _postRunDiagCount <= 3 ||
+                    _postRunDiagCount >= OE_ISSUE_464_DIAG_FRAMES - 2) {
+                    NSLog(@"[OELibretro][#464 diag4] post-retro_run[%d] ourFBO_valid=%d ourFBO_nonzero_bytes=%d (glErr=0x%04X) FBO0_nonzero_bytes=%d (glErr=0x%04X) [%dx%d at %d,%d]",
+                          _postRunDiagCount, (int)isOurFBOValid,
+                          probeNonzeroOurs, probeErrOurs,
+                          probeNonzeroZero, probeErrZero,
+                          probeW, probeH, probeX, probeY);
+                    _lastNonzeroOurs = probeNonzeroOurs;
+                }
             }
         }
     }

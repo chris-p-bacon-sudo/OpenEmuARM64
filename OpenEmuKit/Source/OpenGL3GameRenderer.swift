@@ -140,7 +140,9 @@ final class OpenGL3GameRenderer: BaseOpenGLGameRenderer {
         }
 
         // Create a CGL context that shares the texture namespace of glContext.
-        // Textures (including the IOSurface-backed texture) are shared; FBOs are not.
+        // Textures (including the IOSurface-backed texture and the staging
+        // texture we create below) are shared across both contexts. FBOs and
+        // renderbuffers are NOT shared, so they live entirely on sharedCtx.
         var sharedCtx: CGLContextObj?
         let err = CGLCreateContext(glPixelFormat, glContext, &sharedCtx)
         guard err == kCGLNoError, let sharedCtx else {
@@ -152,36 +154,58 @@ final class OpenGL3GameRenderer: BaseOpenGLGameRenderer {
 
         CGLSetCurrentContext(sharedCtx)
 
-        // Create the FBO on the shared context.
-        // texture.openGLTexture is a GLuint valid in both glContext and sharedCtx
-        // because they share the texture namespace.
+        let w = GLsizei(texture.size.width)
+        let h = GLsizei(texture.size.height)
+
+        // --- Staging texture --------------------------------------------------
+        // Plain GL_TEXTURE_2D in ordinary GPU memory. This is what the libretro
+        // core actually renders into. Issue #464 confirmed that attaching the
+        // IOSurface-backed GL_TEXTURE_RECTANGLE directly as the FBO color
+        // attachment produces no observable pixels even though the framebuffer
+        // is COMPLETE — GLideN64's draws (and likely other GL cores' draws)
+        // don't make it through that attachment path. The staging texture
+        // sidesteps that entirely; we blit its contents into the IOSurface
+        // texture at end-of-frame (see didExecuteFrame).
+        var stagingTex: GLuint = 0
+        glGenTextures(1, &stagingTex)
+        glBindTexture(GLenum(GL_TEXTURE_2D), stagingTex)
+        glTexParameteri(GLenum(GL_TEXTURE_2D), GLenum(GL_TEXTURE_MIN_FILTER), GL_LINEAR)
+        glTexParameteri(GLenum(GL_TEXTURE_2D), GLenum(GL_TEXTURE_MAG_FILTER), GL_LINEAR)
+        glTexParameteri(GLenum(GL_TEXTURE_2D), GLenum(GL_TEXTURE_WRAP_S),     GL_CLAMP_TO_EDGE)
+        glTexParameteri(GLenum(GL_TEXTURE_2D), GLenum(GL_TEXTURE_WRAP_T),     GL_CLAMP_TO_EDGE)
+        glTexImage2D(
+            GLenum(GL_TEXTURE_2D), 0,
+            GL_RGBA8,
+            w, h, 0,
+            GLenum(GL_RGBA), GLenum(GL_UNSIGNED_BYTE), nil
+        )
+        if glGetError() != 0 {
+            os_log(.error, log: .renderer, "prepareHWRenderSharedContext: staging texture alloc failed")
+        }
+        glBindTexture(GLenum(GL_TEXTURE_2D), 0)
+
+        // --- hwSharedFBO (returned to the libretro core) ---------------------
+        // Color attachment = staging texture (2D). Depth/stencil renderbuffer.
         var fbo: GLuint = 0
         glGenFramebuffers(1, &fbo)
         glBindFramebuffer(GLenum(GL_FRAMEBUFFER), fbo)
         glFramebufferTexture2D(
             GLenum(GL_FRAMEBUFFER),
             GLenum(GL_COLOR_ATTACHMENT0),
-            GLenum(GL_TEXTURE_RECTANGLE),
-            texture.openGLTexture,
+            GLenum(GL_TEXTURE_2D),
+            stagingTex,
             0
         )
         var status = glGetError()
         if status != 0 {
             os_log(.error, log: .renderer,
-                   "prepareHWRenderSharedContext: attach color texture, GL error %04X", status)
+                   "prepareHWRenderSharedContext: attach staging texture, GL error %04X", status)
         }
 
-        // Depth/stencil renderbuffer — renderbuffers are NOT shared between contexts,
-        // so we create a fresh one on the shared context.
         var depthRB: GLuint = 0
         glGenRenderbuffers(1, &depthRB)
         glBindRenderbuffer(GLenum(GL_RENDERBUFFER), depthRB)
-        glRenderbufferStorage(
-            GLenum(GL_RENDERBUFFER),
-            GLenum(GL_DEPTH24_STENCIL8),
-            GLsizei(texture.size.width),
-            GLsizei(texture.size.height)
-        )
+        glRenderbufferStorage(GLenum(GL_RENDERBUFFER), GLenum(GL_DEPTH24_STENCIL8), w, h)
         glFramebufferRenderbuffer(
             GLenum(GL_FRAMEBUFFER),
             GLenum(GL_DEPTH_STENCIL_ATTACHMENT),
@@ -197,23 +221,55 @@ final class OpenGL3GameRenderer: BaseOpenGLGameRenderer {
         let fbStatus = glCheckFramebufferStatus(GLenum(GL_FRAMEBUFFER))
         if fbStatus != GL_FRAMEBUFFER_COMPLETE {
             os_log(.error, log: .renderer,
-                   "prepareHWRenderSharedContext: FBO incomplete, status %04X", fbStatus)
+                   "prepareHWRenderSharedContext: hwSharedFBO incomplete, status %04X", fbStatus)
             glDeleteFramebuffers(1, &fbo)
             glDeleteRenderbuffers(1, &depthRB)
+            glDeleteTextures(1, &stagingTex)
             CGLSetCurrentContext(nil)
             CGLReleaseContext(sharedCtx)
             return
         }
 
-        // Leave the shared context current — the translator will use it
-        // immediately for context_reset on the first frame.
-        hwSharedContext       = sharedCtx
-        hwSharedFBO           = fbo
+        // --- hwOutputFBO (blit destination, end-of-frame) --------------------
+        // Color attachment = the IOSurface-backed GL_TEXTURE_RECTANGLE.
+        // We blit from hwSharedFBO into here, then flush to commit IOSurface.
+        var outFBO: GLuint = 0
+        glGenFramebuffers(1, &outFBO)
+        glBindFramebuffer(GLenum(GL_FRAMEBUFFER), outFBO)
+        glFramebufferTexture2D(
+            GLenum(GL_FRAMEBUFFER),
+            GLenum(GL_COLOR_ATTACHMENT0),
+            GLenum(GL_TEXTURE_RECTANGLE),
+            texture.openGLTexture,
+            0
+        )
+        let outStatus = glCheckFramebufferStatus(GLenum(GL_FRAMEBUFFER))
+        if outStatus != GL_FRAMEBUFFER_COMPLETE {
+            os_log(.error, log: .renderer,
+                   "prepareHWRenderSharedContext: hwOutputFBO incomplete, status %04X", outStatus)
+            glDeleteFramebuffers(1, &outFBO)
+            glDeleteFramebuffers(1, &fbo)
+            glDeleteRenderbuffers(1, &depthRB)
+            glDeleteTextures(1, &stagingTex)
+            CGLSetCurrentContext(nil)
+            CGLReleaseContext(sharedCtx)
+            return
+        }
+
+        // Leave hwSharedFBO bound — it's the FBO the translator will return
+        // from libretro_get_current_framebuffer() and the core will use for
+        // its first context_reset.
+        glBindFramebuffer(GLenum(GL_FRAMEBUFFER), fbo)
+
+        hwSharedContext        = sharedCtx
+        hwSharedFBO            = fbo
+        hwSharedStagingTexture = stagingTex
         hwSharedDepthStencilRB = depthRB
+        hwOutputFBO            = outFBO
 
         os_log(.debug, log: .renderer,
-               "prepareHWRenderSharedContext: shared context %p, FBO %u ready",
-               sharedCtx, fbo)
+               "prepareHWRenderSharedContext: shared ctx %p, hwSharedFBO=%u (staging tex %u, %dx%d), hwOutputFBO=%u (IOSurface tex %u)",
+               sharedCtx, fbo, stagingTex, Int(w), Int(h), outFBO, texture.openGLTexture)
     }
 
     override func suspendFPSLimiting() {
@@ -246,12 +302,49 @@ final class OpenGL3GameRenderer: BaseOpenGLGameRenderer {
         }
         
         if hwSharedContext != nil {
-            // HW render mode: GLideN64 rendered into hwSharedFBO on hwSharedContext.
-            // glFinish() drains the shared context GPU pipeline, then switch to
-            // glContext (which owns the CVOpenGLTextureCacheRef) for glFlushRenderAPPLE()
-            // to commit the texture contents to the IOSurface.
+            // HW render mode: the core rendered into hwSharedFBO (which is
+            // backed by hwSharedStagingTexture, a plain GL_TEXTURE_2D in GPU
+            // memory). We now blit that into hwOutputFBO (which is backed by
+            // the IOSurface-backed GL_TEXTURE_RECTANGLE) so the compositor
+            // sees the new frame.
+            //
+            // Issue #464: this two-FBO + blit approach is necessary because
+            // attaching an IOSurface-backed RECTANGLE texture directly as the
+            // core's render target produced complete-but-blank framebuffers
+            // for GLideN64. The blit costs one full-frame GPU copy per frame.
             CGLSetCurrentContext(hwSharedContext)
+
+            if hwSharedFBO != 0 && hwOutputFBO != 0 {
+                let w = GLint(texture.size.width)
+                let h = GLint(texture.size.height)
+                // Save current bindings so the core's next frame state is unaffected.
+                var prevDraw: GLint = 0
+                var prevRead: GLint = 0
+                glGetIntegerv(GLenum(GL_DRAW_FRAMEBUFFER_BINDING), &prevDraw)
+                glGetIntegerv(GLenum(GL_READ_FRAMEBUFFER_BINDING), &prevRead)
+
+                glBindFramebuffer(GLenum(GL_READ_FRAMEBUFFER), hwSharedFBO)
+                glReadBuffer(GLenum(GL_COLOR_ATTACHMENT0))
+                glBindFramebuffer(GLenum(GL_DRAW_FRAMEBUFFER), hwOutputFBO)
+                // Some drivers need an explicit color-write enable + scissor-off
+                // for a clean blit.
+                glColorMask(GLboolean(GL_TRUE), GLboolean(GL_TRUE), GLboolean(GL_TRUE), GLboolean(GL_TRUE))
+                glDisable(GLenum(GL_SCISSOR_TEST))
+                glBlitFramebuffer(
+                    0, 0, w, h,
+                    0, 0, w, h,
+                    GLbitfield(GL_COLOR_BUFFER_BIT),
+                    GLenum(GL_NEAREST)
+                )
+
+                // Restore previous bindings so context_reset / glsm_state_bind
+                // state on the next frame matches what the core expects.
+                glBindFramebuffer(GLenum(GL_DRAW_FRAMEBUFFER), GLuint(prevDraw))
+                glBindFramebuffer(GLenum(GL_READ_FRAMEBUFFER), GLuint(prevRead))
+            }
             glFinish()
+            // Switch to glContext (which owns the CVOpenGLTextureCacheRef) for
+            // glFlushRenderAPPLE() to commit the IOSurface texture contents.
             CGLSetCurrentContext(glContext)
             glFlushRenderAPPLE()
             return

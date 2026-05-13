@@ -52,9 +52,23 @@ class BaseOpenGLGameRenderer: OpenGLGameRenderer {
     
     // HW render shared context — set up on demand by prepareHWRenderSharedContext().
     // Nil until a libretro core accepts RETRO_ENVIRONMENT_SET_HW_RENDER.
+    //
+    // Issue #464: GLideN64 (and likely other GL libretro cores) cannot write
+    // visibly to an FBO whose color attachment is an IOSurface-backed
+    // GL_TEXTURE_RECTANGLE. The framebuffer reports COMPLETE and binds bind
+    // correctly, but rendered fragments produce no observable pixels.
+    //
+    // Workaround: give the core a plain GL_TEXTURE_2D backed by ordinary
+    // GPU memory as the render target (hwSharedStagingTexture, attached to
+    // hwSharedFBO). At end-of-frame, blit from hwSharedFBO into hwOutputFBO,
+    // which has the IOSurface-backed GL_TEXTURE_RECTANGLE as color attachment.
+    // This adds one full-frame GPU copy per frame but is the standard cost of
+    // bridging libretro's GL hw_render contract to a Metal-compositing host.
     var hwSharedContext: CGLContextObj?
-    var hwSharedFBO: GLuint = 0
+    var hwSharedFBO: GLuint = 0                   // → staging texture (rendered into by the core)
+    var hwSharedStagingTexture: GLuint = 0        // GL_TEXTURE_2D, plain GPU memory
     var hwSharedDepthStencilRB: GLuint = 0
+    var hwOutputFBO: GLuint = 0                   // → IOSurface RECTANGLE texture (blit destination)
 
     var isFPSLimiting = ManagedAtomic(0)
     
@@ -187,9 +201,17 @@ class BaseOpenGLGameRenderer: OpenGLGameRenderer {
         // after glContext has been released is undefined behaviour.
         if let hwSharedContext = hwSharedContext {
             CGLSetCurrentContext(hwSharedContext)
+            if hwOutputFBO != 0 {
+                glDeleteFramebuffers(1, &hwOutputFBO)
+                hwOutputFBO = 0
+            }
             if hwSharedFBO != 0 {
                 glDeleteFramebuffers(1, &hwSharedFBO)
                 hwSharedFBO = 0
+            }
+            if hwSharedStagingTexture != 0 {
+                glDeleteTextures(1, &hwSharedStagingTexture)
+                hwSharedStagingTexture = 0
             }
             if hwSharedDepthStencilRB != 0 {
                 glDeleteRenderbuffers(1, &hwSharedDepthStencilRB)
