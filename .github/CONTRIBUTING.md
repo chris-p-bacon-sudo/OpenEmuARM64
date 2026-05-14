@@ -25,7 +25,7 @@ Not sure where to start? Open a Discussion in the Q&A category and say what you'
 ### Requirements
 
 - macOS 11.0 (Big Sur) or later — macOS 14 (Sonoma) or later recommended
-- Xcode with the latest stable toolchain
+- Xcode with the latest stable toolchain, including the Metal toolchain
 - Apple Silicon Mac (M1 or later) — this fork does not target Intel
 - No additional Homebrew dependencies required for the main app
 
@@ -68,6 +68,8 @@ Or use the project's verify script, which also runs a codesign check:
 **Missing credential files:** If the build fails with "no such file" errors for Swift credential files, re-run the `cp` commands above. Template files are in the repo; real ones are not and are never committed.
 
 **Wrong architecture:** Make sure the build destination is `arm64`. If Xcode defaults to Rosetta or an Intel simulator, change it in the scheme settings.
+
+**Missing Metal toolchain:** Some command-line builds may fail with misleading errors from subprojects or external dependencies if the Metal toolchain is not installed. Make sure the Metal toolchain is included in your Xcode installation.
 
 ### Worktree builds
 
