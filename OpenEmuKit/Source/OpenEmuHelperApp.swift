@@ -660,6 +660,8 @@ extension OSLog {
         if previousBufferSize != bufferSize {
             precondition(_gameRenderer.canChangeBufferSize, "Game tried changing IOSurface in a state we don't support")
             
+            updateScreenSize()
+            updateScreenSize(_previousScreenRect.size, aspectSize: _previousAspectSize)
             setupCVBuffer()
         } else {
             if screenRect != previousScreenRect {

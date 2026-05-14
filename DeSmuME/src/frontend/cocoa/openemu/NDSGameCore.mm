@@ -124,6 +124,26 @@ static const uint64_t kDisplayModeStatesDefault = (1LLU << NDSDisplayOptionID_Mo
                                                   (1LLU << NDSDisplayOptionID_3D_RenderScaling_1x) |
                                                   (1LLU << NDSDisplayOptionID_3D_TextureScaling_1x);
 
+static uint64_t NormalizeOpenEmuDisplayModeStates(uint64_t displayModeStates)
+{
+	// The OpenEmu wrapper currently exposes only the layouts that render and map
+	// touch coordinates reliably in OpenEmu's fixed video surface: unrotated
+	// vertical and horizontal dual-screen arrangements, plus the single-screen
+	// main/touch modes. Keep unsupported saved preferences from re-enabling the
+	// hidden hybrid or rotated layouts.
+	if (!DISPLAYMODE_STATEBIT_CHECK(displayModeStates, NDSDisplayOptionID_Layout_Vertical) &&
+		!DISPLAYMODE_STATEBIT_CHECK(displayModeStates, NDSDisplayOptionID_Layout_Horizontal))
+	{
+		DISPLAYMODE_STATEBITGROUP_CLEAR(displayModeStates, NDSDISPLAYMODE_GROUPBITMASK_LAYOUT);
+		displayModeStates |= (1LLU << NDSDisplayOptionID_Layout_Vertical);
+	}
+	
+	DISPLAYMODE_STATEBITGROUP_CLEAR(displayModeStates, NDSDISPLAYMODE_GROUPBITMASK_ROTATION);
+	displayModeStates |= (1LLU << NDSDisplayOptionID_Rotation_0);
+	
+	return displayModeStates;
+}
+
 volatile bool execute = true;
 
 @implementation NDSGameCore
@@ -231,6 +251,7 @@ volatile bool execute = true;
 	// Set up the DS display
 	_displayModeStatesPending = kDisplayModeStatesDefault;
 	_displayModeStatesApplied = kDisplayModeStatesDefault;
+	_displayModeApplyDelayFrames = 0;
 	_OEViewSize.width  = GPU_FRAMEBUFFER_NATIVE_WIDTH;
 	_OEViewSize.height = GPU_FRAMEBUFFER_NATIVE_HEIGHT * 2;
 	_displayBufferSize = OEIntSizeMake(_OEViewSize.width, _OEViewSize.height);
@@ -452,7 +473,7 @@ volatile bool execute = true;
 - (uint64_t) ndsDisplayMode
 {
 	apple_unfairlock_lock(unfairlockDisplayMode);
-	const uint64_t displayModeStates = _displayModeStatesApplied;
+	const uint64_t displayModeStates = (_displayModeStatesPending != 0) ? _displayModeStatesPending : _displayModeStatesApplied;
 	apple_unfairlock_unlock(unfairlockDisplayMode);
 	
 	return displayModeStates;
@@ -487,6 +508,10 @@ void UpdateDisplayPropertiesFromStates(uint64_t displayModeStates, ClientDisplay
 
 - (void) setNdsDisplayMode:(uint64_t)displayModeStates
 {
+	displayModeStates = NormalizeOpenEmuDisplayModeStates(displayModeStates);
+	
+	const OEIntSize oldBufferSize = _displayBufferSize;
+	
 	ClientDisplayPresenterProperties newProps;
 	UpdateDisplayPropertiesFromStates(displayModeStates, newProps);
 	
@@ -584,6 +609,16 @@ void UpdateDisplayPropertiesFromStates(uint64_t displayModeStates, ClientDisplay
 		// For older OpenEmu versions, the display rect size includes a fixed prescaling.
 		// We'll need to keep this in mind when we calculate touch coordinates.
 		_displayRect = OEIntRectMake(0, 0, _OEViewSize.width, _OEViewSize.height);
+	}
+	
+	if (_cdp != NULL && (oldBufferSize.width != _displayBufferSize.width || oldBufferSize.height != _displayBufferSize.height))
+	{
+		// OpenEmu rebuilds the IOSurface after it observes bufferSize change at
+		// didExecute. If we apply the presenter layout before that rebuild, the
+		// first live mode switch renders the new layout into the old surface and
+		// stays visibly squashed until restart. Delay one executeFrame so the host
+		// can rebuild the surface, then commit the presenter props on the next frame.
+		_displayModeApplyDelayFrames = 1;
 	}
 	
 	apple_unfairlock_unlock(unfairlockDisplayMode);
@@ -757,7 +792,7 @@ void UpdateDisplayPropertiesFromStates(uint64_t displayModeStates, ClientDisplay
 	s = [self setDisplayModeState:s optionID:NDSDisplayOptionID_GPU_Software_FragmentSamplingHack state:[userDefaultsDisplayMode objectForKey:@NDSDISPLAYMODE_PREFKEY_GPU_SOFTWARE_FRAGMENTSAMPLINGHACK]];
 	s = [self setDisplayModeState:s optionID:NDSDisplayOptionID_GPU_OpenGL_SmoothTextures state:[userDefaultsDisplayMode objectForKey:@NDSDISPLAYMODE_PREFKEY_GPU_OPENGL_SMOOTHTEXTURES]];
 	
-	[self setNdsDisplayMode:s];
+	[self setNdsDisplayMode:NormalizeOpenEmuDisplayModeStates(s)];
 	
 	return isRomLoaded;
 }
@@ -831,7 +866,14 @@ void UpdateDisplayPropertiesFromStates(uint64_t displayModeStates, ClientDisplay
 	// apply the display mode right now!
 	if (_displayModeStatesPending != 0)
 	{
-		[self applyDisplayMode:_displayModeStatesPending];
+		if (_displayModeApplyDelayFrames > 0)
+		{
+			_displayModeApplyDelayFrames--;
+		}
+		else
+		{
+			[self applyDisplayMode:_displayModeStatesPending];
+		}
 	}
 	
 	_inputHandler->ProcessInputs();
@@ -1251,7 +1293,7 @@ void UpdateDisplayPropertiesFromStates(uint64_t displayModeStates, ClientDisplay
 
 - (NSArray<NSDictionary<NSString *, id> *> *) displayModes
 {
-	const uint64_t s = _displayModeStatesPending;
+	const uint64_t s = NormalizeOpenEmuDisplayModeStates([self ndsDisplayMode]);
 	
 	// Generate each display option submenu.
 	NSArray< NSDictionary<NSString *, id> *> *displayModeMenu =
@@ -1261,21 +1303,10 @@ void UpdateDisplayPropertiesFromStates(uint64_t displayModeStates, ClientDisplay
 	 [self generateDisplayModeItemByID:NDSDisplayOptionID_Mode_Touch states:s],
 	 nil];
 	
-	NSArray< NSDictionary<NSString *, id> *> *displayRotationMenu =
-	[NSArray arrayWithObjects:
-	 [self generateDisplayModeItemByID:NDSDisplayOptionID_Rotation_0 states:s],
-	 [self generateDisplayModeItemByID:NDSDisplayOptionID_Rotation_90 states:s],
-	 [self generateDisplayModeItemByID:NDSDisplayOptionID_Rotation_180 states:s],
-	 [self generateDisplayModeItemByID:NDSDisplayOptionID_Rotation_270 states:s],
-	 nil];
-	
 	NSArray< NSDictionary<NSString *, id> *> *displayLayoutMenu =
 	[NSArray arrayWithObjects:
 	 [self generateDisplayModeItemByID:NDSDisplayOptionID_Layout_Vertical states:s],
 	 [self generateDisplayModeItemByID:NDSDisplayOptionID_Layout_Horizontal states:s],
-	 [self generateDisplayModeItemByID:NDSDisplayOptionID_Layout_Hybrid_2_1 states:s],
-	 [self generateDisplayModeItemByID:NDSDisplayOptionID_Layout_Hybrid_16_9 states:s],
-	 [self generateDisplayModeItemByID:NDSDisplayOptionID_Layout_Hybrid_16_10 states:s],
 	 nil];
 	
 	NSArray< NSDictionary<NSString *, id> *> *displayOrderMenu =
@@ -1363,7 +1394,6 @@ void UpdateDisplayPropertiesFromStates(uint64_t displayModeStates, ClientDisplay
 	[[NSArray alloc] initWithObjects:
 	 [NSDictionary dictionaryWithObjectsAndKeys: @"Mode", OEGameCoreDisplayModeGroupNameKey,         displayModeMenu, OEGameCoreDisplayModeGroupItemsKey, nil],
 	 [NSDictionary dictionaryWithObjectsAndKeys: @"Layout", OEGameCoreDisplayModeGroupNameKey,       displayLayoutMenu, OEGameCoreDisplayModeGroupItemsKey, nil],
-	 [NSDictionary dictionaryWithObjectsAndKeys: @"Rotation", OEGameCoreDisplayModeGroupNameKey,     displayRotationMenu, OEGameCoreDisplayModeGroupItemsKey, nil],
 	 [NSDictionary dictionaryWithObjectsAndKeys: @"Order", OEGameCoreDisplayModeGroupNameKey,        displayOrderMenu, OEGameCoreDisplayModeGroupItemsKey, nil],
 	 [NSDictionary dictionaryWithObjectsAndKeys: @"Separation", OEGameCoreDisplayModeGroupNameKey,   displaySeparationMenu, OEGameCoreDisplayModeGroupItemsKey, nil],
 	 [NSDictionary dictionaryWithObjectsAndKeys: @"Video Source", OEGameCoreDisplayModeGroupNameKey, displayVideoSourceMenu, OEGameCoreDisplayModeGroupItemsKey, nil],

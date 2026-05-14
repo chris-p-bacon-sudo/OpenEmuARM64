@@ -340,6 +340,7 @@ typedef struct OEMenuItemDesc OEMenuItemDesc;
 	// to keep track of, which leaves us another 37 states for future use.
 	uint64_t _displayModeStatesPending;
 	uint64_t _displayModeStatesApplied;
+	NSUInteger _displayModeApplyDelayFrames;
 	
 	// For simplicity's sake, we use NDSDisplayOptionID numbers to maintain all of the internal data
 	// associations for display mode menu items. However, OpenEmu uses OEGameCoreDisplayModeNameKey

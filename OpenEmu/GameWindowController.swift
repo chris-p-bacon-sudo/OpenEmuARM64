@@ -507,6 +507,31 @@ extension GameWindowController: GameIntegralScalingDelegate {
             return fullScreenIntegralScale
         }
     }
+    
+    func gameScreenSizeDidChange() {
+        guard let window else { return }
+        
+        window.contentAspectRatio = gameDocument.gameViewController.defaultScreenSize
+        updateContentSizeConstraints()
+        
+        if fullScreenStatus == .nonFullScreen {
+            let currentScale = windowedIntegralScale
+            if currentScale != Self.fitToWindowScale {
+                var newWindowFrame = window.frame
+                newWindowFrame.size = windowSize(forGameViewIntegralScale: currentScale)
+                newWindowFrame.origin.x = round(window.frame.midX - newWindowFrame.size.width / 2)
+                newWindowFrame.origin.y = round(window.frame.midY - newWindowFrame.size.height / 2)
+                window.setFrame(newWindowFrame, display: true, animate: true)
+            }
+        } else if fullScreenStatus == .fullScreen {
+            let gv = gameDocument.gameViewController
+            if fullScreenIntegralScale == Self.fitToWindowScale {
+                gv?.gameViewSetIntegralSize(fillScreenContentSize, animated: true)
+            } else {
+                gv?.gameViewSetIntegralSize(windowSize(forGameViewIntegralScale: fullScreenIntegralScale), animated: true)
+            }
+        }
+    }
 }
 
 // MARK: - NSWindowDelegate

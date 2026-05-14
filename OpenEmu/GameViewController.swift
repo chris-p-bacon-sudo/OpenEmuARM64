@@ -277,6 +277,7 @@ final class GameViewController: NSViewController {
         }
         
         gameView.setScreenSize(screenSize, aspectSize: aspectSize)
+        integralScalingDelegate?.gameScreenSizeDidChange()
     }
 }
 

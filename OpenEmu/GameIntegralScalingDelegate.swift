@@ -30,4 +30,5 @@ protocol GameIntegralScalingDelegate: AnyObject {
     var shouldAllowIntegralScaling: Bool { get }
     var maximumIntegralScale: Int { get }
     var currentIntegralScale: Int { get }
+    func gameScreenSizeDidChange()
 }
