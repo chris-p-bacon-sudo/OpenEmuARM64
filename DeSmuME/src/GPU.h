@@ -2,7 +2,7 @@
 	Copyright (C) 2006 yopyop
 	Copyright (C) 2006-2007 Theo Berkau
 	Copyright (C) 2007 shash
-	Copyright (C) 2009-2015 DeSmuME team
+	Copyright (C) 2009-2025 DeSmuME team
 
 	This file is free software: you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
@@ -25,104 +25,185 @@
 #include <iosfwd>
 
 #include "types.h"
+#include "./utils/colorspacehandler/colorspacehandler.h"
 
+// For now, let's keep these SSE2 compatibility functions here to avoid build issues with Linux.
+// These should be moved to a more universal file like "types.h" so that they are available
+// everywhere, but Linux builds seem to be very finicky with their include structure. So let's
+// not rock the boat and make Linux builds happy.
+// - rogerman, 2022/04/06
+
+#if defined(ENABLE_SSSE3)
+	#include <tmmintrin.h>
+#elif defined(ENABLE_SSE2)
+	// Note: Technically, the shift count of palignr can be any value of [0-255]. But practically speaking, the
+	// shift count should be a value of [0-15]. If we assume that the value range will always be [0-15], we can
+	// then substitute the palignr instruction with an SSE2 equivalent.
+	#define _mm_alignr_epi8(a, b, immShiftCount) _mm_or_si128(_mm_slli_si128((a), 16-(immShiftCount)), _mm_srli_si128((b), (immShiftCount)))
+#endif // ENABLE_SSSE3
+
+#if defined(ENABLE_SSE4_1)
+	#include <smmintrin.h>
+#elif defined(ENABLE_SSE2)
+	// Note: The SSE4.1 version of pblendvb only requires that the MSBs of the 8-bit mask vector are set in order to
+	// pass the b byte through. However, our SSE2 substitute of pblendvb requires that all of the bits of the 8-bit
+	// mask vector are set. So when using this intrinsic in practice, just set/clear all mask bits together, and it
+	// should work fine for both SSE4.1 and SSE2.
+	#define _mm_blendv_epi8(a, b, fullmask) _mm_or_si128(_mm_and_si128((fullmask), (b)), _mm_andnot_si128((fullmask), (a)))
+#endif // ENABLE_SSE4_1
+
+class GPUEngineBase;
+class NDSDisplay;
 class EMUFILE;
+class Task;
 struct MMU_struct;
+struct Render3DInterface;
 
 //#undef FORCEINLINE
 //#define FORCEINLINE
 
-void gpu_savestate(EMUFILE* os);
-bool gpu_loadstate(EMUFILE* is, int size);
+#define GPU_FRAMEBUFFER_NATIVE_WIDTH	256
+#define GPU_FRAMEBUFFER_NATIVE_HEIGHT	192
 
-/*******************************************************************************
-    this structure is for display control,
-    it holds flags for general display
-*******************************************************************************/
+#define GPU_VRAM_BLOCK_LINES			256
+#define GPU_VRAM_BLANK_REGION_LINES		544
 
-#ifdef WORDS_BIGENDIAN
-struct _DISPCNT
+#define MAX_FRAMEBUFFER_PAGES			8
+
+void gpu_savestate(EMUFILE &os);
+bool gpu_loadstate(EMUFILE &is, int size);
+
+typedef void (*PixelLookupFunc)(const s32 auxX, const s32 auxY, const int lg, const u32 map, const u32 tile, const u16 *__restrict pal, u8 &outIndex, u16 &outColor);
+
+enum PaletteMode
 {
-/* 7*/  u8 ForceBlank:1;      // A+B:
-/* 6*/  u8 OBJ_BMP_mapping:1; // A+B: 0=2D (128KB), 1=1D (128..256KB)
-/* 5*/  u8 OBJ_BMP_2D_dim:1;  // A+B: 0=128x512,    1=256x256 pixels
-/* 4*/  u8 OBJ_Tile_mapping:1;// A+B: 0=2D (32KB),  1=1D (32..256KB)
-/* 3*/  u8 BG0_3D:1;          // A  : 0=2D,         1=3D
-/* 0*/  u8 BG_Mode:3;         // A+B:
-/*15*/  u8 WinOBJ_Enable:1;   // A+B: 0=disable, 1=Enable
-/*14*/  u8 Win1_Enable:1;     // A+B: 0=disable, 1=Enable
-/*13*/  u8 Win0_Enable:1;     // A+B: 0=disable, 1=Enable
-/*12*/  u8 OBJ_Enable:1;      // A+B: 0=disable, 1=Enable
-/*11*/  u8 BG3_Enable:1;      // A+B: 0=disable, 1=Enable
-/*10*/  u8 BG2_Enable:1;      // A+B: 0=disable, 1=Enable
-/* 9*/  u8 BG1_Enable:1;      // A+B: 0=disable, 1=Enable
-/* 8*/  u8 BG0_Enable:1;        // A+B: 0=disable, 1=Enable
-/*23*/  u8 OBJ_HBlank_process:1;    // A+B: OBJ processed during HBlank (GBA bit5)
-/*22*/  u8 OBJ_BMP_1D_Bound:1;      // A  :
-/*20*/  u8 OBJ_Tile_1D_Bound:2;     // A+B:
-/*18*/  u8 VRAM_Block:2;            // A  : VRAM block (0..3=A..D)
-
-/*16*/  u8 DisplayMode:2;     // A+B: coreA(0..3) coreB(0..1) GBA(Green Swap)
-                                    // 0=off (white screen)
-                                    // 1=on (normal BG & OBJ layers)
-                                    // 2=VRAM display (coreA only)
-                                    // 3=RAM display (coreA only, DMA transfers)
-
-/*31*/  u8 ExOBJPalette_Enable:1;   // A+B: 0=disable, 1=Enable OBJ extended Palette
-/*30*/  u8 ExBGxPalette_Enable:1;   // A+B: 0=disable, 1=Enable BG extended Palette
-/*27*/  u8 ScreenBase_Block:3;      // A  : Screen Base (64K step)
-/*24*/  u8 CharacBase_Block:3;      // A  : Character Base (64K step)
+	PaletteMode_16x16		= 0,
+	PaletteMode_1x256		= 1
 };
-#else
-struct _DISPCNT
+
+enum OBJMode
 {
-/* 0*/  u8 BG_Mode:3;         // A+B:
-/* 3*/  u8 BG0_3D:1;          // A  : 0=2D,         1=3D
-/* 4*/  u8 OBJ_Tile_mapping:1;     // A+B: 0=2D (32KB),  1=1D (32..256KB)
-/* 5*/  u8 OBJ_BMP_2D_dim:1;  // A+B: 0=128x512,    1=256x256 pixels
-/* 6*/  u8 OBJ_BMP_mapping:1; // A+B: 0=2D (128KB), 1=1D (128..256KB)
-
-                                    // 7-15 same as GBA
-/* 7*/  u8 ForceBlank:1;      // A+B:
-/* 8*/  u8 BG0_Enable:1;        // A+B: 0=disable, 1=Enable
-/* 9*/  u8 BG1_Enable:1;      // A+B: 0=disable, 1=Enable
-/*10*/  u8 BG2_Enable:1;      // A+B: 0=disable, 1=Enable
-/*11*/  u8 BG3_Enable:1;      // A+B: 0=disable, 1=Enable
-/*12*/  u8 OBJ_Enable:1;      // A+B: 0=disable, 1=Enable
-/*13*/  u8 Win0_Enable:1;     // A+B: 0=disable, 1=Enable
-/*14*/  u8 Win1_Enable:1;     // A+B: 0=disable, 1=Enable
-/*15*/  u8 WinOBJ_Enable:1;   // A+B: 0=disable, 1=Enable
-
-/*16*/  u8 DisplayMode:2;     // A+B: coreA(0..3) coreB(0..1) GBA(Green Swap)
-                                    // 0=off (white screen)
-                                    // 1=on (normal BG & OBJ layers)
-                                    // 2=VRAM display (coreA only)
-                                    // 3=RAM display (coreA only, DMA transfers)
-
-/*18*/  u8 VRAM_Block:2;            // A  : VRAM block (0..3=A..D)
-/*20*/  u8 OBJ_Tile_1D_Bound:2;     // A+B:
-/*22*/  u8 OBJ_BMP_1D_Bound:1;      // A  :
-/*23*/  u8 OBJ_HBlank_process:1;    // A+B: OBJ processed during HBlank (GBA bit5)
-/*24*/  u8 CharacBase_Block:3;      // A  : Character Base (64K step)
-/*27*/  u8 ScreenBase_Block:3;      // A  : Screen Base (64K step)
-/*30*/  u8 ExBGxPalette_Enable:1;   // A+B: 0=disable, 1=Enable BG extended Palette
-/*31*/  u8 ExOBJPalette_Enable:1;   // A+B: 0=disable, 1=Enable OBJ extended Palette
+	OBJMode_Normal			= 0,
+	OBJMode_Transparent		= 1,
+	OBJMode_Window			= 2,
+	OBJMode_Bitmap			= 3
 };
-#endif
+
+enum OBJShape
+{
+	OBJShape_Square			= 0,
+	OBJShape_Horizontal		= 1,
+	OBJShape_Vertical		= 2,
+	OBJShape_Prohibited		= 3
+};
+
+enum DisplayCaptureSize
+{
+	DisplayCaptureSize_128x128	= 0,
+	DisplayCaptureSize_256x64	= 1,
+	DisplayCaptureSize_256x128	= 2,
+	DisplayCaptureSize_256x192	= 3
+};
 
 typedef union
 {
-    struct _DISPCNT bits;
-    u32 val;
-} DISPCNT;
-#define BGxENABLED(cnt,num)    ((num<8)? ((cnt.val>>8) & num):0)
+    u32 value;
+	
+	struct
+	{
+#ifndef MSB_FIRST
+		u8 BG_Mode:3;						//  0- 2: A+B;
+		u8 BG0_3D:1;						//     3: A  ; 0=2D,         1=3D
+		u8 OBJ_Tile_mapping:1;				//     4: A+B; 0=2D (32KB),  1=1D (32..256KB)
+		u8 OBJ_BMP_2D_dim:1;				//     5: A+B; 0=128x512,    1=256x256 pixels
+		u8 OBJ_BMP_mapping:1;				//     6: A+B; 0=2D (128KB), 1=1D (128..256KB)
+		u8 ForceBlank:1;					//     7: A+B; 0=Disable, 1=Enable (causes the line to render all white)
+		
+		u8 BG0_Enable:1;					//     8: A+B; 0=Disable, 1=Enable
+		u8 BG1_Enable:1;					//     9: A+B; 0=Disable, 1=Enable
+		u8 BG2_Enable:1;					//    10: A+B; 0=Disable, 1=Enable
+		u8 BG3_Enable:1;					//    11: A+B; 0=Disable, 1=Enable
+		u8 OBJ_Enable:1;					//    12: A+B; 0=Disable, 1=Enable
+		u8 Win0_Enable:1;					//    13: A+B; 0=Disable, 1=Enable
+		u8 Win1_Enable:1;					//    14: A+B; 0=Disable, 1=Enable
+		u8 WinOBJ_Enable:1;					//    15: A+B; 0=Disable, 1=Enable
+		
+		u8 DisplayMode:2;					// 16-17: A+B; coreA(0..3) coreB(0..1) GBA(Green Swap)
+											//        0=off (white screen)
+											//        1=on (normal BG & OBJ layers)
+											//        2=VRAM display (coreA only)
+											//        3=RAM display (coreA only, DMA transfers)
+		u8 VRAM_Block:2;					// 18-19: A  ; VRAM block (0..3=A..D)
+		u8 OBJ_Tile_1D_Bound:2;				//    20: A+B;
+		u8 OBJ_BMP_1D_Bound:1;				// 21-22: A  ;
+		u8 OBJ_HBlank_process:1;			//    23: A+B; OBJ processed during HBlank (GBA bit5)
+		
+		u8 CharacBase_Block:3;				// 24-26: A  ; Character Base (64K step)
+		u8 ScreenBase_Block:3;				// 27-29: A  ; Screen Base (64K step)
+		u8 ExBGxPalette_Enable:1;			//    30: A+B; 0=Disable, 1=Enable BG extended Palette
+		u8 ExOBJPalette_Enable:1;			//    31: A+B; 0=Disable, 1=Enable OBJ extended Palette
+#else
+		u8 ForceBlank:1;					//     7: A+B; 0=Disable, 1=Enable (causes the line to render all white)
+		u8 OBJ_BMP_mapping:1;				//     6: A+B; 0=2D (128KB), 1=1D (128..256KB)
+		u8 OBJ_BMP_2D_dim:1;				//     5: A+B; 0=128x512,    1=256x256 pixels
+		u8 OBJ_Tile_mapping:1;				//     4: A+B; 0=2D (32KB),  1=1D (32..256KB)
+		u8 BG0_3D:1;						//     3: A  ; 0=2D,         1=3D
+		u8 BG_Mode:3;						//  0- 2: A+B;
+		
+		u8 WinOBJ_Enable:1;					//    15: A+B; 0=Disable, 1=Enable
+		u8 Win1_Enable:1;					//    14: A+B; 0=Disable, 1=Enable
+		u8 Win0_Enable:1;					//    13: A+B; 0=Disable, 1=Enable
+		u8 OBJ_Enable:1;					//    12: A+B; 0=Disable, 1=Enable
+		u8 BG3_Enable:1;					//    11: A+B; 0=Disable, 1=Enable
+		u8 BG2_Enable:1;					//    10: A+B; 0=Disable, 1=Enable
+		u8 BG1_Enable:1;					//     9: A+B; 0=Disable, 1=Enable
+		u8 BG0_Enable:1;					//     8: A+B; 0=Disable, 1=Enable
+		
+		u8 OBJ_HBlank_process:1;			//    23: A+B; OBJ processed during HBlank (GBA bit5)
+		u8 OBJ_BMP_1D_Bound:1;				//    22: A  ;
+		u8 OBJ_Tile_1D_Bound:2;				// 20-21: A+B;
+		u8 VRAM_Block:2;					// 18-19: A  ; VRAM block (0..3=A..D)
+		u8 DisplayMode:2;					// 16-17: A+B; coreA(0..3) coreB(0..1) GBA(Green Swap)
+											//        0=off (white screen)
+											//        1=on (normal BG & OBJ layers)
+											//        2=VRAM display (coreA only)
+											//        3=RAM display (coreA only, DMA transfers)
+		
+		u8 ExOBJPalette_Enable:1;			//    31: A+B; 0=Disable, 1=Enable OBJ extended Palette
+		u8 ExBGxPalette_Enable:1;			//    30: A+B; 0=Disable, 1=Enable BG extended Palette
+		u8 ScreenBase_Block:3;				// 27-29: A  ; Screen Base (64K step)
+		u8 CharacBase_Block:3;				// 24-26: A  ; Character Base (64K step)
+#endif
+	};
+} IOREG_DISPCNT;							// 0x400x000: Display control (Engine A+B)
 
-
-enum BlendFunc
+typedef union
 {
-	NoBlend, Blend, Increase, Decrease
-};
+	u16 value;
+	
+	struct
+	{
+		u16 VBlankFlag:1;					//     0: Set at V-Blank; 0=Not in V-Blank, 1=V-Blank occurred
+		u16 HBlankFlag:1;					//     1: Set at H-Blank; 0=Not in H-Blank, 1=H-Blank occurred
+		u16 VCounterFlag:1;					//     2: Set when this register's VCount matches the currently rendered scanline, interacts with VCOUNT (0x4000006); 0=Unmatched, 1=Matched
+		u16 VBlankIRQ_Enable:1;				//     3: Send an IRQ when VBlankFlag is set; 0=Disable, 1=Enable
+		u16 HBlankIRQ_Enable:1;				//     4: Send an IRQ when HBlankFlag is set; 0=Disable, 1=Enable
+		u16 VCounterIRQ_Enable:1;			//     5: Send an IRQ when VCounterFlag is set; 0=Disable, 1=Enable
+		u16 LCDInitReady:1;					//     6: Report that the LCD initialization is ready, DSi only; 0=Unready 1=Ready
+		u16 VCount:9;						//  7-15: Current scanline, interacts with VCOUNT (0x4000006)
+	};
+} IOREG_DISPSTAT;							// 0x4000004: Display status (Engine A only)
 
+typedef union
+{
+	u16 value;
+	
+	struct
+	{
+		u16 CurrentScanline:9;				//  0- 8: The scanline currently being rendered; 0...262
+		u16 :7;								//  9-15: Unused bits
+	};
+} IOREG_VCOUNT;								// 0x4000006: Current display scanline (Engine A only)
 
 /*******************************************************************************
     this structure is for display control of a specific layer,
@@ -130,72 +211,160 @@ enum BlendFunc
     their priority indicate which one to draw on top of the other
     some flags indicate special drawing mode, size, FX
 *******************************************************************************/
-
-#ifdef WORDS_BIGENDIAN
-struct _BGxCNT
+typedef union
 {
-/* 7*/ u8 Palette_256:1;         // 0=16x16, 1=1*256 palette
-/* 6*/ u8 Mosaic_Enable:1;       // 0=disable, 1=Enable mosaic
-/* 2*/ u8 CharacBase_Block:4;    // individual character base offset (n*16KB)
-/* 0*/ u8 Priority:2;            // 0..3=high..low
-/*14*/ u8 ScreenSize:2;          // text    : 256x256 512x256 256x512 512x512
-                                       // x/rot/s : 128x128 256x256 512x512 1024x1024
-                                       // bmp     : 128x128 256x256 512x256 512x512
-                                       // large   : 512x1024 1024x512 - -
-/*13*/ u8 PaletteSet_Wrap:1;     // BG0 extended palette set 0=set0, 1=set2
-                                       // BG1 extended palette set 0=set1, 1=set3
-                                       // BG2 overflow area wraparound 0=off, 1=wrap
-                                       // BG3 overflow area wraparound 0=off, 1=wrap
-/* 8*/ u8 ScreenBase_Block:5;    // individual screen base offset (text n*2KB, BMP n*16KB)
-};
+    u16 value;
+	
+	struct
+	{
+#ifndef MSB_FIRST
+		u8 Priority:2;						//  0- 1: Rendering priority; 0...3, where 0 is highest priority and 3 is lowest priority
+		u8 CharacBase_Block:4;				//  2- 5: individual character base offset (n*16KB)
+		u8 Mosaic:1;						//     6: Mosaic render: 0=Disable, 1=Enable
+		u8 PaletteMode:1;					//     7: Color/palette mode; 0=16 palettes of 16 colors each, 1=Single palette of 256 colors
+		
+		u8 ScreenBase_Block:5;				//  8-12: individual screen base offset (text n*2KB, BMP n*16KB)
+		u8 PaletteSet_Wrap:1;				//    13: BG0 extended palette set 0=set0, 1=set2
+											//        BG1 extended palette set 0=set1, 1=set3
+											//        BG2 overflow area wraparound 0=off, 1=wrap
+											//        BG3 overflow area wraparound 0=off, 1=wrap
+		u8 ScreenSize:2;					// 14-15: text    : 256x256 512x256 256x512 512x512
+											//        x/rot/s : 128x128 256x256 512x512 1024x1024
+											//        bmp     : 128x128 256x256 512x256 512x512
+											//        large   : 512x1024 1024x512 - -
 #else
-struct _BGxCNT
-{
-/* 0*/ u8 Priority:2;            // 0..3=high..low
-/* 2*/ u8 CharacBase_Block:4;    // individual character base offset (n*16KB)
-/* 6*/ u8 Mosaic_Enable:1;       // 0=disable, 1=Enable mosaic
-/* 7*/ u8 Palette_256:1;         // 0=16x16, 1=1*256 palette
-/* 8*/ u8 ScreenBase_Block:5;    // individual screen base offset (text n*2KB, BMP n*16KB)
-/*13*/ u8 PaletteSet_Wrap:1;     // BG0 extended palette set 0=set0, 1=set2
-                                       // BG1 extended palette set 0=set1, 1=set3
-                                       // BG2 overflow area wraparound 0=off, 1=wrap
-                                       // BG3 overflow area wraparound 0=off, 1=wrap
-/*14*/ u8 ScreenSize:2;          // text    : 256x256 512x256 256x512 512x512
-                                       // x/rot/s : 128x128 256x256 512x512 1024x1024
-                                       // bmp     : 128x128 256x256 512x256 512x512
-                                       // large   : 512x1024 1024x512 - -
-};
+		u8 PaletteMode:1;					//     7: Color/palette mode; 0=16 palettes of 16 colors each, 1=Single palette of 256 colors
+		u8 Mosaic:1;						//     6: Mosaic render: 0=Disable, 1=Enable
+		u8 CharacBase_Block:4;				//  2- 5: individual character base offset (n*16KB)
+		u8 Priority:2;						//  0- 1: Rendering priority; 0...3, where 0 is highest priority and 3 is lowest priority
+		
+		u8 ScreenSize:2;					// 14-15: text    : 256x256 512x256 256x512 512x512
+											//        x/rot/s : 128x128 256x256 512x512 1024x1024
+											//        bmp     : 128x128 256x256 512x256 512x512
+											//        large   : 512x1024 1024x512 - -
+		u8 PaletteSet_Wrap:1;				//    13: BG0 extended palette set 0=set0, 1=set2
+											//        BG1 extended palette set 0=set1, 1=set3
+											//        BG2 overflow area wraparound 0=off, 1=wrap
+											//        BG3 overflow area wraparound 0=off, 1=wrap
+		u8 ScreenBase_Block:5;				//  8-12: individual screen base offset (text n*2KB, BMP n*16KB)
 #endif
+	};
+} IOREG_BGnCNT;								// 0x400x008, 0x400x00A, 0x400x00C, 0x400x00E: BGn layer control (Engine A+B)
 
+typedef IOREG_BGnCNT IOREG_BG0CNT;			// 0x400x008: BG0 layer control (Engine A+B)
+typedef IOREG_BGnCNT IOREG_BG1CNT;			// 0x400x00A: BG1 layer control (Engine A+B)
+typedef IOREG_BGnCNT IOREG_BG2CNT;			// 0x400x00C: BG2 layer control (Engine A+B)
+typedef IOREG_BGnCNT IOREG_BG3CNT;			// 0x400x00E: BG3 layer control (Engine A+B)
 
 typedef union
 {
-    struct _BGxCNT bits;
-    u16 val;
-} BGxCNT;
+	u16 value;
+	
+	struct
+	{
+		u16 Offset:9;						//  0- 8: Offset value; 0...511
+		u16 :7;								//  9-15: Unused bits
+	};
+} IOREG_BGnHOFS;							// 0x400x010, 0x400x014, 0x400x018, 0x400x01C: BGn horizontal offset (Engine A+B)
 
-/*******************************************************************************
-    this structure is for background offset
-*******************************************************************************/
+typedef IOREG_BGnHOFS IOREG_BGnVOFS;		// 0x400x012, 0x400x016, 0x400x01A, 0x400x01E: BGn vertical offset (Engine A+B)
 
-typedef struct {
-    u16 BGxHOFS;
-    u16 BGxVOFS;
-} BGxOFS;
+typedef IOREG_BGnHOFS IOREG_BG0HOFS;		// 0x400x010: BG0 horizontal offset (Engine A+B)
+typedef IOREG_BGnVOFS IOREG_BG0VOFS;		// 0x400x012: BG0 vertical offset (Engine A+B)
+typedef IOREG_BGnHOFS IOREG_BG1HOFS;		// 0x400x014: BG1 horizontal offset (Engine A+B)
+typedef IOREG_BGnVOFS IOREG_BG1VOFS;		// 0x400x016: BG1 vertical offset (Engine A+B)
+typedef IOREG_BGnHOFS IOREG_BG2HOFS;		// 0x400x018: BG2 horizontal offset (Engine A+B)
+typedef IOREG_BGnVOFS IOREG_BG2VOFS;		// 0x400x01A: BG2 vertical offset (Engine A+B)
+typedef IOREG_BGnHOFS IOREG_BG3HOFS;		// 0x400x01C: BG3 horizontal offset (Engine A+B)
+typedef IOREG_BGnVOFS IOREG_BG3VOFS;		// 0x400x01E: BG3 vertical offset (Engine A+B)
 
-/*******************************************************************************
-    this structure is for rotoscale parameters
-*******************************************************************************/
+typedef struct
+{
+	IOREG_BGnHOFS BGnHOFS;
+	IOREG_BGnVOFS BGnVOFS;
+} IOREG_BGnOFS;								// 0x400x010, 0x400x014, 0x400x018, 0x400x01C: BGn horizontal offset (Engine A+B)
 
-typedef struct {
-    s16 BGxPA;
-    s16 BGxPB;
-    s16 BGxPC;
-    s16 BGxPD;
-    s32 BGxX;
-    s32 BGxY;
-} BGxPARMS;
+typedef union
+{
+	s16 value;
+	
+	struct
+	{
+#ifndef MSB_FIRST
+		u16 Fraction:8;
+		s16 Integer:8;
+#else
+		s16 Integer:8;
+		u16 Fraction:8;
+#endif
+	};
+} IOREG_BGnPA;								// 0x400x020, 0x400x030: BGn rotation/scaling parameter A (Engine A+B)
+typedef IOREG_BGnPA IOREG_BGnPB;			// 0x400x022, 0x400x032: BGn rotation/scaling parameter B (Engine A+B)
+typedef IOREG_BGnPA IOREG_BGnPC;			// 0x400x024, 0x400x034: BGn rotation/scaling parameter C (Engine A+B)
+typedef IOREG_BGnPA IOREG_BGnPD;			// 0x400x026, 0x400x036: BGn rotation/scaling parameter D (Engine A+B)
 
+typedef union
+{
+	s32 value;
+	
+	struct
+	{
+#ifndef MSB_FIRST
+		u32 Fraction:8;
+		s32 Integer:20;
+		s32 :4;
+#else
+		s32 :4;
+		s32 Integer:20;
+		u32 Fraction:8;
+#endif
+	};
+} IOREG_BGnX;								// 0x400x028, 0x400x038: BGn X-coordinate (Engine A+B)
+typedef IOREG_BGnX IOREG_BGnY;				// 0x400x02C, 0x400x03C: BGn Y-coordinate (Engine A+B)
+
+typedef IOREG_BGnPA IOREG_BG2PA;			// 0x400x020: BG2 rotation/scaling parameter A (Engine A+B)
+typedef IOREG_BGnPB IOREG_BG2PB;			// 0x400x022: BG2 rotation/scaling parameter B (Engine A+B)
+typedef IOREG_BGnPC IOREG_BG2PC;			// 0x400x024: BG2 rotation/scaling parameter C (Engine A+B)
+typedef IOREG_BGnPD IOREG_BG2PD;			// 0x400x026: BG2 rotation/scaling parameter D (Engine A+B)
+typedef IOREG_BGnX IOREG_BG2X;				// 0x400x028: BG2 X-coordinate (Engine A+B)
+typedef IOREG_BGnY IOREG_BG2Y;				// 0x400x02C: BG2 Y-coordinate (Engine A+B)
+
+typedef IOREG_BGnPA IOREG_BG3PA;			// 0x400x030: BG3 rotation/scaling parameter A (Engine A+B)
+typedef IOREG_BGnPB IOREG_BG3PB;			// 0x400x032: BG3 rotation/scaling parameter B (Engine A+B)
+typedef IOREG_BGnPC IOREG_BG3PC;			// 0x400x034: BG3 rotation/scaling parameter C (Engine A+B)
+typedef IOREG_BGnPD IOREG_BG3PD;			// 0x400x036: BG3 rotation/scaling parameter D (Engine A+B)
+typedef IOREG_BGnX IOREG_BG3X;				// 0x400x038: BG3 X-coordinate (Engine A+B)
+typedef IOREG_BGnY IOREG_BG3Y;				// 0x400x03C: BG3 Y-coordinate (Engine A+B)
+
+typedef struct
+{
+	IOREG_BGnPA BGnPA;						// 0x400x020, 0x400x030: BGn rotation/scaling parameter A (Engine A+B)
+	IOREG_BGnPB BGnPB;						// 0x400x022, 0x400x032: BGn rotation/scaling parameter B (Engine A+B)
+	IOREG_BGnPC BGnPC;						// 0x400x024, 0x400x034: BGn rotation/scaling parameter C (Engine A+B)
+	IOREG_BGnPD BGnPD;						// 0x400x026, 0x400x036: BGn rotation/scaling parameter D (Engine A+B)
+	IOREG_BGnX BGnX;						// 0x400x028, 0x400x038: BGn X-coordinate (Engine A+B)
+	IOREG_BGnY BGnY;						// 0x400x02C, 0x400x03C: BGn Y-coordinate (Engine A+B)
+} IOREG_BGnParameter;						// 0x400x020, 0x400x030: BGn parameters (Engine A+B)
+
+typedef struct
+{
+	IOREG_BG2PA BG2PA;						// 0x400x020: BG2 rotation/scaling parameter A (Engine A+B)
+	IOREG_BG2PB BG2PB;						// 0x400x022: BG2 rotation/scaling parameter B (Engine A+B)
+	IOREG_BG2PC BG2PC;						// 0x400x024: BG2 rotation/scaling parameter C (Engine A+B)
+	IOREG_BG2PD BG2PD;						// 0x400x026: BG2 rotation/scaling parameter D (Engine A+B)
+	IOREG_BG2X BG2X;						// 0x400x028: BG2 X-coordinate (Engine A+B)
+	IOREG_BG2Y BG2Y;						// 0x400x02C: BG2 Y-coordinate (Engine A+B)
+} IOREG_BG2Parameter;						// 0x400x020: BG2 parameters (Engine A+B)
+
+typedef struct
+{
+	IOREG_BG3PA BG3PA;						// 0x400x030: BG3 rotation/scaling parameter A (Engine A+B)
+	IOREG_BG3PB BG3PB;						// 0x400x032: BG3 rotation/scaling parameter B (Engine A+B)
+	IOREG_BG3PC BG3PC;						// 0x400x034: BG3 rotation/scaling parameter C (Engine A+B)
+	IOREG_BG3PD BG3PD;						// 0x400x036: BG3 rotation/scaling parameter D (Engine A+B)
+	IOREG_BG3X BG3X;						// 0x400x038: BG3 X-coordinate (Engine A+B)
+	IOREG_BG3Y BG3Y;						// 0x400x03C: BG3 Y-coordinate (Engine A+B)
+} IOREG_BG3Parameter;						// 0x400x030: BG3 parameters (Engine A+B)
 
 /*******************************************************************************
 	these structures are for window description,
@@ -209,189 +378,519 @@ typedef struct {
 		+-- BG0/BG1/BG2/BG3/OBJ
 *******************************************************************************/
 
-typedef union {
-	struct	{
-		u8 end:8;
-		u8 start:8;
-	} bits ;
-	u16 val;
-} WINxDIM;
-
-#ifdef WORDS_BIGENDIAN
-typedef struct {
-/* 6*/  u8 :2;
-/* 5*/  u8 WINx_Effect_Enable:1;
-/* 4*/  u8 WINx_OBJ_Enable:1;
-/* 3*/  u8 WINx_BG3_Enable:1;
-/* 2*/  u8 WINx_BG2_Enable:1;
-/* 1*/  u8 WINx_BG1_Enable:1;
-/* 0*/  u8 WINx_BG0_Enable:1;
-} WINxBIT;
-#else
-typedef struct {
-/* 0*/  u8 WINx_BG0_Enable:1;
-/* 1*/  u8 WINx_BG1_Enable:1;
-/* 2*/  u8 WINx_BG2_Enable:1;
-/* 3*/  u8 WINx_BG3_Enable:1;
-/* 4*/  u8 WINx_OBJ_Enable:1;
-/* 5*/  u8 WINx_Effect_Enable:1;
-/* 6*/  u8 :2;
-} WINxBIT;
-#endif
-
-#ifdef WORDS_BIGENDIAN
-typedef union {
-	struct {
-		WINxBIT win0;
-		WINxBIT win1;
-	} bits;
-	struct {
-		u8 :3;
-		u8 win0_en:5;
-		u8 :3;
-		u8 win1_en:5;
-	} packed_bits;
-	struct {
-		u8 low;
-		u8 high;
-	} bytes;
-	u16 val ;
-} WINxCNT ;
-#else
-typedef union {
-	struct {
-		WINxBIT win0;
-		WINxBIT win1;
-	} bits;
-	struct {
-		u8 win0_en:5;
-		u8 :3;
-		u8 win1_en:5;
-		u8 :3;
-	} packed_bits;
-	struct {
-		u8 low;
-		u8 high;
-	} bytes;
-	u16 val ;
-} WINxCNT ;
-#endif
-
-/*
-typedef struct {
-    WINxDIM WIN0H;
-    WINxDIM WIN1H;
-    WINxDIM WIN0V;
-    WINxDIM WIN1V;
-    WINxCNT WININ;
-    WINxCNT WINOUT;
-} WINCNT;
-*/
-
-/*******************************************************************************
-    this structure is for miscellanous settings
-    //TODO: needs further description
-*******************************************************************************/
-
-typedef struct {
-    u16 MOSAIC;
-    u16 unused1;
-    u16 unused2;//BLDCNT;
-    u16 unused3;//BLDALPHA;
-    u16 unused4;//BLDY;
-    u16 unused5;
-	/*
-    u16 unused6;
-    u16 unused7;
-    u16 unused8;
-    u16 unused9;
-	*/
-} MISCCNT;
-
-
-/*******************************************************************************
-    this structure is for 3D settings
-*******************************************************************************/
-
-struct _DISP3DCNT
+typedef union
 {
-/* 0*/ u8 EnableTexMapping:1;    //
-/* 1*/ u8 PolygonShading:1;      // 0=Toon Shading, 1=Highlight Shading
-/* 2*/ u8 EnableAlphaTest:1;     // see ALPHA_TEST_REF
-/* 3*/ u8 EnableAlphaBlending:1; // see various Alpha values
-/* 4*/ u8 EnableAntiAliasing:1;  //
-/* 5*/ u8 EnableEdgeMarking:1;   // see EDGE_COLOR
-/* 6*/ u8 FogOnlyAlpha:1;        // 0=Alpha and Color, 1=Only Alpha (see FOG_COLOR)
-/* 7*/ u8 EnableFog:1;           // Fog Master Enable
-/* 8*/ u8 FogShiftSHR:4;         // 0..10 SHR-Divider (see FOG_OFFSET)
-/*12*/ u8 AckColorBufferUnderflow:1; // Color Buffer RDLINES Underflow (0=None, 1=Underflow/Acknowledge)
-/*13*/ u8 AckVertexRAMOverflow:1;    // Polygon/Vertex RAM Overflow    (0=None, 1=Overflow/Acknowledge)
-/*14*/ u8 RearPlaneMode:1;       // 0=Blank, 1=Bitmap
-/*15*/ u8 :1;
-/*16*/ u16 :16;
-};
+	u16 value;
+	
+	struct
+	{
+		u16 Right:8;						//  0- 7: Right coordinate of window
+		u16 Left:8;							//  8-15: Left coordinate of window
+	};
+} IOREG_WIN0H;								// 0x400x040: Horizontal coordinates of Window 0 (Engine A+B)
+typedef IOREG_WIN0H IOREG_WIN1H;			// 0x400x042: Horizontal coordinates of Window 1 (Engine A+B)
 
 typedef union
 {
-    struct _DISP3DCNT bits;
-    u32 val;
-} DISP3DCNT;
+	u16 value;
+	
+	struct
+	{
+		u16 Bottom:8;						//  0- 7: Bottom coordinate of window
+		u16 Top:8;							//  8-15: Top coordinate of window
+	};
+} IOREG_WIN0V;								// 0x400x044: Vertical coordinates of Window 0 (Engine A+B)
+typedef IOREG_WIN0V IOREG_WIN1V;			// 0x400x046: Vertical coordinates of Window 1 (Engine A+B)
 
-/*******************************************************************************
-    this structure is for capture control (core A only)
-
-    source:
-    http://nocash.emubase.de/gbatek.htm#dsvideocaptureandmainmemorydisplaymode
-*******************************************************************************/
-struct DISPCAPCNT
+typedef union
 {
-	enum CAPX {
-		_128, _256
-	} capx;
-    u32 val;
-	BOOL enabled;
-	u8 EVA;
-	u8 EVB;
-	u8 writeBlock;
-	u8 writeOffset;
-	u16 capy;
-	u8 srcA;
-	u8 srcB;
-	u8 readBlock;
-	u8 readOffset;
-	u8 capSrc;
-} ;
+	u64 value;
+	
+	struct
+	{
+		IOREG_WIN0H WIN0H;					// 0x0400x040
+		IOREG_WIN1H WIN1H;					// 0x0400x042
+		IOREG_WIN0V WIN0V;					// 0x0400x044
+		IOREG_WIN1V WIN1V;					// 0x0400x046
+	};
+} IOREG_WIN_COORD;
 
-/*******************************************************************************
-    this structure holds everything and should be mapped to
-    * core A : 0x04000000
-    * core B : 0x04001000
-*******************************************************************************/
+typedef union
+{
+	u8 value;
+	
+	struct
+	{
+#ifndef MSB_FIRST
+		u8 BG0_Enable:1;					//     0: Layer BG0 display; 0=Disable, 1=Enable
+		u8 BG1_Enable:1;					//     1: Layer BG1 display; 0=Disable, 1=Enable
+		u8 BG2_Enable:1;					//     2: Layer BG2 display; 0=Disable, 1=Enable
+		u8 BG3_Enable:1;					//     3: Layer BG3 display; 0=Disable, 1=Enable
+		u8 OBJ_Enable:1;					//     4: Layer OBJ display; 0=Disable, 1=Enable
+		u8 Effect_Enable:1;					//     5: Color special effect; 0=Disable, 1=Enable
+		u8 :2;								//  6- 7: Unused bits
+#else
+		u8 :2;								//  6- 7: Unused bits
+		u8 Effect_Enable:1;					//     5: Color special effect; 0=Disable, 1=Enable
+		u8 OBJ_Enable:1;					//     4: Layer OBJ display; 0=Disable, 1=Enable
+		u8 BG3_Enable:1;					//     3: Layer BG3 display; 0=Disable, 1=Enable
+		u8 BG2_Enable:1;					//     2: Layer BG2 display; 0=Disable, 1=Enable
+		u8 BG1_Enable:1;					//     1: Layer BG1 display; 0=Disable, 1=Enable
+		u8 BG0_Enable:1;					//     0: Layer BG0 display; 0=Disable, 1=Enable
+#endif
+	};
+} IOREG_WIN0IN;								// 0x400x048: Control of inside of Window 0 (highest priority)
+typedef IOREG_WIN0IN IOREG_WIN1IN;			// 0x400x049: Control of inside of Window 1 (medium priority)
+typedef IOREG_WIN0IN IOREG_WINOUT;			// 0x400x04A: Control of outside of all windows
+typedef IOREG_WIN0IN IOREG_WINOBJ;			// 0x400x04B: Control of inside of Window OBJ (lowest priority)
 
-typedef struct _reg_dispx {
-    DISPCNT dispx_DISPCNT;            // 0x0400x000
-    u16 dispA_DISPSTAT;               // 0x04000004
-    u16 dispx_VCOUNT;                 // 0x0400x006
-    BGxCNT dispx_BGxCNT[4];           // 0x0400x008
-    BGxOFS dispx_BGxOFS[4];           // 0x0400x010
-    BGxPARMS dispx_BG2PARMS;          // 0x0400x020
-    BGxPARMS dispx_BG3PARMS;          // 0x0400x030
-    u8			filler[12];           // 0x0400x040
-    MISCCNT dispx_MISC;               // 0x0400x04C
-    DISP3DCNT dispA_DISP3DCNT;        // 0x04000060
-    DISPCAPCNT dispA_DISPCAPCNT;      // 0x04000064
-    u32 dispA_DISPMMEMFIFO;           // 0x04000068
-} REG_DISPx ;
+typedef union
+{
+	u32 value;
+	
+	struct
+	{
+		IOREG_WIN0IN WIN0IN;				// 0x0400x048
+		IOREG_WIN1IN WIN1IN;				// 0x0400x049
+		IOREG_WINOUT WINOUT;				// 0x0400x04A
+		IOREG_WINOBJ WINOBJ;				// 0x0400x04B
+	};
+} IOREG_WIN_CTRL;
 
+typedef union
+{
+	u32 value;
+	
+	struct
+	{
+#ifndef MSB_FIRST
+		u32 BG_MosaicH:4;					//  0- 3: Mosaic pixel width for BG layers; 0...15
+		u32 BG_MosaicV:4;					//  4- 7: Mosaic pixel height for BG layers; 0...15
+		
+		u32 OBJ_MosaicH:4;					//  8-11: Mosaic pixel width for OBJ layer; 0...15
+		u32 OBJ_MosaicV:4;					// 12-15: Mosaic pixel height for OBJ layer; 0...15
+#else
+		u32 BG_MosaicV:4;					//  4- 7: Mosaic pixel height for BG layers; 0...15
+		u32 BG_MosaicH:4;					//  0- 3: Mosaic pixel width for BG layers; 0...15
+		
+		u32 OBJ_MosaicV:4;					// 12-15: Mosaic pixel height for OBJ layer; 0...15
+		u32 OBJ_MosaicH:4;					//  8-11: Mosaic pixel width for OBJ layer; 0...15
+#endif
+		
+		u32 :16;							// 16-31: Unused bits
+	};
+} IOREG_MOSAIC;								// 0x400x04C: Mosaic size (Engine A+B)
 
-typedef BOOL (*fun_gl_Begin) (int screen);
-typedef void (*fun_gl_End) (int screen);
-// the GUI should use this function prior to all gl calls
-// if call to beg succeeds opengl draw
-void register_gl_fun(fun_gl_Begin beg,fun_gl_End end);
+typedef union
+{
+	u16 value;
+	
+	struct
+	{
+#ifndef MSB_FIRST
+		u16 BG0_Target1:1;					//     0: Select layer BG0 for 1st target; 0=Disable, 1=Enable
+		u16 BG1_Target1:1;					//     1: Select layer BG1 for 1st target; 0=Disable, 1=Enable
+		u16 BG2_Target1:1;					//     2: Select layer BG2 for 1st target; 0=Disable, 1=Enable
+		u16 BG3_Target1:1;					//     3: Select layer BG3 for 1st target; 0=Disable, 1=Enable
+		u16 OBJ_Target1:1;					//     4: Select layer OBJ for 1st target; 0=Disable, 1=Enable
+		u16 Backdrop_Target1:1;				//     5: Select backdrop for 1st target; 0=Disable, 1=Enable
+		u16 ColorEffect:2;					//  6- 7: Color effect mode;
+											//        0=Disable
+											//        1=Alpha blend 1st and 2nd target, interacts with BLDALPHA (0x400x052)
+											//        2=Increase brightness, interacts with BLDY (0x400x054)
+											//        3=Decrease brightness, interacts with BLDY (0x400x054)
+		
+		u16 BG0_Target2:1;					//     8: Select layer BG0 for 2nd target; 0=Disable, 1=Enable
+		u16 BG1_Target2:1;					//     9: Select layer BG1 for 2nd target; 0=Disable, 1=Enable
+		u16 BG2_Target2:1;					//    10: Select layer BG2 for 2nd target; 0=Disable, 1=Enable
+		u16 BG3_Target2:1;					//    11: Select layer BG3 for 2nd target; 0=Disable, 1=Enable
+		u16 OBJ_Target2:1;					//    12: Select layer OBJ for 2nd target; 0=Disable, 1=Enable
+		u16 Backdrop_Target2:1;				//    13: Select backdrop for 2nd target; 0=Disable, 1=Enable
+		u16 :2;								// 14-15: Unused bits
+#else
+		u16 ColorEffect:2;					//  6- 7: Color effect mode;
+											//        0=Disable
+											//        1=Alpha blend 1st and 2nd target, interacts with BLDALPHA (0x400x052)
+											//        2=Increase brightness, interacts with BLDY (0x400x054)
+											//        3=Decrease brightness, interacts with BLDY (0x400x054)
+		u16 Backdrop_Target1:1;				//     5: Select backdrop for 1st target; 0=Disable, 1=Enable
+		u16 OBJ_Target1:1;					//     4: Select layer OBJ for 1st target; 0=Disable, 1=Enable
+		u16 BG3_Target1:1;					//     3: Select layer BG3 for 1st target; 0=Disable, 1=Enable
+		u16 BG2_Target1:1;					//     2: Select layer BG2 for 1st target; 0=Disable, 1=Enable
+		u16 BG1_Target1:1;					//     1: Select layer BG1 for 1st target; 0=Disable, 1=Enable
+		u16 BG0_Target1:1;					//     0: Select layer BG0 for 1st target; 0=Disable, 1=Enable
+		
+		u16 :2;								// 14-15: Unused bits
+		u16 Backdrop_Target2:1;				//    13: Select backdrop for 2nd target; 0=Disable, 1=Enable
+		u16 OBJ_Target2:1;					//    12: Select layer OBJ for 2nd target; 0=Disable, 1=Enable
+		u16 BG3_Target2:1;					//    11: Select layer BG3 for 2nd target; 0=Disable, 1=Enable
+		u16 BG2_Target2:1;					//    10: Select layer BG2 for 2nd target; 0=Disable, 1=Enable
+		u16 BG1_Target2:1;					//     9: Select layer BG1 for 2nd target; 0=Disable, 1=Enable
+		u16 BG0_Target2:1;					//     8: Select layer BG0 for 2nd target; 0=Disable, 1=Enable
+#endif
+	};
+} IOREG_BLDCNT;								// 0x400x050: Color effects selection (Engine A+B)
 
-#define GPU_MAIN	0
-#define GPU_SUB		1
+typedef union
+{
+	u16 value;
+	
+	struct
+	{
+#ifndef MSB_FIRST
+		u16 EVA:5;							//  0- 4: Blending coefficient for 1st target; 0...31 (clamped to 16)
+		u16 :3;								//  5- 7: Unused bits
+		
+		u16 EVB:5;							//  8-12: Blending coefficient for 2nd target; 0...31 (clamped to 16)
+		u16 :3;								// 13-15: Unused bits
+#else
+		u16 :3;								//  5- 7: Unused bits
+		u16 EVA:5;							//  0- 4: Blending coefficient for 1st target; 0...31 (clamped to 16)
+		
+		u16 :3;								// 13-15: Unused bits
+		u16 EVB:5;							//  8-12: Blending coefficient for 2nd target; 0...31 (clamped to 16)
+#endif
+	};
+} IOREG_BLDALPHA;							// 0x400x052: Color effects selection, interacts with BLDCNT (0x400x050) (Engine A+B)
+
+typedef union
+{
+	u16 value;
+	
+	struct
+	{
+#ifndef MSB_FIRST
+		u16 EVY:5;							//  0- 4: Blending coefficient for increase/decrease brightness; 0...31 (clamped to 16)
+		u16 :3;								//  5- 7: Unused bits
+#else
+		u16 :3;								//  5- 7: Unused bits
+		u16 EVY:5;							//  0- 4: Blending coefficient for increase/decrease brightness; 0...31 (clamped to 16)
+#endif
+		u16 :8;								//  8-15: Unused bits
+	};
+} IOREG_BLDY;								// 0x400x054: Color effects selection, interacts with BLDCNT (0x400x050) (Engine A+B)
+
+typedef union
+{
+    u32 value;
+	
+	struct
+	{
+#ifndef MSB_FIRST
+		u8 EnableTexMapping:1;				//     0: Apply textures; 0=Disable, 1=Enable
+		u8 PolygonShading:1;				//     1: Polygon shading mode, interacts with POLYGON_ATTR (0x40004A4); 0=Toon Shading, 1=Highlight Shading
+		u8 EnableAlphaTest:1;				//     2: Perform alpha test, interacts with ALPHA_TEST_REF (0x4000340); 0=Disable, 1=Enable
+		u8 EnableAlphaBlending:1;			//     3: Perform alpha blending, interacts with POLYGON_ATTR (0x40004A4); 0=Disable, 1=Enable
+		u8 EnableAntialiasing:1;			//     4: Render polygon edges with antialiasing; 0=Disable, 1=Enable
+		u8 EnableEdgeMarking:1;				//     5: Perform polygon edge marking, interacts with EDGE_COLOR (0x4000330); 0=Disable, 1=Enable
+		u8 FogOnlyAlpha:1;					//     6: Apply fog to the alpha channel only, interacts with FOG_COLOR (0x4000358) / FOG_TABLE (0x4000360); 0=Color+Alpha, 1=Alpha
+		u8 EnableFog:1;						//     7: Perform fog rendering, interacts with FOG_COLOR (0x4000358) / FOG_OFFSET (0x400035C) / FOG_TABLE (0x4000360);
+											//        0=Disable, 1=Enable
+		
+		u8 FogShiftSHR:4;					//  8-11: SHR-Divider, interacts with FOG_OFFSET (0x400035C); 0...10
+		u8 AckColorBufferUnderflow:1;		//    12: Color Buffer RDLINES Underflow; 0=None, 1=Underflow/Acknowledge
+		u8 AckVertexRAMOverflow:1;			//    13: Polygon/Vertex RAM Overflow; 0=None, 1=Overflow/Acknowledge
+		u8 RearPlaneMode:1;					//    14: Use clear image, interacts with CLEAR_COLOR (0x4000350) / CLEAR_DEPTH (0x4000354) / CLRIMAGE_OFFSET (0x4000356);
+											//        0=Blank, 1=Bitmap
+		u8 :1;								//    15: Unused bits
+		
+		u16 :16;							// 16-31: Unused bits
+#else
+		u8 EnableFog:1;						//     7: Perform fog rendering, interacts with FOG_COLOR (0x4000358) / FOG_OFFSET (0x400035C) / FOG_TABLE (0x4000360);
+											//        0=Disable, 1=Enable
+		u8 FogOnlyAlpha:1;					//     6: Apply fog to the alpha channel only, interacts with FOG_COLOR (0x4000358) / FOG_TABLE (0x4000360); 0=Color+Alpha, 1=Alpha
+		u8 EnableEdgeMarking:1;				//     5: Perform polygon edge marking, interacts with EDGE_COLOR (0x4000330); 0=Disable, 1=Enable
+		u8 EnableAntialiasing:1;			//     4: Render polygon edges with antialiasing; 0=Disable, 1=Enable
+		u8 EnableAlphaBlending:1;			//     3: Perform alpha blending, interacts with POLYGON_ATTR (0x40004A4); 0=Disable, 1=Enable
+		u8 EnableAlphaTest:1;				//     2: Perform alpha test, interacts with ALPHA_TEST_REF (0x4000340); 0=Disable, 1=Enable
+		u8 PolygonShading:1;				//     1: Polygon shading mode, interacts with POLYGON_ATTR (0x40004A4); 0=Toon Shading, 1=Highlight Shading
+		u8 EnableTexMapping:1;				//     0: Apply textures; 0=Disable, 1=Enable
+		
+		u8 :1;								//    15: Unused bits
+		u8 RearPlaneMode:1;					//    14: Use clear image, interacts with CLEAR_COLOR (0x4000350) / CLEAR_DEPTH (0x4000354) / CLRIMAGE_OFFSET (0x4000356);
+											//        0=Blank, 1=Bitmap
+		u8 AckVertexRAMOverflow:1;			//    13: Polygon/Vertex RAM Overflow; 0=None, 1=Overflow/Acknowledge
+		u8 AckColorBufferUnderflow:1;		//    12: Color Buffer RDLINES Underflow; 0=None, 1=Underflow/Acknowledge
+		u8 FogShiftSHR:4;					//  8-11: SHR-Divider, interacts with FOG_OFFSET (0x400035C); 0...10
+		
+		u16 :16;							// 16-31: Unused bits
+#endif
+	};
+} IOREG_DISP3DCNT;							// 0x4000060: 3D engine control (Engine A only)
+
+typedef union
+{
+	u32 value;
+	
+	struct
+	{
+#ifndef MSB_FIRST
+		u32 EVA:5;							//  0- 4: Blending coefficient for SrcA; 0...31 (clamped to 16)
+		u32 :3;								//  5- 7: Unused bits
+		
+		u32 EVB:5;							//  8-12: Blending coefficient for SrcB; 0...31 (clamped to 16)
+		u32 :3;								// 13-15: Unused bits
+		
+		u32 VRAMWriteBlock:2;				// 16-17: VRAM write target block; 0=Block A, 1=Block B, 2=Block C, 3=Block D
+		u32 VRAMWriteOffset:2;				// 18-19: VRAM write target offset; 0=0KB, 1=32KB, 2=64KB, 3=96KB
+		u32 CaptureSize:2;					// 20-21: Display capture dimensions; 0=128x128, 1=256x64, 2=256x128, 3=256x192
+		u32 :2;								// 22-23: Unused bits
+		
+		u32 SrcA:1;							//    24: SrcA target; 0=Current framebuffer, 1=3D render buffer
+		u32 SrcB:1;							//    25: SrcB target;
+											//        0=VRAM block, interacts with DISPCNT (0x4000000)
+											//        1=Main memory FIFO, interacts with DISP_MMEM_FIFO (0x4000068)
+		u32 VRAMReadOffset:2;				// 26-27: VRAM read target offset; 0=0KB, 1=32KB, 2=64KB, 3=96KB
+		u32 :1;								//    28: Unused bit
+		u32 CaptureSrc:2;					// 29-30: Select capture target; 0=SrcA, 1=SrcB, 2=SrcA+SrcB blend, 3=SrcA+SrcB blend
+		u32 CaptureEnable:1;				//    31: Display capture status; 0=Disable/Ready 1=Enable/Busy
+#else
+		u32 :3;								//  5- 7: Unused bits
+		u32 EVA:5;							//  0- 4: Blending coefficient for SrcA; 0...31 (clamped to 16)
+		
+		u32 :3;								// 13-15: Unused bits
+		u32 EVB:5;							//  8-12: Blending coefficient for SrcB; 0...31 (clamped to 16)
+		
+		u32 :2;								// 22-23: Unused bits
+		u32 CaptureSize:2;					// 20-21: Display capture dimensions; 0=128x128, 1=256x64, 2=256x128, 3=256x192
+		u32 VRAMWriteOffset:2;				// 18-19: VRAM write target offset; 0=0KB, 1=32KB, 2=64KB, 3=96KB
+		u32 VRAMWriteBlock:2;				// 16-17: VRAM write target block; 0=Block A, 1=Block B, 2=Block C, 3=Block D
+		
+		u32 CaptureEnable:1;				//    31: Display capture status; 0=Disable/Ready 1=Enable/Busy
+		u32 CaptureSrc:2;					// 29-30: Select capture target; 0=SrcA, 1=SrcB, 2=SrcA+SrcB blend, 3=SrcA+SrcB blend
+		u32 :1;								//    28: Unused bit
+		u32 VRAMReadOffset:2;				// 26-27: VRAM read target offset; 0=0KB, 1=32KB, 2=64KB, 3=96KB
+		u32 SrcB:1;							//    25: SrcB target;
+											//        0=VRAM block, interacts with DISPCNT (0x4000000)
+											//        1=Main memory FIFO, interacts with DISP_MMEM_FIFO (0x4000068)
+		u32 SrcA:1;							//    24: SrcA target; 0=Current framebuffer, 1=3D render buffer
+#endif
+	};
+	
+} IOREG_DISPCAPCNT;							// 0x4000064: Display capture control (Engine A only)
+
+typedef u32 IOREG_DISP_MMEM_FIFO;			// 0x4000068: Main memory FIFO data (Engine A only)
+
+typedef union
+{
+	u32 value;
+	
+	struct
+	{
+#ifndef MSB_FIRST
+		u32 Intensity:5;					//  0- 4: Brightness coefficient for increase/decrease brightness; 0...31 (clamped to 16)
+		u32 :3;								//  5- 7: Unused bits
+		
+		u32 :6;								//  8-13: Unused bits
+		u32 Mode:2;							// 14-15: Brightness mode; 0=Disable, 1=Increase, 2=Decrease, 3=Reserved
+		
+		u32 :16;							// 16-31: Unused bits
+#else
+		u32 :3;								//  5- 7: Unused bits
+		u32 Intensity:5;					//  0- 4: Brightness coefficient for increase/decrease brightness; 0...31 (clamped to 16)
+		
+		u32 Mode:2;							// 14-15: Brightness mode; 0=Disable, 1=Increase, 2=Decrease, 3=Reserved
+		u32 :6;								//  8-13: Unused bits
+		
+		u32 :16;							// 16-31: Unused bits
+#endif
+	};
+} IOREG_MASTER_BRIGHT;						// 0x400x06C: Master brightness effect (Engine A+B)
+
+#include "PACKED.h"
+typedef struct __PACKED
+{
+	IOREG_DISPCNT			DISPCNT;				// 0x0400x000
+	IOREG_DISPSTAT			DISPSTAT;				// 0x04000004
+	IOREG_VCOUNT			VCOUNT;					// 0x04000006
+	
+	union
+	{
+		IOREG_BGnCNT		BGnCNT[4];				// 0x0400x008
+		
+		struct
+		{
+			IOREG_BG0CNT	BG0CNT;					// 0x0400x008
+			IOREG_BG1CNT	BG1CNT;					// 0x0400x00A
+			IOREG_BG2CNT	BG2CNT;					// 0x0400x00C
+			IOREG_BG3CNT	BG3CNT;					// 0x0400x00E
+		};
+	};
+	
+	union
+	{
+		IOREG_BGnOFS		BGnOFS[4];				// 0x0400x010
+		
+		struct
+		{
+			IOREG_BG0HOFS	BG0HOFS;				// 0x0400x010
+			IOREG_BG0VOFS	BG0VOFS;				// 0x0400x012
+			IOREG_BG1HOFS	BG1HOFS;				// 0x0400x014
+			IOREG_BG1VOFS	BG1VOFS;				// 0x0400x016
+			IOREG_BG2HOFS	BG2HOFS;				// 0x0400x018
+			IOREG_BG2VOFS	BG2VOFS;				// 0x0400x01A
+			IOREG_BG3HOFS	BG3HOFS;				// 0x0400x01C
+			IOREG_BG3VOFS	BG3VOFS;				// 0x0400x01E
+		};
+	};
+	
+	union
+	{
+		IOREG_BGnParameter			BGnParam[2];	// 0x0400x020
+		
+		struct
+		{
+			union
+			{
+				IOREG_BG2Parameter	BG2Param;		// 0x0400x020
+				
+				struct
+				{
+					IOREG_BG2PA		BG2PA;			// 0x0400x020
+					IOREG_BG2PB		BG2PB;			// 0x0400x022
+					IOREG_BG2PC		BG2PC;			// 0x0400x024
+					IOREG_BG2PD		BG2PD;			// 0x0400x026
+					IOREG_BG2X		BG2X;			// 0x0400x028
+					IOREG_BG2Y		BG2Y;			// 0x0400x02C
+				};
+			};
+			
+			union
+			{
+				IOREG_BG3Parameter	BG3Param;		// 0x0400x030
+				
+				struct
+				{
+					IOREG_BG3PA		BG3PA;			// 0x0400x030
+					IOREG_BG3PB		BG3PB;			// 0x0400x032
+					IOREG_BG3PC		BG3PC;			// 0x0400x034
+					IOREG_BG3PD		BG3PD;			// 0x0400x036
+					IOREG_BG3X		BG3X;			// 0x0400x038
+					IOREG_BG3Y		BG3Y;			// 0x0400x03C
+				};
+			};
+		};
+	};
+	
+	union
+	{
+		IOREG_WIN_COORD		WIN_COORD;				// 0x0400x040
+		
+		struct
+		{
+			IOREG_WIN0H		WIN0H;					// 0x0400x040
+			IOREG_WIN1H		WIN1H;					// 0x0400x042
+			IOREG_WIN0V		WIN0V;					// 0x0400x044
+			IOREG_WIN1V		WIN1V;					// 0x0400x046
+		};
+	};
+	
+	union
+	{
+		IOREG_WIN_CTRL		WIN_CTRL;				// 0x0400x048
+		
+		struct
+		{
+			IOREG_WIN0IN	WIN0IN;					// 0x0400x048
+			IOREG_WIN1IN	WIN1IN;					// 0x0400x049
+			IOREG_WINOUT	WINOUT;					// 0x0400x04A
+			IOREG_WINOBJ	WINOBJ;					// 0x0400x04B
+		};
+	};
+	
+	IOREG_MOSAIC			MOSAIC;					// 0x0400x04C
+	
+	IOREG_BLDCNT			BLDCNT;					// 0x0400x050
+	IOREG_BLDALPHA			BLDALPHA;				// 0x0400x052
+	IOREG_BLDY				BLDY;					// 0x0400x054
+	
+	u8						unused[10];				// 0x0400x056
+	
+	IOREG_DISP3DCNT			DISP3DCNT;				// 0x04000060
+	IOREG_DISPCAPCNT		DISPCAPCNT;				// 0x04000064
+	IOREG_DISP_MMEM_FIFO	DISP_MMEM_FIFO;			// 0x04000068
+	
+	IOREG_MASTER_BRIGHT		MASTER_BRIGHT;			// 0x0400x06C
+} GPU_IOREG;										// 0x04000000, 0x04001000: GPU registers
+#include "PACKED_END.h"
+
+typedef union
+{
+	u8 value;
+	
+	struct
+	{
+#ifndef MSB_FIRST
+		u8 SoundAmp_Enable:1;						//  0: Sound amplifier; 0=Disable, 1=Enable
+		u8 SoundAmp_Mute:1;							//  1: Sound amplifier mute control; 0=Normal, 1=Mute
+		u8 TouchBacklight_Enable:1;					//  2: Touch display backlight; 0=Disable, 1=Enable
+		u8 MainBacklight_Enable:1;					//  3: Main display backlight; 0=Disable, 1=Enable
+		u8 PowerLEDBlink_Enable:1;					//  4: Power LED blink control; 0=Disable (Power LED remains steadily ON), 1=Enable
+		u8 PowerLEDBlinkSpeed:1;					//  5: Power LED blink speed when enabled; 0=Slow, 1=Fast
+		u8 SystemPowerState:1;						//  6: NDS system power state; 0=System is powered ON, 1=System is powered OFF
+		u8 :1;										//  7: Unused bit (should always be read as 0)
+#else
+		u8 :1;										//  7: Unused bit (should always be read as 0)
+		u8 SystemPowerState:1;						//  6: NDS system power state; 0=System is powered ON, 1=System is powered OFF
+		u8 PowerLEDBlinkSpeed:1;					//  5: Power LED blink speed when enabled; 0=Slow, 1=Fast
+		u8 PowerLEDBlink_Enable:1;					//  4: Power LED blink control; 0=Disable (LED is steady ON), 1=Enable
+		u8 MainBacklight_Enable:1;					//  3: Main display backlight; 0=Disable, 1=Enable
+		u8 TouchBacklight_Enable:1;					//  2: Touch display backlight; 0=Disable, 1=Enable
+		u8 SoundAmp_Mute:1;							//  1: Sound amplifier mute control; 0=Normal, 1=Mute
+		u8 SoundAmp_Enable:1;						//  0: Sound amplifier; 0=Disable, 1=Enable
+#endif
+	};
+} IOREG_POWERMANCTL;
+
+typedef union
+{
+	u8 value;
+	
+	struct
+	{
+#ifndef MSB_FIRST
+		u8 Level:2;									// 0-1: Backlight brightness level;
+													//      0=Low
+													//      1=Medium
+													//      2=High
+													//      3=Maximum
+		u8 ForceMaxBrightnessWithExtPower_Enable:1;	//   2: Forces maximum brightness if external power is present, interacts with Bit 3; 0=Disable, 1=Enable
+		u8 ExternalPowerState:1;					//   3: External power state; 0=External power is not present, 1=External power is present
+		u8 :4;										// 4-7: Unknown bits (should always be read as 4)
+#else
+		u8 :4;										// 4-7: Unknown bits (should always be read as 4)
+		u8 ExternalPowerState:1;					//   3: External power state; 0=External power is not present, 1=External power is present
+		u8 ForceMaxBrightnessWithExtPower_Enable:1;	//   2: Forces maximum brightness if external power is present, interacts with Bit 3; 0=Disable, 1=Enable
+		u8 Level:2;									// 0-1: Backlight brightness level;
+													//      0=Low
+													//      1=Medium
+													//      2=High
+													//      3=Maximum
+#endif
+	};
+} IOREG_BACKLIGHTCTL;
+
+enum BacklightLevel
+{
+	BacklightLevel_Low					= 0,
+	BacklightLevel_Medium				= 1,
+	BacklightLevel_High					= 2,
+	BacklightLevel_Maximum				= 3
+};
+
+enum ColorEffect
+{
+	ColorEffect_Disable					= 0,
+	ColorEffect_Blend					= 1,
+	ColorEffect_IncreaseBrightness		= 2,
+	ColorEffect_DecreaseBrightness		= 3
+};
+
+enum GPUEngineID
+{
+	GPUEngineID_Main	= 0,
+	GPUEngineID_Sub		= 1
+};
 
 /* human readable bitmask names */
 #define ADDRESS_STEP_512B	   0x00200
@@ -407,7 +906,7 @@ void register_gl_fun(fun_gl_Begin beg,fun_gl_End end);
 #define ADDRESS_STEP_512KB	   0x80000
 #define ADDRESS_MASK_256KB	   (ADDRESS_STEP_256KB-1)
 
-#ifdef WORDS_BIGENDIAN
+#ifdef MSB_FIRST
 struct _TILEENTRY
 {
 /*14*/	unsigned Palette:4;
@@ -430,117 +929,116 @@ typedef union
 	u16 val;
 } TILEENTRY;
 
-struct _ROTOCOORD
-{
-	u32 Fraction:8;
-	s32 Integer:20;
-	u32 pad:4;
-};
 typedef union
 {
-	struct _ROTOCOORD bits;
-	s32 val;
-} ROTOCOORD;
-
-
-/*
-	this structure is for color representation,
-	it holds 5 meaningful bits per color channel (red,green,blue)
-	and	  1 meaningful bit for alpha representation
-	this bit can be unused or used for special FX
-*/
-
-struct _COLOR { // abgr x555
-#ifdef WORDS_BIGENDIAN
-	unsigned alpha:1;    // sometimes it is unused (pad)
-	unsigned blue:5;
-	unsigned green:5;
-	unsigned red:5;
+	u16 attr[4];
+	
+	struct
+	{
+#ifndef MSB_FIRST
+		union
+		{
+			u16 attr0;
+			
+			struct
+			{
+				u16 Y:8;					//  0- 7: Sprite Y-coordinate location within the framebuffer; 0...255
+				u16 RotScale:1;				//     8: Perform rotation/scaling; 0=Disable, 1=Enable
+				u16 Disable:1;				//     9: OBJ disable flag, only if Bit8 is cleared; 0=Perform render, 1=Do not perform render
+				u16 Mode:2;					// 10-11: OBJ mode; 0=Normal, 1=Transparent, 2=Window, 3=Bitmap
+				u16 Mosaic:1;				//    12: Mosaic render: 0=Disable, 1=Enable
+				u16 PaletteMode:1;			//    13: Color/palette select; 0=16 palettes of 16 colors each, 1=Single palette of 256 colors
+				u16 Shape:2;				// 14-15: OBJ shape; 0=Square, 1=Horizontal, 2=Vertical, 3=Prohibited
+			};
+			
+			struct
+			{
+				u16 :8;
+				u16 :1;
+				u16 DoubleSize:1;			//     9: Perform double-size render, only if Bit8 is set; 0=Disable, 1=Enable
+				u16 :6;
+			};
+		};
+		
+		s16 X:9;							// 16-24: Sprite X-coordinate location within the framebuffer; 0...511
+		u16 RotScaleIndex:3;				// 25-27: Rotation/scaling parameter selection; 0...31
+		u16 HFlip:1;						//    28: Flip sprite horizontally; 0=Normal, 1=Flip
+		u16 VFlip:1;						//    29: Flip sprite vertically; 0=Normal, 1=Flip
+		u16 Size:2;							// 30-31: OBJ size, interacts with Bit 14-15
+											//
+											//        Size| Square | Horizontal | Vertical
+											//           0:   8x8       16x8        8x16
+											//           1:  16x16      32x8        8x32
+											//           2:  32x32      32x16      16x32
+											//           3:  64x64      64x32      32x64
+		u16 TileIndex:10;					// 32-41: Tile index; 0...1023
+		
+		u16 Priority:2;						// 42-43: Rendering priority; 0...3, where 0 is highest priority and 3 is lowest priority
+		u16 PaletteIndex:4;					// 44-47: Palette index; 0...15
 #else
-     unsigned red:5;
-     unsigned green:5;
-     unsigned blue:5;
-     unsigned alpha:1;    // sometimes it is unused (pad)
+		union
+		{
+			u16 attr0;
+			
+			struct
+			{
+				u16 Y:8;					//  0- 7: Sprite Y-coordinate location within the framebuffer; 0...255
+				u16 Shape:2;				// 14-15: OBJ shape; 0=Square, 1=Horizontal, 2=Vertical, 3=Prohibited
+				u16 PaletteMode:1;			//    13: Color/palette select; 0=16 palettes of 16 colors each, 1=Single palette of 256 colors
+				u16 Mosaic:1;				//    12: Mosaic render: 0=Disable, 1=Enable
+				u16 Mode:2;					// 10-11: OBJ mode; 0=Normal, 1=Transparent, 2=Window, 3=Bitmap
+				u16 Disable:1;				//     9: OBJ disable flag, only if Bit8 is cleared; 0=Perform render, 1=Do not perform render
+				u16 RotScale:1;				//     8: Perform rotation/scaling; 0=Disable, 1=Enable
+			};
+			
+			struct
+			{
+				u16 :8;
+				u16 :6;
+				u16 DoubleSize:1;			//     9: Perform double-size render, only if Bit8 is set; 0=Disable, 1=Enable
+				u16 :1;
+			};
+		};
+		
+		// 16-31: Whenever this is used, you will need to explicitly convert endianness.
+		u16 Size:2;							// 30-31: OBJ size, interacts with Bit 14-15
+											//
+											//        Size| Square | Horizontal | Vertical
+											//           0:   8x8       16x8        8x16
+											//           1:  16x16      32x8        8x32
+											//           2:  32x32      32x16      16x32
+											//           3:  64x64      64x32      32x64
+		u16 VFlip:1;						//    29: Flip sprite vertically; 0=Normal, 1=Flip
+		u16 HFlip:1;						//    28: Flip sprite horizontally; 0=Normal, 1=Flip
+		u16 RotScaleIndex:3;				// 25-27: Rotation/scaling parameter selection; 0...31
+		s16 X:9;							// 16-24: Sprite X-coordinate location within the framebuffer; 0...511
+		
+		// 32-47: Whenever this is used, you will need to explicitly convert endianness.
+		u16 PaletteIndex:4;					// 44-47: Palette index; 0...15
+		u16 Priority:2;						// 42-43: Rendering priority; 0...3, where 0 is highest priority and 3 is lowest priority
+		u16 TileIndex:10;					// 32-41: Tile index; 0...1023
 #endif
-};
-struct _COLORx { // abgr x555
-	unsigned bgr:15;
-	unsigned alpha:1;	// sometimes it is unused (pad)
-};
+		
+		u16 attr3:16;						// 48-63: Whenever this is used, you will need to explicitly convert endianness.
+	};
+} OAMAttributes;
 
-typedef union
+enum SpriteRenderMode
 {
-	struct _COLOR bits;
-	struct _COLORx bitx;
-	u16 val;
-} COLOR;
-
-struct _COLOR32 { // ARGB
-	unsigned :3;
-	unsigned blue:5;
-	unsigned :3;
-	unsigned green:5;
-	unsigned :3;
-	unsigned red:5;
-	unsigned :7;
-	unsigned alpha:1;	// sometimes it is unused (pad)
+	SpriteRenderMode_Sprite1D = 0,
+	SpriteRenderMode_Sprite2D = 1
 };
-
-typedef union
-{
-	struct _COLOR32 bits;
-	u32 val;
-} COLOR32;
-
-#define COLOR_16_32(w,i)	\
-	/* doesnt matter who's 16bit who's 32bit */ \
-	i.bits.red   = w.bits.red; \
-	i.bits.green = w.bits.green; \
-	i.bits.blue  = w.bits.blue; \
-	i.bits.alpha = w.bits.alpha;
-
-
-
- // (00: Normal, 01: Transparent, 10: Object window, 11: Bitmap)
-enum GPU_OBJ_MODE
-{
-	GPU_OBJ_MODE_Normal = 0,
-	GPU_OBJ_MODE_Transparent = 1,
-	GPU_OBJ_MODE_Window = 2,
-	GPU_OBJ_MODE_Bitmap = 3
-};
-
-struct _OAM_
-{
-	//attr0
-	u8 Y;
-	u8 RotScale;
-	u8 Mode;
-	u8 Mosaic;
-	u8 Depth;
-	u8 Shape;
-	//att1
-	s16 X;
-	u8 RotScalIndex;
-	u8 HFlip, VFlip;
-	u8 Size;
-	//attr2
-	u16 TileIndex;
-	u8 Priority;
-	u8 PaletteIndex;
-	//attr3
-	u16 attr3;
-};
-
-void SlurpOAM(_OAM_* oam_output, void* oam_buffer, int oam_index);
-u16 SlurpOAMAffineParam(void* oam_buffer, int oam_index);
 
 typedef struct
 {
-	 s16 x;
-	 s16 y;
-} size;
+	u16 width;
+	u16 height;
+} GPUSize_u16;
 
+typedef GPUSize_u16 SpriteSize;
+typedef GPUSize_u16 BGLayerSize;
+
+typedef u8 TBlendTable[32][32];
 
 #define NB_PRIORITIES	4
 #define NB_BG		4
@@ -567,357 +1065,943 @@ typedef struct
 #define MMU_BOBJ	0x06600000
 #define MMU_LCDC	0x06800000
 
-extern CACHE_ALIGN u8 gpuBlendTable555[17][17][32][32];
+#define WINDOWCONTROL_EFFECTFLAG	5
 
-enum BGType {
-	BGType_Invalid=0, BGType_Text=1, BGType_Affine=2, BGType_Large8bpp=3, 
-	BGType_AffineExt=4, BGType_AffineExt_256x16=5, BGType_AffineExt_256x1=6, BGType_AffineExt_Direct=7
+enum GPULayerID
+{
+	GPULayerID_BG0					= 0,
+	GPULayerID_BG1					= 1,
+	GPULayerID_BG2					= 2,
+	GPULayerID_BG3					= 3,
+	GPULayerID_OBJ					= 4,
+	GPULayerID_Backdrop				= 5
 };
 
-extern const BGType GPU_mode2type[8][4];
-
-struct GPU
+enum BGType
 {
-	GPU()
-		: debug(false)
-	{}
+	BGType_Invalid					= 0,
+	BGType_Text						= 1,
+	BGType_Affine					= 2,
+	BGType_Large8bpp				= 3,
+	
+	BGType_AffineExt				= 4,
+	BGType_AffineExt_256x16			= 5,
+	BGType_AffineExt_256x1			= 6,
+	BGType_AffineExt_Direct			= 7
+};
 
-	// some structs are becoming redundant
-	// some functions too (no need to recopy some vars as it is done by MMU)
-	REG_DISPx * dispx_st;
+enum GPUDisplayMode
+{
+	GPUDisplayMode_Off				= 0,
+	GPUDisplayMode_Normal			= 1,
+	GPUDisplayMode_VRAM				= 2,
+	GPUDisplayMode_MainMemory		= 3
+};
 
-	//this indicates whether this gpu is handling debug tools
-	bool debug;
+enum GPUMasterBrightMode
+{
+	GPUMasterBrightMode_Disable		= 0,
+	GPUMasterBrightMode_Up			= 1,
+	GPUMasterBrightMode_Down		= 2,
+	GPUMasterBrightMode_Reserved	= 3
+	
+};
 
-	_BGxCNT & bgcnt(int num) { return (dispx_st)->dispx_BGxCNT[num].bits; }
-	_DISPCNT & dispCnt() { return dispx_st->dispx_DISPCNT.bits; }
-	template<bool MOSAIC> void modeRender(int layer);
+enum GPULayerType
+{
+	GPULayerType_3D					= 0,
+	GPULayerType_BG					= 1,
+	GPULayerType_OBJ				= 2
+};
 
-	DISPCAPCNT dispCapCnt;
-	BOOL LayersEnable[5];
-	itemsForPriority_t itemsForPriority[NB_PRIORITIES];
+enum GPUCompositorMode
+{
+	GPUCompositorMode_Debug			= 0,
+	GPUCompositorMode_Copy			= 1,
+	GPUCompositorMode_BrightUp		= 2,
+	GPUCompositorMode_BrightDown	= 3,
+	GPUCompositorMode_Unknown		= 100
+};
 
-#define BGBmpBB BG_bmp_ram
-#define BGChBB BG_tile_ram
+enum NDSDisplayID
+{
+	NDSDisplayID_Main				= 0,
+	NDSDisplayID_Touch				= 1
+};
 
-	u32 BG_bmp_large_ram[4];
-	u32 BG_bmp_ram[4];
-	u32 BG_tile_ram[4];
-	u32 BG_map_ram[4];
+struct DISPCAPCNT_parsed
+{
+	u8 EVA;
+	u8 EVB;
+	u8 readOffset;
+	u16 capy;
+};
 
-	u8 BGExtPalSlot[4];
-	u32 BGSize[4][2];
-	BGType BGTypes[4];
+typedef struct
+{
+	// User-requested settings. These fields will always remain constant until changed.
+	
+	// Changed by calling GPUSubsystem::SetColorFormat().
+	NDSColorFormat colorFormat;					// The output color format.
+	u32 pixelBytes;								// The number of bytes per pixel.
+	
+	// Changed by calling GPUSubsystem::SetFramebufferSize().
+	bool isCustomSizeRequested;					// Reports that the call to GPUSubsystem::SetFramebufferSize() resulted in a custom rendering size.
+												//    true  - The user requested a custom size.
+												//    false - The user requested the native size.
+	u32 customWidth;							// The requested custom width, measured in pixels.
+	u32 customHeight;							// The requested custom height, measured in pixels.
+	u32 framebufferPageSize;					// The size of a single framebuffer page, which includes the native and custom buffers of both
+												// displays, measured in bytes.
+	
+	// Changed by calling GPUSubsystem::SetColorFormat() or GPUSubsystem::SetFramebufferSize().
+	u32 framebufferPageCount;					// The number of framebuffer pages that were requested by the client. The maximum number of pages
+												// is MAX_FRAMEBUFFER_PAGES.
+	void *masterFramebufferHead;				// Pointer to the head of the master framebuffer memory block that encompasses all buffers.
+	
+	// Changed by calling GPUEngineBase::SetEnableState().
+	bool isDisplayEnabled[2];					// Reports that a particular display has been enabled or disabled by the user.
+	
+	
+	
+	// Frame render state information. These fields will change per frame, depending on how each display was rendered.
+	u8 bufferIndex;								// Index of a specific framebuffer page for the GPU emulation to write data into.
+												// Indexing starts at 0, and must be less than framebufferPageCount.
+												// A specific index can be chosen at the DidFrameBegin event.
+	u64 sequenceNumber;							// A unique number assigned to each frame that increments for each DidFrameEnd event. Never resets.
+	
+	u16 *masterNativeBuffer16;					// Pointer to the head of the master native-sized 16-bit buffer.
+	void *masterCustomBuffer;					// Pointer to the head of the master custom buffer.
+												// If GPUSubsystem::GetWillAutoResolveToCustomBuffer() would return true, or if
+												// GPUSubsystem::ResolveDisplayToCustomFramebuffer() is called, then this buffer is used as the
+												// target buffer for resolving any native-sized 16-bit renders.
+	
+	u16 *nativeBuffer16[2];						// Pointer to the display's native-size 16-bit framebuffer.
+	void *customBuffer[2];						// Pointer to the display's custom framebuffer. Used whenever the framebuffer is not native-sized
+												// or when the requested color format is not 15-bit.
+	
+	u32 renderedWidth[2];						// The display rendered at this width, measured in pixels.
+	u32 renderedHeight[2];						// The display rendered at this height, measured in pixels.
+	void *renderedBuffer[2];					// The display rendered to this buffer.
+	
+	GPUEngineID engineID[2];					// ID of the engine sourcing the display.
+												// Technically, NDS displays shouldn't be associated with a single GPU engine since it's possible for
+												// a single display to associate with both. But for the sake of compatibility with how clients use
+												// TCommonSettings.showGpu to show/hide displays, the engineID member must be present here.
+	
+	bool didPerformCustomRender[2];				// Reports that the display rendered to the custom buffer. Rendering to the custom buffers is the
+												// default behavior, but can be turned off by calling GPUSubsystem::SetWillAutoResolveToCustomBuffer()
+												// and passing 'false'. However, rendering to the custom buffers can be forced at any time by calling
+												// GPUSubsystem::ResolveDisplayToCustomFramebuffer().
+												//    true  - The display rendered to the custom buffer.
+												//    false - The display rendered to the native-size 16-bit buffer only.
+	
+	bool masterBrightnessDiffersPerLine[2];		// Reports if the master brightness values may differ per scanline. If true, then it will
+												// need to be applied on a per-scanline basis. Otherwise, it can be applied to the entire
+												// framebuffer. For most NDS games, this field will be false.
+	u8 masterBrightnessMode[2][GPU_FRAMEBUFFER_NATIVE_HEIGHT]; // The master brightness mode of each display line.
+	u8 masterBrightnessIntensity[2][GPU_FRAMEBUFFER_NATIVE_HEIGHT]; // The master brightness intensity of each display line.
+	
+	float backlightIntensity[2];				// Reports the intensity of the backlight.
+												//    0.000 - The backlight is completely off.
+												//    1.000 - The backlight is at its maximum brightness.
+	
+	
+	
+	// Postprocessing information. These fields report the status of each postprocessing step.
+	// Typically, these fields should be modified whenever GPUSubsystem::PostprocessDisplay() is called.
+	bool needConvertColorFormat[2];				// Reports if the display still needs to convert its color format from RGB666 to RGB888.
+	bool needApplyMasterBrightness[2];			// Reports if the display still needs to apply the master brightness.
+} NDSDisplayInfo;
 
+typedef struct
+{
+	u8 begin[GPU_FRAMEBUFFER_NATIVE_WIDTH];
+	u8 trunc[GPU_FRAMEBUFFER_NATIVE_WIDTH];
+	u32 trunc32[GPU_FRAMEBUFFER_NATIVE_WIDTH];
+} MosaicTableEntry;
+
+typedef union
+{
+	u16 value;
+	
+	struct
+	{
+		u8 WIN0_ENABLED:1;
+		u8 WIN1_ENABLED:1;
+		u8 WINOBJ_ENABLED:1;
+		u8 IsWithinVerticalRange_WIN0:1;
+		u8 IsWithinVerticalRange_WIN1:1;
+		u8 unused1:3;
+		
+		u8 BG0_Shown:1;
+		u8 BG1_Shown:1;
+		u8 BG2_Shown:1;
+		u8 BG3_Shown:1;
+		u8 OBJ_Shown:1;
+		u8 unused2:3;
+	};
+} WINState;
+
+typedef struct
+{
+	GPULayerID layerID;
+	IOREG_BGnCNT BGnCNT;
+	IOREG_BGnHOFS BGnHOFS;
+	IOREG_BGnVOFS BGnVOFS;
+	
+	BGLayerSize size;
+	BGType baseType;
+	BGType type;
+	u8 priority;
+	
+	bool isVisible;
+	bool isMosaic;
+	bool isDisplayWrapped;
+	
+	u8 extPaletteSlot;
+	u16 **extPalette;
+	
+	u32 largeBMPAddress;
+	u32 BMPAddress;
+	u32 tileMapAddress;
+	u32 tileEntryAddress;
+	
+	u16 xOffset;
+	u16 yOffset;
+} BGLayerInfo;
+
+typedef struct
+{
+	size_t indexNative;
+	size_t indexCustom;
+	size_t widthCustom;
+	size_t renderCount;
+	size_t pixelCount;
+	size_t blockOffsetNative;
+	size_t blockOffsetCustom;
+} GPUEngineLineInfo;
+
+typedef struct
+{
+	GPULayerID previouslyRenderedLayerID;
+	GPULayerID selectedLayerID;
+	BGLayerInfo *selectedBGLayer;
+	
+	GPUDisplayMode displayOutputMode;
+	u16 backdropColor16;
+	u16 workingBackdropColor16;
+	Color4u8 workingBackdropColor32;
+	ColorEffect colorEffect;
+	u8 blendEVA;
+	u8 blendEVB;
+	u8 blendEVY;
+	
+	GPUMasterBrightMode masterBrightnessMode;
+	u8 masterBrightnessIntensity;
+	bool masterBrightnessIsMaxOrMin;
+	
+	TBlendTable *blendTable555;
+	Color5551 *brightnessUpTable555;
+	Color4u8 *brightnessUpTable666;
+	Color4u8 *brightnessUpTable888;
+	Color5551 *brightnessDownTable555;
+	Color4u8 *brightnessDownTable666;
+	Color4u8 *brightnessDownTable888;
+	
+	u8 WIN0_enable[6];
+	u8 WIN1_enable[6];
+	u8 WINOUT_enable[6];
+	u8 WINOBJ_enable[6];
+	
+	WINState windowState;
+	bool isAnyWindowEnabled;
+	
+	u8 srcEffectEnable[6];
+	u8 dstBlendEnable[6];
+	bool dstAnyBlendEnable;
+	CACHE_ALIGN u8 dstBlendEnableVecLookup[128]; // Supports up to 1024-bit vectors
+	
+	MosaicTableEntry *mosaicWidthBG;
+	MosaicTableEntry *mosaicHeightBG;
+	MosaicTableEntry *mosaicWidthOBJ;
+	MosaicTableEntry *mosaicHeightOBJ;
+	bool isBGMosaicSet;
+	bool isOBJMosaicSet;
+	
+	SpriteRenderMode spriteRenderMode;
+	u8 spriteBoundary;
+	u8 spriteBMPBoundary;
+} GPUEngineRenderState;
+
+typedef struct
+{
+	void *lineColorHead;
+	void *lineColorHeadNative;
+	void *lineColorHeadCustom;
+	
+	u8 *lineLayerIDHead;
+	u8 *lineLayerIDHeadNative;
+	u8 *lineLayerIDHeadCustom;
+	
+	size_t xNative;
+	size_t xCustom;
+	void **lineColor;
+	Color5551 *lineColor16;
+	Color4u8 *lineColor32;
+	u8 *lineLayerID;
+} GPUEngineTargetState;
+
+typedef struct
+{
+	GPUEngineLineInfo line;
+	GPUEngineRenderState renderState;
+	GPUEngineTargetState target;
+} GPUEngineCompositorInfo;
+
+class GPUSubsystem;
+
+class GPUEngineBase
+{
+protected:
+	static const CACHE_ALIGN SpriteSize _sprSizeTab[4][4];
+	static const CACHE_ALIGN BGLayerSize _BGLayerSizeLUT[8][4];
+	static const CACHE_ALIGN BGType _mode2type[8][4];
+	
+	static struct MosaicLookup
+	{
+		CACHE_ALIGN MosaicTableEntry table[16];
+		
+		MosaicLookup()
+		{
+			for (size_t m = 0; m < 16; m++)
+			{
+				for (size_t i = 0; i < GPU_FRAMEBUFFER_NATIVE_WIDTH; i++)
+				{
+					size_t mosaic = m+1;
+					MosaicTableEntry &te = table[m];
+					
+					te.begin[i] = ((i % mosaic) == 0);
+					te.trunc[i] = (i / mosaic) * mosaic;
+					te.trunc32[i] = te.trunc[i];
+				}
+			}
+		}
+	} _mosaicLookup;
+	
+	CACHE_ALIGN u16 _sprColor[GPU_FRAMEBUFFER_NATIVE_WIDTH];
+	CACHE_ALIGN u8 _sprAlpha[GPU_FRAMEBUFFER_NATIVE_HEIGHT][GPU_FRAMEBUFFER_NATIVE_WIDTH];
+	CACHE_ALIGN u8 _sprType[GPU_FRAMEBUFFER_NATIVE_HEIGHT][GPU_FRAMEBUFFER_NATIVE_WIDTH];
+	CACHE_ALIGN u8 _sprPrio[GPU_FRAMEBUFFER_NATIVE_HEIGHT][GPU_FRAMEBUFFER_NATIVE_WIDTH];
+	CACHE_ALIGN u8 _sprWin[GPU_FRAMEBUFFER_NATIVE_HEIGHT][GPU_FRAMEBUFFER_NATIVE_WIDTH];
+	
+	CACHE_ALIGN u8 _didPassWindowTestNative[5][GPU_FRAMEBUFFER_NATIVE_WIDTH];
+	CACHE_ALIGN u8 _enableColorEffectNative[5][GPU_FRAMEBUFFER_NATIVE_WIDTH];
+	
+	CACHE_ALIGN u8 _deferredIndexNative[GPU_FRAMEBUFFER_NATIVE_WIDTH * 4];
+	CACHE_ALIGN u16 _deferredColorNative[GPU_FRAMEBUFFER_NATIVE_WIDTH * 4];
+	
+	GPUSubsystem *_gpuSystem;
+	
+	bool _needExpandSprColorCustom;
+	u16 *_sprColorCustom;
+	u8 *_sprAlphaCustom;
+	u8 *_sprTypeCustom;
+	
+	u8 *_didPassWindowTestCustomMasterPtr;
+	u8 *_enableColorEffectCustomMasterPtr;
+	u8 *_didPassWindowTestCustom[5];
+	u8 *_enableColorEffectCustom[5];
+	
+	GPUEngineCompositorInfo _currentCompositorInfo[GPU_VRAM_BLOCK_LINES + 1];
+	GPUEngineRenderState _currentRenderState;
+	
+	u8 *_deferredIndexCustom;
+	u16 *_deferredColorCustom;
+	
+	bool _isLineRenderNative[GPU_FRAMEBUFFER_NATIVE_HEIGHT];
+	
+	bool _enableEngine;
+	bool _enableBGLayer[5];
+	
+	bool _isBGLayerShown[5];
+	bool _isAnyBGLayerShown;
+	itemsForPriority_t _itemsForPriority[NB_PRIORITIES];
+	
 	struct MosaicColor {
-		u16 bg[4][256];
+		CACHE_ALIGN u16 bg[4][GPU_FRAMEBUFFER_NATIVE_WIDTH + 64]; // Pad this buffer a little bit to avoid buffer overruns with vectorized gather instructions.
 		struct Obj {
 			u16 color;
-			u8 alpha, opaque;
-		} obj[256];
-	} mosaicColors;
-
-	u8 sprNum[256];
-	u8 h_win[2][256];
-	const u8 *curr_win[2];
-	void update_winh(int WIN_NUM); 
-	bool need_update_winh[2];
+			u8 alpha;
+			u8 opaque;
+		} obj[GPU_FRAMEBUFFER_NATIVE_WIDTH];
+	} _mosaicColors;
 	
-	template<int WIN_NUM> void setup_windows();
-
-	u8 core;
-
-	u8 dispMode;
-	u8 vramBlock;
-	u8 *VRAMaddr;
-
-	//FIFO	fifo;
-
-	u8 bgPrio[5];
-
-	BOOL bg0HasHighestPrio;
-
-	void * oam;
-	u32	sprMem;
-	u8 sprBoundary;
-	u8 sprBMPBoundary;
-	u8 sprBMPMode;
-	u32 sprEnable;
-
-	u8 WIN0H0;
-	u8 WIN0H1;
-	u8 WIN0V0;
-	u8 WIN0V1;
-
-	u8 WIN1H0;
-	u8 WIN1H1;
-	u8 WIN1V0;
-	u8 WIN1V1;
-
-	u8 WININ0;
-	bool WININ0_SPECIAL;
-	u8 WININ1;
-	bool WININ1_SPECIAL;
-
-	u8 WINOUT;
-	bool WINOUT_SPECIAL;
-	u8 WINOBJ;
-	bool WINOBJ_SPECIAL;
-
-	u8 WIN0_ENABLED;
-	u8 WIN1_ENABLED;
-	u8 WINOBJ_ENABLED;
-
-	u16 BLDCNT;
-	u8	BLDALPHA_EVA;
-	u8	BLDALPHA_EVB;
-	u8	BLDY_EVY;
-	u16 *currentFadeInColors, *currentFadeOutColors;
-	bool blend2[8];
-
-	CACHE_ALIGN u16 tempScanlineBuffer[256];
-	u8 *tempScanline;
-
-	u8	MasterBrightMode;
-	u32 MasterBrightFactor;
-
-	CACHE_ALIGN u8 bgPixels[1024]; //yes indeed, this is oversized. map debug tools try to write to it
-
-	u32 currLine;
-	u8 currBgNum;
-	bool blend1;
-	u8* currDst;
-
-	u8* _3dColorLine;
-
-
-	static struct MosaicLookup {
-
-		struct TableEntry {
-			u8 begin, trunc;
-		} table[16][256];
-
-		MosaicLookup() {
-			for(int m=0;m<16;m++)
-				for(int i=0;i<256;i++) {
-					int mosaic = m+1;
-					TableEntry &te = table[m][i];
-					te.begin = (i%mosaic==0);
-					te.trunc = i/mosaic*mosaic;
-				}
-		}
-
-		TableEntry *width, *height;
-		int widthValue, heightValue;
-		
-	} mosaicLookup;
-	bool curr_mosaic_enabled;
-
-	u16 blend(u16 colA, u16 colB);
-
-	template<bool BACKDROP, BlendFunc FUNC, bool WINDOW>
-	FORCEINLINE FASTCALL bool _master_setFinalBGColor(u16 &color, const u32 x);
-
-	template<BlendFunc FUNC, bool WINDOW>
-	FORCEINLINE FASTCALL void _master_setFinal3dColor(int dstX, int srcX);
-
-	int setFinalColorBck_funcNum;
-	int bgFunc;
-	int setFinalColor3d_funcNum;
-	int setFinalColorSpr_funcNum;
-	//Final3DColFunct setFinalColor3D;
-	enum SpriteRenderMode {
-		SPRITE_1D, SPRITE_2D
-	} spriteRenderMode;
-
-	template<GPU::SpriteRenderMode MODE>
-	void _spriteRender(u8 * dst, u8 * dst_alpha, u8 * typeTab, u8 * prioTab);
+	GPUEngineID _engineID;
+	GPU_IOREG *_IORegisterMap;
+	u16 *_paletteBG;
+	u16 *_paletteOBJ;
+	OAMAttributes *_oamList;
+	u32 _sprMem;
+	u32 _vramBlockOBJAddress;
 	
-	inline void spriteRender(u8 * dst, u8 * dst_alpha, u8 * typeTab, u8 * prioTab)
-	{
-		if(spriteRenderMode == SPRITE_1D)
-			_spriteRender<SPRITE_1D>(dst,dst_alpha,typeTab, prioTab);
-		else
-			_spriteRender<SPRITE_2D>(dst,dst_alpha,typeTab, prioTab);
-	}
-
-
-	void setFinalColor3d(int dstX, int srcX);
+	BGLayerInfo _BGLayer[4];
 	
-	template<bool BACKDROP, int FUNCNUM> void setFinalColorBG(u16 color, const u32 x);
-	template<bool MOSAIC, bool BACKDROP> FORCEINLINE void __setFinalColorBck(u16 color, const u32 x, const int opaque);
-	template<bool MOSAIC, bool BACKDROP, int FUNCNUM> FORCEINLINE void ___setFinalColorBck(u16 color, const u32 x, const int opaque);
-
-	void setAffineStart(int layer, int xy, u32 val);
-	void setAffineStartWord(int layer, int xy, u16 val, int word);
-	u32 getAffineStart(int layer, int xy);
-	void refreshAffineStartRegs(const int num, const int xy);
-
-	struct AffineInfo {
-		AffineInfo() : x(0), y(0) {}
-		u32 x, y;
-	} affineInfo[2];
-
-	void renderline_checkWindows(u16 x, bool &draw, bool &effect) const;
-
-	// check whether (x,y) is within the rectangle (including wraparounds) 
-	template<int WIN_NUM>
-	u8 withinRect(u16 x) const;
-
-	void setBLDALPHA(u16 val)
-	{
-		BLDALPHA_EVA = (val&0x1f) > 16 ? 16 : (val&0x1f); 
-		BLDALPHA_EVB = ((val>>8)&0x1f) > 16 ? 16 : ((val>>8)&0x1f);
-		updateBLDALPHA();
-	}
-
-	void setBLDALPHA_EVA(u8 val)
-	{
-		BLDALPHA_EVA = (val&0x1f) > 16 ? 16 : (val&0x1f);
-		updateBLDALPHA();
-	}
+	CACHE_ALIGN u8 _sprNum[256];
+	CACHE_ALIGN u8 _h_win[2][GPU_FRAMEBUFFER_NATIVE_WIDTH];
 	
-	void setBLDALPHA_EVB(u8 val)
-	{
-		BLDALPHA_EVB = (val&0x1f) > 16 ? 16 : (val&0x1f);
-		updateBLDALPHA();
-	}
-
-	u32 getHOFS(int bg);
-	u32 getVOFS(int bg);
-
-	typedef u8 TBlendTable[32][32];
-	TBlendTable *blendTable;
-
-	void updateBLDALPHA()
-	{
-		blendTable = (TBlendTable*)&gpuBlendTable555[BLDALPHA_EVA][BLDALPHA_EVB][0][0];
-	}
+	NDSDisplay *_targetDisplay;
 	
+	CACHE_ALIGN u16 _internalRenderLineTargetNative[GPU_FRAMEBUFFER_NATIVE_WIDTH];
+	CACHE_ALIGN u8 _renderLineLayerIDNative[GPU_FRAMEBUFFER_NATIVE_HEIGHT][GPU_FRAMEBUFFER_NATIVE_WIDTH];
+	
+	void *_internalRenderLineTargetCustom;
+	u8 *_renderLineLayerIDCustom;
+	
+	WINState _prevWINState;
+	IOREG_WIN_COORD _prevWINCoord;
+	IOREG_WIN_CTRL _prevWINCtrl;
+	
+	Task *_asyncClearTask;
+	bool _asyncClearIsRunning;
+	u8 _asyncClearTransitionedLineFromBackdropCount;
+	volatile s32 _asyncClearLineCustom;
+	volatile s32 _asyncClearInterrupt;
+	u16 _asyncClearBackdropColor16; // Do not modify this variable directly.
+	Color4u8 _asyncClearBackdropColor32; // Do not modify this variable directly.
+	bool _asyncClearUseInternalCustomBuffer; // Do not modify this variable directly.
+	
+	void _ResortBGLayers();
+	
+	template<NDSColorFormat OUTPUTFORMAT> void _TransitionLineNativeToCustom(GPUEngineCompositorInfo &compInfo);
+	
+	void _MosaicSpriteLinePixel(GPUEngineCompositorInfo &compInfo, const size_t x, u16 *__restrict dst, u8 *__restrict dst_alpha, u8 *__restrict typeTab, u8 *__restrict prioTab);
+	void _MosaicSpriteLine(GPUEngineCompositorInfo &compInfo, u16 *__restrict dst, u8 *__restrict dst_alpha, u8 *__restrict typeTab, u8 *__restrict prioTab);
+	
+	template<GPUCompositorMode COMPOSITORMODE, NDSColorFormat OUTPUTFORMAT, bool MOSAIC, bool WILLPERFORMWINDOWTEST, bool WILLDEFERCOMPOSITING, PixelLookupFunc GetPixelFunc, bool WRAP> void _RenderPixelIterate_Final(GPUEngineCompositorInfo &compInfo, const IOREG_BGnParameter &param, const u32 map, const u32 tile, const u16 *__restrict pal);
+	template<GPUCompositorMode COMPOSITORMODE, NDSColorFormat OUTPUTFORMAT, bool MOSAIC, bool WILLPERFORMWINDOWTEST, bool WILLDEFERCOMPOSITING, PixelLookupFunc GetPixelFunc, bool WRAP> void _RenderPixelIterate_ApplyWrap(GPUEngineCompositorInfo &compInfo, const IOREG_BGnParameter &param, const u32 map, const u32 tile, const u16 *__restrict pal);
+	template<GPUCompositorMode COMPOSITORMODE, NDSColorFormat OUTPUTFORMAT, bool MOSAIC, bool WILLPERFORMWINDOWTEST, bool WILLDEFERCOMPOSITING, PixelLookupFunc GetPixelFunc> void _RenderPixelIterate(GPUEngineCompositorInfo &compInfo, const IOREG_BGnParameter &param, const u32 map, const u32 tile, const u16 *__restrict pal);
+	
+	TILEENTRY _GetTileEntry(const u32 tileMapAddress, const u16 xOffset, const u16 layerWidthMask);
+	template<GPUCompositorMode COMPOSITORMODE, NDSColorFormat OUTPUTFORMAT, bool MOSAIC, bool WILLPERFORMWINDOWTEST> FORCEINLINE void _CompositePixelImmediate(GPUEngineCompositorInfo &compInfo, const size_t srcX, u16 srcColor16, bool isOpaque);
+	template<bool ISFIRSTLINE> void _MosaicLine(GPUEngineCompositorInfo &compInfo);
+	
+	template<bool MOSAIC> void _PrecompositeNativeToCustomLineBG(GPUEngineCompositorInfo &compInfo);
+	
+	template<GPUCompositorMode COMPOSITORMODE, NDSColorFormat OUTPUTFORMAT, bool WILLPERFORMWINDOWTEST> void _CompositeNativeLineOBJ(GPUEngineCompositorInfo &compInfo, const u16 *__restrict srcColorNative16, const Color4u8 *__restrict srcColorNative32);
+	template<GPUCompositorMode COMPOSITORMODE, NDSColorFormat OUTPUTFORMAT, GPULayerType LAYERTYPE, bool WILLPERFORMWINDOWTEST> void _CompositeLineDeferred(GPUEngineCompositorInfo &compInfo, const u16 *__restrict srcColorCustom16, const u8 *__restrict srcIndexCustom);
+	template<GPUCompositorMode COMPOSITORMODE, NDSColorFormat OUTPUTFORMAT, GPULayerType LAYERTYPE, bool WILLPERFORMWINDOWTEST> void _CompositeVRAMLineDeferred(GPUEngineCompositorInfo &compInfo, const void *__restrict vramColorPtr);
+	
+	template<GPUCompositorMode COMPOSITORMODE, NDSColorFormat OUTPUTFORMAT, bool WILLPERFORMWINDOWTEST> void _CompositeNativeLineOBJ_LoopOp(GPUEngineCompositorInfo &compInfo, const u16 *__restrict srcColorNative16, const Color4u8 *__restrict srcColorNative32);
+	template<GPUCompositorMode COMPOSITORMODE, NDSColorFormat OUTPUTFORMAT, GPULayerType LAYERTYPE, bool WILLPERFORMWINDOWTEST> size_t _CompositeLineDeferred_LoopOp(GPUEngineCompositorInfo &compInfo, const u8 *__restrict windowTestPtr, const u8 *__restrict colorEffectEnablePtr, const u16 *__restrict srcColorCustom16, const u8 *__restrict srcIndexCustom);
+	template<GPUCompositorMode COMPOSITORMODE, NDSColorFormat OUTPUTFORMAT, GPULayerType LAYERTYPE, bool WILLPERFORMWINDOWTEST> size_t _CompositeVRAMLineDeferred_LoopOp(GPUEngineCompositorInfo &compInfo, const u8 *__restrict windowTestPtr, const u8 *__restrict colorEffectEnablePtr, const void *__restrict vramColorPtr);
+	
+	template<GPUCompositorMode COMPOSITORMODE, NDSColorFormat OUTPUTFORMAT, bool MOSAIC, bool WILLPERFORMWINDOWTEST, bool WILLDEFERCOMPOSITING> void _RenderLine_BGText(GPUEngineCompositorInfo &compInfo, const u16 XBG, const u16 YBG);
+	template<GPUCompositorMode COMPOSITORMODE, NDSColorFormat OUTPUTFORMAT, bool MOSAIC, bool WILLPERFORMWINDOWTEST, bool WILLDEFERCOMPOSITING> void _RenderLine_BGAffine(GPUEngineCompositorInfo &compInfo, const IOREG_BGnParameter &param);
+	template<GPUCompositorMode COMPOSITORMODE, NDSColorFormat OUTPUTFORMAT, bool MOSAIC, bool WILLPERFORMWINDOWTEST, bool WILLDEFERCOMPOSITING> void _RenderLine_BGExtended(GPUEngineCompositorInfo &compInfo, const IOREG_BGnParameter &param, bool &outUseCustomVRAM);
+	
+	template<GPUCompositorMode COMPOSITORMODE, NDSColorFormat OUTPUTFORMAT, bool MOSAIC, bool WILLPERFORMWINDOWTEST, bool WILLDEFERCOMPOSITING> void _LineText(GPUEngineCompositorInfo &compInfo);
+	template<GPUCompositorMode COMPOSITORMODE, NDSColorFormat OUTPUTFORMAT, bool MOSAIC, bool WILLPERFORMWINDOWTEST, bool WILLDEFERCOMPOSITING> void _LineRot(GPUEngineCompositorInfo &compInfo);
+	template<GPUCompositorMode COMPOSITORMODE, NDSColorFormat OUTPUTFORMAT, bool MOSAIC, bool WILLPERFORMWINDOWTEST, bool WILLDEFERCOMPOSITING> void _LineExtRot(GPUEngineCompositorInfo &compInfo, bool &outUseCustomVRAM);
+	
+	void _RenderLine_Clear(GPUEngineCompositorInfo &compInfo);
+	void _RenderLine_SetupSprites(GPUEngineCompositorInfo &compInfo);
+	template<NDSColorFormat OUTPUTFORMAT, bool WILLPERFORMWINDOWTEST> void _RenderLine_Layers(GPUEngineCompositorInfo &compInfo);
+	
+	void _RenderLineBlank(const size_t l);
+	
+	void _HandleDisplayModeOff(const size_t l);
+	void _HandleDisplayModeNormal(const size_t l);
+	
+	template<size_t WIN_NUM> void _UpdateWINH(GPUEngineCompositorInfo &compInfo);
+	template<size_t WIN_NUM> bool _IsWindowInsideVerticalRange(GPUEngineCompositorInfo &compInfo);
+	void _PerformWindowTesting(GPUEngineCompositorInfo &compInfo);
+	void _PerformWindowTestingNative(GPUEngineCompositorInfo &compInfo, const size_t layerID, const u8 *__restrict win0, const u8 *__restrict win1, const u8 *__restrict winObj, u8 *__restrict didPassWindowTestNative, u8 *__restrict enableColorEffectNative);
+	
+	template<GPUCompositorMode COMPOSITORMODE, NDSColorFormat OUTPUTFORMAT, bool MOSAIC, bool WILLPERFORMWINDOWTEST, bool WILLDEFERCOMPOSITING> FORCEINLINE void _RenderLine_LayerBG_Final(GPUEngineCompositorInfo &compInfo);
+	template<GPUCompositorMode COMPOSITORMODE, NDSColorFormat OUTPUTFORMAT, bool MOSAIC, bool WILLPERFORMWINDOWTEST> FORCEINLINE void _RenderLine_LayerBG_ApplyMosaic(GPUEngineCompositorInfo &compInfo);
+	template<GPUCompositorMode COMPOSITORMODE, NDSColorFormat OUTPUTFORMAT, bool WILLPERFORMWINDOWTEST> void _RenderLine_LayerBG(GPUEngineCompositorInfo &compInfo);
+	template<GPUCompositorMode COMPOSITORMODE, NDSColorFormat OUTPUTFORMAT, bool WILLPERFORMWINDOWTEST> void _RenderLine_LayerOBJ(GPUEngineCompositorInfo &compInfo, itemsForPriority_t *__restrict item);
+	
+	template<bool ISDEBUGRENDER, bool ISOBJMODEBITMAP> FORCEINLINE void _RenderSpriteUpdatePixel(GPUEngineCompositorInfo &compInfo, size_t frameX, const u16 *__restrict srcPalette, const u8 palIndex, const OBJMode objMode, const u8 prio, const u8 spriteNum, u16 *__restrict dst, u8 *__restrict dst_alpha, u8 *__restrict typeTab, u8 *__restrict prioTab);
+	template<bool ISDEBUGRENDER> void _RenderSpriteBMP(GPUEngineCompositorInfo &compInfo, const u32 objAddress, const size_t length, size_t frameX, size_t spriteX, const s32 readXStep, const u8 spriteAlpha, const OBJMode objMode, const u8 prio, const u8 spriteNum, u16 *__restrict dst, u8 *__restrict dst_alpha, u8 *__restrict typeTab, u8 *__restrict prioTab);
+	template<bool ISDEBUGRENDER> size_t _RenderSpriteBMP_LoopOp(const size_t length, const u8 spriteAlpha, const u8 prio, const u8 spriteNum, const u16 *__restrict vramBuffer, size_t &frameX, size_t &spriteX, u16 *__restrict dst, u8 *__restrict dst_alpha, u8 *__restrict typeTab, u8 *__restrict prioTab);
+	template<bool ISDEBUGRENDER> void _RenderSprite256(GPUEngineCompositorInfo &compInfo, const u32 objAddress, const size_t length, size_t frameX, size_t spriteX, const s32 readXStep, const u16 *__restrict palColorBuffer, const OBJMode objMode, const u8 prio, const u8 spriteNum, u16 *__restrict dst, u8 *__restrict dst_alpha, u8 *__restrict typeTab, u8 *__restrict prioTab);
+	template<bool ISDEBUGRENDER> void _RenderSprite16(GPUEngineCompositorInfo &compInfo, const u32 objAddress, const size_t length, size_t frameX, size_t spriteX, const s32 readXStep, const u16 *__restrict palColorBuffer, const OBJMode objMode, const u8 prio, const u8 spriteNum, u16 *__restrict dst, u8 *__restrict dst_alpha, u8 *__restrict typeTab, u8 *__restrict prioTab);
+	void _RenderSpriteWin(const u8 *src, const bool col256, const size_t lg, size_t sprX, size_t x, const s32 xdir);
+	bool _ComputeSpriteVars(GPUEngineCompositorInfo &compInfo, const OAMAttributes &spriteInfo, SpriteSize &sprSize, s32 &sprX, s32 &sprY, s32 &x, s32 &y, s32 &lg, s32 &xdir);
+	
+	u32 _SpriteAddressBMP(GPUEngineCompositorInfo &compInfo, const OAMAttributes &spriteInfo, const SpriteSize sprSize, const s32 y);
+	
+	template<bool ISDEBUGRENDER> void _SpriteRender(GPUEngineCompositorInfo &compInfo, u16 *__restrict dst, u8 *__restrict dst_alpha, u8 *__restrict typeTab, u8 *__restrict prioTab);
+	template<SpriteRenderMode MODE, bool ISDEBUGRENDER> void _SpriteRenderPerform(GPUEngineCompositorInfo &compInfo, u16 *__restrict dst, u8 *__restrict dst_alpha, u8 *__restrict typeTab, u8 *__restrict prioTab);
+	
+public:
+	GPUEngineBase();
+	virtual ~GPUEngineBase();
+	
+	GPUSubsystem* GetGPUSystem();
+	void SetGPUSystem(GPUSubsystem *theGPU);
+	
+	virtual void Reset();
+	
+	void SetupBuffers();
+	void SetupRenderStates();
+	void DisplayDrawBuffersUpdate();
+	void UpdateRenderStates(const size_t l);
+	template<NDSColorFormat OUTPUTFORMAT> void RenderLine(const size_t l);
+	
+	void RefreshAffineStartRegs();
+	
+	void ParseReg_DISPCNT();
+	void ParseReg_BGnCNT(const GPULayerID layerID);
+	template<GPULayerID LAYERID> void ParseReg_BGnHOFS();
+	template<GPULayerID LAYERID> void ParseReg_BGnVOFS();
+	template<GPULayerID LAYERID> void ParseReg_BGnX();
+	template<GPULayerID LAYERID> void ParseReg_BGnY();
+	void ParseReg_WININ();
+	void ParseReg_WINOUT();
+	void ParseReg_MOSAIC();
+	void ParseReg_BLDCNT();
+	void ParseReg_BLDALPHA();
+	void ParseReg_BLDY();
+	void ParseReg_MASTER_BRIGHT();
+	
+	void ParseAllRegisters();
+	
+	void UpdatePropertiesWithoutRender(const u16 l);
+	void LastLineProcess();
+	
+	IOREG_BG2X savedBG2X;
+	IOREG_BG2Y savedBG2Y;
+	IOREG_BG3X savedBG3X;
+	IOREG_BG3Y savedBG3Y;
+	
+	const GPU_IOREG& GetIORegisterMap() const;
+	
+	bool IsForceBlankSet() const;
+	bool IsMasterBrightMaxOrMin() const;
+	
+	bool GetEnableState();
+	bool GetEnableStateApplied();
+	void SetEnableState(bool theState);
+	bool GetLayerEnableState(const size_t layerIndex);
+	void SetLayerEnableState(const size_t layerIndex, bool theState);
+	
+	void ApplySettings();
+	
+	void RenderLineClearAsync();
+	void RenderLineClearAsyncStart(bool willClearInternalCustomBuffer, size_t startLineIndex, u16 clearColor16, Color4u8 clearColor32);
+	void RenderLineClearAsyncFinish();
+	void RenderLineClearAsyncWaitForCustomLine(const size_t l);
+	
+	void TransitionRenderStatesToDisplayInfo(NDSDisplayInfo &mutableInfo);
+	
+	const BGLayerInfo& GetBGLayerInfoByID(const GPULayerID layerID);
+	
+	void SpritePrepareRenderDebug(u16 *dst);
+	void SpriteRenderDebug(const u16 lineIndex, u16 *dst);
+	void RenderLayerBG(const GPULayerID layerID, u16 *dstLineColor);
+
+	NDSDisplayID GetTargetDisplayByID() const;
+	NDSDisplay* GetTargetDisplay() const;
+	void SetTargetDisplay(NDSDisplay *theDisplay);
+	
+	GPUEngineID GetEngineID() const;
+	
+	virtual void AllocateWorkingBuffers(NDSColorFormat requestedColorFormat, size_t w, size_t h);
+	
+	void REG_DISPx_pack_test();
 };
-#if 0
-// normally should have same addresses
-static void REG_DISPx_pack_test(GPU * gpu)
+
+class GPUEngineA : public GPUEngineBase
 {
-	REG_DISPx * r = gpu->dispx_st;
-	printf ("%08x %02x\n",  (u32)r, (u32)(&r->dispx_DISPCNT) - (u32)r);
-	printf ("\t%02x\n", (u32)(&r->dispA_DISPSTAT) - (u32)r);
-	printf ("\t%02x\n", (u32)(&r->dispx_VCOUNT) - (u32)r);
-	printf ("\t%02x\n", (u32)(&r->dispx_BGxCNT[0]) - (u32)r);
-	printf ("\t%02x\n", (u32)(&r->dispx_BGxOFS[0]) - (u32)r);
-	printf ("\t%02x\n", (u32)(&r->dispx_BG2PARMS) - (u32)r);
-	printf ("\t%02x\n", (u32)(&r->dispx_BG3PARMS) - (u32)r);
-//	printf ("\t%02x\n", (u32)(&r->dispx_WINCNT) - (u32)r);
-	printf ("\t%02x\n", (u32)(&r->dispx_MISC) - (u32)r);
-	printf ("\t%02x\n", (u32)(&r->dispA_DISP3DCNT) - (u32)r);
-	printf ("\t%02x\n", (u32)(&r->dispA_DISPCAPCNT) - (u32)r);
-	printf ("\t%02x\n", (u32)(&r->dispA_DISPMMEMFIFO) - (u32)r);
-}
-#endif
-
-CACHE_ALIGN extern u8 GPU_screen[4*256*192];
-
-
-GPU * GPU_Init(u8 l);
-void GPU_Reset(GPU *g, u8 l);
-void GPU_DeInit(GPU *);
-
-//these are functions used by debug tools which want to render layers etc outside the context of the emulation
-namespace GPU_EXT
-{
-	void textBG(GPU * gpu, u8 num, u8 * DST);		//Draw text based background
-	void rotBG(GPU * gpu, u8 num, u8 * DST);
-	void extRotBG(GPU * gpu, u8 num, u8 * DST);
+protected:
+	CACHE_ALIGN u16 _fifoLine16[GPU_FRAMEBUFFER_NATIVE_WIDTH];
+	CACHE_ALIGN Color4u8 _fifoLine32[GPU_FRAMEBUFFER_NATIVE_WIDTH];
+	
+	CACHE_ALIGN u16 _VRAMNativeBlockCaptureCopy[GPU_FRAMEBUFFER_NATIVE_WIDTH * GPU_VRAM_BLOCK_LINES * 4];
+	u16 *_VRAMNativeBlockCaptureCopyPtr[4];
+	
+	u16 *_VRAMNativeBlockPtr[4];
+	void *_VRAMCustomBlockPtr[4];
+	
+	size_t _nativeLineCaptureCount[4];
+	bool _isLineCaptureNative[4][GPU_VRAM_BLOCK_LINES];
+	
+	u16 *_captureWorkingDisplay16;
+	u16 *_captureWorkingA16;
+	u16 *_captureWorkingB16;
+	Color4u8 *_captureWorkingA32;
+	Color4u8 *_captureWorkingB32;
+	
+	DISPCAPCNT_parsed _dispCapCnt;
+	bool _displayCaptureEnable;
+	
+	template<GPUCompositorMode COMPOSITORMODE, NDSColorFormat OUTPUTFORMAT, bool MOSAIC, bool WILLPERFORMWINDOWTEST, bool WILLDEFERCOMPOSITING> void _LineLarge8bpp(GPUEngineCompositorInfo &compInfo);
+	
+	template<NDSColorFormat OUTPUTFORMAT, size_t CAPTURELENGTH>
+	void _RenderLine_DisplayCaptureCustom(const IOREG_DISPCAPCNT &DISPCAPCNT,
+										  const GPUEngineLineInfo &lineInfo,
+										  const bool isReadDisplayLineNative,
+										  const bool isReadVRAMLineNative,
+										  const void *srcAPtr,
+										  const void *srcBPtr,
+										  void *dstCustomPtr);  // Do not use restrict pointers, since srcB and dst can be the same
+	
+	template<NDSColorFormat OUTPUTFORMAT, size_t CAPTURELENGTH> void _RenderLine_DisplayCapture(const GPUEngineCompositorInfo &compInfo);
+	void _RenderLine_DispCapture_FIFOToBuffer(u16 *fifoLineBuffer);
+	
+	template<NDSColorFormat COLORFORMAT, int SOURCESWITCH, size_t CAPTURELENGTH, bool CAPTUREFROMNATIVESRC, bool CAPTURETONATIVEDST>
+	void _RenderLine_DispCapture_Copy(const GPUEngineLineInfo &lineInfo, const void *src, void *dst, const size_t captureLengthExt); // Do not use restrict pointers, since src and dst can be the same
+	
+	u16 _RenderLine_DispCapture_BlendFunc(const u16 srcA, const u16 srcB, const u8 blendEVA, const u8 blendEVB);
+	template<NDSColorFormat COLORFORMAT> Color4u8 _RenderLine_DispCapture_BlendFunc(const Color4u8 srcA, const Color4u8 srcB, const u8 blendEVA, const u8 blendEVB);
+	
+	template<GPUCompositorMode COMPOSITORMODE, NDSColorFormat OUTPUTFORMAT, bool WILLPERFORMWINDOWTEST>
+	size_t _RenderLine_Layer3D_LoopOp(GPUEngineCompositorInfo &compInfo, const u8 *__restrict windowTestPtr, const u8 *__restrict colorEffectEnablePtr, const Color4u8 *__restrict srcLinePtr);
+	
+	template<NDSColorFormat OUTPUTFORMAT>
+	void _RenderLine_DispCapture_Blend_Buffer(const void *srcA, const void *srcB, void *dst, const u8 blendEVA, const u8 blendEVB, const size_t pixCount); // Do not use restrict pointers, since srcB and dst can be the same
+	
+	template<NDSColorFormat OUTPUTFORMAT>
+	size_t _RenderLine_DispCapture_Blend_VecLoop(const void *srcA, const void *srcB, void *dst, const u8 blendEVA, const u8 blendEVB, const size_t length);
+	
+	template<NDSColorFormat OUTPUTFORMAT, size_t CAPTURELENGTH, bool ISCAPTURENATIVE>
+	void _RenderLine_DispCapture_Blend(const GPUEngineLineInfo &lineInfo, const void *srcA, const void *srcB, void *dst, const size_t captureLengthExt); // Do not use restrict pointers, since srcB and dst can be the same
+	
+	template<NDSColorFormat OUTPUTFORMAT> void _HandleDisplayModeVRAM(const GPUEngineLineInfo &lineInfo);
+	void _HandleDisplayModeMainMemory(const GPUEngineLineInfo &lineInfo);
+	
+public:
+	static void* operator new(size_t size);
+	static void operator delete(void *p);
+	GPUEngineA();
+	virtual ~GPUEngineA();
+	
+	void ParseReg_DISPCAPCNT();
+	bool IsLineCaptureNative(const size_t blockID, const size_t blockLine);
+	void* GetCustomVRAMBlockPtr(const size_t blockID);
+	virtual void AllocateWorkingBuffers(NDSColorFormat requestedColorFormat, size_t w, size_t h);
+	
+	bool WillRender3DLayer();
+	bool WillCapture3DLayerDirect(const size_t l);
+	bool WillDisplayCapture(const size_t l);
+	void SetDisplayCaptureEnable();
+	void ResetDisplayCaptureEnable();
+	bool VerifyVRAMLineDidChange(const size_t blockID, const size_t l);
+	
+	void LastLineProcess();
+	
+	virtual void Reset();
+	void ResetCaptureLineStates(const size_t blockID);
+	
+	template<NDSColorFormat OUTPUTFORMAT> void RenderLine(const size_t l);
+	template<GPUCompositorMode COMPOSITORMODE, NDSColorFormat OUTPUTFORMAT, bool WILLPERFORMWINDOWTEST> void RenderLine_Layer3D(GPUEngineCompositorInfo &compInfo);
 };
-void sprite1D(GPU * gpu, u16 l, u8 * dst, u8 * dst_alpha, u8 * typeTab, u8 * prioTab);
-void sprite2D(GPU * gpu, u16 l, u8 * dst, u8 * dst_alpha, u8 * typeTab, u8 * prioTab);
 
-extern const size sprSizeTab[4][4];
+class GPUEngineB : public GPUEngineBase
+{
+public:
+	static void* operator new(size_t size);
+	static void operator delete(void *p);
+	GPUEngineB();
+	virtual ~GPUEngineB();
+	
+	virtual void Reset();
+	
+	template<NDSColorFormat OUTPUTFORMAT> void RenderLine(const size_t l);
+};
 
-typedef struct {
-	GPU * gpu;
-	u16 offset;
-} NDS_Screen;
+class NDSDisplay
+{
+private:
+	NDSDisplayID _ID;
+	GPUSubsystem *_gpuSystem;
+	GPUEngineBase *_gpuEngine;
+	
+	// Native line tracking must be handled at the display level in order to account for
+	// games that use both engines for the same display. For example, "The Legend of Zelda:
+	// Phantom Hourglass" and "The Legend of Zelda: Spirit Tracks" can do this when the
+	// player moves the map to and from the touch screen.
+	bool _isLineDisplayNative[GPU_FRAMEBUFFER_NATIVE_HEIGHT];
+	size_t _nativeLineDisplayCount;
+	
+	u16 *_nativeBuffer16;
+	u32 *_workingNativeBuffer32;
+	void *_customBuffer;
+	
+	NDSColorFormat _customColorFormat;
+	size_t _customPixelBytes;
+	size_t _customWidth;
+	size_t _customHeight;
+	bool _isCustomSizeRequested;
+	
+	void *_renderedBuffer;
+ 	size_t _renderedWidth;
+ 	size_t _renderedHeight;
+	
+	bool _isEnabled;
+	float _backlightIntensityTotal;
+	
+	void __constructor(const NDSDisplayID displayID, GPUEngineBase *theEngine);
+	
+public:
+	NDSDisplay();
+	NDSDisplay(const NDSDisplayID displayID);
+	NDSDisplay(const NDSDisplayID displayID, GPUEngineBase *theEngine);
+	
+	NDSDisplayID GetDisplayID() const;
+	
+	GPUEngineBase* GetEngine();
+	void SetEngine(GPUEngineBase *theEngine);
+	
+	GPUEngineID GetEngineID();
+	void SetEngineByID(const GPUEngineID theID);
+	
+	size_t GetNativeLineCount();
+ 	bool GetIsLineNative(const size_t l);
+ 	void SetIsLineNative(const size_t l, const bool isNative);
+ 	void ClearAllLinesToNative();
+	void ResolveLinesDisplayedNative();
+	void ResolveFramebufferToCustom(NDSDisplayInfo &mutableInfo);
+	bool DidPerformCustomRender() const;
+	
+	u16* GetNativeBuffer16() const;
+	u32* GetWorkingNativeBuffer32() const;
+	void* GetCustomBuffer() const;
+	void SetDrawBuffers(u16 *nativeBuffer16, u32 *workingNativeBuffer32, void *customBuffer);
+	
+	NDSColorFormat GetColorFormat() const;
+	void SetColorFormat(NDSColorFormat colorFormat);
+	
+	size_t GetPixelBytes() const;
+	size_t GetWidth() const;
+	size_t GetHeight() const;
+	void SetDisplaySize(size_t w, size_t h);
+	bool IsCustomSizeRequested() const;
+	
+	void* GetRenderedBuffer() const;
+	size_t GetRenderedWidth() const;
+	size_t GetRenderedHeight() const;
+	
+	bool IsEnabled() const;
+	void SetIsEnabled(bool stateIsEnabled);
+	
+	float GetBacklightIntensityTotal() const;
+	void SetBacklightIntensityTotal(float intensity);
+	
+	template<NDSColorFormat OUTPUTFORMAT> void ApplyMasterBrightness(const NDSDisplayInfo &displayInfo);
+	template<NDSColorFormat OUTPUTFORMAT> void ApplyMasterBrightness(void *dst, const size_t pixCount, const GPUMasterBrightMode mode, const u8 intensity);
+	
+	template<NDSColorFormat OUTPUTFORMAT> size_t _ApplyMasterBrightnessUp_LoopOp(void *__restrict dst, const size_t pixCount, const u8 intensityClamped);
+	template<NDSColorFormat OUTPUTFORMAT> size_t _ApplyMasterBrightnessDown_LoopOp(void *__restrict dst, const size_t pixCount, const u8 intensityClamped);
+	
+	void Postprocess(NDSDisplayInfo &mutableDisplayInfo);
+};
 
-extern NDS_Screen MainScreen;
-extern NDS_Screen SubScreen;
+class GPUEventHandler
+{
+public:
+	virtual ~GPUEventHandler() {};
+	
+	virtual void DidFrameBegin(const size_t line, const bool isFrameSkipRequested, const size_t pageCount, u8 &selectedBufferIndexInOut) = 0;
+	virtual void DidFrameEnd(bool isFrameSkipped, const NDSDisplayInfo &latestDisplayInfo) = 0;
+	virtual void DidRender3DBegin() = 0;
+	virtual void DidRender3DEnd() = 0;
+	virtual void DidApplyGPUSettingsBegin() = 0;
+	virtual void DidApplyGPUSettingsEnd() = 0;
+	virtual void DidApplyRender3DSettingsBegin() = 0;
+	virtual void DidApplyRender3DSettingsEnd() = 0;
+};
 
-int Screen_Init();
-void Screen_Reset(void);
-void Screen_DeInit(void);
+// All of the default event handler methods should do nothing.
+// If a subclass doesn't need to override every method, then it might be easier
+// if you subclass GPUEventHandlerDefault instead of GPUEventHandler.
+class GPUEventHandlerDefault : public GPUEventHandler
+{
+public:
+	virtual ~GPUEventHandlerDefault() {};
+	
+	virtual void DidFrameBegin(const size_t line, const bool isFrameSkipRequested, const size_t pageCount, u8 &selectedBufferIndexInOut);
+	virtual void DidFrameEnd(bool isFrameSkipped, const NDSDisplayInfo &latestDisplayInfo) {};
+	virtual void DidRender3DBegin() {};
+	virtual void DidRender3DEnd() {};
+	virtual void DidApplyGPUSettingsBegin() {};
+	virtual void DidApplyGPUSettingsEnd() {};
+	virtual void DidApplyRender3DSettingsBegin() {};
+	virtual void DidApplyRender3DSettingsEnd() {};
+};
 
+class GPUSubsystem
+{
+private:
+	GPUEventHandlerDefault *_defaultEventHandler;
+	GPUEventHandler *_event;
+	
+	GPUEngineA *_engineMain;
+	GPUEngineB *_engineSub;
+	NDSDisplay *_display[2];
+	GPUEngineLineInfo _lineInfo[GPU_VRAM_BLOCK_LINES + 1];
+	
+	Task *_asyncEngineBufferSetupTask;
+	bool _asyncEngineBufferSetupIsRunning;
+	
+	int _pending3DRendererID;
+	bool _needChange3DRenderer;
+	
+	u32 _videoFrameIndex;			// Increments whenever a video frame is completed. Resets every 60 video frames.
+	u32 _render3DFrameCount;		// The current 3D rendering frame count, saved to this variable once every 60 video frames.
+	bool _frameNeedsFinish;
+	bool _willFrameSkip;
+	bool _willPostprocessDisplays;
+	bool _willAutoResolveToCustomBuffer;
+	void *_customVRAM;
+	void *_customVRAMBlank;
+	
+	NDSColorFormat _framebufferColorFormatPending;
+	size_t _framebufferWidthPending;
+	size_t _framebufferHeightPending;
+	size_t _framebufferPageCountPending;
+	void *_masterFramebuffer;
+	u32 *_masterWorkingNativeBuffer32;
+	
+	NDSDisplayInfo _displayInfo;
+	
+	void _UpdateFPSRender3D();
+	void _AllocateFramebuffers(NDSColorFormat outputFormat, size_t w, size_t h, size_t pageCount);
+	void _ApplyFramebufferSettings();
+	
+	void _DownscaleAndConvertForSavestate(const NDSDisplayID displayID, const void *srcBuffer, u16 *dstBuffer);
+	void _ConvertAndUpscaleForLoadstate(const NDSDisplayID displayID, const u16 *srcBuffer, void *dstBuffer);
+	
+public:
+	GPUSubsystem();
+	~GPUSubsystem();
+	
+	void SetEventHandler(GPUEventHandler *eventHandler);
+	GPUEventHandler* GetEventHandler();
+	
+	void Reset();
+	void ForceRender3DFinishAndFlush(bool willFlush);
+	void ForceFrameStop();
+	
+	const NDSDisplayInfo& GetDisplayInfo(); // Frontends need to call this whenever they need to read the video buffers from the emulator core
+	const GPUEngineLineInfo& GetLineInfoAtIndex(size_t l);
+	u32 GetFPSRender3D() const;
+	
+	GPUEngineA* GetEngineMain();
+	GPUEngineB* GetEngineSub();
+	NDSDisplay* GetDisplayMain();
+	NDSDisplay* GetDisplayTouch();
+	
+	void* GetCustomVRAMBuffer();
+	void* GetCustomVRAMBlankBuffer();
+	template<NDSColorFormat COLORFORMAT> void* GetCustomVRAMAddressUsingMappedAddress(const u32 addr, const size_t offset);
+	
+	size_t GetFramebufferPageCount() const;
+	void SetFramebufferPageCount(size_t pageCount);
+	
+	size_t GetCustomFramebufferWidth() const;
+	size_t GetCustomFramebufferHeight() const;
+	void SetCustomFramebufferSize(size_t w, size_t h);
+	
+	NDSColorFormat GetColorFormat() const;
+	void SetColorFormat(const NDSColorFormat outputFormat);
+	
+	int Get3DRendererID();
+	void Set3DRendererByID(int rendererID);
+	bool Change3DRendererByID(int rendererID);
+	bool Change3DRendererIfNeeded();
+	
+	bool GetWillFrameSkip() const;
+	void SetWillFrameSkip(const bool willFrameSkip);
+	void SetDisplayCaptureEnable();
+	void ResetDisplayCaptureEnable();
+	void UpdateRenderProperties();
+	
+	// By default, the displays will automatically perform certain postprocessing steps on the
+	// CPU before the DidFrameEnd event.
+	//
+	// To turn off this behavior, call SetWillPostprocessDisplays() and pass a value of "false".
+	// This can be useful if the client wants to perform these postprocessing steps itself, for
+	// example, if a client performs them on another thread or on the GPU.
+	//
+	// If automatic postprocessing is turned off, clients can still manually perform the
+	// postprocessing steps on the CPU by calling PostprocessDisplay().
+	//
+	// The postprocessing steps that are performed are:
+	// - Converting an RGB666 formatted framebuffer to RGB888 format.
+	// - Applying the master brightness.
+	bool GetWillPostprocessDisplays() const;
+	void SetWillPostprocessDisplays(const bool willPostprocess);
+	void PostprocessDisplay(const NDSDisplayID displayID, NDSDisplayInfo &mutableInfo);
+	
+	// Normally, the displays will automatically resolve their native buffers to the master
+	// custom framebuffer at the end of V-blank so that all rendered graphics are contained
+	// within a single common buffer. This is necessary for when someone wants to read
+	// the NDS framebuffers, but the reader can only read a single buffer at a time.
+	// Certain functions, such as taking screenshots, as well as many clients running
+	// the NDS video displays, require that they read from only a single buffer.
+	//
+	// However, if SetWillAutoResolveToCustomBuffer() is passed "false", then the client
+	// becomes responsible for calling GetDisplayInfo() and reading the native and custom buffers
+	// properly for each display. If a single buffer is still needed for certain cases, then the
+	// client must manually call ResolveDisplayToCustomFramebuffer() for each display before
+	// reading the master custom framebuffer.
+	bool GetWillAutoResolveToCustomBuffer() const;
+	void SetWillAutoResolveToCustomBuffer(const bool willAutoResolve);
+	void ResolveDisplayToCustomFramebuffer(const NDSDisplayID displayID, NDSDisplayInfo &mutableInfo);
+	
+	void SetupEngineBuffers();
+	void AsyncSetupEngineBuffersStart();
+	void AsyncSetupEngineBuffersFinish();
+	
+	void RenderLine(const size_t l);
+	void UpdateAverageBacklightIntensityTotal();
+	void ClearWithColor(const u16 colorBGRA5551);
+	
+	void SaveState(EMUFILE &os);
+	bool LoadState(EMUFILE &is, int size);
+};
+
+class GPUClientFetchObject
+{
+protected:
+	s32 _id;
+	char _name[256];
+	char _description[256];
+	
+	NDSDisplayInfo _fetchDisplayInfo[MAX_FRAMEBUFFER_PAGES];
+	volatile u8 _lastFetchIndex;
+	void *_clientData;
+	
+	virtual void _FetchNativeDisplayByID(const NDSDisplayID displayID, const u8 bufferIndex);
+	virtual void _FetchCustomDisplayByID(const NDSDisplayID displayID, const u8 bufferIndex);
+	
+public:
+	GPUClientFetchObject();
+	virtual ~GPUClientFetchObject() {};
+	
+	virtual void Init();
+	virtual void SetFetchBuffers(const NDSDisplayInfo &currentDisplayInfo);
+	virtual void FetchFromBufferIndex(const u8 index);
+	
+	const s32 GetID() const;
+	const char* GetName() const;
+	const char* GetDescription() const;
+	
+	u8 GetLastFetchIndex() const;
+	void SetLastFetchIndex(const u8 fetchIndex);
+	
+	const NDSDisplayInfo& GetFetchDisplayInfoForBufferIndex(const u8 bufferIndex) const;
+	void SetFetchDisplayInfo(const NDSDisplayInfo &displayInfo);
+	
+	void* GetClientData() const;
+	void SetClientData(void *clientData);
+};
+
+extern GPUSubsystem *GPU;
 extern MMU_struct MMU;
 
-void GPU_setVideoProp(GPU *, u32 p);
-void GPU_setBGProp(GPU *, u16 num, u16 p);
-
-void GPU_setBLDCNT(GPU *gpu, u16 v) ;
-void GPU_setBLDY(GPU *gpu, u16 v) ;
-void GPU_setMOSAIC(GPU *gpu, u16 v) ;
-
-
-void GPU_remove(GPU *, u8 num);
-void GPU_addBack(GPU *, u8 num);
-
-int GPU_ChangeGraphicsCore(int coreid);
-
-void GPU_set_DISPCAPCNT(u32 val) ;
-void GPU_RenderLine(NDS_Screen * screen, u16 l, bool skip = false) ;
-void GPU_setMasterBrightness (GPU *gpu, u16 val);
-
-inline void GPU_setWIN0_H(GPU* gpu, u16 val) { gpu->WIN0H0 = val >> 8; gpu->WIN0H1 = val&0xFF; gpu->need_update_winh[0] = true; }
-inline void GPU_setWIN0_H0(GPU* gpu, u8 val) { gpu->WIN0H0 = val;  gpu->need_update_winh[0] = true; }
-inline void GPU_setWIN0_H1(GPU* gpu, u8 val) { gpu->WIN0H1 = val;  gpu->need_update_winh[0] = true; }
-
-inline void GPU_setWIN0_V(GPU* gpu, u16 val) { gpu->WIN0V0 = val >> 8; gpu->WIN0V1 = val&0xFF;}
-inline void GPU_setWIN0_V0(GPU* gpu, u8 val) { gpu->WIN0V0 = val; }
-inline void GPU_setWIN0_V1(GPU* gpu, u8 val) { gpu->WIN0V1 = val; }
-
-inline void GPU_setWIN1_H(GPU* gpu, u16 val) {gpu->WIN1H0 = val >> 8; gpu->WIN1H1 = val&0xFF;  gpu->need_update_winh[1] = true; }
-inline void GPU_setWIN1_H0(GPU* gpu, u8 val) { gpu->WIN1H0 = val;  gpu->need_update_winh[1] = true; }
-inline void GPU_setWIN1_H1(GPU* gpu, u8 val) { gpu->WIN1H1 = val;  gpu->need_update_winh[1] = true; }
-
-inline void GPU_setWIN1_V(GPU* gpu, u16 val) { gpu->WIN1V0 = val >> 8; gpu->WIN1V1 = val&0xFF; }
-inline void GPU_setWIN1_V0(GPU* gpu, u8 val) { gpu->WIN1V0 = val; }
-inline void GPU_setWIN1_V1(GPU* gpu, u8 val) { gpu->WIN1V1 = val; }
-
-inline void GPU_setWININ(GPU* gpu, u16 val) {
-	gpu->WININ0=val&0x1F;
-	gpu->WININ0_SPECIAL=((val>>5)&1)!=0;
-	gpu->WININ1=(val>>8)&0x1F;
-	gpu->WININ1_SPECIAL=((val>>13)&1)!=0;
-}
-
-inline void GPU_setWININ0(GPU* gpu, u8 val) { gpu->WININ0 = val&0x1F; gpu->WININ0_SPECIAL = (val>>5)&1; }
-inline void GPU_setWININ1(GPU* gpu, u8 val) { gpu->WININ1 = val&0x1F; gpu->WININ1_SPECIAL = (val>>5)&1; }
-
-inline void GPU_setWINOUT16(GPU* gpu, u16 val) {
-	gpu->WINOUT=val&0x1F;
-	gpu->WINOUT_SPECIAL=((val>>5)&1)!=0;
-	gpu->WINOBJ=(val>>8)&0x1F;
-	gpu->WINOBJ_SPECIAL=((val>>13)&1)!=0;
-}
-inline void GPU_setWINOUT(GPU* gpu, u8 val) { gpu->WINOUT = val&0x1F; gpu->WINOUT_SPECIAL = (val>>5)&1; }
-inline void GPU_setWINOBJ(GPU* gpu, u8 val) { gpu->WINOBJ = val&0x1F; gpu->WINOBJ_SPECIAL = (val>>5)&1; }
-
-// Blending
-void SetupFinalPixelBlitter (GPU *gpu);
-#define GPU_setBLDCNT_LOW(gpu, val) {gpu->BLDCNT = (gpu->BLDCNT&0xFF00) | (val); SetupFinalPixelBlitter (gpu);}
-#define GPU_setBLDCNT_HIGH(gpu, val) {gpu->BLDCNT = (gpu->BLDCNT&0xFF) | (val<<8); SetupFinalPixelBlitter (gpu);}
-#define GPU_setBLDCNT(gpu, val) {gpu->BLDCNT = (val); SetupFinalPixelBlitter (gpu);}
-
-
-
-#define GPU_setBLDY_EVY(gpu, val) {gpu->BLDY_EVY = ((val)&0x1f) > 16 ? 16 : ((val)&0x1f);}
-
-//these arent needed right now since the values get poked into memory via default mmu handling and dispx_st
-//#define GPU_setBGxHOFS(bg, gpu, val) gpu->dispx_st->dispx_BGxOFS[bg].BGxHOFS = ((val) & 0x1FF)
-//#define GPU_setBGxVOFS(bg, gpu, val) gpu->dispx_st->dispx_BGxOFS[bg].BGxVOFS = ((val) & 0x1FF)
-
-void gpu_SetRotateScreen(u16 angle);
-
-//#undef FORCEINLINE
-//#define FORCEINLINE __forceinline
-
 #endif
-

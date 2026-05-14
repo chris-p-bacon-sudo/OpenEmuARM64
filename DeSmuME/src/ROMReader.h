@@ -1,6 +1,6 @@
 /*
 	Copyright (C) 2007 Guillaume Duhamel
-	Copyright (C) 2007 DeSmuME team
+	Copyright (C) 2007-2022 DeSmuME team
 
 	This file is free software: you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
@@ -16,6 +16,9 @@
 	along with the this software.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#ifndef _ROMREADER_H_
+#define _ROMREADER_H_
+
 #ifdef HAVE_LIBZ
 #include <zlib.h>
 #endif
@@ -27,6 +30,7 @@
 #define ROMREADER_STD	0
 #define ROMREADER_GZIP	1
 #define ROMREADER_ZIP	2
+#define ROMREADER_MEM	3
 
 typedef struct
 {
@@ -37,6 +41,7 @@ typedef struct
 	u32 (*Size)(void * file);
 	int (*Seek)(void * file, int offset, int whence);
 	int (*Read)(void * file, void * buffer, u32 size);
+	int (*Write)(void * file, void * buffer, u32 size);
 } ROMReader_struct;
 
 extern ROMReader_struct STDROMReader;
@@ -48,3 +53,6 @@ extern ROMReader_struct ZIPROMReader;
 #endif
 
 ROMReader_struct * ROMReaderInit(char ** filename);
+ROMReader_struct * MemROMReaderRead_TrueInit(void* buf, int length);
+
+#endif // _ROMREADER_H_

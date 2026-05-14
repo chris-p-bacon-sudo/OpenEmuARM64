@@ -1,6 +1,6 @@
 /*
 	Copyright (C) 2009 CrazyMax
-	Copyright (C) 2009-2015 DeSmuME team
+	Copyright (C) 2009-2025 DeSmuME team
 
 	This file is free software: you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
@@ -65,7 +65,7 @@ private:
 		fROM->fseek(pos, SEEK_SET);
 	
 		u32 data = 0xFFFFFFFF;
-		u32 readed = fROM->fread(&data, size);
+		u32 readed = (u32)fROM->fread(&data, size);
 		return data;
 	}
 
@@ -77,7 +77,7 @@ private:
 		fSRAM->fseek(pos, SEEK_SET);
 
 		u32 data = 0xFFFFFFFF;
-		u32 readed = fSRAM->fread(&data, size);
+		u32 readed = (u32)fSRAM->fread(&data, size);
 		return data;
 	}
 
@@ -106,8 +106,8 @@ private:
 		int len = fROM->size();
 		for(;;)
 		{
-			u32 tmp;
-			u32 readed = fROM->fread(&tmp, 4);
+			u32 romType = 0;
+			u32 readed = (u32)fROM->fread(&romType, 4);
 
 			int pos = fROM->ftell();
 			int currPct = pos*100/(size-1);
@@ -126,7 +126,7 @@ private:
 				break;
 
 
-			switch (tmp)
+			switch (romType)
 			{
 				case EEPROM:
 					return 1;
@@ -134,11 +134,14 @@ private:
 					return 2;
 				case FLASH:
 				{
-					u32 tmp = fROM->read32le();
+					u32 tmp = fROM->read_u32LE();
 					return ((tmp == FLASH1M_)?3:5);
 				}
 				case SIIRTC_V:
 					return 4;
+					
+				default:
+					break;
 			}
 		}
 
@@ -359,15 +362,14 @@ public:
 		
 		printf("GBASlot opening ROM: %s\n", GBACartridge_RomPath.c_str());
 		EMUFILE_FILE *inf = new EMUFILE_FILE(GBACartridge_RomPath, "rb");
-		inf->EnablePositionCache();
 		fROM = inf;
 		if (fROM->fail())
 		{
 			printf(" - Failed\n");
 			Close();
-			
 			return;
 		}
+		inf->EnablePositionCache();
 		
 		romSize = fROM->size();
 		printf(" - Success (%u bytes)\n", romSize);

@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2010-2015 DeSmuME team
+	Copyright (C) 2010-2021 DeSmuME team
 
 	This file is free software: you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
@@ -88,7 +88,7 @@ public:
 		return protocol.read_GCDATAIN(PROCNUM);
 	}
 
-	virtual void slot1client_startOperation(eSlot1Operation operation)
+	virtual void slot1client_startOperation(eSlot1Operation theOperation)
 	{
 		//INFO("Start command: %02X%02X%02X%02X%02X%02X%02X%02X\t",
 		//	protocol.command.bytes[0], protocol.command.bytes[1], protocol.command.bytes[2], protocol.command.bytes[3],
@@ -98,15 +98,18 @@ public:
 		u32 addressFromProtocol = (protocol.command.bytes[1] << 24) | (protocol.command.bytes[2] << 16) | (protocol.command.bytes[3] << 8) | protocol.command.bytes[4];
 
 		//pass the normal rom operations along to the rom component
-		switch(operation)
+		switch (theOperation)
 		{
 			case eSlot1Operation_00_ReadHeader_Unencrypted:
-				rom.start(operation,addressFromProtocol);
+				rom.start(theOperation, addressFromProtocol);
 				return;
 
 			case eSlot1Operation_2x_SecureAreaLoad:
-				rom.start(operation,protocol.address);
+				rom.start(theOperation, protocol.address);
 				return;
+				
+			default:
+				break;
 		}
 
 		//handle special commands ourselves
@@ -156,7 +159,7 @@ public:
 				}
 				else
 				{
-					rom.start(operation, addressFromProtocol);
+					rom.start(theOperation, addressFromProtocol);
 				}
 				break;
 
@@ -180,6 +183,9 @@ public:
 			case eSlot1Operation_2x_SecureAreaLoad:
 			//case eSlot1Operation_B7_Read:
 				return rom.read();
+				
+			default:
+				break;
 		}
 
 		//handle special commands ourselves
@@ -250,6 +256,9 @@ public:
 			case eSlot1Operation_B7_Read:
 			case eSlot1Operation_2x_SecureAreaLoad:
 				return;
+				
+			default:
+				break;
 		}
 
 		//handle special commands ourselves
@@ -274,39 +283,39 @@ public:
 		protocol.mode = eCardMode_NORMAL;
 	}
 
-	virtual void savestate(EMUFILE* os)
+	virtual void savestate(EMUFILE &os)
 	{
 		s32 version = 0;
 
 		protocol.savestate(os);
 		rom.savestate(os);
 
-		os->write32le(version);
+		os.write_32LE(version);
 		
-		os->write32le(mode);
-		os->write32le(handle_save);
-		os->write32le(save_adr);
-		os->write32le(save_start);
-		os->write32le(subAdr);
+		os.write_32LE(mode);
+		os.write_32LE(handle_save);
+		os.write_32LE(save_adr);
+		os.write_32LE(save_start);
+		os.write_32LE(subAdr);
 	}
 
-	virtual void loadstate(EMUFILE* is)
+	virtual void loadstate(EMUFILE &is)
 	{
 		s32 version = 0;
 
 		protocol.loadstate(is);
 		rom.loadstate(is);
 
-		is->read32le(&version);
+		is.read_32LE(version);
 
 		// version 0
 		if (version >= 0)
 		{
-			is->read32le(&mode);
-			is->read32le(&handle_save);
-			is->read32le(&save_adr);
-			is->read32le(&save_start);
-			is->read32le(&subAdr);
+			is.read_32LE(mode);
+			is.read_32LE(handle_save);
+			is.read_32LE(save_adr);
+			is.read_32LE(save_start);
+			is.read_32LE(subAdr);
 		}
 	}
 

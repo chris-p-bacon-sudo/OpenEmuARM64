@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2009-2013 DeSmuME team
+	Copyright (C) 2009-2021 DeSmuME team
 
 	This file is free software: you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
@@ -24,25 +24,14 @@ struct _KEY1
 {
 	_KEY1(const u8 *inKeyBufPtr)
 	{
-		if (keyBuf) delete keyBuf;
-		keyBuf = new u32 [0x412];
-		memset(keyBuf, 0x00, 0x412 * sizeof(u32));
-		memset(&keyCode[0], 0, sizeof(keyCode));
-		this->keyBufPtr = inKeyBufPtr;
+		memset(keyBuf, 0, sizeof(keyBuf));
+		memset(keyCode, 0, sizeof(keyCode));
+		keyBufPtr = inKeyBufPtr;
 	}
 
-	~_KEY1()
-	{
-		if (keyBuf) 
-		{
-			delete keyBuf;
-			keyBuf = NULL;
-		}
-	}
-
-	u32 *keyBuf;
+	u32 keyBuf[0x412];
 	u32 keyCode[3];
-	const u8	*keyBufPtr;
+	const u8 *keyBufPtr;
 
 	void init(u32 idcode, u8 level, u8 modulo);
 	void applyKeycode(u8 modulo);
@@ -61,9 +50,11 @@ private:
 	u64 bitsReverse39(u64 key);
 
 public:
-	_KEY2() :	seed0(0x58C56DE0E8ULL), 
-				seed1(0x5C879B9B05ULL)
-	{}
+	_KEY2()
+	{
+		seed0 = 0x58C56DE0E8ULL;
+		seed1 = 0x5C879B9B05ULL;
+	}
 	
 	void applySeed(u8 PROCNUM);
 	u8 apply(u8 data);

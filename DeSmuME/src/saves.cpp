@@ -2,7 +2,7 @@
 	Copyright (C) 2006 Normmatt
 	Copyright (C) 2006 Theo Berkau
 	Copyright (C) 2007 Pascal Giard
-	Copyright (C) 2008-2015 DeSmuME team
+	Copyright (C) 2008-2025 DeSmuME team
 
 	This file is free software: you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
@@ -36,11 +36,11 @@
 #include "driver.h"
 #include "saves.h"
 #include "MMU.h"
+#include "emufile.h"
 #include "NDSSystem.h"
 #include "render3D.h"
 #include "cp15.h"
 #include "GPU.h"
-#include "GPU_osd.h"
 #include "version.h"
 
 #include "readwrite.h"
@@ -56,7 +56,8 @@
 #include "path.h"
 
 #ifdef HOST_WINDOWS
-#include "windows/main.h"
+#include "frontend/windows/main.h"
+extern char IniName[MAX_PATH];
 #endif
 
 int lastSaveState = 0;		//Keeps track of last savestate used for quick save/load functions
@@ -66,8 +67,8 @@ int lastSaveState = 0;		//Keeps track of last savestate used for quick save/load
 #define SS_INDIRECT            0x80000000
 
 u32 _DESMUME_version = EMU_DESMUME_VERSION_NUMERIC();
-u32 svn_rev = EMU_DESMUME_SUBVERSION_NUMERIC();
-s64 save_time = 0;
+u32 svn_rev = 0; //EMU_DESMUME_VERSION_NUMERIC(); //sorry, not using this now
+s64 save_time_data = 0;
 NDS_SLOT1_TYPE slot1Type = NDS_SLOT1_RETAIL_AUTO;
 NDS_SLOT2_TYPE slot2Type = NDS_SLOT2_AUTO;
 
@@ -86,7 +87,7 @@ SFORMAT SF_NDS_INFO[]={
 	{ "DVMI", 1, 1, (void*)&DESMUME_VERSION_MINOR},
 	{ "DSBD", 1, 1, (void*)&DESMUME_VERSION_BUILD},
 	{ "GREV", 1, 4, &svn_rev},
-	{ "GTIM", 1, 8, &save_time},
+	{ "GTIM", 1, 8, &save_time_data},
 	{ 0 }
 };
 
@@ -121,8 +122,7 @@ SFORMAT SF_ARM7[]={
 	{ "7FIQ", 4, 1, &NDS_ARM7.SPSR_fiq },
 	{ "7int", 4, 1, &NDS_ARM7.intVector },
 	{ "7LDT", 1, 1, &NDS_ARM7.LDTBit },
-	{ "7Wai", 4, 1, &NDS_ARM7.waitIRQ },
-	{ "7hef", 4, 1, &NDS_ARM7.halt_IE_and_IF },
+	{ "7FRZ", 4, 1, &NDS_ARM7.freeze },
 	{ "7iws", 1, 1, &NDS_ARM7.intrWaitARM_state },
 	{ 0 }
 };
@@ -158,8 +158,7 @@ SFORMAT SF_ARM9[]={
 	{ "9FIQ", 4, 1, &NDS_ARM9.SPSR_fiq},
 	{ "9int", 4, 1, &NDS_ARM9.intVector},
 	{ "9LDT", 1, 1, &NDS_ARM9.LDTBit},
-	{ "9Wai", 4, 1, &NDS_ARM9.waitIRQ},
-	{ "9hef", 4, 1, &NDS_ARM9.halt_IE_and_IF },
+	{ "9FRZ", 4, 1, &NDS_ARM9.freeze},
 	{ "9iws", 1, 1, &NDS_ARM9.intrWaitARM_state },
 	{ 0 }
 };
@@ -168,7 +167,7 @@ SFORMAT SF_MEM[]={
 	{ "ITCM", 1, sizeof(MMU.ARM9_ITCM),   MMU.ARM9_ITCM},
 	{ "DTCM", 1, sizeof(MMU.ARM9_DTCM),   MMU.ARM9_DTCM},
 
-	 //for legacy purposes, WRAX is a separate variable. shouldnt be a problem.
+	//for legacy purposes, WRAX is a separate variable. shouldnt be a problem.
 	{ "WRAM", 1, 0x400000, MMU.MAIN_MEM},
 	{ "WRAX", 1, 0x400000, MMU.MAIN_MEM+0x400000},
 
@@ -206,6 +205,7 @@ SFORMAT SF_NDS[]={
 	{ "_FBS", 4, 1, &nds.freezeBus},
 	{ "_CEJ", 4, 1, &nds.cardEjected},
 	{ "_PDL", 2, 1, &nds.paddle},
+	{ "_OVR", 1, 1, &nds.overclock},
 	{ "_P00", 1, 1, &nds.power1.lcd},
 	{ "_P01", 1, 1, &nds.power1.gpuMain},
 	{ "_P02", 1, 1, &nds.power1.gfx3d_render},
@@ -214,6 +214,8 @@ SFORMAT SF_NDS[]={
 	{ "_P05", 1, 1, &nds.power1.dispswap},
 	{ "_P06", 1, 1, &nds.power2.speakers},
 	{ "_P07", 1, 1, &nds.power2.wifi},
+	{ "_P0G", 1, 1, &nds.power_geometry},
+	{ "_P0R", 1, 1, &nds.power_render},
 	{ 0 }
 };
 
@@ -289,7 +291,7 @@ SFORMAT SF_MMU[]={
 	{ "PMCW", 4, 1,			&MMU.powerMan_CntRegWritten},
 	{ "PMCR", 1, 5,			&MMU.powerMan_Reg},
 
-	{ "MR3D", 4, 1,		&MMU.reg_DISP3DCNT_bits},
+	{ "MR3D", 4, 1,			&MMU.ARM9_REG[0x0060]},
 	
 	{ 0 }
 };
@@ -300,79 +302,78 @@ SFORMAT SF_MOVIE[]={
 	{ 0 }
 };
 
-// TODO: integrate the new wifi state variables once everything is settled
 SFORMAT SF_WIFI[]={
-	{ "W000", 4, 1, &wifiMac.powerOn},
-	{ "W010", 4, 1, &wifiMac.powerOnPending},
+	{ "W000", 4, 1, &legacyWifiSF.powerOn},
+	{ "W010", 4, 1, &legacyWifiSF.powerOnPending},
 
-	{ "W020", 2, 1, &wifiMac.rfStatus},
-	{ "W030", 2, 1, &wifiMac.rfPins},
+	{ "W020", 2, 1, &legacyWifiSF.rfStatus},
+	{ "W030", 2, 1, &legacyWifiSF.rfPins},
 
-	{ "W040", 2, 1, &wifiMac.IE},
-	{ "W050", 2, 1, &wifiMac.IF},
+	{ "W040", 2, 1, &legacyWifiSF.IE},
+	{ "W050", 2, 1, &legacyWifiSF.IF},
 
-	{ "W060", 2, 1, &wifiMac.macMode},
-	{ "W070", 2, 1, &wifiMac.wepMode},
-	{ "W080", 4, 1, &wifiMac.WEP_enable},
+	{ "W060", 2, 1, &legacyWifiSF.macMode},
+	{ "W070", 2, 1, &legacyWifiSF.wepMode},
+	{ "W080", 4, 1, &legacyWifiSF.WEP_enable},
 
-	{ "W100", 2, 1, &wifiMac.TXCnt},
-	{ "W120", 2, 1, &wifiMac.TXStat},
+	{ "W100", 2, 1, &legacyWifiSF.TXCnt},
+	{ "W120", 2, 1, &legacyWifiSF.TXStat},
 
-	{ "W200", 2, 1, &wifiMac.RXCnt},
-	{ "W210", 2, 1, &wifiMac.RXCheckCounter},
+	{ "W200", 2, 1, &legacyWifiSF.RXCnt},
+	{ "W210", 2, 1, &legacyWifiSF.RXCheckCounter},
 
-	{ "W220", 1, 6, &wifiMac.mac.bytes},
-	{ "W230", 1, 6, &wifiMac.bss.bytes},
+	{ "W220", 1, 6, &legacyWifiSF.macAddr[0]},
+	{ "W230", 1, 6, &legacyWifiSF.bssid[0]},
 
-	{ "W240", 2, 1, &wifiMac.aid},
-	{ "W250", 2, 1, &wifiMac.pid},
-	{ "W260", 2, 1, &wifiMac.retryLimit},
+	{ "W240", 2, 1, &legacyWifiSF.aid},
+	{ "W250", 2, 1, &legacyWifiSF.pid},
+	{ "W260", 2, 1, &legacyWifiSF.retryLimit},
 
-	{ "W270", 4, 1, &wifiMac.crystalEnabled},
-	{ "W280", 8, 1, &wifiMac.usec},
-	{ "W290", 4, 1, &wifiMac.usecEnable},
-	{ "W300", 8, 1, &wifiMac.ucmp},
-	{ "W310", 4, 1, &wifiMac.ucmpEnable},
-	{ "W320", 2, 1, &wifiMac.eCount},
-	{ "W330", 4, 1, &wifiMac.eCountEnable},
+	{ "W270", 4, 1, &legacyWifiSF.crystalEnabled},
+	{ "W280", 8, 1, &legacyWifiSF.usec},
+	{ "W290", 4, 1, &legacyWifiSF.usecEnable},
+	{ "W300", 8, 1, &legacyWifiSF.ucmp},
+	{ "W310", 4, 1, &legacyWifiSF.ucmpEnable},
+	{ "W320", 2, 1, &legacyWifiSF.eCount},
+	{ "W330", 4, 1, &legacyWifiSF.eCountEnable},
 
-	{ "WR00", 4, 1, &wifiMac.RF.CFG1.val},
-	{ "WR01", 4, 1, &wifiMac.RF.IFPLL1.val},
-	{ "WR02", 4, 1, &wifiMac.RF.IFPLL2.val},
-	{ "WR03", 4, 1, &wifiMac.RF.IFPLL3.val},
-	{ "WR04", 4, 1, &wifiMac.RF.RFPLL1.val},
-	{ "WR05", 4, 1, &wifiMac.RF.RFPLL2.val},
-	{ "WR06", 4, 1, &wifiMac.RF.RFPLL3.val},
-	{ "WR07", 4, 1, &wifiMac.RF.RFPLL4.val},
-	{ "WR08", 4, 1, &wifiMac.RF.CAL1.val},
-	{ "WR09", 4, 1, &wifiMac.RF.TXRX1.val},
-	{ "WR10", 4, 1, &wifiMac.RF.PCNT1.val},
-	{ "WR11", 4, 1, &wifiMac.RF.PCNT2.val},
-	{ "WR12", 4, 1, &wifiMac.RF.VCOT1.val},
+	{ "WR00", 4, 1, &legacyWifiSF.rf_cfg1},
+	{ "WR01", 4, 1, &legacyWifiSF.rf_ifpll1},
+	{ "WR02", 4, 1, &legacyWifiSF.rf_ifpll2},
+	{ "WR03", 4, 1, &legacyWifiSF.rf_ifpll3},
+	{ "WR04", 4, 1, &legacyWifiSF.rf_rfpll1},
+	{ "WR05", 4, 1, &legacyWifiSF.rf_rfpll2},
+	{ "WR06", 4, 1, &legacyWifiSF.rf_rfpll3},
+	{ "WR07", 4, 1, &legacyWifiSF.rf_rfpll4},
+	{ "WR08", 4, 1, &legacyWifiSF.rf_cal1},
+	{ "WR09", 4, 1, &legacyWifiSF.rf_txrx1},
+	{ "WR10", 4, 1, &legacyWifiSF.rf_pcnt1},
+	{ "WR11", 4, 1, &legacyWifiSF.rf_pcnt2},
+	{ "WR12", 4, 1, &legacyWifiSF.rf_vcot1},
 
-	{ "W340", 1, 105, &wifiMac.BB.data[0]},
+	{ "W340", 1, 105, &legacyWifiSF.bb_data[0]},
 
-	{ "W350", 2, 1, &wifiMac.rfIOCnt.val},
-	{ "W360", 2, 1, &wifiMac.rfIOStatus.val},
-	{ "W370", 4, 1, &wifiMac.rfIOData.val},
-	{ "W380", 2, 1, &wifiMac.bbIOCnt.val},
+	{ "W350", 2, 1, &legacyWifiSF.rfIOCnt},
+	{ "W360", 2, 1, &legacyWifiSF.rfIOStatus},
+	{ "W370", 4, 1, &legacyWifiSF.rfIOData},
+	{ "W380", 2, 1, &legacyWifiSF.bbIOCnt},
 
-	{ "W400", 2, 0x1000, &wifiMac.RAM[0]},
-	{ "W410", 2, 1, &wifiMac.RXRangeBegin},
-	{ "W420", 2, 1, &wifiMac.RXRangeEnd},
-	{ "W430", 2, 1, &wifiMac.RXWriteCursor},
-	{ "W460", 2, 1, &wifiMac.RXReadCursor},
-	{ "W470", 2, 1, &wifiMac.RXUnits},
-	{ "W480", 2, 1, &wifiMac.RXBufCount},
-	{ "W490", 2, 1, &wifiMac.CircBufReadAddress},
-	{ "W500", 2, 1, &wifiMac.CircBufWriteAddress},
-	{ "W510", 2, 1, &wifiMac.CircBufRdEnd},
-	{ "W520", 2, 1, &wifiMac.CircBufRdSkip},
-	{ "W530", 2, 1, &wifiMac.CircBufWrEnd},
-	{ "W540", 2, 1, &wifiMac.CircBufWrSkip},
+	{ "W400", 2, 0x1000, &legacyWifiSF.wifiRAM[0]},
+	{ "W410", 2, 1, &legacyWifiSF.rxRangeBegin},
+	{ "W420", 2, 1, &legacyWifiSF.rxRangeEnd},
+	{ "W430", 2, 1, &legacyWifiSF.rxWriteCursor},
+	{ "W460", 2, 1, &legacyWifiSF.rxReadCursor},
+	{ "W470", 2, 1, &legacyWifiSF.rxUnits},
+	{ "W480", 2, 1, &legacyWifiSF.rxBufCount},
+	{ "W490", 2, 1, &legacyWifiSF.circBufReadAddress},
+	{ "W500", 2, 1, &legacyWifiSF.circBufWriteAddress},
+	{ "W510", 2, 1, &legacyWifiSF.circBufReadEnd},
+	{ "W520", 2, 1, &legacyWifiSF.circBufReadSkip},
+	{ "W530", 2, 1, &legacyWifiSF.circBufWriteEnd},
+	{ "W540", 2, 1, &legacyWifiSF.circBufWriteSkip},
 
-	{ "W580", 2, 0x800, &wifiMac.IOPorts[0]},
-	{ "W590", 2, 1, &wifiMac.randomSeed},
+	{ "W580", 2, 0x800, &legacyWifiSF.wifiIOPorts[0]},
+	{ "W590", 2, 1, &legacyWifiSF.randomSeed},
 
 	{ 0 }
 };
@@ -385,82 +386,99 @@ SFORMAT reserveChunks[] = {
 	{ 0 }
 };
 
-static bool s_slot1_loadstate(EMUFILE* is, int size)
+#ifdef MSB_FIRST
+/* endian-flips count bytes.  count should be even and nonzero. */
+static INLINE void FlipByteOrder(u8 *src, u32 count)
 {
-	u32 version = is->read32le();
+	u8 *start=src;
+	u8 *end=src+count-1;
 
-	//version 0:
-	if(version >= 0)
+	if((count&1) || !count)
+      return;         /* This shouldn't happen. */
+
+	while(count--)
 	{
-		u8 slotID = is->read32le();
-		slot1Type = NDS_SLOT1_RETAIL_AUTO;
-		if (version >= 1)
-			slot1_getTypeByID(slotID, slot1Type);
+		u8 tmp;
 
-		slot1_Change(slot1Type);
-
-		EMUFILE_MEMORY temp;
-		is->readMemoryStream(&temp);
-		temp.fseek(0,SEEK_SET);
-		slot1_Loadstate(&temp);
+		tmp=*end;
+		*end=*start;
+		*start=tmp;
+		end--;
+		start++;
 	}
-
-	return true;
 }
+#endif
 
-static void s_slot1_savestate(EMUFILE* os)
+static bool s_slot1_loadstate(EMUFILE &is, int size)
 {
-	u32 version = 1;
-	os->write32le(version);
+	u32 version = is.read_u32LE();
 
-	u8 slotID = (u8)slot1_List[slot1_GetSelectedType()]->info()->id();
-	os->write32le(slotID);
+	/* version 0: */
+	u8 slotID = is.read_u32LE();
+	slot1Type = NDS_SLOT1_RETAIL_AUTO;
+	if (version >= 1)
+		slot1_getTypeByID(slotID, slot1Type);
+
+	slot1_Change(slot1Type);
 
 	EMUFILE_MEMORY temp;
-	slot1_Savestate(&temp);
-	os->writeMemoryStream(&temp);
-}
-
-static bool s_slot2_loadstate(EMUFILE* is, int size)
-{
-	u32 version = is->read32le();
-
-	//version 0:
-	if(version >= 0)
-	{
-		slot2Type = NDS_SLOT2_AUTO;
-		u8 slotID = is->read32le();
-		if (version == 0)
-			slot2_getTypeByID(slotID, slot2Type);
-		slot2_Change(slot2Type);
-
-		EMUFILE_MEMORY temp;
-		is->readMemoryStream(&temp);
-		temp.fseek(0,SEEK_SET);
-		slot2_Loadstate(&temp);
-	}
+	is.read_MemoryStream(temp);
+	temp.fseek(0, SEEK_SET);
+	slot1_Loadstate(temp);
 
 	return true;
 }
 
-static void s_slot2_savestate(EMUFILE* os)
+static void s_slot1_savestate(EMUFILE &os)
+{
+	u32 version = 1;
+	os.write_32LE(version);
+
+	u8 slotID = (u8)slot1_List[slot1_GetSelectedType()]->info()->id();
+	os.write_32LE(slotID);
+
+	EMUFILE_MEMORY temp;
+	slot1_Savestate(temp);
+	os.write_MemoryStream(temp);
+}
+
+static bool s_slot2_loadstate(EMUFILE &is, int size)
+{
+	u32 version = is.read_u32LE();
+
+	/* version 0: */
+	slot2Type = NDS_SLOT2_AUTO;
+	u8 slotID = is.read_u32LE();
+	if (version == 0)
+		slot2_getTypeByID(slotID, slot2Type);
+	slot2_Change(slot2Type);
+
+	EMUFILE_MEMORY temp;
+	is.read_MemoryStream(temp);
+	temp.fseek(0, SEEK_SET);
+	slot2_Loadstate(temp);
+
+	return true;
+}
+
+static void s_slot2_savestate(EMUFILE &os)
 {
 	u32 version = 0;
-	os->write32le(version);
+	os.write_32LE(version);
 
 	//version 0:
 	u8 slotID = (u8)slot2_List[slot2_GetSelectedType()]->info()->id();
-	os->write32le(slotID);
+	os.write_32LE(slotID);
 
 	EMUFILE_MEMORY temp;
-	slot2_Savestate(&temp);
-	os->writeMemoryStream(&temp);
+	slot2_Savestate(temp);
+	os.write_MemoryStream(temp);
 }
 
-static void mmu_savestate(EMUFILE* os)
+static void mmu_savestate(EMUFILE &os)
 {
 	u32 version = 8;
-	write32le(version,os);
+	os.write_32LE(version);
 	
 	//version 2:
 	MMU_new.backupDevice.save_state(os);
@@ -486,61 +504,61 @@ static void mmu_savestate(EMUFILE* os)
 	MMU_new.dsi_tsc.save_state(os);
 
 	//version 8:
-	os->write32le(MMU.fw.size);
-	os->fwrite(MMU.fw.data,MMU.fw.size);
+	os.write_32LE(MMU.fw.size);
+	os.fwrite(MMU.fw.data._raw, MMU.fw.size);
 }
 
-static bool mmu_loadstate(EMUFILE* is, int size)
+static bool mmu_loadstate(EMUFILE &is, int size)
 {
 	//read version
 	u32 version;
-	if(read32le(&version,is) != 1) return false;
+	if (is.read_32LE(version) != 1) return false;
 	
-	if(version == 0 || version == 1)
+	if (version == 0 || version == 1)
 	{
 		u32 bupmem_size;
-		u32 addr_size;
+		u32 addr_size = 0xFFFFFFFF;
 
-		if(version == 0)
+		if (version == 0)
 		{
 			//version 0 was buggy and didnt save the type. 
 			//it would silently fail if there was a size mismatch
 			SAV_silent_fail_flag = true;
-			if(read32le(&bupmem_size,is) != 1) return false;
+			if (is.read_32LE(bupmem_size) != 1) return false;
 			//if(bupmem_size != MMU.bupmem.size) return false; //mismatch between current initialized and saved size
 			addr_size = BackupDevice::addr_size_for_old_save_size(bupmem_size);
 		}
-		else if(version == 1)
+		else if (version == 1)
 		{
 			//version 1 reinitializes the save system with the type that was saved
 			u32 bupmem_type;
-			if(read32le(&bupmem_type,is) != 1) return false;
-			if(read32le(&bupmem_size,is) != 1) return false;
+			if (is.read_32LE(bupmem_type) != 1) return false;
+			if (is.read_32LE(bupmem_size) != 1) return false;
 			addr_size = BackupDevice::addr_size_for_old_save_type(bupmem_type);
-			if(addr_size == 0xFFFFFFFF)
+			if (addr_size == 0xFFFFFFFF)
 				addr_size = BackupDevice::addr_size_for_old_save_size(bupmem_size);
 		}
 
-		if(addr_size == 0xFFFFFFFF)
+		if (addr_size == 0xFFFFFFFF)
 			return false;
 
-		u8* temp = new u8[bupmem_size];
-		is->fread((char*)temp,bupmem_size);
+		u8 *temp = new u8[bupmem_size];
+		is.fread(temp,bupmem_size);
 		MMU_new.backupDevice.load_old_state(addr_size,temp,bupmem_size);
 		delete[] temp;
-		if(is->fail()) return false;
+		if (is.fail()) return false;
 	}
 
-	if(version < 2) return true;
+	if (version < 2) return true;
 
 	bool ok = MMU_new.backupDevice.load_state(is);
 
-	if(version < 3) return ok;
+	if (version < 3) return ok;
 
 	ok &= MMU_new.gxstat.loadstate(is);
 	
-	for(int i=0;i<2;i++)
-		for(int j=0;j<4;j++)
+	for (int i = 0; i < 2; i++)
+		for (int j = 0; j < 4; j++)
 			ok &= MMU_new.dma[i][j].loadstate(is);
 
 	ok &= MMU_timing.arm9codeFetch.loadstate(is, version);
@@ -550,7 +568,7 @@ static bool mmu_loadstate(EMUFILE* is, int size)
 	ok &= MMU_timing.arm9codeCache.loadstate(is, version);
 	ok &= MMU_timing.arm9dataCache.loadstate(is, version);
 
-	if(version < 4) return ok;
+	if (version < 4) return ok;
 
 	ok &= MMU_new.sqrt.loadstate(is,version);
 	ok &= MMU_new.div.loadstate(is,version);
@@ -562,58 +580,52 @@ static bool mmu_loadstate(EMUFILE* is, int size)
 	MMU_new.gxstat.fifo_low = gxFIFO.size <= 127;
 	MMU_new.gxstat.fifo_empty = gxFIFO.size == 0;
 
-	if(version < 5)
-		MMU.reg_DISP3DCNT_bits = T1ReadWord(MMU.ARM9_REG,0x60);
-
-	if(version < 6) return ok;
+	if (version < 5) return ok;
+	if (version < 6) return ok;
 
 	MMU_new.dsi_tsc.load_state(is);
 
 	//version 6
-	if(version < 7)
+	if (version < 7)
 	{
 		//recover WRAMCNT from the stashed WRAMSTAT memory location
 		MMU.WRAMCNT = MMU.MMU_MEM[ARMCPU_ARM7][0x40][0x241];
 	}
 
-	if(version<8) return ok;
+	if (version < 8) return ok;
 
 	//version 8:
-	delete[] MMU.fw.data;
-	MMU.fw.size = is->read32le();
-	MMU.fw.data = new u8[size];
-	is->fread(MMU.fw.data,MMU.fw.size);
-
+	memset(MMU.fw.data._raw, 0, sizeof(NDSFirmwareData));
+	MMU.fw.size = is.read_u32LE();
+	is.fread(MMU.fw.data._raw, MMU.fw.size);
+	
 	return ok;
 }
 
-static void cp15_savestate(EMUFILE* os)
+static void cp15_savestate(EMUFILE &os)
 {
 	//version
-	write32le(1,os);
+	os.write_32LE(1);
 
-	cp15.saveone(os);
+	armcp15_saveone(&cp15, os);
 	//ARM7 not have coprocessor
 	//cp15_saveone((armcp15_t *)NDS_ARM7.coproc[15],os);
 }
 
-static bool cp15_loadstate(EMUFILE* is, int size)
+static bool cp15_loadstate(EMUFILE &is, int size)
 {
 	//read version
 	u32 version;
-	if(read32le(&version,is) != 1) return false;
-	if(version > 1) return false;
+	if (is.read_32LE(version) != 1) return false;
+	if (version > 1) return false;
 
-	if(!cp15.loadone(is)) return false;
+	if (!armcp15_loadone(&cp15, is)) return false;
 	
-	if(version == 0)
+	if (version == 0)
 	{
 		//ARM7 not have coprocessor
-		u8 *tmp_buf = new u8 [sizeof(armcp15_t)];
-		if (!tmp_buf) return false;
-		if(!cp15.loadone(is)) return false;
-		delete [] tmp_buf;
-		tmp_buf = NULL;
+		if (!armcp15_loadone(&cp15, is))
+			return false;
 	}
 
 	return true;
@@ -624,100 +636,202 @@ static bool cp15_loadstate(EMUFILE* is, int size)
 /* Format time and convert to string */
 static char * format_time(time_t cal_time)
 {
-  struct tm *time_struct;
-  static char str[64];
+	struct tm *time_struct;
+	static char str[64];
 
-  time_struct=localtime(&cal_time);
-  strftime(str, sizeof str, "%d-%b-%Y %H:%M:%S", time_struct);
+	time_struct = localtime(&cal_time);
+	strftime(str, sizeof str, "%d-%b-%Y %H:%M:%S", time_struct);
 
-  return(str);
+	return(str);
 }
 
 void clear_savestates()
 {
-  u8 i;
-  for( i = 0; i < NB_STATES; i++ )
-    savestates[i].exists = FALSE;
+	u8 i;
+	for (i = 0; i < NB_STATES; i++)
+		savestates[i].exists = FALSE;
 }
 
 // Scan for existing savestates and update struct
 void scan_savestates()
 {
-  struct stat sbuf;
-  char filename[MAX_PATH+1];
+	#ifdef _MSC_VER
+	struct _stat64i32 sbuf;
+	#else 
+	struct stat sbuf;
+	#endif
 
-  clear_savestates();
+	char filename[MAX_PATH] = {0};
+	path.getpathnoext(path.STATE_SLOTS, filename);
+	
+	const size_t filenameLen = strlen(filename);
+	const size_t numberLen   = strlen("-2147483648"); // Longest possible string length for a 32-bit int
+	const size_t extLen      = strlen(".ds") + numberLen;
+	const size_t totalLen    = filenameLen + extLen;
 
-  for(int i = 0; i < NB_STATES; i++ )
-    {
-     path.getpathnoext(path.STATES, filename);
-	  
-	  if (strlen(filename) + strlen(".dst") + strlen("-2147483648") /* = biggest string for i */ >MAX_PATH) return ;
-      sprintf(filename+strlen(filename), ".ds%d", i);
-      if( stat(filename,&sbuf) == -1 ) continue;
-      savestates[i].exists = TRUE;
-      strncpy(savestates[i].date, format_time(sbuf.st_mtime),40);
-	  savestates[i].date[40-1] = '\0';
-    }
+	clear_savestates();
+	
+	if (totalLen >= MAX_PATH)
+	{
+		printf("Scan Save State ERROR: The file path is too long. (path length is %llu bytes, maximum length is %llu bytes)\n", (unsigned long long)totalLen, (unsigned long long)MAX_PATH);
+		return;
+	}
+	
+	char *filenameExt = filename + filenameLen;
 
-  return ;
+	for (int i = 0; i < NB_STATES; i++)
+	{
+		snprintf(filenameExt, extLen, ".ds%d", i);
+
+		#ifdef _MSC_VER
+		wchar_t wgarbage[1024] = {0};
+		MultiByteToWideChar(CP_UTF8, 0, filename, -1, wgarbage, 1024);
+		if (_wstat(wgarbage, &sbuf) == -1) continue;
+		#else
+		if (stat(filename, &sbuf) == -1) continue;
+		#endif
+		savestates[i].exists = TRUE;
+		strncpy(savestates[i].date, format_time(sbuf.st_mtime), 40);
+		savestates[i].date[40 - 1] = '\0';
+	}
 }
 
 void savestate_slot(int num)
 {
-   struct stat sbuf;
-   char filename[MAX_PATH+1];
+	struct stat sbuf;
+	char filename[MAX_PATH] = {0};
 
 	lastSaveState = num;		//Set last savestate used
 
-    path.getpathnoext(path.STATES, filename);
+	path.getpathnoext(path.STATE_SLOTS, filename);
+	
+	const size_t filenameLen = strlen(filename);
+	const size_t numberLen   = strlen("-2147483648"); // Longest possible string length for a 32-bit int
+	const size_t extLen      = strlen(".ds") + numberLen;
+	const size_t totalLen    = filenameLen + extLen;
+	
+	if (totalLen >= MAX_PATH)
+	{
+		printf("Save State ERROR: The file path is too long. (path length is %llu bytes, maximum length is %llu bytes)\n", (unsigned long long)totalLen, (unsigned long long)MAX_PATH);
+		return;
+	}
+	
+	char *filenameExt = filename + filenameLen;
+	snprintf(filenameExt, extLen, ".ds%d", num);
 
-   if (strlen(filename) + strlen(".dsx") + strlen("-2147483648") /* = biggest string for num */ >MAX_PATH) return ;
-   sprintf(filename+strlen(filename), ".ds%d", num);
+	if (savestate_save(filename))
+	{
+		driver->SetLineColor(255, 255, 255);
+		driver->AddLine("Saved to %i slot", num);
+	}
+	else
+	{
+		driver->SetLineColor(255, 0, 0);
+		driver->AddLine("Error saving %i slot", num);
+		return;
+	}
 
-   if (savestate_save(filename))
-   {
-	   osd->setLineColor(255, 255, 255);
-	   osd->addLine("Saved to %i slot", num);
-   }
-   else
-   {
-	   osd->setLineColor(255, 0, 0);
-	   osd->addLine("Error saving %i slot", num);
-	   return;
-   }
-
-   if (num >= 0 && num < NB_STATES)
-   {
-	   if (stat(filename,&sbuf) != -1)
-	   {
-		   savestates[num].exists = TRUE;
-		   strncpy(savestates[num].date, format_time(sbuf.st_mtime),40);
-		   savestates[num].date[40-1] = '\0';
-	   }
-   }
+	if (num >= 0 && num < NB_STATES)
+	{
+		if (stat(filename, &sbuf) != -1)
+		{
+			savestates[num].exists = TRUE;
+			strncpy(savestates[num].date, format_time(sbuf.st_mtime), 40);
+			savestates[num].date[40 - 1] = '\0';
+		}
+	}
 }
 
 void loadstate_slot(int num)
 {
-   char filename[MAX_PATH];
+	char filename[MAX_PATH] = {0};
+	int max_index = -1;
 
-   lastSaveState = num;		//Set last savestate used
+	lastSaveState = num;		//Set last savestate used
 
-    path.getpathnoext(path.STATES, filename);
+	path.getpathnoext(path.STATE_SLOTS, filename);
+	
+	const size_t filenameLen = strlen(filename);
+	const size_t numberLen   = strlen("-2147483648"); // Longest possible string length for a 32-bit int
+	const size_t extLen      = strlen(".ds") + numberLen;
+	const size_t totalLen    = filenameLen + extLen;
+	
+	if (totalLen >= MAX_PATH)
+	{
+		printf("Load State ERROR: The file path is too long. (path length is %llu bytes, maximum length is %llu bytes)\n", (unsigned long long)totalLen, (unsigned long long)MAX_PATH);
+		return;
+	}
 
-   if (strlen(filename) + strlen(".dsx") + strlen("-2147483648") /* = biggest string for num */ >MAX_PATH) return ;
-   sprintf(filename+strlen(filename), ".ds%d", num);
-   if (savestate_load(filename))
-   {
-	   osd->setLineColor(255, 255, 255);
-	   osd->addLine("Loaded from %i slot", num);
-   }
-   else
-   {
-	   osd->setLineColor(255, 0, 0);
-	   osd->addLine("Error loading %i slot", num);
-   }
+	//save the state before we load the state, to give people a path for recovery in case they hit the wrong key
+	#ifdef HOST_WINDOWS
+	// Maximum backup number can be set in config: [General] BackupSavesMax=<n>
+	// Setting BackupSavesMax=0 would disable backups
+	max_index = GetPrivateProfileInt("General", "BackupSavesMax", -1, IniName); // 0 for disabled
+	int suppress_backups = GetPrivateProfileInt("General", "BackupSavestateSuppress", 0, IniName);
+	if(!suppress_backups && max_index != 0 )
+	#endif
+	{
+		if(movieMode == MOVIEMODE_INACTIVE)
+		{
+			std::string dirname = (std::string)filename + " (backups)";
+			#ifdef HOST_WINDOWS
+			static const char PSS = '\\';
+			#else
+			static const char PSS = '/';
+			#endif
+			mkdir(dirname.c_str(),0777);
+			
+			int cur_index = -1; // setup index, -1 in case it is first instance
+			if (max_index == -1) { // If not set
+				max_index = 200;
+			}
+			
+			std::string index_fname = dirname + PSS + "backup.index";
+			FILE* index_file = fopen(index_fname.c_str(), "r+"); // Read/update but don't create
+			if (index_file) {
+				fscanf(index_file, "%d", &cur_index);
+				rewind(index_file); // prepare to overwrite
+			}
+			else
+			{
+				index_file = fopen(index_fname.c_str(), "w"); // Create if doesn't exist
+			}
+			
+			if (index_file) {
+				cur_index = (cur_index + 1) % max_index; // next
+
+				fprintf(index_file, "%d", cur_index); // Store new index
+				fprintf(index_file, "%d", EOF); // Avoid overwriting just most significant digits(e.g.: 1 -> 200 = 100 )
+				fclose(index_file);
+
+				std::string fname = dirname + PSS;
+				char mini[100];
+				snprintf(mini, sizeof(mini), "%u", cur_index);
+				fname += mini + (std::string)".dst";
+
+				savestate_save(fname.c_str());
+				printf("Creating backup of current state prior to loadstate as path: %s\n", fname.c_str());
+			}
+			else {
+				printf("Failed to open indexing file %s\n Prior state backup not created, check location write permissions.\n", index_fname.c_str());
+			}
+			
+		}
+	}
+	
+	char *filenameExt = filename + filenameLen;
+	snprintf(filenameExt, extLen, ".ds%d", num);
+
+	if (savestate_load(filename))
+	{
+		driver->SetLineColor(255, 255, 255);
+		driver->AddLine("Loaded from %i slot", num);
+	}
+	else
+	{
+		driver->SetLineColor(255, 0, 0);
+		driver->AddLine("Error loading %i slot", num);
+	}
 }
 
 
@@ -725,8 +839,9 @@ void loadstate_slot(int num)
 // in the (most common) case that we already know where the next entry is.
 static const SFORMAT *CheckS(const SFORMAT *guessSF, const SFORMAT *firstSF, u32 size, u32 count, char *desc)
 {
-	const SFORMAT *sf = guessSF ? guessSF : firstSF;
-	while(sf->v)
+	const SFORMAT *sf = (guessSF != NULL) ? guessSF : firstSF;
+	
+	while (sf->v)
 	{
 		//NOT SUPPORTED RIGHT NOW
 		//if(sf->size==~0)		// Link to another SFORMAT structure.
@@ -737,15 +852,20 @@ static const SFORMAT *CheckS(const SFORMAT *guessSF, const SFORMAT *firstSF, u32
 		//	sf++;
 		//	continue;
 		//}
-		if(!memcmp(desc,sf->desc,4))
+		if (!memcmp(desc,sf->desc,4))
 		{
-			if(sf->size != size || sf->count != count)
-				return 0;
-			return sf;
+			if (sf->size != size || sf->count != count)
+			{
+				return NULL;
+			}
+			else
+			{
+				return sf;
+			}
 		}
 
 		// failed to find it, have to keep iterating
-		if(guessSF)
+		if (guessSF != NULL)
 		{
 			sf = firstSF;
 			guessSF = NULL;
@@ -755,50 +875,56 @@ static const SFORMAT *CheckS(const SFORMAT *guessSF, const SFORMAT *firstSF, u32
 			sf++;
 		}
 	}
-	return 0;
+	
+	return NULL;
 }
 
 
-static bool ReadStateChunk(EMUFILE* is, const SFORMAT *sf, int size)
+static bool ReadStateChunk(EMUFILE &is, const SFORMAT *sf, int size)
 {
 	const SFORMAT *tmp = NULL;
 	const SFORMAT *guessSF = NULL;
-	int temp = is->ftell();
+	int temp = is.ftell();
 
-	while(is->ftell()<temp+size)
+	while (is.ftell() < (temp+size))
 	{
 		u32 sz, count;
 
 		char toa[4];
-		is->fread(toa,4);
-		if(is->fail())
+		is.fread(toa,4);
+		if (is.fail())
 			return false;
 
-		if(!read32le(&sz,is)) return false;
-		if(!read32le(&count,is)) return false;
-
-		if((tmp=CheckS(guessSF,sf,sz,count,toa)))
+		if (!is.read_32LE(sz)) return false;
+		if (!is.read_32LE(count)) return false;
+		
+		tmp = CheckS(guessSF,sf,sz,count,toa);
+		
+		if (tmp != NULL)
 		{
-		#ifdef LOCAL_LE
-			// no need to ever loop one at a time if not flipping byte order
-			is->fread((char *)tmp->v,sz*count);
-		#else
-			if(sz == 1) {
+		#ifdef MSB_FIRST
+			if (sz == 1)
+			{
 				//special case: read a huge byte array
-				is->fread((char *)tmp->v,count);
-			} else {
-				for(unsigned int i=0;i<count;i++)
+				is.fread(tmp->v,count);
+			}
+			else
+			{
+				for (size_t i = 0; i < count; i++)
 				{
-					is->fread((char *)tmp->v + i*sz,sz);
-                    FlipByteOrder((u8*)tmp->v + i*sz,sz);
+					is.fread((u8 *)tmp->v + i*sz,sz);
+                    FlipByteOrder((u8 *)tmp->v + i*sz,sz);
 				}
 			}
+		#else
+			// no need to ever loop one at a time if not flipping byte order
+			is.fread(tmp->v,sz*count);
 		#endif
 			guessSF = tmp + 1;
 		}
 		else
 		{
-			is->fseek(sz*count,SEEK_CUR);
+			is.fseek(sz*count,SEEK_CUR);
 			guessSF = NULL;
 		}
 	} // while(...)
@@ -807,9 +933,9 @@ static bool ReadStateChunk(EMUFILE* is, const SFORMAT *sf, int size)
 
 
 
-static int SubWrite(EMUFILE* os, const SFORMAT *sf)
+static int SubWrite(EMUFILE *os, const SFORMAT *sf)
 {
-	uint32 acc=0;
+	u32 acc=0;
 
 #ifdef DEBUG
 	std::set<std::string> keyset;
@@ -827,12 +953,12 @@ static int SubWrite(EMUFILE* os, const SFORMAT *sf)
 		temp++;
 	}
 
-	while(sf->v)
+	while (sf->v)
 	{
 		//not supported right now
 		//if(sf->size==~0)		//Link to another struct
 		//{
-		//	uint32 tmp;
+		//	u32 tmp;
 
 		//	if(!(tmp=SubWrite(os,(SFORMAT *)sf->v)))
 		//		return(0);
@@ -848,11 +974,11 @@ static int SubWrite(EMUFILE* os, const SFORMAT *sf)
 		acc += 4 + sizeof(sf->size) + sizeof(sf->count);
 		acc += count * size;
 
-		if(os)			//Are we writing or calculating the size of this block?
+		if (os != NULL)			//Are we writing or calculating the size of this block?
 		{
 			os->fwrite(sf->desc,4);
-			write32le(sf->size,os);
-			write32le(sf->count,os);
+			os->write_32LE(sf->size);
+			os->write_32LE(sf->count);
 
 			#ifdef DEBUG
 			//make sure we dont dup any keys
@@ -865,21 +991,25 @@ static int SubWrite(EMUFILE* os, const SFORMAT *sf)
 			#endif
 
 
-		#ifdef LOCAL_LE
-			// no need to ever loop one at a time if not flipping byte order
-			os->fwrite((char *)sf->v,size*count);
-		#else
-			if(size == 1) {
+		#ifdef MSB_FIRST
+			if (size == 1)
+			{
 				//special case: write a huge byte array
-				os->fwrite((char *)sf->v,count);
-			} else {
-				for(int i=0;i<count;i++) {
-					FlipByteOrder((u8*)sf->v + i*size, size);
-					os->fwrite((char*)sf->v + i*size,size);
+				os->fwrite(sf->v,count);
+			}
+			else
+			{
+				for (int i = 0; i < count; i++)
+				{
+					FlipByteOrder((u8 *)sf->v + i*size, size);
+					os->fwrite((u8 *)sf->v + i*size,size);
 					//Now restore the original byte order.
-					FlipByteOrder((u8*)sf->v + i*size, size);
+					FlipByteOrder((u8 *)sf->v + i*size, size);
 				}
 			}
+		#else
+			// no need to ever loop one at a time if not flipping byte order
+			os->fwrite(sf->v,size*count);
 		#endif
 		}
 		sf++;
@@ -888,38 +1018,38 @@ static int SubWrite(EMUFILE* os, const SFORMAT *sf)
 	return(acc);
 }
 
-static int savestate_WriteChunk(EMUFILE* os, int type, const SFORMAT *sf)
+static int savestate_WriteChunk(EMUFILE &os, int type, const SFORMAT *sf)
 {
-	write32le(type,os);
-	if(!sf) return 4;
-	int bsize = SubWrite((EMUFILE*)0,sf);
-	write32le(bsize,os);
+	os.write_32LE(type);
+	if (!sf) return 4;
+	int bsize = SubWrite(NULL,sf);
+	os.write_32LE(bsize);
 
-	if(!SubWrite(os,sf))
+	if (!SubWrite(&os,sf))
 	{
 		return 8;
 	}
 	return (bsize+8);
 }
 
-static void savestate_WriteChunk(EMUFILE* os, int type, void (*saveproc)(EMUFILE* os))
+static void savestate_WriteChunk(EMUFILE &os, int type, void (*saveproc)(EMUFILE &os))
 {
-	u32 pos1 = os->ftell();
+	u32 pos1 = os.ftell();
 
 	//write the type, size(placeholder), and data
-	write32le(type,os);
-	os->fseek(4, SEEK_CUR); // skip the size, we write that later
+	os.write_32LE(type);
+	os.fseek(4, SEEK_CUR); // skip the size, we write that later
 	saveproc(os);
 
 	//get the size
-	u32 pos2 = os->ftell();
+	u32 pos2 = os.ftell();
 	assert(pos2 != (u32)-1); // if this assert fails, saveproc did something bad
 	u32 size = (pos2 - pos1) - (2 * sizeof(u32));
 
 	//fill in the actual size
-	os->fseek(pos1 + sizeof(u32),SEEK_SET);
-	write32le(size,os);
-	os->fseek(pos2,SEEK_SET);
+	os.fseek(pos1 + sizeof(u32),SEEK_SET);
+	os.write_32LE(size);
+	os.fseek(pos2,SEEK_SET);
 
 /*
 // old version of this function,
@@ -935,15 +1065,15 @@ static void savestate_WriteChunk(EMUFILE* os, int type, void (*saveproc)(EMUFILE
 	u32 size = mstemp.size();
 
 	//write the type, size, and data
-	write32le(type,os);
-	write32le(size,os);
+	write_32LE(type,os);
+	write_32LE(size,os);
 	os->write(mstemp.buf(),size);
 */
 }
 
-static void writechunks(EMUFILE* os);
+static void writechunks(EMUFILE &os);
 
-bool savestate_save(EMUFILE* outstream, int compressionLevel)
+bool savestate_save(EMUFILE &outstream, int compressionLevel)
 {
 #ifdef HAVE_JIT 
 	arm_jit_sync();
@@ -953,30 +1083,24 @@ bool savestate_save(EMUFILE* outstream, int compressionLevel)
 	#endif
 
 	EMUFILE_MEMORY ms;
-	EMUFILE* os;
+	EMUFILE &os = (compressionLevel != Z_NO_COMPRESSION) ? (EMUFILE &)ms : (EMUFILE &)outstream;
 	
-	if(compressionLevel != Z_NO_COMPRESSION)
+	if (compressionLevel == Z_NO_COMPRESSION)
 	{
-		//generate the savestate in memory first
-		os = (EMUFILE*)&ms;
-		writechunks(os);
+		os.fseek(32,SEEK_SET); //skip the header
 	}
-	else
-	{
-		os = outstream;
-		os->fseek(32,SEEK_SET); //skip the header
-		writechunks(os);
-	}
+	
+	writechunks(os);
 
 	//save the length of the file
-	u32 len = os->ftell();
+	u32 len = os.ftell();
 
 	u32 comprlen = 0xFFFFFFFF;
 	u8* cbuf;
 
 	//compress the data
 	int error = Z_OK;
-	if(compressionLevel != Z_NO_COMPRESSION)
+	if (compressionLevel != Z_NO_COMPRESSION)
 	{
 		cbuf = ms.buf();
 		uLongf comprlen2;
@@ -991,16 +1115,16 @@ bool savestate_save(EMUFILE* outstream, int compressionLevel)
 	}
 
 	//dump the header
-	outstream->fseek(0,SEEK_SET);
-	outstream->fwrite(magic,16);
-	write32le(SAVESTATE_VERSION,outstream);
-	write32le(EMU_DESMUME_VERSION_NUMERIC(),outstream); //desmume version
-	write32le(len,outstream); //uncompressed length
-	write32le(comprlen,outstream); //compressed length (-1 if it is not compressed)
+	outstream.fseek(0,SEEK_SET);
+	outstream.fwrite(magic,16);
+	outstream.write_32LE(SAVESTATE_VERSION);
+	outstream.write_32LE(EMU_DESMUME_VERSION_NUMERIC()); //desmume version
+	outstream.write_32LE(len); //uncompressed length
+	outstream.write_32LE(comprlen); //compressed length (-1 if it is not compressed)
 
-	if(compressionLevel != Z_NO_COMPRESSION)
+	if (compressionLevel != Z_NO_COMPRESSION)
 	{
-		outstream->fwrite((char*)cbuf,comprlen==(u32)-1?len:comprlen);
+		outstream.fwrite(cbuf,comprlen==(u32)-1?len:comprlen);
 		delete[] cbuf;
 	}
 
@@ -1010,28 +1134,31 @@ bool savestate_save(EMUFILE* outstream, int compressionLevel)
 bool savestate_save (const char *file_name)
 {
 	EMUFILE_MEMORY ms;
-	size_t elems_written;
-#ifdef HAVE_LIBZ
-	if(!savestate_save(&ms, Z_DEFAULT_COMPRESSION))
-#else
-	if(!savestate_save(&ms, 0))
-#endif
+	if (!savestate_save(ms))
 		return false;
-	FILE* file = fopen(file_name,"wb");
-	if(file)
-	{
-		elems_written = fwrite(ms.buf(),1,ms.size(),file);
-		fclose(file);
-		return (elems_written == ms.size());
-	} else return false;
+
+	EMUFILE_FILE file(file_name, "wb");
+	if(file.fail())
+		return false;
+
+	file.fwrite(ms.buf(), ms.size());
+	return true;
 }
 
-static void writechunks(EMUFILE* os) {
+static void wifi_savestate(EMUFILE &os)
+{
+	wifiHandler->SaveState(os);
+}
+
+static void writechunks(EMUFILE &os)
+{
 
 	DateTime tm = DateTime::get_Now();
-	svn_rev = EMU_DESMUME_SUBVERSION_NUMERIC();
+	svn_rev = 0;
 
-	save_time = tm.get_Ticks();
+	save_time_data = tm.get_Ticks();
+	
+	gfx3d_PrepareSaveStateBufferWrite();
 
 	savestate_WriteChunk(os,1,SF_ARM9);
 	savestate_WriteChunk(os,2,SF_ARM7);
@@ -1048,7 +1175,7 @@ static void writechunks(EMUFILE* os) {
 	savestate_WriteChunk(os,91,gfx3d_savestate);
 	savestate_WriteChunk(os,100,SF_MOVIE);
 	savestate_WriteChunk(os,101,mov_savestate);
-	savestate_WriteChunk(os,110,SF_WIFI);
+	savestate_WriteChunk(os,111,&wifi_savestate);
 	savestate_WriteChunk(os,120,SF_RTC);
 	savestate_WriteChunk(os,130,SF_NDS_INFO);
 	savestate_WriteChunk(os,140,s_slot1_savestate);
@@ -1061,10 +1188,11 @@ static void writechunks(EMUFILE* os) {
 	savestate_WriteChunk(os,0xFFFFFFFF,(SFORMAT*)0);
 }
 
-static bool ReadStateChunks(EMUFILE* is, s32 totalsize)
+static bool ReadStateChunks(EMUFILE &is, s32 totalsize)
 {
 	bool ret = true;
 	bool haveInfo = false;
+	bool chunkError = false;
 	
 	s64 save_time = 0;
 	u32 romsize = 0;
@@ -1085,13 +1213,15 @@ static bool ReadStateChunks(EMUFILE* is, s32 totalsize)
 	};
 	memset(&header, 0, sizeof(header));
 
-	while(totalsize > 0)
+	while (totalsize > 0)
 	{
 		u32 size = 0;
 		u32 t = 0;
-		if(!read32le(&t,is))  { ret=false; break; }
-		if(t == 0xFFFFFFFF) break;
-		if(!read32le(&size,is))  { ret=false; break; }
+		if (!is.read_32LE(t))  { ret=false; break; }
+		if (t == 0xFFFFFFFF) break;
+		if (!is.read_32LE(size))  { ret=false; break; }
+		u32 endPos = is.ftell() + size;
+		
 		switch(t)
 		{
 			case 1: if(!ReadStateChunk(is,SF_ARM9,size)) ret=false; break;
@@ -1109,7 +1239,7 @@ static bool ReadStateChunks(EMUFILE* is, s32 totalsize)
 			case 91: if(!gfx3d_loadstate(is,size)) ret=false; break;
 			case 100: if(!ReadStateChunk(is,SF_MOVIE, size)) ret=false; break;
 			case 101: if(!mov_loadstate(is, size)) ret=false; break;
-			case 110: if(!ReadStateChunk(is,SF_WIFI,size)) ret=false; break;
+			case 111: if(!wifiHandler->LoadState(is,size)) ret=false; break;
 			case 120: if(!ReadStateChunk(is,SF_RTC,size)) ret=false; break;
 			case 130: if(!ReadStateChunk(is,SF_INFO,size)) ret=false; else haveInfo=true; break;
 			case 140: if(!s_slot1_loadstate(is, size)) ret=false; break;
@@ -1125,21 +1255,36 @@ static bool ReadStateChunks(EMUFILE* is, s32 totalsize)
 			default:
 				return false;
 		}
+		
+		if (is.ftell() != endPos)
+		{
+			// Should we just go ahead and return false?
+			chunkError = true;
+			is.fseek(endPos, SEEK_SET);
+		}
+		
 		if(!ret)
 			return false;
 	}
-
+	
+	if (chunkError)
+	{
+		msgbox->warn("There was an error loading the savestate. Your game session is probably corrupt now.");
+	}
+	else
+	{
+		gfx3d_FinishLoadStateBufferRead();
+	}
+	
 	if (haveInfo)
 	{
-		char buf[14] = {0};
-		memset(&buf[0], 0, sizeof(buf));
-		memcpy(buf, header.gameTile, sizeof(header.gameTile));
+
 		printf("Savestate info:\n");
 		if (version_major | version_minor | version_build)
 		{
 			char buf[32] = {0};
 			if (svn_rev != 0xFFFFFFFF)
-				sprintf(buf, " svn %u", svn_rev);
+				snprintf(buf, sizeof(buf), " svn %u", svn_rev);
 			printf("\tDeSmuME version: %u.%u.%u%s\n", version_major, version_minor, version_build, buf);
 		}
 
@@ -1147,16 +1292,21 @@ static bool ReadStateChunks(EMUFILE* is, s32 totalsize)
 		{
 			static const char *wday[] = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
 			DateTime tm = save_time;
-			printf("\tSave created: %04d-%03s-%02d %s %02d:%02d:%02d\n", tm.get_Year(), DateTime::GetNameOfMonth(tm.get_Month()), tm.get_Day(), wday[tm.get_DayOfWeek()%7], tm.get_Hour(), tm.get_Minute(), tm.get_Second());
+			printf("\tSave created: %04d-%.3s-%02d %s %02d:%02d:%02d\n", tm.get_Year(), DateTime::GetNameOfMonth(tm.get_Month()), tm.get_Day(), wday[tm.get_DayOfWeek()%7], tm.get_Hour(), tm.get_Minute(), tm.get_Second());
 		}
-		printf("\tGame title: %s\n", buf);
-		printf("\tGame code: %c%c%c%c\n", header.gameCode[0], header.gameCode[1], header.gameCode[2], header.gameCode[3]);
-		printf("\tMaker code: %c%c (0x%04X) - %s\n", header.makerCode & 0xFF, header.makerCode >> 8, header.makerCode, getDeveloperNameByID(header.makerCode).c_str());
-		printf("\tDevice capacity: %dMb (real size %dMb)\n", ((128 * 1024) << header.cardSize) / (1024 * 1024), romsize / (1024 * 1024));
-		printf("\tCRC16: %04Xh\n", header.CRC16);
-		printf("\tHeader CRC16: %04Xh\n", header.headerCRC16);
-		printf("\tSlot1: %s\n", slot1_List[slot1Type]->info()->name());
-		printf("\tSlot2: %s\n", slot2_List[slot2Type]->info()->name());
+
+		//nope. create a common method elsewhere for printing this.
+		//char buf[14] = {0};
+		//memset(&buf[0], 0, sizeof(buf));
+		//memcpy(buf, header.gameTile, sizeof(header.gameTile));
+		//printf("\tGame title: %s\n", buf);
+		//printf("\tGame code: %c%c%c%c\n", header.gameCode[0], header.gameCode[1], header.gameCode[2], header.gameCode[3]);
+		//const char *makerName = Database::MakerNameForMakerCode(header.makerCode);
+		//makerName = makerName ? makerName : "Unknown";
+		//printf("\tMaker code: %c%c (0x%04X) - %s\n", header.makerCode & 0xFF, header.makerCode >> 8, header.makerCode, makerName);
+		//printf("\tDevice capacity: %dMb (real size %dMb)\n", ((128 * 1024) << header.cardSize) / (1024 * 1024), romsize / (1024 * 1024));
+		//printf("\tCRC16: %04Xh\n", header.CRC16);
+		//printf("\tHeader CRC16: %04Xh\n", header.headerCRC16);
 
 		if (gameInfo.romsize != romsize || memcmp(&gameInfo.header, &header, sizeof(header)) != 0)
 			msgbox->warn("The savestate you are loading does not match the ROM you are running.\nYou should find the correct ROM");
@@ -1195,41 +1345,44 @@ static void loadstate()
 	execute = !driver->EMU_IsEmulationPaused();
 }
 
-bool savestate_load(EMUFILE* is)
+bool savestate_load(EMUFILE &is)
 {
 	SAV_silent_fail_flag = false;
 	char header[16];
-	is->fread(header,16);
-	if(is->fail() || memcmp(header,magic,16))
+	is.fread(header,16);
+	if (is.fail() || memcmp(header,magic,16))
 		return false;
 
 	u32 ssversion,len,comprlen;
-	if(!read32le(&ssversion,is)) return false;
-	if(!read32le(&_DESMUME_version,is)) return false;
-	if(!read32le(&len,is)) return false;
-	if(!read32le(&comprlen,is)) return false;
+	if (!is.read_32LE(ssversion)) return false;
+	if (!is.read_32LE(_DESMUME_version)) return false;
+	if (!is.read_32LE(len)) return false;
+	if (!is.read_32LE(comprlen)) return false;
 
-	if(ssversion != SAVESTATE_VERSION) return false;
+	if (ssversion != SAVESTATE_VERSION) return false;
 
 	std::vector<u8> buf(len);
 
-	if(comprlen != 0xFFFFFFFF) {
+	if (comprlen != 0xFFFFFFFF)
+	{
 #ifndef HAVE_LIBZ
 		//without libz, we can't decompress this savestate
 		return false;
 #endif
 		std::vector<char> cbuf(comprlen);
-		is->fread(&cbuf[0],comprlen);
-		if(is->fail()) return false;
+		is.fread(&cbuf[0],comprlen);
+		if (is.fail()) return false;
 
 #ifdef HAVE_LIBZ
 		uLongf uncomprlen = len;
-		int error = uncompress((uint8*)&buf[0],&uncomprlen,(uint8*)&cbuf[0],comprlen);
-		if(error != Z_OK || uncomprlen != len)
+		int error = uncompress((u8*)&buf[0],&uncomprlen,(u8*)&cbuf[0],comprlen);
+		if (error != Z_OK || uncomprlen != len)
 			return false;
 #endif
-	} else {
-		is->fread((char*)&buf[0],len-32);
+	}
+	else
+	{
+		is.fread(&buf[0],len-32);
 	}
 
 	//GO!! READ THE SAVESTATE
@@ -1254,9 +1407,9 @@ bool savestate_load(EMUFILE* is)
 	//SPU_Reset();
 
 	EMUFILE_MEMORY mstemp(&buf);
-	bool x = ReadStateChunks(&mstemp,(s32)len);
+	bool x = ReadStateChunks(mstemp,(s32)len);
 
-	if(!x && !SAV_silent_fail_flag)
+	if (!x && !SAV_silent_fail_flag)
 	{
 		msgbox->error("Error loading savestate. It failed halfway through;\nSince there is no savestate backup system, your current game session is wrecked");
 		return false;
@@ -1264,11 +1417,13 @@ bool savestate_load(EMUFILE* is)
 
 	loadstate();
 
-	if(nds.ConsoleType != CommonSettings.ConsoleType) {
+	if (nds.ConsoleType != CommonSettings.ConsoleType)
+	{
 		printf("WARNING: forcing console type to: ConsoleType=%d\n",nds.ConsoleType);
 	}
 
-	if((nds._DebugConsole!=0) != CommonSettings.DebugConsole) {
+	if ((nds._DebugConsole != 0) != CommonSettings.DebugConsole)
+	{
 			printf("WARNING: forcing console debug mode to: debugmode=%s\n",nds._DebugConsole?"TRUE":"FALSE");
 	}
 
@@ -1279,70 +1434,7 @@ bool savestate_load(EMUFILE* is)
 bool savestate_load(const char *file_name)
 {
 	EMUFILE_FILE f(file_name,"rb");
-	if(f.fail()) return false;
+	if (f.fail()) return false;
 
-	return savestate_load(&f);
-}
-
-static std::stack<EMUFILE_MEMORY*> rewindFreeList;
-static std::vector<EMUFILE_MEMORY*> rewindbuffer;
-
-int rewindstates = 16;
-int rewindinterval = 4;
-
-void rewindsave () {
-
-	if(currFrameCounter % rewindinterval)
-		return;
-
-	//printf("rewindsave"); printf("%d%s", currFrameCounter, "\n");
-
-	
-	EMUFILE_MEMORY *ms;
-	if(!rewindFreeList.empty()) {
-		ms = rewindFreeList.top();
-		rewindFreeList.pop();
-	} else {
-		ms = new EMUFILE_MEMORY(1024*1024*12);
-	}
-
-	if(!savestate_save(ms, Z_NO_COMPRESSION))
-		return;
-
-	rewindbuffer.push_back(ms);
-	
-	if((int)rewindbuffer.size() > rewindstates) {
-		delete *rewindbuffer.begin();
-		rewindbuffer.erase(rewindbuffer.begin());
-	}
-}
-
-void dorewind()
-{
-	if(currFrameCounter % rewindinterval)
-		return;
-
-	//printf("rewind\n");
-
-	int size = rewindbuffer.size();
-
-	if(size < 1) {
-		printf("rewind buffer empty\n");
-		return;
-	}
-
-	printf("%d", size);
-
-	EMUFILE_MEMORY* loadms = rewindbuffer[size-1];
-	loadms->fseek(32, SEEK_SET);
-
-	ReadStateChunks(loadms,loadms->size()-32);
-	loadstate();
-
-	if(rewindbuffer.size()>1)
-	{
-		rewindFreeList.push(loadms);
-		rewindbuffer.pop_back();
-	}
-
+	return savestate_load(f);
 }

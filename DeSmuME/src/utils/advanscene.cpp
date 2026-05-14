@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2011-2015 DeSmuME team
+	Copyright (C) 2011-2025 DeSmuME team
 
 	This file is free software: you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
@@ -32,6 +32,39 @@ ADVANsCEne advsc;
 #define _ADVANsCEne_BASE_VERSION_MAJOR 1
 #define _ADVANsCEne_BASE_VERSION_MINOR 0
 #define _ADVANsCEne_BASE_NAME "ADVANsCEne Nintendo DS Collection"
+
+
+ADVANsCEne::ADVANsCEne()
+{
+	database_path = "";
+	createTime = 0;
+	crc32 = 0;
+	memset(serial, 0, sizeof(serial));
+	memset(version, 0, sizeof(version));
+	memset(versionBase, 0, sizeof(versionBase));
+	saveType = 0xFF;
+	loaded = false;
+	foundAsCrc = false;
+	foundAsSerial = false;
+	
+	datName = "";
+	datVersion = "";
+	urlVersion = "";
+	urlDat = "";
+}
+
+void ADVANsCEne::setDatabase(const char *path)
+{
+	database_path = path;
+	
+	//i guess this means it needs (re)loading on account of the path having changed
+	loaded = false;
+}
+
+std::string ADVANsCEne::getDatabase() const
+{
+	return database_path;
+}
 
 u8 ADVANsCEne::checkDB(const char *ROMserial, u32 crc)
 {
@@ -87,15 +120,6 @@ u8 ADVANsCEne::checkDB(const char *ROMserial, u32 crc)
 	return false;
 }
 
- 
-void ADVANsCEne::setDatabase(const char *path)
-{
-	database_path = path;
-	
-	//i guess this means it needs (re)loading on account of the path having changed
-	loaded = false;
-}
-
 bool ADVANsCEne::getXMLConfig(const char *in_filename)
 {
 	TiXmlDocument	*xml = NULL;
@@ -122,7 +146,7 @@ bool ADVANsCEne::getXMLConfig(const char *in_filename)
 	return true;
 }
 
-u32 ADVANsCEne::convertDB(const char *in_filename, EMUFILE* output)
+u32 ADVANsCEne::convertDB(const char *in_filename, EMUFILE &output)
 {
 	//these strings are contained in the xml file, verbatim, so they function as enum values
 	//we leave the strings here rather than pooled elsewhere to remind us that theyre part of the advanscene format.
@@ -148,7 +172,7 @@ u32 ADVANsCEne::convertDB(const char *in_filename, EMUFILE* output)
 	TiXmlElement	*el_games = NULL;
 	TiXmlElement	*el_crc32 = NULL;
 	TiXmlElement	*el_saveType = NULL;
-	u32				crc32 = 0;
+	u32				db_crc32 = 0;
 	u32				reserved = 0;
 
 	lastImportErrorMessage = "";
@@ -156,20 +180,22 @@ u32 ADVANsCEne::convertDB(const char *in_filename, EMUFILE* output)
 	printf("Converting DB...\n");
 	if (getXMLConfig(in_filename))
 	{
-		if (datName.size()==0) return 0;
+		if (datName.size() == 0) return 0;
 		if (datName != _ADVANsCEne_BASE_NAME) return 0;
 	}
 
 	// Header
-	output->fwrite(_ADVANsCEne_BASE_ID, strlen(_ADVANsCEne_BASE_ID));
-	output->fputc(_ADVANsCEne_BASE_VERSION_MAJOR);
-	output->fputc(_ADVANsCEne_BASE_VERSION_MINOR);
+	output.fwrite(_ADVANsCEne_BASE_ID, strlen(_ADVANsCEne_BASE_ID));
+	output.write_u8(_ADVANsCEne_BASE_VERSION_MAJOR);
+	output.write_u8(_ADVANsCEne_BASE_VERSION_MINOR);
+	
 	if (datVersion.size()) 
-		output->fwrite(&datVersion[0], datVersion.size());
+		output.fwrite(&datVersion[0], datVersion.size());
 	else
-		output->fputc(0);
+		output.write_u8(0);
+	
 	time_t __time = time(NULL);
-	output->fwrite(&__time, sizeof(time_t));
+	output.fwrite(&__time, sizeof(time_t));
 
 	xml = new TiXmlDocument();
 	if (!xml) return 0;
@@ -181,10 +207,11 @@ u32 ADVANsCEne::convertDB(const char *in_filename, EMUFILE* output)
 	el = el_games->FirstChildElement("game");
 	if (!el) return 0;
 	u32 count = 0;
+	
 	while (el)
 	{
-		TiXmlElement* title = el->FirstChildElement("title");
-		if(title)
+		TiXmlElement *title = el->FirstChildElement("title");
+		if (title)
 		{
 			//just a little diagnostic
 			//printf("Importing %s\n",title->GetText());
@@ -193,17 +220,17 @@ u32 ADVANsCEne::convertDB(const char *in_filename, EMUFILE* output)
 
 		el_serial = el->FirstChildElement("serial");
 		
-		if(!el_serial)
+		if (!el_serial)
 		{
 			lastImportErrorMessage = "Missing <serial> element. Did you use the right xml file? We need the RtoolDS one.";
 			return 0;
 		}
-		output->fwrite(el_serial->GetText(), 8);
+		output.fwrite(el_serial->GetText(), 8);
 
 		// CRC32
 		el_crc32 = el->FirstChildElement("files"); 
-		sscanf_s(el_crc32->FirstChildElement("romCRC")->GetText(), "%x", &crc32);
-		output->fwrite(&crc32, sizeof(u32));
+		sscanf(el_crc32->FirstChildElement("romCRC")->GetText(), "%x", &db_crc32);
+		output.write_32LE(db_crc32);
 		
 		// Save type
 		el_saveType = el->FirstChildElement("saveType"); 
@@ -213,7 +240,7 @@ u32 ADVANsCEne::convertDB(const char *in_filename, EMUFILE* output)
 			const char *tmp = el_saveType->GetText();
 			if (tmp)
 			{
-				if (strcmp(tmp, "None")  == 0)
+				if (strcmp(tmp, "None") == 0)
 					selectedSaveType = 0xFE;
 				else
 				{
@@ -229,18 +256,52 @@ u32 ADVANsCEne::convertDB(const char *in_filename, EMUFILE* output)
 				}
 			}
 		}
-		output->fputc(selectedSaveType);
-		output->fwrite(&reserved, sizeof(u32));
-		output->fwrite(&reserved, sizeof(u32));
+		
+		output.write_u8(selectedSaveType);
+		output.write_32LE(reserved);
+		output.write_32LE(reserved);
+		
 		count++;
 		el = el->NextSiblingElement("game");
 	}
+	
 	printf("\n");
 	delete xml;
+	
 	if (count > 0) 
 		printf("done\n");
 	else
 		printf("error\n");
+	
 	printf("ADVANsCEne converter: %i found\n", count);
 	return count;
+}
+
+u32 ADVANsCEne::getSaveType()
+{
+	return saveType;
+}
+
+u32 ADVANsCEne::getCRC32()
+{
+	return crc32;
+}
+
+char* ADVANsCEne::getSerial()
+{
+	return serial;
+}
+
+bool ADVANsCEne::isLoaded()
+{
+	return loaded;
+}
+
+const char* ADVANsCEne::getIdMethod()
+{
+	if (foundAsSerial && foundAsCrc) return "Serial/CRC";
+	if (foundAsSerial) return "Serial";
+	if (foundAsCrc) return "CRC";
+	
+	return "";
 }

@@ -1,5 +1,5 @@
 /*	
-	Copyright (C) 2009-2015 DeSmuME Team
+	Copyright (C) 2009-2025 DeSmuME Team
 
 	This file is free software: you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
@@ -22,28 +22,38 @@
 #include "path.h"
 #include "encrypt.h"
 #include "wifi.h"
+#include "version.h"
 
 #define DFC_ID_CODE	"DeSmuME Firmware User Settings"
 #define DFC_ID_SIZE	sizeof(DFC_ID_CODE)
-#define USER_SETTINGS_SIZE 0x100
 #define WIFI_SETTINGS_SIZE 0x1D5
 #define WIFI_AP_SETTINGS_SIZE 0x300
-#define SETTINGS_SIZE (USER_SETTINGS_SIZE + WIFI_SETTINGS_SIZE + WIFI_AP_SETTINGS_SIZE)
+#define SETTINGS_SIZE (sizeof(FWUserSettings) + WIFI_SETTINGS_SIZE + WIFI_AP_SETTINGS_SIZE)
 #define DFC_FILE_SIZE (SETTINGS_SIZE + DFC_ID_SIZE)
-#define WIFI_SETTINGS_OFF 0x0000002A
-#define WIFI_AP_SETTINGS_OFF 0x0003FA00
 
 static _KEY1	enc(&MMU.ARM7_BIOS[0x0030]);
+const char *defaultNickname = DESMUME_NAME;
+const char *defaultMessage = DESMUME_NAME " makes you happy!";
+const char *defaultMacAddressStr = "0009BF123456";
 
-u16 CFIRMWARE::getBootCodeCRC16()
+
+CFIRMWARE::CFIRMWARE()
+{
+	memset(&_header, 0, sizeof(_header));
+	_fwFilePath = "";
+	_isLoaded = false;
+	_userDataAddr = 0x0003FE00;
+}
+
+u16 CFIRMWARE::_getBootCodeCRC16(const u8 *arm9Data, const u32 arm9Size, const u8 *arm7Data, const u32 arm7Size)
 {
 	unsigned int i, j;
 	u32 crc = 0xFFFF;
 	const u16 val[8] = {0xC0C1, 0xC181, 0xC301, 0xC601, 0xCC01, 0xD801, 0xF001, 0xA001};
 
-	for(i = 0; i < size9; i++)
+	for(i = 0; i < arm9Size; i++)
 	{
-		crc = (crc ^ tmp_data9[i]);
+		crc = (crc ^ arm9Data[i]);
 
 		for(j = 0; j < 8; j++) 
 		{
@@ -54,9 +64,9 @@ u16 CFIRMWARE::getBootCodeCRC16()
 		}
 	}
 
-	for(i = 0; i < size7; i++)
+	for(i = 0; i < arm7Size; i++)
 	{
-		crc = (crc ^ tmp_data7[i]);
+		crc = (crc ^ arm7Data[i]);
 
 		for(j = 0; j < 8; j++) 
 		{
@@ -70,7 +80,7 @@ u16 CFIRMWARE::getBootCodeCRC16()
 	return (crc & 0xFFFF);
 }
 
-u32 CFIRMWARE::decrypt(const u8 *in, u8* &out)
+u32 CFIRMWARE::_decrypt(const u8 *in, u8* &out)
 {
 	u32 curBlock[2] = { 0 };
 	u32 blockSize = 0;
@@ -160,7 +170,7 @@ u32 CFIRMWARE::decrypt(const u8 *in, u8* &out)
 	return (blockSize);
 }
 
-u32 CFIRMWARE::decompress(const u8 *in, u8* &out)
+u32 CFIRMWARE::_decompress(const u8 *in, u8* &out)
 {
 	u32 curBlock[2] = { 0 };
 	u32 blockSize = 0;
@@ -245,78 +255,39 @@ u32 CFIRMWARE::decompress(const u8 *in, u8* &out)
 	return (blockSize);
 }
 //================================================================================
-bool CFIRMWARE::load()
+bool CFIRMWARE::load(const char *firmwareFilePath)
 {
-	u32 size = 0;
-	u8	*data = NULL;
+	size_t fileSize = 0;
+	NDSFirmwareData *newFirmwareData = new NDSFirmwareData;
 	
-	if (CommonSettings.UseExtFirmware == false)
-		return false;
-	if (strlen(CommonSettings.Firmware) == 0)
-		return false;
+	this->_isLoaded = NDS_ReadFirmwareDataFromFile(firmwareFilePath, newFirmwareData, &fileSize, NULL, NULL);
+	if (!this->_isLoaded)
+	{
+		delete newFirmwareData;
+		return this->_isLoaded;
+	}
 	
-	FILE	*fp = fopen(CommonSettings.Firmware, "rb");
-	if (!fp)
-		return false;
-	fseek(fp, 0, SEEK_END);
-	size = ftell(fp);
-	fseek(fp, 0, SEEK_SET);
-	if( (size != NDS_FW_SIZE_V1) && (size != NDS_FW_SIZE_V2) )
-	{
-		fclose(fp);
-		return false;
-	}
+	this->_fwFilePath = firmwareFilePath;
+	this->_header = newFirmwareData->header;
 
-	data = new u8 [size];
-	if (!data)
-	{
-		fclose(fp);
-		return false;
-	}
-
-	if (fread(data, 1, size, fp) != size)
-	{
-		delete [] data;
-		data = NULL;
-		fclose(fp);
-		return false; 
-	}
-
-	memcpy(&header, data, sizeof(header));
-	if ((header.fw_identifier & 0x00FFFFFF) != 0x0043414D)
-	{
-		delete [] data;
-		data = NULL;
-		fclose(fp);
-		return false;
-	}
-	fclose(fp);
-
-	if (MMU.fw.size != size)	// reallocate
-		mc_alloc(&MMU.fw, size);
-
-	userDataAddr = T1ReadWord(data, 0x20) * 8;
-
+	if (MMU.fw.size != fileSize)	// reallocate
+		mc_alloc(&MMU.fw, (u32)fileSize);
+	
+	this->_userDataAddr = LE_TO_LOCAL_16(newFirmwareData->header.userSettingsOffset) * 8;
+	
 	// fix bad dump of firmware? (wrong DS type)
 	// fix mario kart touch screen calibration
-	if ((T1ReadWord(data, 0x1E) != 0xFFFF) && data[0x1D] == 0x63)
+	if ( (newFirmwareData->header.key.unused != 0xFFFF) && (newFirmwareData->header.key.consoleType == NDS_CONSOLE_TYPE_IQUE_LITE) )
 	{
-		data[0x1D] = NDS_CONSOLE_TYPE_FAT;
-		data[0x1E] = 0xFF;
-		data[0x1F] = 0xFF;
+		newFirmwareData->header.key.consoleType = NDS_CONSOLE_TYPE_FAT;
+		newFirmwareData->header.key.unused = 0xFFFF;
 	}
-
-	memcpy(MMU.fw.data, data, size);
-
-	delete [] data;
-	data = NULL;
-
-	// Generate the path for the external firmware config file.
-	std::string extFilePath = CFIRMWARE::GetExternalFilePath();
-	strncpy(MMU.fw.userfile, extFilePath.c_str(), MAX_PATH);
-
-	successLoad = true;
-	return true;
+	
+	memcpy(&MMU.fw.data, newFirmwareData, fileSize);
+	delete newFirmwareData;
+	
+	this->_isLoaded = true;
+	return this->_isLoaded;
 }
 
 bool CFIRMWARE::unpack()
@@ -332,160 +303,159 @@ bool CFIRMWARE::unpack()
 		INFO("ERROR: 32Mbit (512Kb) firmware not supported\n");
 		return false;
 	}
-
-	u8	*data = new u8 [size];
-	if (!data)
-		return false;
-
-	memcpy(data, MMU.fw.data, size);
-
-	shift1 = ((header.shift_amounts >> 0) & 0x07);
-	shift2 = ((header.shift_amounts >> 3) & 0x07);
-	shift3 = ((header.shift_amounts >> 6) & 0x07);
-	shift4 = ((header.shift_amounts >> 9) & 0x07);
+	
+	NDSFirmwareData *workingFirmwareData = new NDSFirmwareData;
+	memcpy(workingFirmwareData, &MMU.fw.data, sizeof(NDSFirmwareData));
+	
+	shift1 = ((this->_header.shift >> 0) & 0x07);
+	shift2 = ((this->_header.shift >> 3) & 0x07);
+	shift3 = ((this->_header.shift >> 6) & 0x07);
+	shift4 = ((this->_header.shift >> 9) & 0x07);
 
 	// todo - add support for 512Kb 
-	part1addr = (header.part1_rom_boot9_addr << (2 + shift1));
-	part1ram = (0x02800000 - (header.part1_ram_boot9_addr << (2+shift2)));
-	part2addr = (header.part2_rom_boot7_addr << (2+shift3));
-	part2ram = (0x03810000 - (header.part2_ram_boot7_addr << (2+shift4)));
-	part3addr = (header.part3_rom_gui9_addr << 3);
-	part4addr = (header.part4_rom_wifi7_addr << 3);
-	part5addr = (header.part5_data_gfx_addr << 3);
+	part1addr = (this->_header.part1_rom_boot9_addr << (2 + shift1));
+	part1ram = (0x02800000 - (this->_header.part1_ram_boot9_addr << (2+shift2)));
+	part2addr = (this->_header.part2_rom_boot7_addr << (2+shift3));
+	part2ram = (0x03810000 - (this->_header.part2_ram_boot7_addr << (2+shift4)));
+	part3addr = (this->_header.part3_rom_gui9_addr << 3);
+	part4addr = (this->_header.part4_rom_wifi7_addr << 3);
+	part5addr = (this->_header.part5_data_gfx_addr << 3);
 
-	ARM9bootAddr = part1ram;
-	ARM7bootAddr = part2ram;
+	u32 ARM9bootAddr = part1ram;
+	u32 ARM7bootAddr = part2ram;
 
-	enc.init(header.fw_identifier, 1, 0xC);
+	u32 identifierValue = *((u32 *)(&this->_header.identifier[0]));
+	enc.init(identifierValue, 1, 0xC);
 
 #if 0
 	enc.applyKeycode((u32*)&data[0x18]);
 #else
 	// fix touch coords
-	data[0x18] = 0x00;
-	data[0x19] = 0x00;
-	data[0x1A] = 0x00;
-	data[0x1B] = 0x00;
-
-	data[0x1C] = 0x00;
-	data[0x1D] = 0xFF;
-	data[0x1E] = 0x00;
-	data[0x1F] = 0x00;
+	workingFirmwareData->header.key.timestamp = 0;
+	workingFirmwareData->header.key.consoleType = NDS_CONSOLE_TYPE_FAT;
+	workingFirmwareData->header.key.unused = 0xFFFF;
 #endif
 
-	enc.init(header.fw_identifier, 2, 0xC);
-
-	size9 = decrypt(data + part1addr, tmp_data9);
-	if (!tmp_data9)
+	enc.init(identifierValue, 2, 0xC);
+	
+	u8 *tmp_data9 = NULL;
+	u8 *tmp_data7 = NULL;
+	u32 arm9Size = 0;
+	u32 arm7Size = 0;
+	
+	arm9Size = this->_decrypt(&workingFirmwareData->_raw[part1addr], tmp_data9);
+	if (tmp_data9 == NULL)
 	{
-		delete [] data; data = NULL;
+		delete workingFirmwareData;
 		return false;
 	}
 
-	size7 = decrypt(data + part2addr, tmp_data7);
-	if (!tmp_data7)
+	arm7Size = this->_decrypt(&workingFirmwareData->_raw[part2addr], tmp_data7);
+	if (tmp_data7 == NULL)
 	{
 		delete [] tmp_data9;
-		delete [] data; data = NULL;
+		delete workingFirmwareData;
 		return false;
 	}
 
-	u16 crc16_mine = getBootCodeCRC16();
+	u16 crc16_mine = this->_getBootCodeCRC16(tmp_data9, arm9Size, tmp_data7, arm7Size);
 
-	if (crc16_mine != header.part12_boot_crc16)
+	if (crc16_mine != this->_header.part12_boot_crc16)
 	{
-		INFO("Firmware: ERROR: the boot code CRC16 (0x%04X) doesn't match the value in the firmware header (0x%04X)", crc16_mine, header.part12_boot_crc16);
+		INFO("Firmware: ERROR: the boot code CRC16 (0x%04X) doesn't match the value in the firmware header (0x%04X)", crc16_mine, this->_header.part12_boot_crc16);
 		delete [] tmp_data9;
 		delete [] tmp_data7;
-		delete [] data; data = NULL;
+		delete workingFirmwareData;
 		return false;
 	}
 
 	// Copy firmware boot codes to their respective locations
 	src = 0;
-	for(u32 i = 0; i < (size9 >> 2); i++)
+	for(u32 i = 0; i < (arm9Size >> 2); i++)
 	{
 		_MMU_write32<ARMCPU_ARM9>(part1ram, T1ReadLong(tmp_data9, src));
 		src += 4; part1ram += 4;
 	}
 
 	src = 0;
-	for(u32 i = 0; i < (size7 >> 2); i++)
+	for(u32 i = 0; i < (arm7Size >> 2); i++)
 	{
 		_MMU_write32<ARMCPU_ARM7>(part2ram, T1ReadLong(tmp_data7, src));
 		src += 4; part2ram += 4;
 	}
+	
 	delete [] tmp_data7;
+	tmp_data7 = NULL;
+	
 	delete [] tmp_data9;
-
-	patched = false;
-	if (data[0x17C] != 0xFF)
-		patched = true;
-
+	tmp_data9 = NULL;
+	
+	const bool isPatched = (workingFirmwareData->_raw[0x17C] != 0xFF);
+	
 	INFO("Firmware:\n");
-	INFO("- path: %s\n", CommonSettings.Firmware);
+	INFO("- path: %s\n", this->_fwFilePath.c_str());
 	INFO("- size: %i bytes (%i Mbit)\n", size, size/1024/8);
-	INFO("- CRC : 0x%04X\n", header.part12_boot_crc16);
+	INFO("- CRC : 0x%04X\n", this->_header.part12_boot_crc16);
 	INFO("- header: \n");
-	INFO("   * size firmware %i\n", ((header.shift_amounts >> 12) & 0xF) * 128 * 1024);
+	INFO("   * size firmware %i\n", ((this->_header.shift >> 12) & 0xF) * 128 * 1024);
 	INFO("   * ARM9 boot code address:     0x%08X\n", part1addr);
 	INFO("   * ARM9 boot code RAM address: 0x%08X\n", ARM9bootAddr);
-	INFO("   * ARM9 unpacked size:         0x%08X (%i) bytes\n", size9, size9);
+	INFO("   * ARM9 unpacked size:         0x%08X (%i) bytes\n", arm9Size, arm9Size);
 	INFO("   * ARM9 GUI code address:      0x%08X\n", part3addr);
 	INFO("\n");
 	INFO("   * ARM7 boot code address:     0x%08X\n", part2addr);
 	INFO("   * ARM7 boot code RAM address: 0x%08X\n", ARM7bootAddr);
 	INFO("   * ARM7 WiFi code address:     0x%08X\n", part4addr);
-	INFO("   * ARM7 unpacked size:         0x%08X (%i) bytes\n", size7, size7);
+	INFO("   * ARM7 unpacked size:         0x%08X (%i) bytes\n", arm7Size, arm7Size);
 	INFO("\n");
 	INFO("   * Data/GFX address:           0x%08X\n", part5addr);
 
-	if (patched)
+	if (isPatched)
 	{
 		u32 patch_offset = 0x3FC80;
-		if (data[0x17C] > 1)
+		if (workingFirmwareData->_raw[0x17C] > 1)
 			patch_offset = 0x3F680;
 
-		memcpy(&header, data + patch_offset, sizeof(header));
+		memcpy(&this->_header, &workingFirmwareData->_raw[patch_offset], sizeof(this->_header));
 
-		shift1 = ((header.shift_amounts >> 0) & 0x07);
-		shift2 = ((header.shift_amounts >> 3) & 0x07);
-		shift3 = ((header.shift_amounts >> 6) & 0x07);
-		shift4 = ((header.shift_amounts >> 9) & 0x07);
+		shift1 = ((this->_header.shift >> 0) & 0x07);
+		shift2 = ((this->_header.shift >> 3) & 0x07);
+		shift3 = ((this->_header.shift >> 6) & 0x07);
+		shift4 = ((this->_header.shift >> 9) & 0x07);
 
 		// todo - add support for 512Kb 
-		part1addr = (header.part1_rom_boot9_addr << (2 + shift1));
-		part1ram = (0x02800000 - (header.part1_ram_boot9_addr << (2+shift2)));
-		part2addr = (header.part2_rom_boot7_addr << (2+shift3));
-		part2ram = (0x03810000 - (header.part2_ram_boot7_addr << (2+shift4)));
+		part1addr = (this->_header.part1_rom_boot9_addr << (2 + shift1));
+		part1ram = (0x02800000 - (this->_header.part1_ram_boot9_addr << (2+shift2)));
+		part2addr = (this->_header.part2_rom_boot7_addr << (2+shift3));
+		part2ram = (0x03810000 - (this->_header.part2_ram_boot7_addr << (2+shift4)));
 
 		ARM9bootAddr = part1ram;
 		ARM7bootAddr = part2ram;
 
-		size9 = decompress(data + part1addr, tmp_data9);
-		if (!tmp_data9) 
+		arm9Size = this->_decompress(&workingFirmwareData->_raw[part1addr], tmp_data9);
+		if (tmp_data9 == NULL)
 		{
-			delete [] data;
+			delete workingFirmwareData;
 			return false;
 		}
 
-		size7 = decompress(data + part2addr, tmp_data7);
-		if (!tmp_data7)
+		arm7Size = this->_decompress(&workingFirmwareData->_raw[part2addr], tmp_data7);
+		if (tmp_data7 == NULL)
 		{
 			delete [] tmp_data9;
-			delete [] data;
+			delete workingFirmwareData;
 			return false;
 		};
 		// Copy firmware boot codes to their respective locations
 		src = 0;
-		for(u32 i = 0; i < (size9 >> 2); i++)
+		for(u32 i = 0; i < (arm9Size >> 2); i++)
 		{
 			_MMU_write32<ARMCPU_ARM9>(part1ram, T1ReadLong(tmp_data9, src));
 			src += 4; part1ram += 4;
 		}
 
 		src = 0;
-		for(u32 i = 0; i < (size7 >> 2); i++)
+		for(u32 i = 0; i < (arm7Size >> 2); i++)
 		{
 			_MMU_write32<ARMCPU_ARM7>(part2ram, T1ReadLong(tmp_data7, src));
 			src += 4; part2ram += 4;
@@ -497,93 +467,55 @@ bool CFIRMWARE::unpack()
 		INFO("- header: \n");
 		INFO("   * ARM9 boot code address:     0x%08X\n", part1addr);
 		INFO("   * ARM9 boot code RAM address: 0x%08X\n", ARM9bootAddr);
-		INFO("   * ARM9 unpacked size:         0x%08X (%i) bytes\n", size9, size9);
+		INFO("   * ARM9 unpacked size:         0x%08X (%i) bytes\n", arm9Size, arm9Size);
 		INFO("\n");
 		INFO("   * ARM7 boot code address:     0x%08X\n", part2addr);
 		INFO("   * ARM7 boot code RAM address: 0x%08X\n", ARM7bootAddr);
-		INFO("   * ARM7 unpacked size:         0x%08X (%i) bytes\n", size7, size7);
+		INFO("   * ARM7 unpacked size:         0x%08X (%i) bytes\n", arm7Size, arm7Size);
 	}
 
-	memcpy(MMU.fw.data, data, size);
-	MMU.fw.fp = NULL;
-
-	delete [] data; data = NULL;
+	memcpy(&MMU.fw.data, workingFirmwareData, size);
+	delete workingFirmwareData;
+	
 	return true;
 }
 
-bool CFIRMWARE::loadSettings()
+bool CFIRMWARE::loadSettings(const char *firmwareUserSettingsFilePath)
 {
-	if (!CommonSettings.UseExtFirmware) return false;
-	if (!CommonSettings.UseExtFirmwareSettings) return false;
-
-	FILE *fp = fopen(MMU.fw.userfile, "rb");
-	if (fp)
-	{
-		fseek(fp, 0, SEEK_END);
-		if (ftell(fp) == DFC_FILE_SIZE)
-		{
-			fseek(fp, 0, SEEK_SET);
-			u8 *usr = new u8[SETTINGS_SIZE];
-			if (usr)
-			{
-				if (fread(usr, 1, DFC_ID_SIZE, fp) == DFC_ID_SIZE)
-				{
-					if (memcmp(usr, DFC_ID_CODE, DFC_ID_SIZE) == 0)
-					{
-						if (fread(usr, 1, SETTINGS_SIZE, fp) == SETTINGS_SIZE)
-						{
-							memcpy(&MMU.fw.data[userDataAddr], usr, USER_SETTINGS_SIZE);
-							memcpy(&MMU.fw.data[userDataAddr + 0x100], usr, USER_SETTINGS_SIZE);
-							memcpy(&MMU.fw.data[WIFI_SETTINGS_OFF], usr + USER_SETTINGS_SIZE, WIFI_SETTINGS_SIZE);
-							memcpy(&MMU.fw.data[WIFI_AP_SETTINGS_OFF], usr + USER_SETTINGS_SIZE + WIFI_SETTINGS_SIZE, WIFI_AP_SETTINGS_SIZE);
-							printf("Loaded user settings from %s\n", MMU.fw.userfile);
-						}
-					}
-				}
-				delete [] usr;
-				usr = NULL;
-			}
-		}
-		else
-			printf("Failed loading firmware config from %s (wrong file size)\n", MMU.fw.userfile);
-
-		fclose(fp);
-	}
-
-	return false;
+	return NDS_ApplyFirmwareSettingsWithFile(&MMU.fw.data, firmwareUserSettingsFilePath);
 }
 
-bool CFIRMWARE::saveSettings()
+bool CFIRMWARE::saveSettings(const char *firmwareUserSettingsFilePath)
 {
-	if (!CommonSettings.UseExtFirmware) return false;
-	if (!CommonSettings.UseExtFirmwareSettings) return false;
-
-	u8 *data = &MMU.fw.data[userDataAddr];
-	u8 counter0 = data[0x070];
-	u8 counter1 = data[0x170];
-
-	if (counter1 == ((counter0 + 1) & 0x7F))
+	if ( (firmwareUserSettingsFilePath == NULL) || (strlen(firmwareUserSettingsFilePath) == 0) )
 	{
-		// copy User Settings 1 to User Settings 0 area
-		memcpy(data, data + 0x100, 0x100);
+		return false;
+	}
+	
+	FWUserSettings &userSettings0 = MMU.fw.data.userSettings0;
+	FWUserSettings &userSettings1 = MMU.fw.data.userSettings1;
+	
+	if (userSettings1.updateCounter == ((LE_TO_LOCAL_16(userSettings0.updateCounter) + 1) & 0x7F))
+	{
+		userSettings0 = userSettings1;
 	}
 	else
 	{
-		// copy User Settings 0 to User Settings 1 area
-		memcpy(data + 0x100, data, 0x100);
+		userSettings1 = userSettings0;
 	}
 	
 	printf("Firmware: saving config");
-	FILE *fp = fopen(MMU.fw.userfile, "wb");
+	FILE *fp = fopen(firmwareUserSettingsFilePath, "wb");
 	if (fp)
 	{
 		u8 *usr = new u8[DFC_FILE_SIZE];
 		if (usr)
 		{
 			memcpy(usr, DFC_ID_CODE, DFC_ID_SIZE);
-			memcpy(usr + DFC_ID_SIZE, data, USER_SETTINGS_SIZE);
-			memcpy(usr + DFC_ID_SIZE + USER_SETTINGS_SIZE, &MMU.fw.data[WIFI_SETTINGS_OFF], WIFI_SETTINGS_SIZE);
-			memcpy(usr + DFC_ID_SIZE + USER_SETTINGS_SIZE + WIFI_SETTINGS_SIZE, &MMU.fw.data[WIFI_AP_SETTINGS_OFF], WIFI_AP_SETTINGS_SIZE);
+			memcpy(usr + DFC_ID_SIZE, &userSettings0, sizeof(FWUserSettings));
+			memcpy(usr + DFC_ID_SIZE + sizeof(FWUserSettings), &MMU.fw.data.wifiInfo, WIFI_SETTINGS_SIZE);
+			memcpy(usr + DFC_ID_SIZE + sizeof(FWUserSettings) + WIFI_SETTINGS_SIZE, &MMU.fw.data.wifiAP1, WIFI_AP_SETTINGS_SIZE);
+			
 			if (fwrite(usr, 1, DFC_FILE_SIZE, fp) == DFC_FILE_SIZE)
 				printf(" - done\n");
 			else
@@ -599,24 +531,27 @@ bool CFIRMWARE::saveSettings()
 	return true;
 }
 
-std::string CFIRMWARE::GetExternalFilePath()
+std::string CFIRMWARE::GetUserSettingsFilePath(const char *firmwareFilePath)
 {
-	std::string fwPath = CommonSettings.Firmware;
+	std::string fwPath = firmwareFilePath;
 	std::string fwFileName = Path::GetFileNameFromPathWithoutExt(fwPath);
-	char configPath[MAX_PATH] = {0};
-	path.getpath(path.BATTERY, configPath);
-	if (configPath[strlen(configPath)-1] == DIRECTORY_DELIMITER_CHAR)
-			configPath[strlen(configPath)-1] = 0;
-	std::string finalPath = std::string(configPath) + DIRECTORY_DELIMITER_CHAR + fwFileName + FILE_EXT_DELIMITER_CHAR + FW_CONFIG_FILE_EXT;
+
+	std::string configPath = path.getpath(path.BATTERY);
+	std::string finalPath = configPath + DIRECTORY_DELIMITER_CHAR + fwFileName + FILE_EXT_DELIMITER_CHAR + FW_CONFIG_FILE_EXT;
 
 	return finalPath;
 }
 
-void *CFIRMWARE::getTouchCalibrate()
+bool CFIRMWARE::isLoaded()
+{
+	return this->_isLoaded;
+}
+
+void* CFIRMWARE::getTouchCalibrate()
 {
 	static TSCalInfo cal = {0};
 
-	if (!successLoad || !CommonSettings.UseExtFirmware || !successLoad)
+	if (!this->_isLoaded || !CommonSettings.UseExtFirmware)
 	{
 		cal.adc.x1 = _MMU_read16<ARMCPU_ARM7>(0x027FFC80 + 0x58) & 0x1FFF;
 		cal.adc.y1 = _MMU_read16<ARMCPU_ARM7>(0x027FFC80 + 0x5A) & 0x1FFF;
@@ -629,14 +564,16 @@ void *CFIRMWARE::getTouchCalibrate()
 	}
 	else
 	{
-		cal.adc.x1 = T1ReadWord(MMU.fw.data, userDataAddr + 0x58) & 0x1FFF;
-		cal.adc.y1 = T1ReadWord(MMU.fw.data, userDataAddr + 0x5A) & 0x1FFF;
-		cal.scr.x1 = T1ReadByte(MMU.fw.data, userDataAddr + 0x5C);
-		cal.scr.y1 = T1ReadByte(MMU.fw.data, userDataAddr + 0x5D);
-		cal.adc.x2 = T1ReadWord(MMU.fw.data, userDataAddr + 0x5E) & 0x1FFF;
-		cal.adc.y2 = T1ReadWord(MMU.fw.data, userDataAddr + 0x60) & 0x1FFF;
-		cal.scr.x2 = T1ReadByte(MMU.fw.data, userDataAddr + 0x62);
-		cal.scr.y2 = T1ReadByte(MMU.fw.data, userDataAddr + 0x63);
+		FWUserSettings &userSettings = (FWUserSettings &)MMU.fw.data._raw[this->_userDataAddr];
+		
+		cal.adc.x1 = LE_TO_LOCAL_16(userSettings.tscADC_x1) & 0x1FFF;
+		cal.adc.y1 = LE_TO_LOCAL_16(userSettings.tscADC_y1) & 0x1FFF;
+		cal.scr.x1 = userSettings.tscPixel_x1;
+		cal.scr.y1 = userSettings.tscPixel_y1;
+		cal.adc.x2 = LE_TO_LOCAL_16(userSettings.tscADC_x2) & 0x1FFF;
+		cal.adc.y2 = LE_TO_LOCAL_16(userSettings.tscADC_y2) & 0x1FFF;
+		cal.scr.x2 = userSettings.tscPixel_x2;
+		cal.scr.y2 = userSettings.tscPixel_y2;
 	}
 
 	cal.adc.width	= (cal.adc.x2 - cal.adc.x1);
@@ -648,9 +585,10 @@ void *CFIRMWARE::getTouchCalibrate()
 }
 
 //=====================================================================================================
-static u32
-calc_CRC16( u32 start, const u8 *data, int count) {
+static u32 calc_CRC16(u32 start, const void *inBuffer, int count)
+{
 	int i,j;
+	const u8 *data = (u8 *)inBuffer;
 	u32 crc = start & 0xffff;
 	const u16 val[8] = { 0xC0C1,0xC181,0xC301,0xC601,0xCC01,0xD801,0xF001,0xA001 };
 	for(i = 0; i < count; i++)
@@ -748,218 +686,674 @@ int copy_firmware_user_data( u8 *dest_buffer, const u8 *fw_data)
 	return copy_good;
 }
 
-static void fill_user_data_area( struct NDS_fw_config_data *user_settings,u8 *data, int count)
+
+void NDS_GetFirmwareMACAddressAsStr(const FirmwareConfig& config, char outMacStr[13])
 {
-	u32 crc;
-	int i;
-	u8 *ts_cal_data_area;
-
-	memset( data, 0, 0x100);
-
-	// version
-	data[0x00] = 5;
-	data[0x01] = 0;
-
-	// colour
-	data[0x02] = user_settings->fav_colour;
-
-	// birthday month and day
-	data[0x03] = user_settings->birth_month;
-	data[0x04] = user_settings->birth_day;
-
-	//nickname and length
-	for ( i = 0; i < MAX_FW_NICKNAME_LENGTH; i++) {
-		data[0x06 + (i * 2)] = user_settings->nickname[i] & 0xff;
-		data[0x06 + (i * 2) + 1] = (user_settings->nickname[i] >> 8) & 0xff;
+	for (u8 i = 0; i < 6; i++) {
+		for (u8 j = 0; j < 2; j++) {
+			u8 u4Bits = j == 0 ? config.MACAddress[i] / 16 : config.MACAddress[i] % 16;
+			outMacStr[i * 2 + j] = u4Bits >= 10 ? 'A' + (u4Bits - 10) : '0' + u4Bits;
+		}
 	}
-
-	data[0x1a] = user_settings->nickname_len;
-
-	//Message
-	for ( i = 0; i < MAX_FW_MESSAGE_LENGTH; i++) {
-		data[0x1c + (i * 2)] = user_settings->message[i] & 0xff;
-		data[0x1c + (i * 2) + 1] = (user_settings->message[i] >> 8) & 0xff;
-	}
-
-	data[0x50] = user_settings->message_len;
-
-	//touch screen calibration
-	ts_cal_data_area = &data[0x58];
-	for ( i = 0; i < 2; i++) {
-		// ADC x y
-		*ts_cal_data_area++ = user_settings->touch_cal[i].adc_x & 0xff;
-		*ts_cal_data_area++ = (user_settings->touch_cal[i].adc_x >> 8) & 0xff;
-		*ts_cal_data_area++ = user_settings->touch_cal[i].adc_y & 0xff;
-		*ts_cal_data_area++ = (user_settings->touch_cal[i].adc_y >> 8) & 0xff;
-
-		//screen x y
-		*ts_cal_data_area++ = user_settings->touch_cal[i].screen_x;
-		*ts_cal_data_area++ = user_settings->touch_cal[i].screen_y;
-	}
-
-	//language and flags
-	data[0x64] = user_settings->language;
-	data[0x65] = 0xfc;
-
-	//update count and crc
-	data[0x70] = count & 0xff;
-	data[0x71] = (count >> 8) & 0xff;
-
-	crc = calc_CRC16( 0xffff, data, 0x70);
-	data[0x72] = crc & 0xff;
-	data[0x73] = (crc >> 8) & 0xff;
-
-	memset( &data[0x74], 0xff, 0x100 - 0x74);
+	outMacStr[12] = '\0';
 }
 
-// creates an firmware flash image, which contains all needed info to initiate a wifi connection
-int NDS_CreateDummyFirmware(NDS_fw_config_data *user_settings)
+void NDS_SetFirmwareMACAddressFromStr(FirmwareConfig& config, const char* macStr)
 {
-	//Create the firmware header
+	for (size_t i = 0; i < sizeof(config.MACAddress); i++)
+		config.MACAddress[i] = 0;
 
-	memset( MMU.fw.data, 0, 0x40000);
+	// Each letter in macStr represents a 4-bits value (u4) of the mac address.
+	size_t macStrLen = strlen(macStr);
+	if (macStrLen > 12)
+		macStrLen = 12;
 
-	//firmware identifier
-	MMU.fw.data[0x8] = 'M';
-	MMU.fw.data[0x8 + 1] = 'A';
-	MMU.fw.data[0x8 + 2] = 'C';
-	MMU.fw.data[0x8 + 3] = 'P';
+	const size_t missingLetterCount = 12 - macStrLen;
+	for (size_t i = 0; i < macStrLen; i++) {
+		char letter = macStr[i];
+		u8 macU4Val = 0;
+		if (letter >= '0' && letter <= '9')
+			macU4Val = letter - '0';
+		else if (letter >= 'A' && letter <= 'F')
+			macU4Val = letter - 'A' + 10;
+		else if (letter >= 'a' && letter <= 'f')
+			macU4Val = letter - 'a' + 10;
+		// Invalid letters are treated as 0.
 
-	// DS type
-	if ( user_settings->ds_type == NDS_CONSOLE_TYPE_DSI)
-		MMU.fw.data[0x1d] = 0xFF;
-	else
-		MMU.fw.data[0x1d] = user_settings->ds_type;
-
-	//User Settings offset 0x3fe00 / 8
-	MMU.fw.data[0x20] = 0xc0;
-	MMU.fw.data[0x21] = 0x7f;
-
-
-	//User settings (at 0x3FE00 and 0x3FF00)
-
-	fill_user_data_area( user_settings, &MMU.fw.data[ 0x3FE00], 0);
-	fill_user_data_area( user_settings, &MMU.fw.data[ 0x3FF00], 1);
-
-	// Wifi config length
-	MMU.fw.data[0x2C] = 0x38;
-	MMU.fw.data[0x2D] = 0x01;
-
-	MMU.fw.data[0x2E] = 0x00;
-
-	//Wifi version
-	MMU.fw.data[0x2F] = 0x00;
-
-	//MAC address
-	memcpy((MMU.fw.data + 0x36), FW_Mac, sizeof(FW_Mac));
-
-	//Enabled channels
-	MMU.fw.data[0x3C] = 0xFE;
-	MMU.fw.data[0x3D] = 0x3F;
-
-	MMU.fw.data[0x3E] = 0xFF;
-	MMU.fw.data[0x3F] = 0xFF;
-
-	//RF related
-	MMU.fw.data[0x40] = 0x02;
-	MMU.fw.data[0x41] = 0x18;
-	MMU.fw.data[0x42] = 0x0C;
-
-	MMU.fw.data[0x43] = 0x01;
-
-	//Wifi I/O init values
-	memcpy((MMU.fw.data + 0x44), FW_WIFIInit, sizeof(FW_WIFIInit));
-
-	//Wifi BB init values
-	memcpy((MMU.fw.data + 0x64), FW_BBInit, sizeof(FW_BBInit));
-
-	//Wifi RF init values
-	memcpy((MMU.fw.data + 0xCE), FW_RFInit, sizeof(FW_RFInit));
-
-	//Wifi channel-related init values
-	memcpy((MMU.fw.data + 0xF2), FW_RFChannel, sizeof(FW_RFChannel));
-	memcpy((MMU.fw.data + 0x146), FW_BBChannel, sizeof(FW_BBChannel));
-	memset((MMU.fw.data + 0x154), 0x10, 0xE);
-
-	//WFC profiles
-	memcpy((MMU.fw.data + 0x3FA40), &FW_WFCProfile1, sizeof(FW_WFCProfile));
-	memcpy((MMU.fw.data + 0x3FB40), &FW_WFCProfile2, sizeof(FW_WFCProfile));
-	memcpy((MMU.fw.data + 0x3FC40), &FW_WFCProfile3, sizeof(FW_WFCProfile));
-	(*(u16*)(MMU.fw.data + 0x3FAFE)) = (u16)calc_CRC16(0, (MMU.fw.data + 0x3FA00), 0xFE);
-	(*(u16*)(MMU.fw.data + 0x3FBFE)) = (u16)calc_CRC16(0, (MMU.fw.data + 0x3FB00), 0xFE);
-	(*(u16*)(MMU.fw.data + 0x3FCFE)) = (u16)calc_CRC16(0, (MMU.fw.data + 0x3FC00), 0xFE);
-
-
-	MMU.fw.data[0x162] = 0x19;
-	memset((MMU.fw.data + 0x163), 0xFF, 0x9D);
-
-	//Wifi settings CRC16
-	(*(u16*)(MMU.fw.data + 0x2A)) = calc_CRC16(0, (MMU.fw.data + 0x2C), 0x138);
-
-	if (&CommonSettings.fw_config != user_settings)
-		memcpy(&CommonSettings.fw_config, user_settings, sizeof(NDS_fw_config_data));
-
-	return TRUE ;
+		const size_t u4Idx = i + missingLetterCount; // u4Idx is between 0-12
+		const size_t u8Idx = u4Idx / 2;
+		const bool isHighBits = u4Idx % 2 == 0;
+		config.MACAddress[u8Idx] += isHighBits ? macU4Val << 4 : macU4Val;
+	}
 }
 
-void NDS_FillDefaultFirmwareConfigData(NDS_fw_config_data *fw_config) {
-	const char *default_nickname = "DeSmuME";
-	const char *default_message = "DeSmuME makes you happy!";
-	int i;
-	int str_length;
-
-	memset( fw_config, 0, sizeof(NDS_fw_config_data));
-	fw_config->ds_type = NDS_CONSOLE_TYPE_FAT;
-
-	fw_config->fav_colour = 7;
-
-	fw_config->birth_day = 23;
-	fw_config->birth_month = 6;
-
-	str_length = strlen( default_nickname);
-	for ( i = 0; i < str_length; i++) {
-		fw_config->nickname[i] = default_nickname[i];
+void NDS_GetDefaultFirmwareConfig(FirmwareConfig &outConfig)
+{
+	memset(&outConfig, 0, sizeof(FirmwareConfig));
+	
+	outConfig.consoleType = NDS_CONSOLE_TYPE_FAT;
+	outConfig.favoriteColor = 7;
+	outConfig.birthdayMonth = 6;
+	outConfig.birthdayDay = 23;
+	outConfig.language = 1; // English
+	outConfig.backlightLevel = 3; // Max brightness
+	
+	// The length of the default strings, ignoring the null-terminating character.
+	outConfig.nicknameLength = strlen(defaultNickname);
+	if (outConfig.nicknameLength > MAX_FW_NICKNAME_LENGTH)
+	{
+		outConfig.nicknameLength = MAX_FW_NICKNAME_LENGTH;
 	}
-	fw_config->nickname_len = str_length;
-
-	str_length = strlen( default_message);
-	for ( i = 0; i < str_length; i++) {
-		fw_config->message[i] = default_message[i];
+	
+	outConfig.messageLength = strlen(defaultMessage);
+	if (outConfig.messageLength > MAX_FW_MESSAGE_LENGTH)
+	{
+		outConfig.messageLength = MAX_FW_MESSAGE_LENGTH;
 	}
-	fw_config->message_len = str_length;
-
-	//default to English
-	fw_config->language = 1;
-
+	
+	// Copy the default char buffers into the UTF-16 string buffers.
+	for (size_t i = 0; i < outConfig.nicknameLength; i++)
+	{
+		outConfig.nickname[i] = defaultNickname[i];
+	}
+	
+	for (size_t i = 0; i < outConfig.messageLength; i++)
+	{
+		outConfig.message[i] = defaultMessage[i];
+	}
+	
+	outConfig.MACAddress[0] = 0x00;
+	outConfig.MACAddress[1] = 0x09;
+	outConfig.MACAddress[2] = 0xBF;
+	outConfig.MACAddress[3] = 0x12;
+	outConfig.MACAddress[4] = 0x34;
+	outConfig.MACAddress[5] = 0x56;
+	
+	outConfig.WFCUserID[0] = 0x00;
+	outConfig.WFCUserID[1] = 0x00;
+	outConfig.WFCUserID[2] = 0x00;
+	outConfig.WFCUserID[3] = 0x00;
+	outConfig.WFCUserID[4] = 0x00;
+	outConfig.WFCUserID[5] = 0x00;
+	
 	// default touchscreen calibration
-
+	
 	//ANCIENT DESMUME VALUES
-	fw_config->touch_cal[0].adc_x = 0x200;
-	fw_config->touch_cal[0].adc_y = 0x200;
-	fw_config->touch_cal[0].screen_x = 0x20 + 1; // calibration screen coords are 1-based,
-	fw_config->touch_cal[0].screen_y = 0x20 + 1; // either that or NDS_getADCTouchPosX/Y are wrong.
+	outConfig.tscADC_x1 = 0x200;
+	outConfig.tscADC_y1 = 0x200;
+	outConfig.tscPixel_x1 = 0x20 + 1; // calibration screen coords are 1-based,
+	outConfig.tscPixel_y1 = 0x20 + 1; // either that or NDS_getADCTouchPosX/Y are wrong.
 	//VALUES FROM NOCASH
-	//fw_config->touch_cal[0].adc_x = 0x02DF;
-	//fw_config->touch_cal[0].adc_y = 0x032C;
-	//fw_config->touch_cal[0].screen_x = 0x20;
-	//fw_config->touch_cal[0].screen_y = 0x20;
-
+	//outConfig.tscADC_x1 = 0x02DF;
+	//outConfig.tscADC_y1 = 0x032C;
+	//outConfig.tscPixel_x1 = 0x20;
+	//outConfig.tscPixel_y1 = 0x20;
+	
 	//ANCIENT DESMUME VALUES
-	fw_config->touch_cal[1].adc_x = 0xe00;
-	fw_config->touch_cal[1].adc_y = 0x800;
-	fw_config->touch_cal[1].screen_x = 0xe0 + 1;
-	fw_config->touch_cal[1].screen_y = 0x80 + 1;
+	outConfig.tscADC_x2 = 0xE00;
+	outConfig.tscADC_y2 = 0x800;
+	outConfig.tscPixel_x2 = 0xE0 + 1;
+	outConfig.tscPixel_y2 = 0x80 + 1;
 	//VALUES FROM NOCASH
-	//fw_config->touch_cal[1].adc_x = 0x0D3B;
-	//fw_config->touch_cal[1].adc_y = 0x0CE7;
-	//fw_config->touch_cal[1].screen_x = 0xE0;
-	//fw_config->touch_cal[1].screen_y = 0xA0;
+	//outConfig.tscADC_x2 = 0x0D3B;
+	//outConfig.tscADC_y2 = 0x0CE7;
+	//outConfig.tscPixel_x2 = 0xE0;
+	//outConfig.tscPixel_y2 = 0xA0;
+	
+	outConfig.subnetMask_AP1 = 24;
+	outConfig.subnetMask_AP2 = 24;
+	outConfig.subnetMask_AP3 = 24;
 }
 
-void NDS_PatchFirmwareMAC()
+void NDS_GetCurrentWFCUserID(u8 *outMAC, u8 *outUserID)
 {
-	memcpy((MMU.fw.data + 0x36), FW_Mac, sizeof(FW_Mac));
-	(*(u16*)(MMU.fw.data + 0x2A)) = calc_CRC16(0, (MMU.fw.data + 0x2C), 0x138);
+	const NDSFirmwareData &fw = MMU.fw.data;
+	
+	if (outMAC != NULL)
+	{
+		outMAC[0] = fw.wifiInfo.MACAddr[0];
+		outMAC[1] = fw.wifiInfo.MACAddr[1];
+		outMAC[2] = fw.wifiInfo.MACAddr[2];
+		outMAC[3] = fw.wifiInfo.MACAddr[3];
+		outMAC[4] = fw.wifiInfo.MACAddr[4];
+		outMAC[5] = fw.wifiInfo.MACAddr[5];
+	}
+	
+	if (outUserID != NULL)
+	{
+		outUserID[0] = fw.wifiAP1.wfcUserID[0];
+		outUserID[1] = fw.wifiAP1.wfcUserID[1];
+		outUserID[2] = fw.wifiAP1.wfcUserID[2];
+		outUserID[3] = fw.wifiAP1.wfcUserID[3];
+		outUserID[4] = fw.wifiAP1.wfcUserID[4];
+		outUserID[5] = fw.wifiAP1.wfcUserID[5];
+	}
+}
+
+void NDS_ApplyFirmwareSettings(NDSFirmwareData *outFirmware,
+							   const FW_HEADER_KEY *headerKey,
+							   const FWUserSettings *userSettings0,
+							   const FWUserSettings *userSettings1,
+							   const FWWifiInfo *wifiInfo,
+							   const FWAccessPointSettings *wifiAP1,
+							   const FWAccessPointSettings *wifiAP2,
+							   const FWAccessPointSettings *wifiAP3)
+{
+	if (outFirmware == NULL)
+	{
+		return;
+	}
+	
+	if (headerKey != NULL)
+	{
+		memcpy(&outFirmware->header.key, headerKey, sizeof(FW_HEADER_KEY));
+	}
+	
+	if (userSettings0 != NULL)
+	{
+		memcpy(&outFirmware->userSettings0, userSettings0, sizeof(FWUserSettings));
+	}
+	
+	if (userSettings1 != NULL)
+	{
+		memcpy(&outFirmware->userSettings1, userSettings1, sizeof(FWUserSettings));
+	}
+	
+	if (wifiInfo != NULL)
+	{
+		memcpy(&outFirmware->wifiInfo, wifiInfo, sizeof(FWWifiInfo));
+	}
+	
+	if (wifiAP1 != NULL)
+	{
+		memcpy(&outFirmware->wifiAP1, wifiAP1, sizeof(FWAccessPointSettings));
+	}
+	
+	if (wifiAP2 != NULL)
+	{
+		memcpy(&outFirmware->wifiAP2, wifiAP2, sizeof(FWAccessPointSettings));
+	}
+	
+	if (wifiAP3 != NULL)
+	{
+		memcpy(&outFirmware->wifiAP3, wifiAP3, sizeof(FWAccessPointSettings));
+	}
+}
+
+bool NDS_ApplyFirmwareSettingsWithFile(NDSFirmwareData *outFirmware, const char *inFileName)
+{
+	bool didReadExtFirmwareData = false;
+	u8 *extFirmwareData = NULL;
+	size_t fileSize = 0;
+	
+	if ( (outFirmware == NULL) || (inFileName == NULL) || (strlen(inFileName) == 0) )
+	{
+		return didReadExtFirmwareData;
+	}
+	
+	FILE *fp = fopen(inFileName, "rb");
+	if (fp == NULL)
+	{
+		printf("Ext. Firmware: Failed loading config from %s\n               Could not open file.\n", inFileName);
+		return didReadExtFirmwareData;
+	}
+	
+	fseek(fp, 0, SEEK_END);
+	fileSize = (size_t)ftell(fp);
+	if (fileSize != DFC_FILE_SIZE)
+	{
+		printf("Ext. Firmware: Failed loading config from %s\n               Actual file size was %zu bytes, expected %zu bytes.\n", inFileName, fileSize, DFC_FILE_SIZE);
+		fclose(fp);
+		return didReadExtFirmwareData;
+	}
+	fseek(fp, 0, SEEK_SET);
+	
+	extFirmwareData = (u8 *)malloc(SETTINGS_SIZE);
+	if (extFirmwareData == NULL)
+	{
+		return didReadExtFirmwareData;
+	}
+	
+	if (fread(extFirmwareData, 1, DFC_ID_SIZE, fp) == DFC_ID_SIZE)
+	{
+		if (memcmp(extFirmwareData, DFC_ID_CODE, DFC_ID_SIZE) == 0)
+		{
+			const size_t readSettingsSize = fread(extFirmwareData, 1, SETTINGS_SIZE, fp);
+			didReadExtFirmwareData = (readSettingsSize == SETTINGS_SIZE);
+		}
+	}
+	
+	fclose(fp);
+	
+	if (didReadExtFirmwareData)
+	{
+		// Need a temp struct here because WIFI_SETTINGS_SIZE is smaller than sizeof(FWWifiInfo).
+		FWWifiInfo wifiInfo = outFirmware->wifiInfo;
+		memcpy(&wifiInfo, extFirmwareData + sizeof(FWUserSettings), WIFI_SETTINGS_SIZE);
+		
+		NDS_ApplyFirmwareSettings(outFirmware,
+								  NULL,
+								  (FWUserSettings *)extFirmwareData,
+								  (FWUserSettings *)extFirmwareData,
+								  &wifiInfo,
+								  (FWAccessPointSettings *)(extFirmwareData + sizeof(FWUserSettings) + WIFI_SETTINGS_SIZE),
+								  NULL,
+								  NULL);
+		
+		printf("Ext. Firmware: Successfully loaded config from %s\n", inFileName);
+	}
+	
+	free(extFirmwareData);
+	
+	return didReadExtFirmwareData;
+}
+
+void NDS_ApplyFirmwareSettingsWithConfig(NDSFirmwareData *outFirmware, const FirmwareConfig &inConfig)
+{
+	if (outFirmware == NULL)
+	{
+		return;
+	}
+	
+	FW_HEADER_KEY headerKey = outFirmware->header.key;
+	FWUserSettings userSettings0 = outFirmware->userSettings0;
+	FWUserSettings userSettings1 = outFirmware->userSettings1;
+	FWWifiInfo wifiInfo = outFirmware->wifiInfo;
+	FWAccessPointSettings wifiAP1 = outFirmware->wifiAP1;
+	FWAccessPointSettings wifiAP2 = outFirmware->wifiAP2;
+	FWAccessPointSettings wifiAP3 = outFirmware->wifiAP3;
+	
+	// NDS type
+	headerKey.consoleType = inConfig.consoleType;
+	
+	// User settings (at 0x3FE00 and 0x3FF00)
+	userSettings0.favoriteColor = inConfig.favoriteColor;
+	userSettings0.birthdayMonth = inConfig.birthdayMonth;
+	userSettings0.birthdayDay = inConfig.birthdayDay;
+	
+	// Copy the default char buffers into the UTF-16 string buffers.
+	u16 nicknameLength = inConfig.nicknameLength;
+	if (nicknameLength > MAX_FW_NICKNAME_LENGTH)
+	{
+		nicknameLength = MAX_FW_NICKNAME_LENGTH;
+	}
+	
+	u16 messageLength = inConfig.messageLength;
+	if (messageLength > MAX_FW_MESSAGE_LENGTH)
+	{
+		messageLength = MAX_FW_MESSAGE_LENGTH;
+	}
+	
+	userSettings0.nicknameLength = LOCAL_TO_LE_16(nicknameLength);
+	userSettings0.messageLength = LOCAL_TO_LE_16(messageLength);
+	
+	memset(userSettings0.nickname, 0, MAX_FW_NICKNAME_LENGTH * sizeof(u16));
+	for (size_t i = 0; i < nicknameLength; i++)
+	{
+		userSettings0.nickname[i] = LOCAL_TO_LE_16(inConfig.nickname[i]);
+	}
+	
+	memset(userSettings0.message, 0, MAX_FW_MESSAGE_LENGTH * sizeof(u16));
+	for (size_t i = 0; i < messageLength; i++)
+	{
+		userSettings0.message[i] = LOCAL_TO_LE_16(inConfig.message[i]);
+	}
+	
+	// Default touch-screen calibration settings.
+	userSettings0.tscADC_x1 = LOCAL_TO_LE_16(inConfig.tscADC_x1);
+	userSettings0.tscADC_y1 = LOCAL_TO_LE_16(inConfig.tscADC_y1);
+	userSettings0.tscPixel_x1 = inConfig.tscPixel_x1;
+	userSettings0.tscPixel_y1 = inConfig.tscPixel_y1;
+	userSettings0.tscADC_x2 = LOCAL_TO_LE_16(inConfig.tscADC_x2);
+	userSettings0.tscADC_y2 = LOCAL_TO_LE_16(inConfig.tscADC_y2);
+	userSettings0.tscPixel_x2 = inConfig.tscPixel_x2;
+	userSettings0.tscPixel_y2 = inConfig.tscPixel_y2;
+	
+	// Default language and flags.
+	userSettings0.languageFlags.language = inConfig.language;
+	userSettings0.languageFlags.backlightLevel = inConfig.backlightLevel;
+	
+	// Copy the default config for userSettings0 into userSettings1.
+	userSettings1 = userSettings0;
+	
+	userSettings0.updateCounter = 0x0000;
+	userSettings1.updateCounter = 0x0001;
+	userSettings0.crc16 = LOCAL_TO_LE_16( (u16)calc_CRC16(0xFFFF, &userSettings0, 0x70) );
+	userSettings1.crc16 = LOCAL_TO_LE_16( (u16)calc_CRC16(0xFFFF, &userSettings1, 0x70) );
+	
+	// MAC address
+	wifiInfo.MACAddr[0] = inConfig.MACAddress[0];
+	wifiInfo.MACAddr[1] = inConfig.MACAddress[1];
+	wifiInfo.MACAddr[2] = inConfig.MACAddress[2];
+	wifiInfo.MACAddr[3] = inConfig.MACAddress[3];
+	wifiInfo.MACAddr[4] = inConfig.MACAddress[4];
+	wifiInfo.MACAddr[5] = inConfig.MACAddress[5];
+	
+	// Wifi settings CRC16
+	wifiInfo.crc16 = LOCAL_TO_LE_16( (u16)calc_CRC16(0, &wifiInfo.length, wifiInfo.length) );
+	
+	// WFC User ID, uniquely located on the first WiFi profile and no other
+	wifiAP1.wfcUserID[0] = inConfig.WFCUserID[0];
+	wifiAP1.wfcUserID[1] = inConfig.WFCUserID[1];
+	wifiAP1.wfcUserID[2] = inConfig.WFCUserID[2];
+	wifiAP1.wfcUserID[3] = inConfig.WFCUserID[3];
+	wifiAP1.wfcUserID[4] = inConfig.WFCUserID[4];
+	wifiAP1.wfcUserID[5] = inConfig.WFCUserID[5];
+	
+	// WiFi profiles
+	if ( ((*(u32 *)inConfig.ipv4Address_AP1 != 0) && (*(u32 *)inConfig.ipv4Gateway_AP1 != 0) && (inConfig.subnetMask_AP1 != 0)) ||
+		  (*(u32 *)inConfig.ipv4PrimaryDNS_AP1 != 0) ||
+		  (*(u32 *)inConfig.ipv4SecondaryDNS_AP1 != 0) )
+	{
+		wifiAP1.SSID[0] = 'S';
+		wifiAP1.SSID[1] = 'o';
+		wifiAP1.SSID[2] = 'f';
+		wifiAP1.SSID[3] = 't';
+		wifiAP1.SSID[4] = 'A';
+		wifiAP1.SSID[5] = 'P';
+		wifiAP1.ipv4Address[0] = inConfig.ipv4Address_AP1[0];
+		wifiAP1.ipv4Address[1] = inConfig.ipv4Address_AP1[1];
+		wifiAP1.ipv4Address[2] = inConfig.ipv4Address_AP1[2];
+		wifiAP1.ipv4Address[3] = inConfig.ipv4Address_AP1[3];
+		wifiAP1.ipv4Gateway[0] = inConfig.ipv4Gateway_AP1[0];
+		wifiAP1.ipv4Gateway[1] = inConfig.ipv4Gateway_AP1[1];
+		wifiAP1.ipv4Gateway[2] = inConfig.ipv4Gateway_AP1[2];
+		wifiAP1.ipv4Gateway[3] = inConfig.ipv4Gateway_AP1[3];
+		wifiAP1.ipv4PrimaryDNS[0] = inConfig.ipv4PrimaryDNS_AP1[0];
+		wifiAP1.ipv4PrimaryDNS[1] = inConfig.ipv4PrimaryDNS_AP1[1];
+		wifiAP1.ipv4PrimaryDNS[2] = inConfig.ipv4PrimaryDNS_AP1[2];
+		wifiAP1.ipv4PrimaryDNS[3] = inConfig.ipv4PrimaryDNS_AP1[3];
+		wifiAP1.ipv4SecondaryDNS[0] = inConfig.ipv4SecondaryDNS_AP1[0];
+		wifiAP1.ipv4SecondaryDNS[1] = inConfig.ipv4SecondaryDNS_AP1[1];
+		wifiAP1.ipv4SecondaryDNS[2] = inConfig.ipv4SecondaryDNS_AP1[2];
+		wifiAP1.ipv4SecondaryDNS[3] = inConfig.ipv4SecondaryDNS_AP1[3];
+		wifiAP1.subnetMask = inConfig.subnetMask_AP1;
+		wifiAP1.configureMode = 0;
+	}
+	else
+	{
+		wifiAP1.configureMode = 0xFF;
+	}
+	
+	if ( ((*(u32 *)inConfig.ipv4Address_AP2 != 0) && (*(u32 *)inConfig.ipv4Gateway_AP2 != 0) && (inConfig.subnetMask_AP2 != 0)) ||
+		  (*(u32 *)inConfig.ipv4PrimaryDNS_AP2 != 0) ||
+		  (*(u32 *)inConfig.ipv4SecondaryDNS_AP2 != 0) )
+	{
+		wifiAP2.SSID[0] = 'S';
+		wifiAP2.SSID[1] = 'o';
+		wifiAP2.SSID[2] = 'f';
+		wifiAP2.SSID[3] = 't';
+		wifiAP2.SSID[4] = 'A';
+		wifiAP2.SSID[5] = 'P';
+		wifiAP2.ipv4Address[0] = inConfig.ipv4Address_AP2[0];
+		wifiAP2.ipv4Address[1] = inConfig.ipv4Address_AP2[1];
+		wifiAP2.ipv4Address[2] = inConfig.ipv4Address_AP2[2];
+		wifiAP2.ipv4Address[3] = inConfig.ipv4Address_AP2[3];
+		wifiAP2.ipv4Gateway[0] = inConfig.ipv4Gateway_AP2[0];
+		wifiAP2.ipv4Gateway[1] = inConfig.ipv4Gateway_AP2[1];
+		wifiAP2.ipv4Gateway[2] = inConfig.ipv4Gateway_AP2[2];
+		wifiAP2.ipv4Gateway[3] = inConfig.ipv4Gateway_AP2[3];
+		wifiAP2.ipv4PrimaryDNS[0] = inConfig.ipv4PrimaryDNS_AP2[0];
+		wifiAP2.ipv4PrimaryDNS[1] = inConfig.ipv4PrimaryDNS_AP2[1];
+		wifiAP2.ipv4PrimaryDNS[2] = inConfig.ipv4PrimaryDNS_AP2[2];
+		wifiAP2.ipv4PrimaryDNS[3] = inConfig.ipv4PrimaryDNS_AP2[3];
+		wifiAP2.ipv4SecondaryDNS[0] = inConfig.ipv4SecondaryDNS_AP2[0];
+		wifiAP2.ipv4SecondaryDNS[1] = inConfig.ipv4SecondaryDNS_AP2[1];
+		wifiAP2.ipv4SecondaryDNS[2] = inConfig.ipv4SecondaryDNS_AP2[2];
+		wifiAP2.ipv4SecondaryDNS[3] = inConfig.ipv4SecondaryDNS_AP2[3];
+		wifiAP2.subnetMask = inConfig.subnetMask_AP2;
+		wifiAP2.configureMode = 0;
+	}
+	else
+	{
+		wifiAP2.configureMode = 0xFF;
+	}
+	
+	if ( ((*(u32 *)inConfig.ipv4Address_AP3 != 0) && (*(u32 *)inConfig.ipv4Gateway_AP3 != 0) && (inConfig.subnetMask_AP3 != 0)) ||
+		  (*(u32 *)inConfig.ipv4PrimaryDNS_AP3 != 0) ||
+		  (*(u32 *)inConfig.ipv4SecondaryDNS_AP3 != 0) )
+	{
+		wifiAP3.SSID[0] = 'S';
+		wifiAP3.SSID[1] = 'o';
+		wifiAP3.SSID[2] = 'f';
+		wifiAP3.SSID[3] = 't';
+		wifiAP3.SSID[4] = 'A';
+		wifiAP3.SSID[5] = 'P';
+		wifiAP3.ipv4Address[0] = inConfig.ipv4Address_AP3[0];
+		wifiAP3.ipv4Address[1] = inConfig.ipv4Address_AP3[1];
+		wifiAP3.ipv4Address[2] = inConfig.ipv4Address_AP3[2];
+		wifiAP3.ipv4Address[3] = inConfig.ipv4Address_AP3[3];
+		wifiAP3.ipv4Gateway[0] = inConfig.ipv4Gateway_AP3[0];
+		wifiAP3.ipv4Gateway[1] = inConfig.ipv4Gateway_AP3[1];
+		wifiAP3.ipv4Gateway[2] = inConfig.ipv4Gateway_AP3[2];
+		wifiAP3.ipv4Gateway[3] = inConfig.ipv4Gateway_AP3[3];
+		wifiAP3.ipv4PrimaryDNS[0] = inConfig.ipv4PrimaryDNS_AP3[0];
+		wifiAP3.ipv4PrimaryDNS[1] = inConfig.ipv4PrimaryDNS_AP3[1];
+		wifiAP3.ipv4PrimaryDNS[2] = inConfig.ipv4PrimaryDNS_AP3[2];
+		wifiAP3.ipv4PrimaryDNS[3] = inConfig.ipv4PrimaryDNS_AP3[3];
+		wifiAP3.ipv4SecondaryDNS[0] = inConfig.ipv4SecondaryDNS_AP3[0];
+		wifiAP3.ipv4SecondaryDNS[1] = inConfig.ipv4SecondaryDNS_AP3[1];
+		wifiAP3.ipv4SecondaryDNS[2] = inConfig.ipv4SecondaryDNS_AP3[2];
+		wifiAP3.ipv4SecondaryDNS[3] = inConfig.ipv4SecondaryDNS_AP3[3];
+		wifiAP3.subnetMask = inConfig.subnetMask_AP3;
+		wifiAP3.configureMode = 0;
+	}
+	else
+	{
+		wifiAP3.configureMode = 0xFF;
+	}
+	
+	wifiAP1.crc16 = LOCAL_TO_LE_16( (u16)calc_CRC16(0, &wifiAP1, 254) );
+	wifiAP2.crc16 = LOCAL_TO_LE_16( (u16)calc_CRC16(0, &wifiAP2, 254) );
+	wifiAP3.crc16 = LOCAL_TO_LE_16( (u16)calc_CRC16(0, &wifiAP3, 254) );
+	
+	NDS_ApplyFirmwareSettings(outFirmware,
+							  &headerKey,
+							  &userSettings0,
+							  &userSettings1,
+							  &wifiInfo,
+							  &wifiAP1,
+							  &wifiAP2,
+							  &wifiAP3);
+}
+
+void NDS_InitDefaultFirmware(NDSFirmwareData *outFirmware)
+{
+	if (outFirmware == NULL)
+	{
+		return;
+	}
+	
+	// First, clear the firmware data with all zeroes
+	memset(outFirmware, 0, sizeof(NDSFirmwareData));
+	
+	FirmwareConfig defaultConfig;
+	NDS_GetDefaultFirmwareConfig(defaultConfig);
+	
+	// Firmware identifier
+	outFirmware->header.identifier[0] = 'M';
+	outFirmware->header.identifier[1] = 'A';
+	outFirmware->header.identifier[2] = 'C';
+	outFirmware->header.identifier[3] = 'P';
+	
+	// User Settings offset 0x3fe00 / 8
+	outFirmware->header.userSettingsOffset = LOCAL_TO_LE_16( (u16)(offsetof(NDSFirmwareData, userSettings0) / 8) );
+	
+	// User settings (at 0x3FE00 and 0x3FF00)
+	outFirmware->userSettings0.version = 5;
+	
+	// Default language and flags.
+	outFirmware->userSettings0.languageFlags.value = 0xFC00;
+	outFirmware->userSettings0.languageFlags.gbaModeScreenSelection = 0;
+	outFirmware->userSettings0.languageFlags.bootmenuDisable = 0;
+	
+	// Since we don't support DSi at the moment, we just fill this area with the default
+	// NDS data of 0xFF.
+	memset(outFirmware->userSettings0.nds.unused5, 0xFF, sizeof(outFirmware->userSettings0.nds.unused5));
+	
+	// Copy the default config for userSettings0 into userSettings1.
+	outFirmware->userSettings1 = outFirmware->userSettings0;
+	
+	// Begin setting up the WiFi info.
+	outFirmware->wifiInfo.length = 0x0138;
+	outFirmware->wifiInfo.version = 0;
+	outFirmware->wifiInfo.channels = 0x3FFE;
+	outFirmware->wifiInfo.flags = 0xFFFF;
+	
+	// RF related
+	outFirmware->wifiInfo.rfType = 2;
+	outFirmware->wifiInfo.rfBits = 0x18;
+	outFirmware->wifiInfo.rfEntries = 0x0C;
+	outFirmware->wifiInfo.UNKNOWN1 = 0x01;
+	
+	// Wifi I/O init values
+	outFirmware->wifiInfo.wifiConfig146 = 0x0002;			// 0x0044
+	outFirmware->wifiInfo.wifiConfig148 = 0x0017;			// 0x0046
+	outFirmware->wifiInfo.wifiConfig14A = 0x0026;			// 0x0048
+	outFirmware->wifiInfo.wifiConfig14C = 0x1818;			// 0x004A
+	outFirmware->wifiInfo.wifiConfig120 = 0x0048;			// 0x004C
+	outFirmware->wifiInfo.wifiConfig122 = 0x4840;			// 0x004E
+	outFirmware->wifiInfo.wifiConfig154 = 0x0058;			// 0x0050
+	outFirmware->wifiInfo.wifiConfig144 = 0x0042;			// 0x0052
+	outFirmware->wifiInfo.wifiConfig130 = 0x0140;			// 0x0054
+	outFirmware->wifiInfo.wifiConfig132 = 0x8064;			// 0x0056
+	outFirmware->wifiInfo.wifiConfig140 = 0xE0E0;			// 0x0058
+	outFirmware->wifiInfo.wifiConfig142 = 0x2443;			// 0x005A
+	outFirmware->wifiInfo.wifiConfigPowerTX = 0x000E;		// 0x005C
+	outFirmware->wifiInfo.wifiConfig124 = 0x0032;			// 0x005E
+	outFirmware->wifiInfo.wifiConfig128 = 0x01F4;			// 0x0060
+	outFirmware->wifiInfo.wifiConfig150 = 0x0101;			// 0x0062
+	
+	// Wifi BB init values
+	memcpy(outFirmware->wifiInfo.bbData, FW_BBInit, sizeof(FW_BBInit));
+	
+	// Wifi RF init values
+	memcpy(outFirmware->wifiInfo.Type2.rfValue, FW_RFInit, sizeof(FW_RFInit));
+	
+	// Wifi channel-related init values
+	memcpy(outFirmware->wifiInfo.Type2.rfChannelValue24, FW_RFChannel, sizeof(FW_RFChannel));
+	memcpy(outFirmware->wifiInfo.Type2.bbChannelValue8, FW_BBChannel, sizeof(FW_BBChannel));
+	memset(outFirmware->wifiInfo.Type2.rfChannelValue8, 0x10, 14);
+	
+	outFirmware->wifiInfo.UNKNOWN2 = 0x19;
+	outFirmware->wifiInfo.unused4 = 0xFF;
+	memset(outFirmware->wifiInfo.unused5, 0xFF, sizeof(outFirmware->wifiInfo.unused5));
+	
+	NDS_ApplyFirmwareSettingsWithConfig(outFirmware, defaultConfig);
+}
+
+bool NDS_ReadFirmwareDataFromFile(const char *fileName, NDSFirmwareData *outFirmware, size_t *outFileSize, int *outConsoleType, u8 *outMACAddr)
+{
+	bool result = false;
+	
+	if ( (fileName == NULL) || (strlen(fileName) == 0) )
+	{
+		return result;
+	}
+	
+	// Open the file.
+	FILE *fp = fopen(fileName, "rb");
+	if (fp == NULL)
+	{
+		return result;
+	}
+	
+	// Do some basic validation of the firmware file.
+	fseek(fp, 0, SEEK_END);
+	const size_t fileSize = ftell(fp);
+	if (outFileSize != NULL)
+	{
+		*outFileSize = fileSize;
+	}
+	
+	if ( (fileSize != NDS_FW_SIZE_V1) && (fileSize != NDS_FW_SIZE_V2) )
+	{
+		fclose(fp);
+		return result;
+	}
+	
+	size_t readBytes = 0;
+	u32 identifierValue = 0;
+	
+	fseek(fp, offsetof(FWHeader, identifier[0]), SEEK_SET);
+	readBytes = fread(&identifierValue, 1, sizeof(u32), fp);
+	
+	if ( (readBytes != sizeof(u32)) || ((identifierValue & 0x00FFFFFF) != 0x0043414D) )
+	{
+		fclose(fp);
+		return result;
+	}
+	
+	// Now that the firmware file has been validated, let's start reading the individual
+	// pieces of data that the caller has requested.
+	result = true;
+	
+	if (outFirmware != NULL)
+	{
+		fseek(fp, 0, SEEK_SET);
+		readBytes = fread(outFirmware, 1, sizeof(NDSFirmwareData), fp);
+		
+		if ( readBytes == sizeof(NDSFirmwareData) )
+		{
+			if (outConsoleType != NULL)
+			{
+				*outConsoleType = (int)outFirmware->header.key.consoleType;
+			}
+			
+			if (outMACAddr != NULL)
+			{
+				outMACAddr[0] = outFirmware->wifiInfo.MACAddr[0];
+				outMACAddr[1] = outFirmware->wifiInfo.MACAddr[1];
+				outMACAddr[2] = outFirmware->wifiInfo.MACAddr[2];
+				outMACAddr[3] = outFirmware->wifiInfo.MACAddr[3];
+				outMACAddr[4] = outFirmware->wifiInfo.MACAddr[4];
+				outMACAddr[5] = outFirmware->wifiInfo.MACAddr[5];
+			}
+		}
+		else
+		{
+			printf("Ext. Firmware: Failed to read the firmware data. (%zu out of %zu bytes read.)\n", readBytes, sizeof(NDSFirmwareData));
+			result = false;
+		}
+	}
+	else
+	{
+		if (outConsoleType != NULL)
+		{
+			FW_HEADER_KEY fpKey;
+			fpKey.consoleType = NDS_CONSOLE_TYPE_FAT;
+			
+			fseek(fp, offsetof(FWHeader, key), SEEK_SET);
+			readBytes = fread(&fpKey, 1, sizeof(FW_HEADER_KEY), fp);
+			
+			if (readBytes == sizeof(FW_HEADER_KEY))
+			{
+				*outConsoleType = (int)fpKey.consoleType;
+			}
+			else
+			{
+				printf("Ext. Firmware: Failed to read the console type. (%zu out of %zu bytes read.)\n", readBytes, sizeof(FW_HEADER_KEY));
+				result = false;
+			}
+		}
+		
+		if (outMACAddr != NULL)
+		{
+			fseek(fp, sizeof(FWHeader) + offsetof(FWWifiInfo, MACAddr), SEEK_SET);
+			readBytes = fread(outMACAddr, 1, 6, fp);
+			
+			if (readBytes != 6)
+			{
+				printf("Ext. Firmware: Failed to read the MAC address. (%zu out of %zu bytes read.)\n", readBytes, sizeof(u8) * 6);
+				result = false;
+			}
+		}
+	}
+	
+	// Close the file.
+	fclose(fp);
+	
+	return result;
 }
 
 //=========================
@@ -977,17 +1371,14 @@ void NDS_PatchFirmwareMAC()
 
 void fw_reset_com(fw_memory_chip *mc)
 {
-	if(mc->com == FW_CMD_PAGEWRITE)
+	if (mc->com == FW_CMD_PAGEWRITE)
 	{
-		if (mc->fp)
+		if (mc->isFirmware &&
+		    CommonSettings.UseExtFirmware &&
+		    CommonSettings.UseExtFirmwareSettings &&
+		    (extFirmwareObj != NULL) && extFirmwareObj->isLoaded())
 		{
-			fseek(mc->fp, 0, SEEK_SET);
-			fwrite(mc->data, mc->size, 1, mc->fp);
-		}
-
-		if (mc->isFirmware && CommonSettings.UseExtFirmware && CommonSettings.UseExtFirmwareSettings && firmware)
-		{
-			firmware->saveSettings();
+			extFirmwareObj->saveSettings(CommonSettings.ExtFirmwareUserSettingsPath);
 		}
 		mc->write_enable = FALSE;
 	}
@@ -1011,7 +1402,7 @@ u8 fw_transfer(fw_memory_chip *mc, u8 data)
 				case FW_CMD_READ:
 					if(mc->addr < mc->size)  /* check if we can read */
 					{
-						data = mc->data[mc->addr];       /* return byte */
+						data = mc->data._raw[mc->addr];       /* return byte */
 						mc->addr++;      /* then increment address */
 					}
 					break;
@@ -1019,7 +1410,12 @@ u8 fw_transfer(fw_memory_chip *mc, u8 data)
 				case FW_CMD_PAGEWRITE:
 					if(mc->addr < mc->size)
 					{
-						mc->data[mc->addr] = data;       /* write byte */
+						if ( (mc->addr >= offsetof(NDSFirmwareData, wifiAP1.wfcUserID[0])) && (mc->addr <= offsetof(NDSFirmwareData, wifiAP1.wfcUserID[5])) )
+						{
+							CommonSettings.fwConfig.WFCUserID[mc->addr - offsetof(NDSFirmwareData, wifiAP1.wfcUserID[0])] = data;
+						}
+						
+						mc->data._raw[mc->addr] = data;       /* write byte */
 						mc->addr++;
 					}
 					break;
@@ -1106,45 +1502,41 @@ void mc_init(fw_memory_chip *mc, int type)
 	mc->com = 0;
 	mc->addr = 0;
 	mc->addr_shift = 0;
-	mc->data = NULL;
 	mc->size = 0;
 	mc->write_enable = FALSE;
 	mc->writeable_buffer = FALSE;
 	mc->type = type;
 
-	switch(mc->type)
+	switch (mc->type)
 	{
-	case MC_TYPE_EEPROM1:
-		mc->addr_size = 1;
-		break;
-	case MC_TYPE_EEPROM2:
-	case MC_TYPE_FRAM:
-		mc->addr_size = 2;
-		break;
-	case MC_TYPE_FLASH:
-		mc->addr_size = 3;
-		break;
-	default: break;
+		case MC_TYPE_EEPROM1:
+			mc->addr_size = 1;
+			break;
+			
+		case MC_TYPE_EEPROM2:
+		case MC_TYPE_FRAM:
+			mc->addr_size = 2;
+			break;
+			
+		case MC_TYPE_FLASH:
+			mc->addr_size = 3;
+			break;
+			
+		default:
+			break;
 	}
 }
 
 u8 *mc_alloc(fw_memory_chip *mc, u32 size)
 {
-	u8 *buffer = NULL;
-	buffer = new u8[size];
-	if(!buffer) { return NULL; }
-	memset(buffer,0,size);
-
-	if (mc->data) delete [] mc->data;
-	mc->data = buffer;
+	memset(mc->data._raw, 0, sizeof(NDSFirmwareData));
 	mc->size = size;
 	mc->writeable_buffer = TRUE;
 
-	return buffer;
+	return mc->data._raw;
 }
 
 void mc_free(fw_memory_chip *mc)
 {
-    if(mc->data) delete[] mc->data;
-    mc_init(mc, 0);
+    mc_init(mc, MC_TYPE_AUTODETECT);
 }

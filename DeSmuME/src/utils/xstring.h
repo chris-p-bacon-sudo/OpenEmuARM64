@@ -2,7 +2,7 @@
 //subsequently modified for desmume
 
 /*
-	Copyright (C) 2008-2009 DeSmuME team
+	Copyright (C) 2008-2017 DeSmuME team
 
 	This file is free software: you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
@@ -32,21 +32,6 @@
 #include "../emufile.h"
 
 
-//definitions for str_strip() flags
-#define STRIP_SP	0x01 // space
-#define STRIP_TAB	0x02 // tab
-#define STRIP_CR	0x04 // carriage return
-#define STRIP_LF	0x08 // line feed
-
-
-int str_ucase(char *str);
-int str_lcase(char *str);
-int str_ltrim(char *str, int flags);
-int str_rtrim(char *str, int flags);
-int str_strip(char *str, int flags);
-int chr_replace(char *str, char search, char replace);
-int str_replace(char *str, char *search, char *replace);
-
 std::string strsub(const std::string& str, int pos, int len);
 std::string strmid(const std::string& str, int pos, int len);
 std::string strleft(const std::string& str, int len);
@@ -60,29 +45,18 @@ std::string BytesToString(const void* data, int len);
 bool StringToBytes(const std::string& str, void* data, int len);
 
 std::vector<std::string> tokenize_str(const std::string & str,const std::string & delims);
-void splitpath(const char* path, char* drv, char* dir, char* name, char* ext);
-
-uint16 FastStrToU16(char* s, bool& valid);
-char *U16ToDecStr(uint16 a);
-char *U32ToDecStr(uint32 a);
-char *U32ToDecStr(char* buf, uint32 a);
-char *U8ToDecStr(uint8 a);
-char *U8ToHexStr(uint8 a);
-char *U16ToHexStr(uint16 a);
 
 std::string stditoa(int n);
 
-std::string readNullTerminatedAscii(std::istream* is);
-
 //extracts a decimal uint from an istream
-template<typename T> T templateIntegerDecFromIstream(EMUFILE* is)
+template<typename T> T templateIntegerDecFromIstream(EMUFILE &is)
 {
 	unsigned int ret = 0;
 	bool pre = true;
 
 	for(;;)
 	{
-		int c = is->fgetc();
+		int c = is.fgetc();
 		if(c == -1) return ret;
 		int d = c - '0';
 		if((d<0 || d>9))
@@ -97,44 +71,50 @@ template<typename T> T templateIntegerDecFromIstream(EMUFILE* is)
 			ret += d;
 		}
 	}
-	is->unget();
+	is.unget();
 	return ret;
 }
 
-inline u32 u32DecFromIstream(EMUFILE* is) { return templateIntegerDecFromIstream<u32>(is); }
-inline u64 u64DecFromIstream(EMUFILE* is) { return templateIntegerDecFromIstream<u64>(is); }
+inline u32 u32DecFromIstream(EMUFILE &is) { return templateIntegerDecFromIstream<u32>(is); }
+inline u64 u64DecFromIstream(EMUFILE &is) { return templateIntegerDecFromIstream<u64>(is); }
 
 //puts an optionally 0-padded decimal integer of type T into the ostream (0-padding is quicker)
-template<typename T, int DIGITS, bool PAD> void putdec(EMUFILE* os, T dec)
+template<typename T, int DIGITS, bool PAD> void putdec(EMUFILE &os, T dec)
 {
 	char temp[DIGITS];
 	int ctr = 0;
-	for(int i=0;i<DIGITS;i++)
+	
+	for (int i = 0; i < DIGITS; i++)
 	{
-		int quot = dec/10;
-		int rem = dec%10;
+		int quot = dec / 10;
+		int rem = dec % 10;
 		temp[DIGITS-1-i] = '0' + rem;
-		if(!PAD)
+		if (!PAD)
 		{
-			if(rem != 0) ctr = i;
+			if (rem != 0) ctr = i;
 		}
 		dec = quot;
 	}
-	if(!PAD)
-		os->fwrite(temp+DIGITS-ctr-1,ctr+1);
+	
+	if (!PAD)
+		os.fwrite(temp+DIGITS-ctr-1,ctr+1);
 	else
-		os->fwrite(temp,DIGITS);
+		os.fwrite(temp,DIGITS);
 }
 
 std::string mass_replace(const std::string &source, const std::string &victim, const std::string &replacement);
 
+//converts utf-8 to utf16
 std::wstring mbstowcs(std::string str);
+
+//converts utf16 to utf-8
 std::string wcstombs(std::wstring str);
 
+//converts char* in current system locale to utf16
+std::wstring mbstowcs_locale(std::string str);
 
-
-//TODO - dont we already have another  function that can do this
-std::string getExtension(const char* input);
+//converts utf16 to char* in current system locale
+std::string wcstombs_locale(std::wstring str);
 
 
 #endif

@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2011-2015 DeSmuME team
+	Copyright (C) 2011-2025 DeSmuME team
 
 	This file is free software: you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
@@ -24,14 +24,14 @@ class ADVANsCEne
 {
 private:
 	std::string database_path;
-	time_t			createTime;
-	u32				crc32;
-	char			serial[6];
-	char			version[4];
-	u8				versionBase[2];
-	u8				saveType;
+	time_t createTime;
+	u32 crc32;
+	char serial[6];
+	char version[4];
+	u8 versionBase[2];
+	u8 saveType;
 
-	bool			loaded;
+	bool loaded;
 	bool foundAsCrc, foundAsSerial;
 
 	// XML
@@ -42,29 +42,20 @@ private:
 	bool getXMLConfig(const char *in_filename);
 
 public:
-	ADVANsCEne()
-		: saveType(0xFF),
-		crc32(0),
-		loaded(false)
-	{
-		memset(versionBase, 0, sizeof(versionBase));
-		memset(version, 0, sizeof(version));
-		memset(serial, 0, sizeof(serial));
-	}
+	ADVANsCEne();
+	
 	void setDatabase(const char *path);
-	std::string getDatabase() const { return database_path; }
-	u32 convertDB(const char *in_filename, EMUFILE* output);
+	std::string getDatabase() const;
+	
+	u32 convertDB(const char *in_filename, EMUFILE &output);
 	u8 checkDB(const char *ROMserial, u32 crc);
-	u32 getSaveType() { return saveType; }
-	u32 getCRC32() { return crc32; }
-	char *getSerial() { return serial; }
-	bool isLoaded() { return loaded; }
-	const char* getIdMethod() { 
-		if(foundAsSerial && foundAsCrc) return "Serial/CRC";
-		if(foundAsSerial) return "Serial";
-		if(foundAsCrc) return "CRC";
-		return "";
-	}
+	
+	u32 getSaveType();
+	u32 getCRC32();
+	char *getSerial();
+	bool isLoaded();
+	const char* getIdMethod();
+	
 	std::string lastImportErrorMessage;
 };
 

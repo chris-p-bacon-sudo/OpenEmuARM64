@@ -106,7 +106,7 @@ xcodebuild \
 | Neo Geo Pocket | Mednafen |
 | Nintendo (NES) | Nestopia (default), FCEU |
 | Nintendo 64 | Mupen64Plus |
-| Nintendo DS | (no arm64 build available — see #424) |
+| Nintendo DS | DeSmuME |
 | Odyssey² / Videopac+ | O2EM |
 | PC Engine | Mednafen |
 | PC Engine CD | Mednafen |

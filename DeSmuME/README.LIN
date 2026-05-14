@@ -1,0 +1,62 @@
+                        DeSmuME
+
+DeSmuME is written in C++ using the GTK+ and SDL2 libraries.
+
+* https://gtk.org/
+* https://libsdl.org/
+
+It uses the Meson build system to build the GTK+3 and SDL2 port:
+
+* https://mesonbuild.com/
+
+... and the autotools build system for the GTK+2 and SDL2 port.
+
+to build GTK+2 or SDL2 frontend with autotools, cd to src/frontend/posix, then
+
+autoreconf -i (or alternatively: ./autogen.sh)
+./configure
+make -jN (where N is the number of CPU cores to use).
+
+
+To build, first cd to src/frontend/posix and run
+`meson build --buildtype=release`
+
+Then build the program by running `ninja -C build`
+
+It will generate three programs:
+1) "desmume" in the "build/gtk" directory;
+2) "desmume-cli" in the "build/cli" directory.
+
+You can even type "ninja -C build install" to install those programs on
+your system (in /usr/local/ by default); then uninstalling is
+done by typing "ninja -C build uninstall".
+
+For more information on the available commandline options,
+check the other README files which will be more up to date.
+
+The following options specially are available on these posix ports:
+
+--disable-limiter   Disables the 60 fps limiter
+--soft-convert      Use software colour conversion during OpenGL
+                    screen rendering. May produce better or worse
+                    frame rates depending on hardware.
+
+The following options specially are available on the Gtk+ port:
+
+--opengl-2d         Enables using OpenGL for screen rendering
+--disable-sound     Disables the sound emulation
+--disable-3d        Disables the 3D emulation
+
+The following options specially are available on the CLI port:
+
+--opengl-2d         Enables using OpenGL for screen rendering
+--disable-sound     Disables the sound emulation
+
+NOTE:
+The Gtk+ and Glade builds use gtkGLext to handle the OpenGL
+rendering and contexts. You may get improved performance by
+also passing the argument --gdk-gl-force-indirect. This has
+been seen to improve things for Nvidia based graphics cards
+under Linux.
+
+Visit us on the web at http://www.desmume.org

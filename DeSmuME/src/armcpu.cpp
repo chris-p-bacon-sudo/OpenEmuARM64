@@ -1,6 +1,6 @@
 /*
 	Copyright (C) 2006 yopyop
-	Copyright (C) 2009-2015 DeSmuME team
+	Copyright (C) 2009-2021 DeSmuME team
 
 	This file is free software: you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
@@ -22,16 +22,18 @@
 #include <algorithm>
 
 #include "armcpu.h"
-#include "common.h"
 #include "instructions.h"
 #include "cp15.h"
 #include "bios.h"
 #include "debug.h"
-#include "Disassembler.h"
 #include "NDSSystem.h"
 #include "MMU_timing.h"
+#include "utils/bits.h"
 #ifdef HAVE_LUA
 #include "lua-engine.h"
+#endif
+#ifdef TARGET_INTERFACE
+#include "frontend/interface/interface.h"
 #endif
 #ifdef HAVE_JIT
 #include "arm_jit.h"
@@ -136,90 +138,92 @@ int armcpu_new( armcpu_t *armcpu, u32 id)
 	armcpu->base_mem_if.write32 = NULL;
 	armcpu->base_mem_if.data = NULL;
 	
-	armcpu->SetControlInterface(&arm_default_ctrl_iface);
-	armcpu->SetControlInterfaceData(armcpu);
-	armcpu->SetCurrentMemoryInterface(NULL);
-	armcpu->SetCurrentMemoryInterfaceData(NULL);
+	armcpu_SetControlInterface(armcpu, &arm_default_ctrl_iface);
+	armcpu_SetControlInterfaceData(armcpu, armcpu);
+	armcpu_SetCurrentMemoryInterface(armcpu, NULL);
+	armcpu_SetCurrentMemoryInterfaceData(armcpu, NULL);
 	
 	armcpu->post_ex_fn = NULL;
 	armcpu->post_ex_fn_data = NULL;
+	
+	armcpu->breakPoints = new std::vector<u32>;
 	
 	armcpu_init(armcpu, 0);
 
 	return 0;
 }
 
-void armcpu_t::SetControlInterface(const armcpu_ctrl_iface *theControlInterface)
+void armcpu_SetControlInterface(armcpu_t *armcpu, const armcpu_ctrl_iface *theControlInterface)
 {
-	this->ctrl_iface = *theControlInterface;
+	armcpu->ctrl_iface = *theControlInterface;
 }
 
-armcpu_ctrl_iface* armcpu_t::GetControlInterface()
+armcpu_ctrl_iface* armcpu_GetControlInterface(armcpu_t *armcpu)
 {
-	return &this->ctrl_iface;
+	return &armcpu->ctrl_iface;
 }
 
-void armcpu_t::SetControlInterfaceData(void *theData)
+void armcpu_SetControlInterfaceData(armcpu_t *armcpu, void *theData)
 {
-	this->ctrl_iface.data = theData;
+	armcpu->ctrl_iface.data = theData;
 }
 
-void* armcpu_t::GetControlInterfaceData()
+void* armcpu_GetControlInterfaceData(const armcpu_t *armcpu)
 {
-	return this->ctrl_iface.data;
+	return armcpu->ctrl_iface.data;
 }
 
-void armcpu_t::SetCurrentMemoryInterface(armcpu_memory_iface *theMemoryInterface)
+void armcpu_SetCurrentMemoryInterface(armcpu_t *armcpu, armcpu_memory_iface *theMemoryInterface)
 {
-	this->mem_if = theMemoryInterface;
+	armcpu->mem_if = theMemoryInterface;
 }
 
-armcpu_memory_iface* armcpu_t::GetCurrentMemoryInterface()
+armcpu_memory_iface* armcpu_GetCurrentMemoryInterface(const armcpu_t *armcpu)
 {
-	return this->mem_if;
+	return armcpu->mem_if;
 }
 
-void armcpu_t::SetCurrentMemoryInterfaceData(void *theData)
+void armcpu_SetCurrentMemoryInterfaceData(armcpu_t *armcpu, void *theData)
 {
-	if (this->mem_if != NULL)
+	if (armcpu->mem_if != NULL)
 	{
-		this->mem_if->data = theData;
+		armcpu->mem_if->data = theData;
 	}
 }
 
-void* armcpu_t::GetCurrentMemoryInterfaceData()
+void* armcpu_GetCurrentMemoryInterfaceData(const armcpu_t *armcpu)
 {
-	return (this->mem_if != NULL) ? this->mem_if->data : NULL;
+	return (armcpu->mem_if != NULL) ? armcpu->mem_if->data : NULL;
 }
 
-void armcpu_t::SetBaseMemoryInterface(const armcpu_memory_iface *theMemInterface)
+void armcpu_SetBaseMemoryInterface(armcpu_t *armcpu, const armcpu_memory_iface *theMemInterface)
 {
-	this->base_mem_if = *theMemInterface;
+	armcpu->base_mem_if = *theMemInterface;
 }
 
-armcpu_memory_iface* armcpu_t::GetBaseMemoryInterface()
+armcpu_memory_iface* armcpu_GetBaseMemoryInterface(armcpu_t *armcpu)
 {
-	return &this->base_mem_if;
+	return &armcpu->base_mem_if;
 }
 
-void armcpu_t::SetBaseMemoryInterfaceData(void *theData)
+void armcpu_SetBaseMemoryInterfaceData(armcpu_t *armcpu, void *theData)
 {
-	this->base_mem_if.data = theData;
+	armcpu->base_mem_if.data = theData;
 }
 
-void* armcpu_t::GetBaseMemoryInterfaceData()
+void* armcpu_GetBaseMemoryInterfaceData(const armcpu_t *armcpu)
 {
-	return this->base_mem_if.data;
+	return armcpu->base_mem_if.data;
 }
 
-void armcpu_t::ResetMemoryInterfaceToBase()
+void armcpu_ResetMemoryInterfaceToBase(armcpu_t *armcpu)
 {
-	this->SetCurrentMemoryInterface(this->GetBaseMemoryInterface());
-	this->SetCurrentMemoryInterfaceData(this->GetBaseMemoryInterfaceData());
+	armcpu_SetCurrentMemoryInterface(armcpu, armcpu_GetBaseMemoryInterface(armcpu));
+	armcpu_SetCurrentMemoryInterfaceData(armcpu, armcpu_GetBaseMemoryInterfaceData(armcpu));
 }
 
 //call this whenever CPSR is changed (other than CNVZQ or T flags); interrupts may need to be unleashed
-void armcpu_t::changeCPSR()
+void armcpu_changeCPSR()
 {
 	//but all it does is give them a chance to unleash by forcing an immediate reschedule
 	//TODO - we could actually set CPSR through here and look for a change in the I bit
@@ -235,8 +239,7 @@ void armcpu_init(armcpu_t *armcpu, u32 adr)
 	
 	armcpu->LDTBit = (armcpu->proc_ID==0); //set ARMv5 style bit--different for each processor
 	armcpu->intVector = 0xFFFF0000 * (armcpu->proc_ID==0);
-	armcpu->waitIRQ = FALSE;
-	armcpu->halt_IE_and_IF = FALSE;
+	armcpu->freeze = CPU_FREEZE_NONE;
 	armcpu->intrWaitARM_state = 0;
 
 //#ifdef GDB_STUB
@@ -378,14 +381,13 @@ u32 armcpu_switchMode(armcpu_t *armcpu, u8 mode)
 	}
 	
 	armcpu->CPSR.bits.mode = mode & 0x1F;
-	armcpu->changeCPSR();
+	armcpu_changeCPSR();
 	return oldmode;
 }
 
 u32 armcpu_Wait4IRQ(armcpu_t *cpu)
 {
-	cpu->waitIRQ = TRUE;
-	cpu->halt_IE_and_IF = TRUE;
+	cpu->freeze = (CPU_FREEZE_WAIT_IRQ | CPU_FREEZE_IE_IF);
 	return 1;
 }
 
@@ -458,23 +460,23 @@ FORCEINLINE static u32 armcpu_prefetch()
 }
 
 #if 0 /* not used */
-static BOOL FASTCALL test_EQ(Status_Reg CPSR) { return ( CPSR.bits.Z); }
-static BOOL FASTCALL test_NE(Status_Reg CPSR) { return (!CPSR.bits.Z); }
-static BOOL FASTCALL test_CS(Status_Reg CPSR) { return ( CPSR.bits.C); }
-static BOOL FASTCALL test_CC(Status_Reg CPSR) { return (!CPSR.bits.C); }
-static BOOL FASTCALL test_MI(Status_Reg CPSR) { return ( CPSR.bits.N); }
-static BOOL FASTCALL test_PL(Status_Reg CPSR) { return (!CPSR.bits.N); }
-static BOOL FASTCALL test_VS(Status_Reg CPSR) { return ( CPSR.bits.V); }
-static BOOL FASTCALL test_VC(Status_Reg CPSR) { return (!CPSR.bits.V); }
-static BOOL FASTCALL test_HI(Status_Reg CPSR) { return (CPSR.bits.C) && (!CPSR.bits.Z); }
-static BOOL FASTCALL test_LS(Status_Reg CPSR) { return (CPSR.bits.Z) || (!CPSR.bits.C); }
-static BOOL FASTCALL test_GE(Status_Reg CPSR) { return (CPSR.bits.N==CPSR.bits.V); }
-static BOOL FASTCALL test_LT(Status_Reg CPSR) { return (CPSR.bits.N!=CPSR.bits.V); }
-static BOOL FASTCALL test_GT(Status_Reg CPSR) { return (!CPSR.bits.Z) && (CPSR.bits.N==CPSR.bits.V); }
-static BOOL FASTCALL test_LE(Status_Reg CPSR) { return ( CPSR.bits.Z) || (CPSR.bits.N!=CPSR.bits.V); }
-static BOOL FASTCALL test_AL(Status_Reg CPSR) { return 1; }
+static BOOL DESMUME_FASTCALL test_EQ(Status_Reg CPSR) { return ( CPSR.bits.Z); }
+static BOOL DESMUME_FASTCALL test_NE(Status_Reg CPSR) { return (!CPSR.bits.Z); }
+static BOOL DESMUME_FASTCALL test_CS(Status_Reg CPSR) { return ( CPSR.bits.C); }
+static BOOL DESMUME_FASTCALL test_CC(Status_Reg CPSR) { return (!CPSR.bits.C); }
+static BOOL DESMUME_FASTCALL test_MI(Status_Reg CPSR) { return ( CPSR.bits.N); }
+static BOOL DESMUME_FASTCALL test_PL(Status_Reg CPSR) { return (!CPSR.bits.N); }
+static BOOL DESMUME_FASTCALL test_VS(Status_Reg CPSR) { return ( CPSR.bits.V); }
+static BOOL DESMUME_FASTCALL test_VC(Status_Reg CPSR) { return (!CPSR.bits.V); }
+static BOOL DESMUME_FASTCALL test_HI(Status_Reg CPSR) { return (CPSR.bits.C) && (!CPSR.bits.Z); }
+static BOOL DESMUME_FASTCALL test_LS(Status_Reg CPSR) { return (CPSR.bits.Z) || (!CPSR.bits.C); }
+static BOOL DESMUME_FASTCALL test_GE(Status_Reg CPSR) { return (CPSR.bits.N==CPSR.bits.V); }
+static BOOL DESMUME_FASTCALL test_LT(Status_Reg CPSR) { return (CPSR.bits.N!=CPSR.bits.V); }
+static BOOL DESMUME_FASTCALL test_GT(Status_Reg CPSR) { return (!CPSR.bits.Z) && (CPSR.bits.N==CPSR.bits.V); }
+static BOOL DESMUME_FASTCALL test_LE(Status_Reg CPSR) { return ( CPSR.bits.Z) || (CPSR.bits.N!=CPSR.bits.V); }
+static BOOL DESMUME_FASTCALL test_AL(Status_Reg CPSR) { return 1; }
 
-static BOOL (FASTCALL* test_conditions[])(Status_Reg CPSR)= {
+static BOOL (DESMUME_FASTCALL* test_conditions[])(Status_Reg CPSR)= {
 	test_EQ , test_NE ,
 	test_CS , test_CC ,
 	test_MI , test_PL ,
@@ -501,7 +503,7 @@ void armcpu_exception(armcpu_t *cpu, u32 number)
 	case EXCEPTION_SWI: cpumode = SVC; break;
 	case EXCEPTION_PREFETCH_ABORT: cpumode = ABT; break;
 	case EXCEPTION_DATA_ABORT: cpumode = ABT; break;
-	case EXCEPTION_RESERVED_0x14: emu_halt(); break;
+	case EXCEPTION_RESERVED_0x14: emu_halt(EMUHALT_REASON_ARM_RESERVED_0X14_EXCEPTION, (cpu->proc_ID == ARMCPU_ARM9) ? NDSErrorTag_ARM9 : NDSErrorTag_ARM7); break;
 	case EXCEPTION_IRQ: cpumode = IRQ; break;
 	case EXCEPTION_FAST_IRQ: cpumode = FIQ; break;
 	}
@@ -512,7 +514,7 @@ void armcpu_exception(armcpu_t *cpu, u32 number)
 	cpu->SPSR = tmp;							//save old CPSR as new SPSR
 	cpu->CPSR.bits.T = 0;						//handle as ARM32 code
 	cpu->CPSR.bits.I = 1;
-	cpu->changeCPSR();
+	armcpu_changeCPSR();
 	cpu->R[15] = cpu->intVector + number;
 	cpu->next_instruction = cpu->R[15];
 	printf("armcpu_exception!\n");
@@ -545,7 +547,7 @@ BOOL armcpu_irqException(armcpu_t *armcpu)
 	armcpu->CPSR.bits.T = 0;
 	armcpu->CPSR.bits.I = 1;
 	armcpu->next_instruction = armcpu->intVector + 0x18;
-	armcpu->waitIRQ = 0;
+	armcpu->freeze &= ~CPU_FREEZE_IRQ_IE_IF;
 
 	//must retain invariant of having next instruction to be executed prefetched
 	//(yucky)
@@ -570,7 +572,7 @@ BOOL armcpu_irqException(armcpu_t *armcpu)
 
 u32 TRAPUNDEF(armcpu_t* cpu)
 {
-	INFO("ARM%c: Undefined instruction: 0x%08X (%s) PC=0x%08X\n", cpu->proc_ID?'7':'9', cpu->instruction, decodeIntruction(false, cpu->instruction), cpu->instruct_adr);
+	INFO("ARM%c: Undefined instruction: 0x%08X PC=0x%08X\n", cpu->proc_ID?'7':'9', cpu->instruction, cpu->instruct_adr);
 
 	if (((cpu->intVector != 0) ^ (cpu->proc_ID == ARMCPU_ARM9)))
 	{
@@ -579,7 +581,7 @@ u32 TRAPUNDEF(armcpu_t* cpu)
 	}
 	else
 	{
-		emu_halt();
+		emu_halt(EMUHALT_REASON_ARM_UNDEFINED_INSTRUCTION_EXCEPTION, (cpu->proc_ID == ARMCPU_ARM9) ? NDSErrorTag_ARM9 : NDSErrorTag_ARM7);
 		return 4;
 	}
 }
@@ -678,6 +680,9 @@ u32 armcpu_exec()
 #ifdef HAVE_LUA
 			CallRegisteredLuaMemHook(ARMPROC.instruct_adr, 4, ARMPROC.instruction, LUAMEMHOOK_EXEC); // should report even if condition=false?
 #endif
+#ifdef TARGET_INTERFACE
+            call_registered_interface_mem_hook(ARMPROC.instruct_adr, 4, HOOK_EXEC);
+#endif
 			#ifdef DEVELOPER
 			DEBUG_statistics.instructionHits[PROCNUM].arm[INSTRUCTION_INDEX(ARMPROC.instruction)]++;
 			#endif
@@ -698,6 +703,9 @@ u32 armcpu_exec()
 
 #ifdef HAVE_LUA
 	CallRegisteredLuaMemHook(ARMPROC.instruct_adr, 2, ARMPROC.instruction, LUAMEMHOOK_EXEC);
+#endif
+#ifdef TARGET_INTERFACE
+    call_registered_interface_mem_hook(ARMPROC.instruct_adr, 2, HOOK_EXEC);
 #endif
 	#ifdef DEVELOPER
 	DEBUG_statistics.instructionHits[PROCNUM].thumb[ARMPROC.instruction>>6]++;
@@ -755,23 +763,6 @@ void setIF(int PROCNUM, u32 flag)
 	MMU.reg_IF_bits[PROCNUM] |= flag;
 	
 	NDS_Reschedule();
-}
-
-char* decodeIntruction(bool thumb_mode, u32 instr)
-{
-	char txt[20] = {0};
-	u32 tmp = 0;
-	if (thumb_mode == true)
-	{
-		tmp = (instr >> 6);
-		strcpy(txt, intToBin((u16)tmp)+6);
-	}
-	else
-	{
-		tmp = ((instr >> 16) & 0x0FF0) | ((instr >> 4) & 0x0F);
-		strcpy(txt, intToBin((u32)tmp)+20);
-	}
-	return strdup(txt);
 }
 
 const armcpu_ctrl_iface arm_default_ctrl_iface = {

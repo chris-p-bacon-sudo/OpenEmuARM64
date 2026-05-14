@@ -39,15 +39,13 @@
  */
 
 
-void hq4x_32_def(u32* dst0, u32* dst1, u32* dst2, u32* dst3,
-				 const u32* src0, const u32* src1, const u32* src2,
-				 unsigned count, unsigned flag)
+void hq4x_32_def(u32 *__restrict dst0, u32 *__restrict dst1, u32 *__restrict dst2, u32 *__restrict dst3,
+				 const u32 *src0, const u32 *src1, const u32 *src2,
+				 size_t count, unsigned flag)
 {
-	unsigned i;
-
-	for(i=0;i<count;++i) {
-		unsigned char mask;
-
+	for (size_t i = 0; i < count; ++i)
+	{
+		u8 mask = 0;
 		u32 c[9];
 		
 		c[1] = src0[0];
@@ -79,9 +77,7 @@ void hq4x_32_def(u32* dst0, u32* dst1, u32* dst2, u32* dst3,
 			c[5] = src1[0];
 			c[8] = src2[0];
 		}
-
-		mask = 0;
-
+		
 		if (interp_32_diff(c[0], c[4]))
 			mask |= 1 << 0;
 		if (interp_32_diff(c[1], c[4]))
@@ -108,8 +104,9 @@ void hq4x_32_def(u32* dst0, u32* dst1, u32* dst2, u32* dst3,
 #define I2(i0, i1, p0, p1) interp_32_##i0##i1(c[p0], c[p1])
 #define I3(i0, i1, i2, p0, p1, p2) interp_32_##i0##i1##i2(c[p0], c[p1], c[p2])
 
-		switch (mask) {
-		#include "hq4x.dat"
+		switch (mask)
+		{
+#include "hq4x.dat"
 		}
 
 #undef P
@@ -131,15 +128,13 @@ void hq4x_32_def(u32* dst0, u32* dst1, u32* dst2, u32* dst3,
 	}
 }
 
-void hq4xS_32_def(u32* dst0, u32* dst1, u32* dst2, u32* dst3,
-				  const u32* src0, const u32* src1, const u32* src2,
-				  unsigned count, unsigned flag)
+void hq4xS_32_def(u32 *__restrict dst0, u32 *__restrict dst1, u32 *__restrict dst2, u32 *__restrict dst3,
+				  const u32 *src0, const u32 *src1, const u32 *src2,
+				  size_t count, unsigned flag)
 {
-	unsigned i;
-	
-	for(i=0;i<count;++i) {
-		unsigned char mask;
-		
+	for (size_t i = 0; i < count; ++i)
+	{
+		u8 mask = 0;
 		u32 c[9];
 		
 		c[1] = src0[0];
@@ -172,7 +167,6 @@ void hq4xS_32_def(u32* dst0, u32* dst1, u32* dst2, u32* dst3,
 			c[8] = src2[0];
 		}
 		
-		mask = 0;
 		// hq4xS dynamic edge detection:
 		// simply comparing the center color against its surroundings will give bad results in many cases,
 		// so, instead, compare the center color relative to the max difference in brightness of this 3x3 block
@@ -189,7 +183,7 @@ void hq4xS_32_def(u32* dst0, u32* dst1, u32* dst2, u32* dst3,
 			
 			brightArray[j] = bright;
 		}
-		unsigned int diffBright = ((maxBright - minBright) * 7) >> 4;
+		u32 diffBright = ((u32)(maxBright - minBright) * 7) >> 4;
 		if(diffBright > 7)
 		{
 			const int centerBright = brightArray[4];
@@ -220,7 +214,8 @@ void hq4xS_32_def(u32* dst0, u32* dst1, u32* dst2, u32* dst3,
 #define I2(i0, i1, p0, p1) interp_32_##i0##i1(c[p0], c[p1])
 #define I3(i0, i1, i2, p0, p1, p2) interp_32_##i0##i1##i2(c[p0], c[p1], c[p2])
 		
-		switch (mask) {
+		switch (mask)
+		{
 #include "hq4x.dat"
 		}
 		
@@ -243,8 +238,7 @@ void hq4xS_32_def(u32* dst0, u32* dst1, u32* dst2, u32* dst3,
 	}
 }
 
-void hq4x32(u8 *srcPtr, u32 srcPitch, u8 * /* deltaPtr */,
-			u8 *dstPtr, u32 dstPitch, int width, int height)
+void hq4x32(const u8 *srcPtr, const u32 srcPitch, const u8 *dstPtr, const u32 dstPitch, const int width, const int height)
 {
 	u32 *dst0 = (u32 *)dstPtr;
 	u32 *dst1 = dst0 + (dstPitch >> 2);
@@ -252,14 +246,15 @@ void hq4x32(u8 *srcPtr, u32 srcPitch, u8 * /* deltaPtr */,
 	u32 *dst3 = dst2 + (dstPitch >> 2);
 	
 	u32 *src0 = (u32 *)srcPtr;
-	u32 *src1 = src0 + (srcPitch >> 2);
-	u32 *src2 = src1 + (srcPitch >> 2);
+	u32 *src1 = src0 + srcPitch;
+	u32 *src2 = src1 + srcPitch;
 	hq4x_32_def(dst0, dst1, dst2, dst3, src0, src0, src1, width, 0);
 	
 	int count = height;
 	
 	count -= 2;
-	while(count) {
+	while (count)
+	{
 		dst0 += dstPitch;
 		dst1 += dstPitch;
 		dst2 += dstPitch;
@@ -267,7 +262,7 @@ void hq4x32(u8 *srcPtr, u32 srcPitch, u8 * /* deltaPtr */,
 		hq4x_32_def(dst0, dst1, dst2, dst3, src0, src1, src2, width, 0);
 		src0 = src1;
 		src1 = src2;
-		src2 += srcPitch >> 2;
+		src2 += srcPitch;
 		--count;
 	}
 	
@@ -278,8 +273,7 @@ void hq4x32(u8 *srcPtr, u32 srcPitch, u8 * /* deltaPtr */,
 	hq4x_32_def(dst0, dst1, dst2, dst3, src0, src1, src1, width, 0);
 }
 
-void hq4x32S(u8 *srcPtr, u32 srcPitch, u8 * /* deltaPtr */,
-			 u8 *dstPtr, u32 dstPitch, int width, int height)
+void hq4x32S(const u8 *srcPtr, const u32 srcPitch, const u8 *dstPtr, const u32 dstPitch, const int width, const int height)
 {
 	u32 *dst0 = (u32 *)dstPtr;
 	u32 *dst1 = dst0 + (dstPitch >> 2);
@@ -287,14 +281,15 @@ void hq4x32S(u8 *srcPtr, u32 srcPitch, u8 * /* deltaPtr */,
 	u32 *dst3 = dst2 + (dstPitch >> 2);
 	
 	u32 *src0 = (u32 *)srcPtr;
-	u32 *src1 = src0 + (srcPitch >> 2);
-	u32 *src2 = src1 + (srcPitch >> 2);
+	u32 *src1 = src0 + srcPitch;
+	u32 *src2 = src1 + srcPitch;
 	hq4xS_32_def(dst0, dst1, dst2, dst3, src0, src0, src1, width, 0);
 	
 	int count = height;
 	
 	count -= 2;
-	while(count) {
+	while (count)
+	{
 		dst0 += dstPitch;
 		dst1 += dstPitch;
 		dst2 += dstPitch;
@@ -302,7 +297,7 @@ void hq4x32S(u8 *srcPtr, u32 srcPitch, u8 * /* deltaPtr */,
 		hq4xS_32_def(dst0, dst1, dst2, dst3, src0, src1, src2, width, 0);
 		src0 = src1;
 		src1 = src2;
-		src2 += srcPitch >> 2;
+		src2 += srcPitch;
 		--count;
 	}
 	
@@ -313,26 +308,12 @@ void hq4x32S(u8 *srcPtr, u32 srcPitch, u8 * /* deltaPtr */,
 	hq4xS_32_def(dst0, dst1, dst2, dst3, src0, src1, src1, width, 0);
 }
 
-void RenderHQ4X (SSurface Src, SSurface Dst)
+void RenderHQ4X(SSurface Src, SSurface Dst)
 {
-	unsigned char *lpSrc, *lpDst;
-	
-	lpSrc = Src.Surface;
-	lpDst = Dst.Surface;
-	
-	hq4x32 (lpSrc, Src.Pitch*2,
-			lpSrc,
-			lpDst, Dst.Pitch*2 , Src.Width, Src.Height);
+	hq4x32(Src.Surface, Src.Pitch >> 1, Dst.Surface, Dst.Pitch*2, Src.Width, Src.Height);
 }
 
-void RenderHQ4XS (SSurface Src, SSurface Dst)
+void RenderHQ4XS(SSurface Src, SSurface Dst)
 {
-	unsigned char *lpSrc, *lpDst;
-	
-	lpSrc = Src.Surface;
-	lpDst = Dst.Surface;
-	
-	hq4x32S (lpSrc, Src.Pitch*2,
-			 lpSrc,
-			 lpDst, Dst.Pitch*2 , Src.Width, Src.Height);
+	hq4x32S(Src.Surface, Src.Pitch >> 1, Dst.Surface, Dst.Pitch*2, Src.Width, Src.Height);
 }

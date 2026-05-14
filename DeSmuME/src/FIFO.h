@@ -1,7 +1,7 @@
 /*
 	Copyright 2006 yopyop
 	Copyright 2007 shash
-	Copyright 2007-2011 DeSmuME team
+	Copyright 2007-2022 DeSmuME team
 
 	This file is free software: you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
@@ -22,6 +22,7 @@
 #define FIFO_H
 
 #include "types.h"
+#include "./utils/colorspacehandler/colorspacehandler.h"
 
 //=================================================== IPC FIFO
 typedef struct
@@ -69,23 +70,29 @@ typedef struct
 
 extern GFX_PIPE gxPIPE;
 extern GFX_FIFO gxFIFO;
-extern void GFX_PIPEclear();
-extern void GFX_FIFOclear();
-extern void GFX_FIFOsend(u8 cmd, u32 param);
-extern BOOL GFX_PIPErecv(u8 *cmd, u32 *param);
-extern void GFX_FIFOcnt(u32 val);
+void GFX_PIPEclear();
+void GFX_FIFOclear();
+void GFX_FIFOsend(u8 cmd, u32 param);
+BOOL GFX_PIPErecv(u8 *cmd, u32 *param);
+void GFX_FIFOcnt(u32 val);
 
 //=================================================== Display memory FIFO
 typedef struct
 {
-	u32		buf[0x6000];			// 256x192 32K color
-	u32		head;					// head
-	u32		tail;					// tail
+	CACHE_ALIGN u32 buf[0x6000];	// 256x192 32K color
+	u32 head;					    // head
+	u32 tail;					    // tail
 } DISP_FIFO;
 
 extern DISP_FIFO disp_fifo;
-extern void DISP_FIFOinit();
-extern void DISP_FIFOsend(u32 val);
-extern u32 DISP_FIFOrecv();
+void DISP_FIFOinit();
+
+template<typename T, size_t ADDROFFSET> void DISP_FIFOsend(const T val);
+u32 DISP_FIFOrecv_u32();
+
+void DISP_FIFOrecv_Line16(u16 *__restrict dst);
+template<NDSColorFormat OUTPUTFORMAT> void DISP_FIFOrecv_LineOpaque(u32 *__restrict dst);
+
+void DISP_FIFOreset();
 
 #endif

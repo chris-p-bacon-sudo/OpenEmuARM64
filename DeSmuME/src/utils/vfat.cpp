@@ -1,7 +1,7 @@
 /*
 	Copyright (C) 2006 yopyop
 	Copyright (C) 2006 Mic
-	Copyright (C) 2010-2015 DeSmuME team
+	Copyright (C) 2010-2025 DeSmuME team
 
 	This file is free software: you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
@@ -27,7 +27,9 @@
 #include "../types.h"
 #include "../debug.h"
 #include "../emufile.h"
-#include "../fs.h"
+#include "retro_dirent.h"
+#include "retro_stat.h"
+#include "file/file_path.h"
 
 #include "emufat.h"
 #include "vfat.h"
@@ -38,67 +40,66 @@ enum EListCallbackArg {
 	EListCallbackArg_Item, EListCallbackArg_Pop
 };
 
-typedef void (*ListCallback)(FsEntry* fs, EListCallbackArg);
+typedef void (*ListCallback)(RDIR* rdir, EListCallbackArg);
 
 // List all files and subdirectories recursively
+//TODO: clunky architecture. we've combined the callbacks into one handler.
+//we could merge the callback and list_files function, or refactor the callback into one for each enum which receives a unit of work after 
+//the more detailed recursing logic (caused by libretro-common integration) is handled in the lister
 static void list_files(const char *filepath, ListCallback list_callback)
 {
-	char DirSpec[255+1], SubDir[255+1];
-	FsEntry entry;
 	void * hFind;
 	char *fname;
 	u32 dwError;
 
-	strncpy(DirSpec, filepath, ARRAY_SIZE(DirSpec));
-	DirSpec[255] = 0 ; // hard limit the string here
-
-	hFind = FsReadFirst(DirSpec, &entry);
-	if (hFind == NULL) return;
-
-	do {
-		fname = (strlen(entry.cAlternateFileName)>0) ? entry.cAlternateFileName : entry.cFileName;
-		list_callback(&entry,EListCallbackArg_Item);
-		printf("cflash added %s\n",entry.cFileName);
-
-		if ((entry.flags & FS_IS_DIR) && (strcmp(fname, ".")) && (strcmp(fname, ".."))) 
-		{
-			if (strlen(fname)+strlen(filepath)+2 < 256) 
-			{
-				sprintf(SubDir, "%s%c%s", filepath, FS_SEPARATOR, fname);
-				list_files(SubDir, list_callback);
-				list_callback(&entry, EListCallbackArg_Pop);
-			}
-		}
-	} while (FsReadNext(hFind, &entry) != 0);
-
-	dwError = FsError();
-	FsClose(hFind);
-	if (dwError != FS_ERR_NO_MORE_FILES) return;
-}
-
-static u64 dataSectors = 0;
-void count_ListCallback(FsEntry* fs, EListCallbackArg arg)
-{
-	if(arg == EListCallbackArg_Pop) return;
-	u32 sectors = 1;
-	if(fs->flags & FS_IS_DIR)
+	RDIR* rdir = retro_opendir(filepath);
+	if(!rdir) return;
+	if(retro_dirent_error(rdir))
 	{
+		retro_closedir(rdir);
+		return;
 	}
-	else
-		sectors += (fs->fileSize+511)/512 + 1;
-	dataSectors += sectors; 
+
+	for(;;)
+	{
+		if(!retro_readdir(rdir))
+			break;
+
+		const char* fname2 = retro_dirent_get_name(rdir);
+		list_callback(rdir,EListCallbackArg_Item);
+		printf("cflash added %s\n", fname2);
+
+		if (retro_dirent_is_dir(rdir, fname2) && (strcmp(fname2, ".")) && strcmp(fname2, ".."))
+		{
+			std::string subdir = (std::string)filepath + path_default_slash() + fname2;
+			list_files(subdir.c_str(), list_callback);
+			list_callback(rdir, EListCallbackArg_Pop);
+		}
+	}
+
+	retro_closedir(rdir);
 }
 
+enum eCallbackType
+{
+	eCallbackType_Count, eCallbackType_Build
+};
+
+static eCallbackType callbackType;
+
+//for eCallbackType_Count:
+static bool count_failed = false;
+static u64 dataSectors = 0;
+
+//recursing related.. really ought to be merged with list_files functionality
 static std::string currPath;
 static std::stack<std::string> pathStack;
 static std::stack<std::string> virtPathStack;
 static std::string currVirtPath;
-void build_ListCallback(FsEntry* fs, EListCallbackArg arg)
-{
-	char* fname = (strlen(fs->cAlternateFileName)>0) ? fs->cAlternateFileName : fs->cFileName;
 
-	//we use cFileName always because it is a LFN and we are making sure that we always make a fat32 image
-	fname = fs->cFileName;
+static void DirectoryListCallback(RDIR* rdir, EListCallbackArg arg)
+{
+	const char* fname = retro_dirent_get_name(rdir);
 
 	if(arg == EListCallbackArg_Pop) 
 	{
@@ -108,8 +109,8 @@ void build_ListCallback(FsEntry* fs, EListCallbackArg arg)
 		virtPathStack.pop();
 		return;
 	}
-	
-	if(fs->flags & FS_IS_DIR)
+
+	if(retro_dirent_is_dir(rdir,currVirtPath.c_str()))
 	{
 		if(!strcmp(fname,".")) return;
 		if(!strcmp(fname,"..")) return;
@@ -118,49 +119,75 @@ void build_ListCallback(FsEntry* fs, EListCallbackArg arg)
 		virtPathStack.push(currVirtPath);
 
 		currVirtPath = currVirtPath + "/" + fname;
-		bool ok = LIBFAT::MkDir(currVirtPath.c_str());
 
-		if(!ok)
-			printf("ERROR adding dir %s via libfat\n",currVirtPath.c_str());
+		if(callbackType == eCallbackType_Build)
+		{
+			bool ok = LIBFAT::MkDir(currVirtPath.c_str());
 
-		currPath = currPath + std::string(1,FS_SEPARATOR) + fname;
+			if(!ok)
+				printf("ERROR adding dir %s via libfat\n",currVirtPath.c_str());
+		}
+		else
+		{
+			dataSectors++; //directories take one sector
+		}
+
+		currPath = currPath + path_default_slash() + fname;
 		return;
 	}
 	else
 	{
-		std::string path = currPath + std::string(1,FS_SEPARATOR) + fname;
+		std::string path = currPath + path_default_slash() + fname;
 
-		FILE* inf = fopen(path.c_str(),"rb");
-		if(inf)
+		if(callbackType == eCallbackType_Build)
 		{
-			fseek(inf,0,SEEK_END);
-			long len = ftell(inf);
-			fseek(inf,0,SEEK_SET);
-			u8 *buf = new u8[len];
-			fread(buf,1,len,inf);
-			fclose(inf);
+			FILE* inf = fopen(path.c_str(),"rb");
+			if(inf)
+			{
+				fseek(inf,0,SEEK_END);
+				size_t len = ftell(inf);
+				fseek(inf,0,SEEK_SET);
+				u8 *buf = new u8[len];
+				fread(buf,1,len,inf);
+				fclose(inf);
 
-			std::string path = currVirtPath + "/" + fname;
-			printf("adding path %s for libfat\n",path.c_str());
-			bool ok = LIBFAT::WriteFile(path.c_str(),buf,len);
-			if(!ok) 
-				printf("ERROR adding file to fat\n");
-			delete[] buf;
-		} else printf("ERROR opening file for fat\n");
+				std::string path2 = currVirtPath + "/" + fname;
+				printf( "FAT + (%10.2f KB) %s \n", (float)len/1024.f, path2.c_str() );
+				bool ok = LIBFAT::WriteFile(path2. c_str(), buf, (int)len);
+				if (!ok)
+					printf("ERROR adding file to fat\n");
+				delete[] buf;
+			} else printf("ERROR opening file for fat\n");
+		}
+		else
+		{
+			//allocate sectors for file
+			int32_t fileSize = path_get_size(path.c_str());
+			if(fileSize == -1) { count_failed = true; dataSectors = 0; }
+			else dataSectors += (fileSize+511)/512 + 1;
+		}
 	}
 		
 }
-
-
 
 bool VFAT::build(const char* path, int extra_MB)
 {
 	dataSectors = 0;
 	currVirtPath = "";
 	currPath = path;
-	list_files(path, count_ListCallback);
+
+	count_failed = false;
+	callbackType = eCallbackType_Count;
+	list_files(path, DirectoryListCallback);
+
+	if(count_failed)
+	{
+		printf("FAILED enumerating files for fat\n");
+		return false;
+	}
 
 	dataSectors += 8; //a few for reserved sectors, etc.
+
 
 	dataSectors += extra_MB*1024*1024/512; //add extra write space
 	//dataSectors += 16*1024*1024/512; //add 16MB worth of write space. this is probably enough for anyone, but maybe it should be configurable.
@@ -172,18 +199,18 @@ bool VFAT::build(const char* path, int extra_MB)
 
 	if(dataSectors>=(0x80000000>>9))
 	{
-		printf("error allocating memory for fat (%d KBytes)\n",(dataSectors*512)/1024);
+		printf("error allocating memory for fat (%llu KBytes)\n",(dataSectors*512)/1024);
 		printf("total fat sizes > 2GB are never going to work\n");
 	}
 	
 	delete file;
 	try 
 	{
-		file = new EMUFILE_MEMORY(dataSectors*512);
+		file = new EMUFILE_MEMORY((u32)dataSectors*512);
 	}
 	catch(std::bad_alloc)
 	{
-		printf("error allocating memory for fat (%d KBytes)\n",(dataSectors*512)/1024);
+		printf("error allocating memory for fat (%llu KBytes)\n",(dataSectors*512)/1024);
 		printf("(out of memory)\n");
 		return false;
 	}
@@ -196,7 +223,7 @@ bool VFAT::build(const char* path, int extra_MB)
 		EmuFat fat(file);
 		EmuFatVolume vol;
 		u8 ok = vol.init(&fat);
-		vol.formatNew(dataSectors);
+		vol.formatNew((u32)dataSectors);
 
 		//ensure we are working in memory, just in case we were testing with a disk file.
 		//libfat will need to go straight to memory (for now; we could easily change it to work with the disk)
@@ -206,7 +233,8 @@ bool VFAT::build(const char* path, int extra_MB)
 
 	//setup libfat and write all the files through it
 	LIBFAT::Init(memf->buf(),memf->size());
-	list_files(path, build_ListCallback);
+	callbackType = eCallbackType_Build;
+	list_files(path, DirectoryListCallback);
 	LIBFAT::Shutdown();
 
 	return true;

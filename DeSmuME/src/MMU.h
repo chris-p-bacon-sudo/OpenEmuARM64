@@ -1,7 +1,7 @@
 /*
 	Copyright (C) 2006 yopyop
 	Copyright (C) 2007 shash
-	Copyright (C) 2007-2015 DeSmuME team
+	Copyright (C) 2007-2025 DeSmuME team
 
 	This file is free software: you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
@@ -24,9 +24,14 @@
 #include "firmware.h"
 #include "mc.h"
 #include "mem.h"
+#include "NDSSystem.h"
 
 #ifdef HAVE_LUA
 #include "lua-engine.h"
+#endif
+
+#ifdef TARGET_INTERFACE
+#include "frontend/interface/interface.h"
 #endif
 
 #ifdef HAVE_JIT
@@ -43,16 +48,16 @@ typedef const u8 TWaitState;
 
 enum EDMAMode
 {
-	EDMAMode_Immediate = 0,
-	EDMAMode_VBlank = 1,
-	EDMAMode_HBlank = 2,
-	EDMAMode_HStart = 3,
-	EDMAMode_MemDisplay = 4,
-	EDMAMode_Card = 5,
-	EDMAMode_GBASlot = 6,
-	EDMAMode_GXFifo = 7,
-	EDMAMode7_Wifi = 8,
-	EDMAMode7_GBASlot = 9,
+	EDMAMode_Immediate   = 0,
+	EDMAMode_VBlank      = 1,
+	EDMAMode_HBlank      = 2,
+	EDMAMode_HStart      = 3,
+	EDMAMode_MemDisplay  = 4,
+	EDMAMode_Card        = 5,
+	EDMAMode_GBASlot     = 6,
+	EDMAMode_GXFifo      = 7,
+	EDMAMode7_Wifi       = 8,
+	EDMAMode7_GBASlot    = 9
 };
 
 enum EDMABitWidth
@@ -65,16 +70,16 @@ enum EDMASourceUpdate
 {
 	EDMASourceUpdate_Increment = 0,
 	EDMASourceUpdate_Decrement = 1,
-	EDMASourceUpdate_Fixed = 2,
-	EDMASourceUpdate_Invalid = 3,
+	EDMASourceUpdate_Fixed     = 2,
+	EDMASourceUpdate_Invalid   = 3
 };
 
 enum EDMADestinationUpdate
 {
-	EDMADestinationUpdate_Increment = 0,
-	EDMADestinationUpdate_Decrement = 1,
-	EDMADestinationUpdate_Fixed = 2,
-	EDMADestinationUpdate_IncrementReload = 3,
+	EDMADestinationUpdate_Increment        = 0,
+	EDMADestinationUpdate_Decrement        = 1,
+	EDMADestinationUpdate_Fixed            = 2,
+	EDMADestinationUpdate_IncrementReload  = 3
 };
 
 //TODO
@@ -83,6 +88,8 @@ enum EDMADestinationUpdate
 class TRegister_32
 {
 public:
+	virtual ~TRegister_32() {}
+	
 	virtual u32 read32() = 0;
 	virtual void write32(const u32 val) = 0;
 	void write(const int size, const u32 adr, const u32 val) { 
@@ -119,6 +126,9 @@ struct TGXSTAT : public TRegister_32
 		fifo_empty = true;
 		fifo_low = false;
 	}
+	
+	virtual ~TGXSTAT() {}
+	
 	u8 tb; //test busy
 	u8 tr; //test result
 	u8 se; //stack error
@@ -130,8 +140,8 @@ struct TGXSTAT : public TRegister_32
 	virtual u32 read32();
 	virtual void write32(const u32 val);
 
-	void savestate(EMUFILE *f);
-	bool loadstate(EMUFILE *f);
+	void savestate(EMUFILE &f);
+	bool loadstate(EMUFILE &f);
 };
 
 void triggerDma(EDMAMode mode);
@@ -149,8 +159,8 @@ public:
 		mode = val&3;
 		//todo - do we clear the div0 flag here or is that strictly done by the divider unit?
 	}
-	void savestate(EMUFILE* os);
-	bool loadstate(EMUFILE* is, int version);
+	void savestate(EMUFILE &os);
+	bool loadstate(EMUFILE &is, int version);
 };
 
 class SqrtController
@@ -163,8 +173,8 @@ public:
 	u8 mode, busy;
 	u16 read16() { return mode|(busy<<15); }
 	void write16(u16 val) { mode = val&1; }
-	void savestate(EMUFILE* os);
-	bool loadstate(EMUFILE* is, int version);
+	void savestate(EMUFILE &os);
+	bool loadstate(EMUFILE &is, int version);
 };
 
 
@@ -198,8 +208,8 @@ public:
 
 	int procnum, chan;
 
-	void savestate(EMUFILE *f);
-	bool loadstate(EMUFILE *f);
+	void savestate(EMUFILE &f);
+	bool loadstate(EMUFILE &f);
 
 	void exec();
 	template<int PROCNUM> void doCopy();
@@ -241,7 +251,10 @@ public:
 		AddressRegister(u32* _ptr)
 			: ptr(_ptr)
 		{}
-		virtual u32 read32() { 
+		
+		virtual ~AddressRegister() {}
+		
+		virtual u32 read32() {
 			return *ptr;
 		}
 		virtual void write32(const u32 val) {
@@ -254,7 +267,9 @@ public:
 		//we pass in a pointer to the controller here so we can alert it if anything changes
 		DmaController* controller;
 		ControlRegister() {}
-		virtual u32 read32() { 
+		virtual ~ControlRegister() {}
+		
+		virtual u32 read32() {
 			return controller->read32();
 		}
 		virtual void write32(const u32 val) {
@@ -312,6 +327,47 @@ struct GCBUS_Controller
 	eCardMode mode; //probably only one of these
 };
 
+typedef union
+{
+	u8 value;
+	
+#ifdef MSB_FIRST
+	struct
+	{
+		unsigned Enable:1;
+		unsigned :2;
+		unsigned OFS:2;
+		unsigned MST:3;
+	};
+	
+	struct
+	{
+		unsigned Enable_ABHI:1;
+		unsigned :2;
+		unsigned OFS_ABHI:2;
+		unsigned :1;
+		unsigned MST_ABHI:2;
+	};
+#else
+	struct
+	{
+		unsigned MST:3;
+		unsigned OFS:2;
+		unsigned :2;
+		unsigned Enable:1;
+	};
+	
+	struct
+	{
+		unsigned MST_ABHI:2;
+		unsigned :1;
+		unsigned OFS_ABHI:2;
+		unsigned :2;
+		unsigned Enable_ABHI:1;
+	};
+#endif
+} VRAMCNT;
+
 #define DUP2(x)  x, x
 #define DUP4(x)  x, x, x, x
 #define DUP8(x)  x, x, x, x,  x, x, x, x
@@ -328,18 +384,14 @@ struct MMU_struct
 	u8 MAIN_MEM[16*1024*1024]; //expanded from 8MB to 16MB to support dsi
 	u8 ARM9_REG[0x1000000]; //this variable is evil and should be removed by correctly emulating all registers.
 	u8 ARM9_BIOS[0x8000];
-	u8 ARM9_VMEM[0x800];
+	CACHE_ALIGN u8 ARM9_VMEM[0x800];
 	
-	#include "PACKED.h"
-	struct {
-		u8 ARM9_LCD[0xA4000];
-		//an extra 128KB for blank memory, directly after arm9_lcd, so that
-		//we can easily map things to the end of arm9_lcd to represent 
-		//an unmapped state
-		u8 blank_memory[0x20000];  
-	};
-	#include "PACKED_END.h"
-
+	//an extra 128KB for blank memory, directly after arm9_lcd, so that
+	//we can easily map things to the end of arm9_lcd to represent
+	//an unmapped state
+	CACHE_ALIGN u8 ARM9_LCD[0xA4000 + 0x20000];
+	u8 *blank_memory;
+	
     u8 ARM9_OAM[0x800];
 
 	u8* ExtPal[2][4];
@@ -394,8 +446,6 @@ struct MMU_struct
 	//these flags are set occasionally to indicate that an irq should have entered the pipeline, and processing will be deferred a tiny bit to help emulate things
 	u32 reg_IF_pending[2];
 
-	u32 reg_DISP3DCNT_bits;
-
 	template<int PROCNUM> u32 gen_IF();
 
 	BOOL divRunning;
@@ -433,8 +483,8 @@ public:
 	DSI_TSC();
 	void reset_command();
 	u16 write16(u16 val);
-	bool save_state(EMUFILE* os);
-	bool load_state(EMUFILE* is);
+	bool save_state(EMUFILE &os);
+	bool load_state(EMUFILE &is);
 
 private:
 	u16 read16();
@@ -474,24 +524,24 @@ extern MMU_struct_new MMU_new;
 struct armcpu_memory_iface
 {
   /** the 32 bit instruction prefetch */
-  u32 FASTCALL (*prefetch32)( void *data, u32 adr);
+  u32 DESMUME_FASTCALL (*prefetch32)( void *data, u32 adr);
 
   /** the 16 bit instruction prefetch */
-  u16 FASTCALL (*prefetch16)( void *data, u32 adr);
+  u16 DESMUME_FASTCALL (*prefetch16)( void *data, u32 adr);
 
   /** read 8 bit data value */
-  u8 FASTCALL (*read8)( void *data, u32 adr);
+  u8 DESMUME_FASTCALL (*read8)( void *data, u32 adr);
   /** read 16 bit data value */
-  u16 FASTCALL (*read16)( void *data, u32 adr);
+  u16 DESMUME_FASTCALL (*read16)( void *data, u32 adr);
   /** read 32 bit data value */
-  u32 FASTCALL (*read32)( void *data, u32 adr);
+  u32 DESMUME_FASTCALL (*read32)( void *data, u32 adr);
 
   /** write 8 bit data value */
-  void FASTCALL (*write8)( void *data, u32 adr, u8 val);
+  void DESMUME_FASTCALL (*write8)( void *data, u32 adr, u8 val);
   /** write 16 bit data value */
-  void FASTCALL (*write16)( void *data, u32 adr, u16 val);
+  void DESMUME_FASTCALL (*write16)( void *data, u32 adr, u16 val);
   /** write 32 bit data value */
-  void FASTCALL (*write32)( void *data, u32 adr, u32 val);
+  void DESMUME_FASTCALL (*write32)( void *data, u32 adr, u32 val);
 
   void *data;
 };
@@ -505,30 +555,34 @@ void MMU_Reset( void);
 void print_memory_profiling( void);
 
 // Memory reading/writing (old)
-u8 FASTCALL MMU_read8(u32 proc, u32 adr);
-u16 FASTCALL MMU_read16(u32 proc, u32 adr);
-u32 FASTCALL MMU_read32(u32 proc, u32 adr);
-void FASTCALL MMU_write8(u32 proc, u32 adr, u8 val);
-void FASTCALL MMU_write16(u32 proc, u32 adr, u16 val);
-void FASTCALL MMU_write32(u32 proc, u32 adr, u32 val);
+u8 DESMUME_FASTCALL MMU_read8(u32 proc, u32 adr);
+u16 DESMUME_FASTCALL MMU_read16(u32 proc, u32 adr);
+u32 DESMUME_FASTCALL MMU_read32(u32 proc, u32 adr);
+void DESMUME_FASTCALL MMU_write8(u32 proc, u32 adr, u8 val);
+void DESMUME_FASTCALL MMU_write16(u32 proc, u32 adr, u16 val);
+void DESMUME_FASTCALL MMU_write32(u32 proc, u32 adr, u32 val);
  
-//template<int PROCNUM> void FASTCALL MMU_doDMA(u32 num);
+//template<int PROCNUM> void DESMUME_FASTCALL MMU_doDMA(u32 num);
 
 //The base ARM memory interfaces
 extern const armcpu_memory_iface arm9_base_memory_iface;
 extern const armcpu_memory_iface arm7_base_memory_iface;
 extern const armcpu_memory_iface arm9_direct_memory_iface;
 
-#define VRAM_BANKS 9
-#define VRAM_BANK_A 0
-#define VRAM_BANK_B 1
-#define VRAM_BANK_C 2
-#define VRAM_BANK_D 3
-#define VRAM_BANK_E 4
-#define VRAM_BANK_F 5
-#define VRAM_BANK_G 6
-#define VRAM_BANK_H 7
-#define VRAM_BANK_I 8
+enum VRAMBankID
+{
+	VRAM_BANK_A = 0,
+	VRAM_BANK_B = 1,
+	VRAM_BANK_C = 2,
+	VRAM_BANK_D = 3,
+	VRAM_BANK_E = 4,
+	VRAM_BANK_F = 5,
+	VRAM_BANK_G = 6,
+	VRAM_BANK_H = 7,
+	VRAM_BANK_I = 8,
+	
+	VRAM_BANK_COUNT = 9
+};
 
 #define VRAM_PAGE_ABG 0
 #define VRAM_PAGE_BBG 128
@@ -545,10 +599,10 @@ struct VramConfiguration {
 	struct BankInfo {
 		Purpose purpose;
 		int ofs;
-	} banks[VRAM_BANKS];
+	} banks[VRAM_BANK_COUNT];
 	
 	inline void clear() {
-		for(int i=0;i<VRAM_BANKS;i++) {
+		for(int i=0;i<VRAM_BANK_COUNT;i++) {
 			banks[i].ofs = 0;
 			banks[i].purpose = OFF;
 		}
@@ -562,7 +616,7 @@ extern VramConfiguration vramConfiguration;
 
 #define VRAM_ARM9_PAGES 512
 extern u8 vram_arm9_map[VRAM_ARM9_PAGES];
-FORCEINLINE void* MMU_gpu_map(u32 vram_addr)
+FORCEINLINE void* MMU_gpu_map(const u32 vram_addr)
 {
 	//this is supposed to map a single gpu vram address to emulator host memory
 	//but it returns a pointer to some zero memory in case of accesses to unmapped memory.
@@ -575,14 +629,17 @@ FORCEINLINE void* MMU_gpu_map(u32 vram_addr)
 	//due to it storing 0x0F0F or somesuch in screen memory which points to a ridiculously big tile
 	//which should contain all 0 pixels
 
-	u32 vram_page = (vram_addr>>14)&(VRAM_ARM9_PAGES-1);
-	u32 ofs = vram_addr & 0x3FFF;
-	vram_page = vram_arm9_map[vram_page];
+	const u32 vram_page = vram_arm9_map[ (vram_addr >> 14) & (VRAM_ARM9_PAGES - 1) ];
+	const u32 ofs = vram_addr & 0x3FFF;
 	//blank pages are handled by the extra 16KB of blank memory at the end of ARM9_LCD
 	//and the fact that blank pages are mapped to appear at that location
-	return MMU.ARM9_LCD + (vram_page<<14) + ofs;
+	return MMU.ARM9_LCD + (vram_page << 14) + ofs;
 }
 
+// Call MMU_WriteFromExternal() when modifying memory outside of the normal execution process, such
+// as when using cheats or when the client wants to write to memory directly. This function returns
+// true if memory is modified in such a way that requires the JIT execution be reset.
+template<typename T, size_t LENGTH> bool MMU_WriteFromExternal(const int targetProc, const u32 targetAddress, T newValue);
 
 template<int PROCNUM, MMU_ACCESS_TYPE AT> u8 _MMU_read08(u32 addr);
 template<int PROCNUM, MMU_ACCESS_TYPE AT> u16 _MMU_read16(u32 addr);
@@ -598,19 +655,19 @@ template<int PROCNUM> FORCEINLINE void _MMU_write08(u32 addr, u8 val) { _MMU_wri
 template<int PROCNUM> FORCEINLINE void _MMU_write16(u32 addr, u16 val) { _MMU_write16<PROCNUM, MMU_AT_DATA>(addr,val); }
 template<int PROCNUM> FORCEINLINE void _MMU_write32(u32 addr, u32 val) { _MMU_write32<PROCNUM, MMU_AT_DATA>(addr,val); }
 
-void FASTCALL _MMU_ARM9_write08(u32 adr, u8 val);
-void FASTCALL _MMU_ARM9_write16(u32 adr, u16 val);
-void FASTCALL _MMU_ARM9_write32(u32 adr, u32 val);
-u8  FASTCALL _MMU_ARM9_read08(u32 adr);
-u16 FASTCALL _MMU_ARM9_read16(u32 adr);
-u32 FASTCALL _MMU_ARM9_read32(u32 adr);
+void DESMUME_FASTCALL _MMU_ARM9_write08(u32 adr, u8 val);
+void DESMUME_FASTCALL _MMU_ARM9_write16(u32 adr, u16 val);
+void DESMUME_FASTCALL _MMU_ARM9_write32(u32 adr, u32 val);
+u8  DESMUME_FASTCALL _MMU_ARM9_read08(u32 adr);
+u16 DESMUME_FASTCALL _MMU_ARM9_read16(u32 adr);
+u32 DESMUME_FASTCALL _MMU_ARM9_read32(u32 adr);
 
-void FASTCALL _MMU_ARM7_write08(u32 adr, u8 val);
-void FASTCALL _MMU_ARM7_write16(u32 adr, u16 val);
-void FASTCALL _MMU_ARM7_write32(u32 adr, u32 val);
-u8  FASTCALL _MMU_ARM7_read08(u32 adr);
-u16 FASTCALL _MMU_ARM7_read16(u32 adr);
-u32 FASTCALL _MMU_ARM7_read32(u32 adr);
+void DESMUME_FASTCALL _MMU_ARM7_write08(u32 adr, u8 val);
+void DESMUME_FASTCALL _MMU_ARM7_write16(u32 adr, u16 val);
+void DESMUME_FASTCALL _MMU_ARM7_write32(u32 adr, u32 val);
+u8  DESMUME_FASTCALL _MMU_ARM7_read08(u32 adr);
+u16 DESMUME_FASTCALL _MMU_ARM7_read16(u32 adr);
+u32 DESMUME_FASTCALL _MMU_ARM7_read32(u32 adr);
 
 extern u32 partie;
 
@@ -660,6 +717,19 @@ FORCEINLINE u8 _MMU_read08(const int PROCNUM, const MMU_ACCESS_TYPE AT, const u3
 #ifdef HAVE_LUA
 	CallRegisteredLuaMemHook(addr, 1, /*FIXME*/ 0, LUAMEMHOOK_READ);
 #endif
+#ifdef TARGET_INTERFACE
+    call_registered_interface_mem_hook(addr, 1, HOOK_READ);
+#endif
+
+	// break points, wheee
+	for (size_t i = 0; i < memReadBreakPoints.size(); ++i)
+	{
+		if (addr == memReadBreakPoints[i])
+		{
+			execute = false;
+			i = memReadBreakPoints.size();
+		}
+	}
 
 	if(PROCNUM==ARMCPU_ARM9)
 		if((addr&(~0x3FFF)) == MMU.DTCMRegion)
@@ -695,6 +765,19 @@ FORCEINLINE u16 _MMU_read16(const int PROCNUM, const MMU_ACCESS_TYPE AT, const u
 #ifdef HAVE_LUA
 	CallRegisteredLuaMemHook(addr, 2, /*FIXME*/ 0, LUAMEMHOOK_READ);
 #endif
+#ifdef TARGET_INTERFACE
+    call_registered_interface_mem_hook(addr, 2, HOOK_READ);
+#endif
+
+	// break points, wheee
+	for (size_t i = 0; i < memReadBreakPoints.size(); ++i)
+	{
+		if (addr == memReadBreakPoints[i])
+		{
+			execute = false;
+			i = memReadBreakPoints.size();
+		}
+	}
 
 	//special handling for execution from arm9, since we spend so much time in there
 	if(PROCNUM==ARMCPU_ARM9 && AT == MMU_AT_CODE)
@@ -743,6 +826,18 @@ FORCEINLINE u32 _MMU_read32(const int PROCNUM, const MMU_ACCESS_TYPE AT, const u
 #ifdef HAVE_LUA
 	CallRegisteredLuaMemHook(addr, 4, /*FIXME*/ 0, LUAMEMHOOK_READ);
 #endif
+#ifdef TARGET_INTERFACE
+    call_registered_interface_mem_hook(addr, 4, HOOK_READ);
+#endif
+	// break points, wheee
+	for (size_t i = 0; i < memReadBreakPoints.size(); ++i)
+	{
+		if (addr == memReadBreakPoints[i])
+		{
+			execute = false;
+			i = memReadBreakPoints.size();
+		}
+	}
 
 	//special handling for execution from arm9, since we spend so much time in there
 	if(PROCNUM==ARMCPU_ARM9 && AT == MMU_AT_CODE)
@@ -799,12 +894,25 @@ FORCEINLINE void _MMU_write08(const int PROCNUM, const MMU_ACCESS_TYPE AT, const
 		if((addr&(~0x3FFF)) == MMU.DTCMRegion) return; //dtcm
 	}
 
+	// break points, wheee
+	for (size_t i = 0; i < memWriteBreakPoints.size(); ++i)
+	{
+		if (addr == memWriteBreakPoints[i])
+		{
+			execute = false;
+			i = memWriteBreakPoints.size();
+		}
+	}
+
 	if(PROCNUM==ARMCPU_ARM9)
 		if((addr&(~0x3FFF)) == MMU.DTCMRegion)
 		{
 			T1WriteByte(MMU.ARM9_DTCM, addr & 0x3FFF, val);
 #ifdef HAVE_LUA
 			CallRegisteredLuaMemHook(addr, 1, val, LUAMEMHOOK_WRITE);
+#endif
+#ifdef TARGET_INTERFACE
+    call_registered_interface_mem_hook(addr, 1, HOOK_READ);
 #endif
 			return;
 		}
@@ -817,6 +925,9 @@ FORCEINLINE void _MMU_write08(const int PROCNUM, const MMU_ACCESS_TYPE AT, const
 #ifdef HAVE_LUA
 		CallRegisteredLuaMemHook(addr, 1, val, LUAMEMHOOK_WRITE);
 #endif
+#ifdef TARGET_INTERFACE
+    call_registered_interface_mem_hook(addr, 1, HOOK_WRITE);
+#endif
 		return;
 	}
 
@@ -824,6 +935,9 @@ FORCEINLINE void _MMU_write08(const int PROCNUM, const MMU_ACCESS_TYPE AT, const
 	else _MMU_ARM7_write08(addr,val);
 #ifdef HAVE_LUA
 	CallRegisteredLuaMemHook(addr, 1, val, LUAMEMHOOK_WRITE);
+#endif
+#ifdef TARGET_INTERFACE
+    call_registered_interface_mem_hook(addr, 1, HOOK_WRITE);
 #endif
 }
 
@@ -838,12 +952,25 @@ FORCEINLINE void _MMU_write16(const int PROCNUM, const MMU_ACCESS_TYPE AT, const
 		if((addr&(~0x3FFF)) == MMU.DTCMRegion) return; //dtcm
 	}
 
+	// break points, wheee
+	for (size_t i = 0; i < memWriteBreakPoints.size(); ++i)
+	{
+		if (addr == memWriteBreakPoints[i])
+		{
+			execute = false;
+			i = memWriteBreakPoints.size();
+		}
+	}
+
 	if(PROCNUM==ARMCPU_ARM9)
 		if((addr&(~0x3FFF)) == MMU.DTCMRegion)
 		{
 			T1WriteWord(MMU.ARM9_DTCM, addr & 0x3FFE, val);
 #ifdef HAVE_LUA
 			CallRegisteredLuaMemHook(addr, 2, val, LUAMEMHOOK_WRITE);
+#endif
+#ifdef TARGET_INTERFACE
+    call_registered_interface_mem_hook(addr, 2, HOOK_WRITE);
 #endif
 			return;
 		}
@@ -864,6 +991,9 @@ FORCEINLINE void _MMU_write16(const int PROCNUM, const MMU_ACCESS_TYPE AT, const
 #ifdef HAVE_LUA
 	CallRegisteredLuaMemHook(addr, 2, val, LUAMEMHOOK_WRITE);
 #endif
+#ifdef TARGET_INTERFACE
+    call_registered_interface_mem_hook(addr, 2, HOOK_WRITE);
+#endif
 }
 
 FORCEINLINE void _MMU_write32(const int PROCNUM, const MMU_ACCESS_TYPE AT, const u32 addr, u32 val)
@@ -877,12 +1007,25 @@ FORCEINLINE void _MMU_write32(const int PROCNUM, const MMU_ACCESS_TYPE AT, const
 		if((addr&(~0x3FFF)) == MMU.DTCMRegion) return; //dtcm
 	}
 
+	// break points, wheee
+	for (size_t i = 0; i < memWriteBreakPoints.size(); ++i)
+	{
+		if (addr == memWriteBreakPoints[i])
+		{
+			execute = false;
+			i = memWriteBreakPoints.size();
+		}
+	}
+
 	if(PROCNUM==ARMCPU_ARM9)
 		if((addr&(~0x3FFF)) == MMU.DTCMRegion)
 		{
 			T1WriteLong(MMU.ARM9_DTCM, addr & 0x3FFC, val);
 #ifdef HAVE_LUA
 			CallRegisteredLuaMemHook(addr, 4, val, LUAMEMHOOK_WRITE);
+#endif
+#ifdef TARGET_INTERFACE
+    call_registered_interface_mem_hook(addr, 4, HOOK_WRITE);
 #endif
 			return;
 		}
@@ -896,6 +1039,9 @@ FORCEINLINE void _MMU_write32(const int PROCNUM, const MMU_ACCESS_TYPE AT, const
 #ifdef HAVE_LUA
 		CallRegisteredLuaMemHook(addr, 4, val, LUAMEMHOOK_WRITE);
 #endif
+#ifdef TARGET_INTERFACE
+    call_registered_interface_mem_hook(addr, 4, HOOK_WRITE);
+#endif
 		return;
 	}
 
@@ -904,16 +1050,19 @@ FORCEINLINE void _MMU_write32(const int PROCNUM, const MMU_ACCESS_TYPE AT, const
 #ifdef HAVE_LUA
 	CallRegisteredLuaMemHook(addr, 4, val, LUAMEMHOOK_WRITE);
 #endif
+#ifdef TARGET_INTERFACE
+    call_registered_interface_mem_hook(addr, 4, HOOK_WRITE);
+#endif
 }
 
 
 //#ifdef MMU_ENABLE_ACL
-//	void FASTCALL MMU_write8_acl(u32 proc, u32 adr, u8 val);
-//	void FASTCALL MMU_write16_acl(u32 proc, u32 adr, u16 val);
-//	void FASTCALL MMU_write32_acl(u32 proc, u32 adr, u32 val);
-//	u8 FASTCALL MMU_read8_acl(u32 proc, u32 adr, u32 access);
-//	u16 FASTCALL MMU_read16_acl(u32 proc, u32 adr, u32 access);
-//	u32 FASTCALL MMU_read32_acl(u32 proc, u32 adr, u32 access);
+//	void DESMUME_FASTCALL MMU_write8_acl(u32 proc, u32 adr, u8 val);
+//	void DESMUME_FASTCALL MMU_write16_acl(u32 proc, u32 adr, u16 val);
+//	void DESMUME_FASTCALL MMU_write32_acl(u32 proc, u32 adr, u32 val);
+//	u8 DESMUME_FASTCALL MMU_read8_acl(u32 proc, u32 adr, u32 access);
+//	u16 DESMUME_FASTCALL MMU_read16_acl(u32 proc, u32 adr, u32 access);
+//	u32 DESMUME_FASTCALL MMU_read32_acl(u32 proc, u32 adr, u32 access);
 //#else
 //	#define MMU_write8_acl(proc, adr, val)  _MMU_write08<proc>(adr, val)
 //	#define MMU_write16_acl(proc, adr, val) _MMU_write16<proc>(adr, val)
@@ -958,6 +1107,6 @@ FORCEINLINE void _MMU_write16(u32 addr, u16 val) { _MMU_write16(PROCNUM, AT, add
 template<int PROCNUM, MMU_ACCESS_TYPE AT>
 FORCEINLINE void _MMU_write32(u32 addr, u32 val) { _MMU_write32(PROCNUM, AT, addr, val); }
 
-void FASTCALL MMU_DumpMemBlock(u8 proc, u32 address, u32 size, u8 *buffer);
+void DESMUME_FASTCALL MMU_DumpMemBlock(u8 proc, u32 address, u32 size, u8 *buffer);
 
 #endif

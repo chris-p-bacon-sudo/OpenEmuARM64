@@ -188,9 +188,16 @@
     </systems>
   </core>
 
-  <!-- DeSmuME (NDS) entry removed: no Xcode project exists in this fork and
-       no shipped asset has ever been published. NDS is not currently supported.
-       Tracked in #424. -->
+  <!-- ✅ ARM64 native -->
+  <core
+    id="org.openemu.DeSmuME"
+    name="DeSmuME"
+    appcastURL="https://raw.githubusercontent.com/nickybmon/OpenEmu-Silicon/main/Appcasts/desmume.xml">
+    <description>Nintendo DS emulator</description>
+    <systems>
+      <system id="openemu.system.nds">Nintendo DS</system>
+    </systems>
+  </core>
 
   <!-- ✅ ARM64 native -->
   <core

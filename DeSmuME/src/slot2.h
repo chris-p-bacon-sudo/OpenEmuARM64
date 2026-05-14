@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2009-2015 DeSmuME team
+	Copyright (C) 2009-2025 DeSmuME team
 
 	This file is free software: you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
@@ -29,9 +29,11 @@ class EMUFILE;
 class Slot2Info
 {
 public:
+	virtual ~Slot2Info() {}
+	
 	virtual const char* name() const = 0;
-	virtual const char* descr() const  = 0;
-	virtual const u8 id() const  = 0;
+	virtual const char* descr() const = 0;
+	virtual u8 id() const = 0;
 };
 
 class Slot2InfoSimple : public Slot2Info
@@ -43,9 +45,12 @@ public:
 		, mID(_id)
 	{
 	}
+	
+	virtual ~Slot2InfoSimple() {}
+	
 	virtual const char* name() const { return mName; }
 	virtual const char* descr() const { return mDescr; }
-	virtual const u8 id() const { return mID; }
+	virtual u8 id() const { return mID; }
 private:
 	const char* mName, *mDescr;
 	const u8 mID;
@@ -54,6 +59,7 @@ private:
 class ISlot2Interface
 {
 public:
+   virtual ~ISlot2Interface() {}
 	//called to get info about device (description)
 	virtual Slot2Info const* info() = 0;
 
@@ -77,9 +83,9 @@ public:
 	virtual u16	readWord(u8 PROCNUM, u32 addr) { return 0xFFFF; };
 	virtual u32	readLong(u8 PROCNUM, u32 addr) { return 0xFFFFFFFF; };
 
-	virtual void savestate(EMUFILE* os) {}
+	virtual void savestate(EMUFILE &os) {}
 
-	virtual void loadstate(EMUFILE* is) {}
+	virtual void loadstate(EMUFILE &is) {}
 }; 
 
 typedef ISlot2Interface* TISlot2InterfaceConstructor();
@@ -96,6 +102,7 @@ enum NDS_SLOT2_TYPE
 	NDS_SLOT2_EASYPIANO,	// 0x06 - Easy Piano
 	NDS_SLOT2_PADDLE,		// 0x07 - Arkanoids DS paddle
 	NDS_SLOT2_PASSME,		// 0x08 - PassME/Homebrew
+	NDS_SLOT2_HCV1000,      // 0x09 - HCV-1000 Sega Card Reader
 	NDS_SLOT2_COUNT			// use for counter addons - MUST TO BE LAST!!!
 };
 
@@ -107,8 +114,8 @@ void slot2_Init();
 bool slot2_Connect();
 void slot2_Disconnect();
 void slot2_Shutdown();
-void slot2_Savestate(EMUFILE* os);
-void slot2_Loadstate(EMUFILE* is);
+void slot2_Savestate(EMUFILE &os);
+void slot2_Loadstate(EMUFILE &is);
 
 //just disconnects and reconnects the device. ideally, the disconnection and connection would be called with sensible timing
 void slot2_Reset();
@@ -156,4 +163,6 @@ void Paddle_SetValue(u16 theValue);
 
 extern void guitarGrip_setKey(bool green, bool red, bool yellow, bool blue); // Guitar grip keys
 extern void piano_setKey(bool c, bool cs, bool d, bool ds, bool e, bool f, bool fs, bool g, bool gs, bool a, bool as, bool b, bool hic); //piano keys
+extern void HCV1000_setReady();
+extern void HCV1000_setBarcode(std::string barcode);
 #endif //__SLOT_H__

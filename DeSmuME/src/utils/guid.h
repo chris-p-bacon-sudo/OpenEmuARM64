@@ -21,14 +21,29 @@
 #include <string>
 #include <cstdio>
 #include "../types.h"
-#include "valuearray.h"
+
+template<typename T, int N>
+struct ValueArray
+{
+	T data[N];
+	T &operator[](int index) { return data[index]; }
+	static const int size = N;
+	bool operator!=(ValueArray<T,N> &other) { return !operator==(other); }
+	bool operator==(ValueArray<T,N> &other)
+	{
+		for(int i=0;i<size;i++)
+			if(data[i] != other[i])
+				return false;
+		return true;
+	}
+};
 
 struct Desmume_Guid : public ValueArray<u8,16>
 {
 	void newGuid();
 	std::string toString();
 	static Desmume_Guid fromString(std::string str);
-	static uint8 hexToByte(char** ptrptr);
+	static u8 hexToByte(char** ptrptr);
 	void scan(std::string& str);
 };
 

@@ -1,7 +1,7 @@
 /*
 	Copyright (C) 2006 yopyop
 	Copyright (C) 2006-2007 shash
-	Copyright (C) 2008-2015 DeSmuME team
+	Copyright (C) 2008-2025 DeSmuME team
 
 	This file is free software: you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
@@ -20,95 +20,116 @@
 #ifndef OGLRENDER_H
 #define OGLRENDER_H
 
+#include <map>
 #include <queue>
 #include <set>
 #include <string>
 #include "render3D.h"
 #include "types.h"
 
-#ifndef OGLRENDER_3_2_H
+// The macros ENABLE_OPENGL_STANDARD and ENABLE_OPENGL_ES are used in client build configs.
+// If a client wants to use OpenGL, they must declare one of these two macros somewhere in
+// their build config or declare it in some precompiled header.
 
+// OPENGL PLATFORM-SPECIFIC INCLUDES
 #if defined(_WIN32)
+	#ifndef ENABLE_OPENGL_STANDARD
+		#define ENABLE_OPENGL_STANDARD // TODO: Declare this in the Visual Studio project file.
+	#endif
 	#define WIN32_LEAN_AND_MEAN
 	#include <windows.h>
 	#include <GL/gl.h>
 	#include <GL/glext.h>
 
-	#define OGLEXT(procPtr, func)		procPtr func = NULL;
-	#define INITOGLEXT(procPtr, func)	func = (procPtr)wglGetProcAddress(#func);
-	#define EXTERNOGLEXT(procPtr, func)	extern procPtr func;
-#elif defined(__APPLE__)
-	#include <OpenGL/gl.h>
-	#include <OpenGL/glext.h>
+	#ifdef OGLRENDER_3_2_H
+		#include <GL/glcorearb.h>
+	#endif
 
-	// Ignore dynamic linking on Apple OS
+	#define OGLEXT(procPtr, func)       procPtr func = NULL;
+	#define INITOGLEXT(procPtr, func)   func = (procPtr)wglGetProcAddress(#func);
+	#define EXTERNOGLEXT(procPtr, func) extern procPtr func;
+#elif defined(__APPLE__)
+	#if defined(ENABLE_OPENGL_ES)
+		#include <OpenGLES/ES3/gl.h>
+		#include <OpenGLES/ES3/glext.h>
+	#elif defined(ENABLE_OPENGL_STANDARD)
+		#ifdef OGLRENDER_3_2_H
+			#include <OpenGL/gl3.h>
+			#include <OpenGL/gl3ext.h>
+		#else
+			#include <OpenGL/gl.h>
+			#include <OpenGL/glext.h>
+		#endif
+		
+		// Use Apple's extension function if the core function is not available
+		#if defined(GL_APPLE_vertex_array_object) && !defined(GL_ARB_vertex_array_object)
+			#define glGenVertexArrays(n, ids)    glGenVertexArraysAPPLE(n, ids)
+			#define glBindVertexArray(id)        glBindVertexArrayAPPLE(id)
+			#define glDeleteVertexArrays(n, ids) glDeleteVertexArraysAPPLE(n, ids)
+		#endif
+	#endif
+	
+	// Ignore dynamic linking
 	#define OGLEXT(procPtr, func)
 	#define INITOGLEXT(procPtr, func)
 	#define EXTERNOGLEXT(procPtr, func)
-
-	// We're not exactly committing to OpenGL 3.2 Core Profile just yet, so redefine APPLE
-	// extensions as a temporary measure.
-	#if defined(GL_APPLE_vertex_array_object) && !defined(GL_ARB_vertex_array_object)
-		#define glGenVertexArrays(n, ids)		glGenVertexArraysAPPLE(n, ids)
-		#define glBindVertexArray(id)			glBindVertexArrayAPPLE(id)
-		#define glDeleteVertexArrays(n, ids)	glDeleteVertexArraysAPPLE(n, ids)
-	#endif
 #else
-	#include <GL/gl.h>
-	#include <GL/glext.h>
-	#include <GL/glx.h>
+	#if defined(ENABLE_OPENGL_ES)
+		#include <GLES3/gl3.h>
+		#define __gles2_gl2_h_ // Guard against including the gl2.h file.
+		#include <GLES2/gl2ext.h> // "gl3ext.h" is just a stub file. The real extension header is "gl2ext.h".
 
-	/* This is a workaround needed to compile against nvidia GL headers */
-	#ifndef GL_ALPHA_BLEND_EQUATION_ATI
-		#undef GL_VERSION_1_3
+		// Ignore dynamic linking
+		#define OGLEXT(procPtr, func)
+		#define INITOGLEXT(procPtr, func)
+		#define EXTERNOGLEXT(procPtr, func)
+	#elif defined(ENABLE_OPENGL_STANDARD)
+		#include <GL/gl.h>
+		#include <GL/glext.h>
+		#include <GL/glx.h>
+
+		#ifdef OGLRENDER_3_2_H
+			#include "utils/glcorearb.h"
+		#else
+			// This is a workaround needed to compile against nvidia GL headers
+			#ifndef GL_ALPHA_BLEND_EQUATION_ATI
+				#undef GL_VERSION_1_3
+			#endif
+		#endif
+
+		#define OGLEXT(procPtr, func)       procPtr func = NULL;
+		#define INITOGLEXT(procPtr, func)   func = (procPtr)glXGetProcAddress((const GLubyte *) #func);
+		#define EXTERNOGLEXT(procPtr, func) extern procPtr func;
 	#endif
-
-	#define OGLEXT(procPtr, func)		procPtr func = NULL;
-	#define INITOGLEXT(procPtr, func)	func = (procPtr)glXGetProcAddress((const GLubyte *) #func);
-	#define EXTERNOGLEXT(procPtr, func)	extern procPtr func;
 #endif
 
 // Check minimum OpenGL header version
-#if !defined(GL_VERSION_2_1)
-	#if defined(GL_VERSION_2_0)
-		#warning Using OpenGL v2.0 headers with v2.1 overrides. Some features will be disabled.
-
-		#if !defined(GL_ARB_framebuffer_object)
-			// Overrides for GL_EXT_framebuffer_blit
-			#if !defined(GL_EXT_framebuffer_blit)
-				#define GL_READ_FRAMEBUFFER_EXT		GL_FRAMEBUFFER_EXT
-				#define GL_DRAW_FRAMEBUFFER_EXT		GL_FRAMEBUFFER_EXT
-				#define glBlitFramebufferEXT(srcX0, srcY0, srcX1, srcY1, dstX0, dstY0, dstX1, dstY1, mask, filter)
-			#endif
-
-			// Overrides for GL_EXT_framebuffer_multisample
-			#if !defined(GL_EXT_framebuffer_multisample)
-				#define GL_MAX_SAMPLES_EXT 0
-				#define glRenderbufferStorageMultisampleEXT(target, samples, internalformat, width, height)
-			#endif
-
-			// Overrides for GL_ARB_pixel_buffer_object
-			#if !defined(GL_PIXEL_PACK_BUFFER) && defined(GL_PIXEL_PACK_BUFFER_ARB)
-				#define GL_PIXEL_PACK_BUFFER GL_PIXEL_PACK_BUFFER_ARB
-			#endif
-		#endif
-	#else
-		#error OpenGL requires v2.1 headers or later.
+#if defined(ENABLE_OPENGL_ES)
+	#if !defined(GL_ES_VERSION_3_0)
+		#error OpenGL ES requires v3.0 headers or later.
 	#endif
+#elif defined(ENABLE_OPENGL_STANDARD)
+	#if !defined(GL_VERSION_2_1)
+		#error Standard OpenGL requires v2.1 headers or later.
+	#endif
+#else
+	#error No OpenGL variant selected. You must declare ENABLE_OPENGL_STANDARD or ENABLE_OPENGL_ES in your build configuration.
 #endif
+
+// OPENGL LEGACY CORE FUNCTIONS
 
 // Textures
 #if !defined(GLX_H)
 EXTERNOGLEXT(PFNGLACTIVETEXTUREPROC, glActiveTexture) // Core in v1.3
-EXTERNOGLEXT(PFNGLACTIVETEXTUREARBPROC, glActiveTextureARB)
 #endif
 
 // Blending
+#if !defined(GLX_H)
+EXTERNOGLEXT(PFNGLBLENDCOLORPROC, glBlendColor) // Core in v1.2
+EXTERNOGLEXT(PFNGLBLENDEQUATIONPROC, glBlendEquation) // Core in v1.2
+#endif
 EXTERNOGLEXT(PFNGLBLENDFUNCSEPARATEPROC, glBlendFuncSeparate) // Core in v1.4
 EXTERNOGLEXT(PFNGLBLENDEQUATIONSEPARATEPROC, glBlendEquationSeparate) // Core in v2.0
-
-EXTERNOGLEXT(PFNGLBLENDFUNCSEPARATEEXTPROC, glBlendFuncSeparateEXT)
-EXTERNOGLEXT(PFNGLBLENDEQUATIONSEPARATEEXTPROC, glBlendEquationSeparateEXT)
 
 // Shaders
 EXTERNOGLEXT(PFNGLCREATESHADERPROC, glCreateShader) // Core in v2.0
@@ -130,7 +151,10 @@ EXTERNOGLEXT(PFNGLGETUNIFORMLOCATIONPROC, glGetUniformLocation) // Core in v2.0
 EXTERNOGLEXT(PFNGLUNIFORM1IPROC, glUniform1i) // Core in v2.0
 EXTERNOGLEXT(PFNGLUNIFORM1IVPROC, glUniform1iv) // Core in v2.0
 EXTERNOGLEXT(PFNGLUNIFORM1FPROC, glUniform1f) // Core in v2.0
+EXTERNOGLEXT(PFNGLUNIFORM1FVPROC, glUniform1fv) // Core in v2.0
 EXTERNOGLEXT(PFNGLUNIFORM2FPROC, glUniform2f) // Core in v2.0
+EXTERNOGLEXT(PFNGLUNIFORM4FPROC, glUniform4f) // Core in v2.0
+EXTERNOGLEXT(PFNGLUNIFORM4FVPROC, glUniform4fv) // Core in v2.0
 EXTERNOGLEXT(PFNGLDRAWBUFFERSPROC, glDrawBuffers) // Core in v2.0
 
 // Generic vertex attributes
@@ -139,28 +163,84 @@ EXTERNOGLEXT(PFNGLENABLEVERTEXATTRIBARRAYPROC, glEnableVertexAttribArray) // Cor
 EXTERNOGLEXT(PFNGLDISABLEVERTEXATTRIBARRAYPROC, glDisableVertexAttribArray) // Core in v2.0
 EXTERNOGLEXT(PFNGLVERTEXATTRIBPOINTERPROC, glVertexAttribPointer) // Core in v2.0
 
-// VAO
-EXTERNOGLEXT(PFNGLGENVERTEXARRAYSPROC, glGenVertexArrays)
-EXTERNOGLEXT(PFNGLDELETEVERTEXARRAYSPROC, glDeleteVertexArrays)
-EXTERNOGLEXT(PFNGLBINDVERTEXARRAYPROC, glBindVertexArray)
-
-// VBO and PBO
-EXTERNOGLEXT(PFNGLGENBUFFERSARBPROC, glGenBuffersARB)
-EXTERNOGLEXT(PFNGLDELETEBUFFERSARBPROC, glDeleteBuffersARB)
-EXTERNOGLEXT(PFNGLBINDBUFFERARBPROC, glBindBufferARB)
-EXTERNOGLEXT(PFNGLBUFFERDATAARBPROC, glBufferDataARB)
-EXTERNOGLEXT(PFNGLBUFFERSUBDATAARBPROC, glBufferSubDataARB)
-EXTERNOGLEXT(PFNGLMAPBUFFERARBPROC, glMapBufferARB)
-EXTERNOGLEXT(PFNGLUNMAPBUFFERARBPROC, glUnmapBufferARB)
-
+// Buffer Objects
 EXTERNOGLEXT(PFNGLGENBUFFERSPROC, glGenBuffers) // Core in v1.5
 EXTERNOGLEXT(PFNGLDELETEBUFFERSPROC, glDeleteBuffers) // Core in v1.5
 EXTERNOGLEXT(PFNGLBINDBUFFERPROC, glBindBuffer) // Core in v1.5
 EXTERNOGLEXT(PFNGLBUFFERDATAPROC, glBufferData) // Core in v1.5
 EXTERNOGLEXT(PFNGLBUFFERSUBDATAPROC, glBufferSubData) // Core in v1.5
+#if defined(GL_VERSION_1_5)
 EXTERNOGLEXT(PFNGLMAPBUFFERPROC, glMapBuffer) // Core in v1.5
+#endif
 EXTERNOGLEXT(PFNGLUNMAPBUFFERPROC, glUnmapBuffer) // Core in v1.5
 
+// OPENGL CORE FUNCTIONS ADDED IN 3.2 CORE PROFILE AND VARIANTS
+#if defined(GL_VERSION_3_0) || defined(GL_ES_VERSION_3_0)
+
+// Basic Functions
+EXTERNOGLEXT(PFNGLGETSTRINGIPROC, glGetStringi) // Core in v3.0 and ES v3.0
+EXTERNOGLEXT(PFNGLCLEARBUFFERFVPROC, glClearBufferfv) // Core in v3.0 and ES v3.0
+EXTERNOGLEXT(PFNGLCLEARBUFFERFIPROC, glClearBufferfi) // Core in v3.0 and ES v3.0
+
+// Shaders
+#if defined(GL_VERSION_3_0)
+EXTERNOGLEXT(PFNGLBINDFRAGDATALOCATIONPROC, glBindFragDataLocation) // Core in v3.0, not available in ES
+#endif
+#if defined(GL_VERSION_3_3) || defined(GL_ARB_blend_func_extended)
+EXTERNOGLEXT(PFNGLBINDFRAGDATALOCATIONINDEXEDPROC, glBindFragDataLocationIndexed) // Core in v3.3, not available in ES
+#endif
+
+// Buffer Objects
+EXTERNOGLEXT(PFNGLMAPBUFFERRANGEPROC, glMapBufferRange) // Core in v3.0 and ES v3.0
+
+// Vertex Array Objects
+EXTERNOGLEXT(PFNGLGENVERTEXARRAYSPROC, glGenVertexArrays) // Core in v3.0 and ES v3.0
+EXTERNOGLEXT(PFNGLDELETEVERTEXARRAYSPROC, glDeleteVertexArrays) // Core in v3.0 and ES v3.0
+EXTERNOGLEXT(PFNGLBINDVERTEXARRAYPROC, glBindVertexArray) // Core in v3.0 and ES v3.0
+
+// FBO
+EXTERNOGLEXT(PFNGLGENFRAMEBUFFERSPROC, glGenFramebuffers) // Core in v3.0 and ES v2.0
+EXTERNOGLEXT(PFNGLBINDFRAMEBUFFERPROC, glBindFramebuffer) // Core in v3.0 and ES v2.0
+EXTERNOGLEXT(PFNGLFRAMEBUFFERRENDERBUFFERPROC, glFramebufferRenderbuffer) // Core in v3.0 and ES v2.0
+EXTERNOGLEXT(PFNGLFRAMEBUFFERTEXTURE2DPROC, glFramebufferTexture2D) // Core in v3.0 and ES v2.0
+EXTERNOGLEXT(PFNGLCHECKFRAMEBUFFERSTATUSPROC, glCheckFramebufferStatus) // Core in v3.0 and ES v2.0
+EXTERNOGLEXT(PFNGLDELETEFRAMEBUFFERSPROC, glDeleteFramebuffers) // Core in v3.0 and ES v2.0
+EXTERNOGLEXT(PFNGLBLITFRAMEBUFFERPROC, glBlitFramebuffer) // Core in v3.0 and ES v3.0
+
+// Multisampled FBO
+EXTERNOGLEXT(PFNGLGENRENDERBUFFERSPROC, glGenRenderbuffers) // Core in v3.0 and ES v2.0
+EXTERNOGLEXT(PFNGLBINDRENDERBUFFERPROC, glBindRenderbuffer) // Core in v3.0 and ES v2.0
+EXTERNOGLEXT(PFNGLRENDERBUFFERSTORAGEPROC, glRenderbufferStorage) // Core in v3.0 and ES v2.0
+EXTERNOGLEXT(PFNGLRENDERBUFFERSTORAGEMULTISAMPLEPROC, glRenderbufferStorageMultisample) // Core in v3.0 and ES v3.0
+EXTERNOGLEXT(PFNGLDELETERENDERBUFFERSPROC, glDeleteRenderbuffers) // Core in v3.0 and ES v2.0
+#if defined(GL_VERSION_3_2) || defined(GL_ARB_texture_multisample)
+EXTERNOGLEXT(PFNGLTEXIMAGE2DMULTISAMPLEPROC, glTexImage2DMultisample) // Core in v3.2, not available in ES
+#endif
+
+// UBO
+EXTERNOGLEXT(PFNGLGETUNIFORMBLOCKINDEXPROC, glGetUniformBlockIndex) // Core in v3.1 and ES v3.0
+EXTERNOGLEXT(PFNGLUNIFORMBLOCKBINDINGPROC, glUniformBlockBinding) // Core in v3.1 and ES v3.0
+EXTERNOGLEXT(PFNGLBINDBUFFERBASEPROC, glBindBufferBase) // Core in v3.0 and ES v3.0
+EXTERNOGLEXT(PFNGLGETACTIVEUNIFORMBLOCKIVPROC, glGetActiveUniformBlockiv) // Core in v3.1 and ES v3.0
+
+// TBO
+#if defined(GL_VERSION_3_1) || defined(GL_ES_VERSION_3_2)
+EXTERNOGLEXT(PFNGLTEXBUFFERPROC, glTexBuffer) // Core in v3.1 and ES v3.2
+#endif
+
+// Sync Objects
+EXTERNOGLEXT(PFNGLFENCESYNCPROC, glFenceSync) // Core in v3.2 and ES v3.0
+EXTERNOGLEXT(PFNGLWAITSYNCPROC, glWaitSync) // Core in v3.2 and ES v3.0
+EXTERNOGLEXT(PFNGLCLIENTWAITSYNCPROC, glClientWaitSync) // Core in v3.2 and ES v3.0
+EXTERNOGLEXT(PFNGLDELETESYNCPROC, glDeleteSync) // Core in v3.2 and ES v3.0
+
+#endif // GL_VERSION_3_0 || GL_ES_VERSION_3_0
+
+// OPENGL FBO EXTENSIONS
+// We need to include these explicitly for OpenGL legacy mode since the EXT versions of FBOs
+// may work differently than their ARB counterparts when running on older drivers.
+
+#if defined(GL_EXT_framebuffer_object)
 // FBO
 EXTERNOGLEXT(PFNGLGENFRAMEBUFFERSEXTPROC, glGenFramebuffersEXT)
 EXTERNOGLEXT(PFNGLBINDFRAMEBUFFEREXTPROC, glBindFramebufferEXT)
@@ -177,108 +257,211 @@ EXTERNOGLEXT(PFNGLRENDERBUFFERSTORAGEEXTPROC, glRenderbufferStorageEXT)
 EXTERNOGLEXT(PFNGLRENDERBUFFERSTORAGEMULTISAMPLEEXTPROC, glRenderbufferStorageMultisampleEXT)
 EXTERNOGLEXT(PFNGLDELETERENDERBUFFERSEXTPROC, glDeleteRenderbuffersEXT)
 
-#else // OGLRENDER_3_2_H
+#elif defined(GL_ARB_framebuffer_object) || defined(GL_ES_VERSION_3_0)
+// Most OpenGL variants don't have GL_EXT_framebuffer_object, so redeclare all the ARB versions
+// to their EXT versions to avoid compile time errors in OGLRender.cpp.
+//
+// In practice, class objects for more modern variants like 3.2 Core Profile and ES 3.0 should
+// override all the methods that would use FBOs so that only the ARB versions are actually used.
 
-// Basic Functions
-EXTERNOGLEXT(PFNGLGETSTRINGIPROC, glGetStringi) // Core in v3.0
-
-// Textures
-#if !defined(GLX_H)
-EXTERNOGLEXT(PFNGLACTIVETEXTUREPROC, glActiveTexture) // Core in v1.3
+#ifndef GL_EXT_draw_buffers
+#define GL_MAX_COLOR_ATTACHMENTS_EXT GL_MAX_COLOR_ATTACHMENTS
+#define GL_COLOR_ATTACHMENT0_EXT     GL_COLOR_ATTACHMENT0
+#define GL_COLOR_ATTACHMENT1_EXT     GL_COLOR_ATTACHMENT1
+#define GL_COLOR_ATTACHMENT2_EXT     GL_COLOR_ATTACHMENT2
+#define GL_COLOR_ATTACHMENT3_EXT     GL_COLOR_ATTACHMENT3
 #endif
 
-// Blending
-EXTERNOGLEXT(PFNGLBLENDFUNCSEPARATEPROC, glBlendFuncSeparate) // Core in v1.4
-EXTERNOGLEXT(PFNGLBLENDEQUATIONSEPARATEPROC, glBlendEquationSeparate) // Core in v2.0
+#ifndef GL_EXT_multisampled_render_to_texture
+#define GL_MAX_SAMPLES_EXT           GL_MAX_SAMPLES
+#endif
 
-// Shaders
-EXTERNOGLEXT(PFNGLCREATESHADERPROC, glCreateShader) // Core in v2.0
-EXTERNOGLEXT(PFNGLSHADERSOURCEPROC, glShaderSource) // Core in v2.0
-EXTERNOGLEXT(PFNGLCOMPILESHADERPROC, glCompileShader) // Core in v2.0
-EXTERNOGLEXT(PFNGLCREATEPROGRAMPROC, glCreateProgram) // Core in v2.0
-EXTERNOGLEXT(PFNGLATTACHSHADERPROC, glAttachShader) // Core in v2.0
-EXTERNOGLEXT(PFNGLDETACHSHADERPROC, glDetachShader) // Core in v2.0
-EXTERNOGLEXT(PFNGLLINKPROGRAMPROC, glLinkProgram) // Core in v2.0
-EXTERNOGLEXT(PFNGLUSEPROGRAMPROC, glUseProgram) // Core in v2.0
-EXTERNOGLEXT(PFNGLGETSHADERIVPROC, glGetShaderiv) // Core in v2.0
-EXTERNOGLEXT(PFNGLGETSHADERINFOLOGPROC, glGetShaderInfoLog) // Core in v2.0
-EXTERNOGLEXT(PFNGLDELETESHADERPROC, glDeleteShader) // Core in v2.0
-EXTERNOGLEXT(PFNGLDELETEPROGRAMPROC, glDeleteProgram) // Core in v2.0
-EXTERNOGLEXT(PFNGLGETPROGRAMIVPROC, glGetProgramiv) // Core in v2.0
-EXTERNOGLEXT(PFNGLGETPROGRAMINFOLOGPROC, glGetProgramInfoLog) // Core in v2.0
-EXTERNOGLEXT(PFNGLVALIDATEPROGRAMPROC, glValidateProgram) // Core in v2.0
-EXTERNOGLEXT(PFNGLGETUNIFORMLOCATIONPROC, glGetUniformLocation) // Core in v2.0
-EXTERNOGLEXT(PFNGLUNIFORM1IPROC, glUniform1i) // Core in v2.0
-EXTERNOGLEXT(PFNGLUNIFORM1IVPROC, glUniform1iv) // Core in v2.0
-EXTERNOGLEXT(PFNGLUNIFORM1FPROC, glUniform1f) // Core in v2.0
-EXTERNOGLEXT(PFNGLUNIFORM2FPROC, glUniform2f) // Core in v2.0
-EXTERNOGLEXT(PFNGLDRAWBUFFERSPROC, glDrawBuffers) // Core in v2.0
+#define GL_DEPTH24_STENCIL8_EXT      GL_DEPTH24_STENCIL8
+#define GL_DEPTH_STENCIL_EXT         GL_DEPTH_STENCIL
+#define GL_UNSIGNED_INT_24_8_EXT     GL_UNSIGNED_INT_24_8
+#define GL_FRAMEBUFFER_EXT           GL_FRAMEBUFFER
+#define GL_FRAMEBUFFER_COMPLETE_EXT  GL_FRAMEBUFFER_COMPLETE
+#define GL_DEPTH_ATTACHMENT_EXT      GL_DEPTH_ATTACHMENT
+#define GL_STENCIL_ATTACHMENT_EXT    GL_STENCIL_ATTACHMENT
+#define GL_RENDERBUFFER_EXT          GL_RENDERBUFFER
+#define GL_DRAW_FRAMEBUFFER_EXT      GL_DRAW_FRAMEBUFFER
+#define GL_READ_FRAMEBUFFER_EXT      GL_READ_FRAMEBUFFER
 
-// Generic vertex attributes
-EXTERNOGLEXT(PFNGLBINDATTRIBLOCATIONPROC, glBindAttribLocation) // Core in v2.0
-EXTERNOGLEXT(PFNGLBINDFRAGDATALOCATIONPROC, glBindFragDataLocation) // Core in v3.0
-EXTERNOGLEXT(PFNGLENABLEVERTEXATTRIBARRAYPROC, glEnableVertexAttribArray) // Core in v2.0
-EXTERNOGLEXT(PFNGLDISABLEVERTEXATTRIBARRAYPROC, glDisableVertexAttribArray) // Core in v2.0
-EXTERNOGLEXT(PFNGLVERTEXATTRIBPOINTERPROC, glVertexAttribPointer) // Core in v2.0
+#define glGenFramebuffersEXT(n, framebuffers) glGenFramebuffers(n, framebuffers)
+#define glBindFramebufferEXT(target, framebuffer) glBindFramebuffer(target, framebuffer)
+#define glFramebufferRenderbufferEXT(target, attachment, renderbuffertarget, renderbuffer) glFramebufferRenderbuffer(target, attachment, renderbuffertarget, renderbuffer)
+#define glFramebufferTexture2DEXT(target, attachment, textarget, texture, level) glFramebufferTexture2D(target, attachment, textarget, texture, level)
+#define glCheckFramebufferStatusEXT(target) glCheckFramebufferStatus(target)
+#define glDeleteFramebuffersEXT(n, framebuffers) glDeleteFramebuffers(n, framebuffers)
+#define glBlitFramebufferEXT(srcX0, srcY0, srcX1, srcY1, dstX0, dstY0, dstX1, dstY1, mask, filter) glBlitFramebuffer(srcX0, srcY0, srcX1, srcY1, dstX0, dstY0, dstX1, dstY1, mask, filter)
 
-// VAO
-EXTERNOGLEXT(PFNGLGENVERTEXARRAYSPROC, glGenVertexArrays) // Core in v3.0
-EXTERNOGLEXT(PFNGLDELETEVERTEXARRAYSPROC, glDeleteVertexArrays) // Core in v3.0
-EXTERNOGLEXT(PFNGLBINDVERTEXARRAYPROC, glBindVertexArray) // Core in v3.0
+#define glGenRenderbuffersEXT(n, renderbuffers) glGenRenderbuffers(n, renderbuffers)
+#define glBindRenderbufferEXT(target, renderbuffer) glBindRenderbuffer(target, renderbuffer)
+#define glRenderbufferStorageEXT(target, internalformat, width, height) glRenderbufferStorage(target, internalformat, width, height)
+#define glRenderbufferStorageMultisampleEXT(target, samples, internalformat, width, height) glRenderbufferStorageMultisample(target, samples, internalformat, width, height)
+#define glDeleteRenderbuffersEXT(n, renderbuffers) glDeleteRenderbuffers(n, renderbuffers)
 
-// VBO and PBO
-EXTERNOGLEXT(PFNGLGENBUFFERSPROC, glGenBuffers) // Core in v1.5
-EXTERNOGLEXT(PFNGLDELETEBUFFERSPROC, glDeleteBuffers) // Core in v1.5
-EXTERNOGLEXT(PFNGLBINDBUFFERPROC, glBindBuffer) // Core in v1.5
-EXTERNOGLEXT(PFNGLBUFFERDATAPROC, glBufferData) // Core in v1.5
-EXTERNOGLEXT(PFNGLBUFFERSUBDATAPROC, glBufferSubData) // Core in v1.5
-EXTERNOGLEXT(PFNGLMAPBUFFERPROC, glMapBuffer) // Core in v1.5
-EXTERNOGLEXT(PFNGLUNMAPBUFFERPROC, glUnmapBuffer) // Core in v1.5
+#endif // GL_EXT_framebuffer_object
 
-// FBO
-EXTERNOGLEXT(PFNGLGENFRAMEBUFFERSPROC, glGenFramebuffers) // Core in v3.0
-EXTERNOGLEXT(PFNGLBINDFRAMEBUFFERPROC, glBindFramebuffer) // Core in v3.0
-EXTERNOGLEXT(PFNGLFRAMEBUFFERRENDERBUFFERPROC, glFramebufferRenderbuffer) // Core in v3.0
-EXTERNOGLEXT(PFNGLFRAMEBUFFERTEXTURE2DPROC, glFramebufferTexture2D) // Core in v3.0
-EXTERNOGLEXT(PFNGLCHECKFRAMEBUFFERSTATUSPROC, glCheckFramebufferStatus) // Core in v3.0
-EXTERNOGLEXT(PFNGLDELETEFRAMEBUFFERSPROC, glDeleteFramebuffers) // Core in v3.0
-EXTERNOGLEXT(PFNGLBLITFRAMEBUFFERPROC, glBlitFramebuffer) // Core in v3.0
-EXTERNOGLEXT(PFNGLDRAWBUFFERSPROC, glDrawBuffers) // Core in v2.0
+// OPENGL APPLE EXTENSIONS
+// There are some useful Apple extensions that can provide performance improvements
+// or functionality in legacy OpenGL that is similar to their v3.2 Core Profile
+// counterparts.
 
-// Multisampled FBO
-EXTERNOGLEXT(PFNGLGENRENDERBUFFERSPROC, glGenRenderbuffers) // Core in v3.0
-EXTERNOGLEXT(PFNGLBINDRENDERBUFFERPROC, glBindRenderbuffer) // Core in v3.0
-EXTERNOGLEXT(PFNGLRENDERBUFFERSTORAGEPROC, glRenderbufferStorage) // Core in v3.0
-EXTERNOGLEXT(PFNGLRENDERBUFFERSTORAGEMULTISAMPLEPROC, glRenderbufferStorageMultisample) // Core in v3.0
-EXTERNOGLEXT(PFNGLDELETERENDERBUFFERSPROC, glDeleteRenderbuffers) // Core in v3.0
+#if defined(GL_APPLE_vertex_array_object)
+EXTERNOGLEXT(PFNGLBINDVERTEXARRAYAPPLEPROC, glBindVertexArrayAPPLE)
+EXTERNOGLEXT(PFNGLDELETEVERTEXARRAYSAPPLEPROC, glDeleteVertexArraysAPPLE)
+EXTERNOGLEXT(PFNGLGENVERTEXARRAYSAPPLEPROC, glGenVertexArraysAPPLE)
+#endif
 
-#endif // OGLRENDER_3_2_H
+#if defined(GL_APPLE_texture_range)
+EXTERNOGLEXT(PFNGLTEXTURERANGEAPPLEPROC, glTextureRangeAPPLE)
+#endif
 
-// Define the minimum required OpenGL version for the driver to support
-#define OGLRENDER_MINIMUM_DRIVER_VERSION_REQUIRED_MAJOR			1
-#define OGLRENDER_MINIMUM_DRIVER_VERSION_REQUIRED_MINOR			2
-#define OGLRENDER_MINIMUM_DRIVER_VERSION_REQUIRED_REVISION		0
+// Some headers, such as the OpenGL ES headers, may not include this token.
+// Add it manually to avoid compiling issues.
+#ifndef GL_BGRA
+	#define GL_BGRA GL_BGRA_EXT
+#endif
 
-#define OGLRENDER_MAX_MULTISAMPLES			16
-#define OGLRENDER_VERT_INDEX_BUFFER_COUNT	131072
+// OpenGL ES headers before 3.2 don't have this token, so manually define it here.
+#ifndef GL_TEXTURE_BUFFER
+	#define GL_TEXTURE_BUFFER 0x8C2A
+#endif
+
+// OPENGL CORE EQUIVALENTS FOR LEGACY FUNCTIONS
+// Some OpenGL variants, such as OpenGL ES, do not include certain legacy functions in their
+// API. The loss of these functions will cause compile time errors when referenced, and so
+// we will redeclare them to something that is supported for the sake of compiling.
+//
+// Do note that a redeclared function will most likely not work in exactly the same way as
+// a native legacy version, and so implmentations are responsible for overriding any methods
+// that use these legacy functions to whatever is available in the specific OpenGL variant.
+
+#ifndef GL_VERSION_1_2
+	// These legacy functions can be promoted to later core equivalents without any further
+	// modification. In other words, these are one-to-one drop-in replacements.
+	typedef GLclampf GLclampd;
+	#define glClearDepth(depth) glClearDepthf(depth)
+
+	// 1D textures may not exist for a particular OpenGL variant, so they will be promoted to
+	// 2D textures instead. Implementations need to modify their GLSL shaders accordingly to
+	// treat any 1D textures as 2D textures instead.
+	#define GL_TEXTURE_1D GL_TEXTURE_2D
+	#define glTexImage1D(target, level, internalformat, width, border, format, type, pixels) glTexImage2D(target, level, internalformat, width, 1, border, format, type, pixels)
+	#define glTexSubImage1D(target, level, xoffset, width, format, type, pixels) glTexSubImage2D(target, level, xoffset, 0, width, 1, format, type, pixels)
+#endif
+
+#ifndef GL_VERSION_1_5
+	// Calling glMapBuffer with an OpenGL variant that forgoes legacy functions will cause a
+	// GL_INVALID_OPERATION error if used in practice. Implementations need to override any
+	// methods that would call glMapBuffer with glMapBufferRange.
+	#define GL_READ_ONLY  GL_MAP_READ_BIT
+	#define GL_WRITE_ONLY GL_MAP_WRITE_BIT
+	#define glMapBuffer(target, access) glMapBufferRange(target, 0, 0, access)
+#endif
+
+// Define the minimum required OpenGL version for the context to support
+#define OGLRENDER_STANDARD_MINIMUM_CONTEXT_VERSION_REQUIRED_MAJOR    1
+#define OGLRENDER_STANDARD_MINIMUM_CONTEXT_VERSION_REQUIRED_MINOR    2
+#define OGLRENDER_STANDARD_MINIMUM_CONTEXT_VERSION_REQUIRED_REVISION 0
+#define OGLRENDER_ES_MINIMUM_CONTEXT_VERSION_REQUIRED_MAJOR    3
+#define OGLRENDER_ES_MINIMUM_CONTEXT_VERSION_REQUIRED_MINOR    0
+#define OGLRENDER_ES_MINIMUM_CONTEXT_VERSION_REQUIRED_REVISION 0
+
+#define OGLRENDER_VERT_INDEX_BUFFER_COUNT	(CLIPPED_POLYLIST_SIZE * 6)
+
+// Assign the FBO attachments for the main geometry render
+#if defined(GL_VERSION_3_0) || defined(GL_ES_VERSION_3_0)
+	#define OGL_COLOROUT_ATTACHMENT_ID         GL_COLOR_ATTACHMENT0
+	#define OGL_WORKING_ATTACHMENT_ID          GL_COLOR_ATTACHMENT1
+	#define OGL_POLYID_ATTACHMENT_ID           GL_COLOR_ATTACHMENT2
+	#define OGL_FOGATTRIBUTES_ATTACHMENT_ID    GL_COLOR_ATTACHMENT3
+
+	#define OGL_CI_COLOROUT_ATTACHMENT_ID      GL_COLOR_ATTACHMENT0
+	#define OGL_CI_FOGATTRIBUTES_ATTACHMENT_ID GL_COLOR_ATTACHMENT1
+#else
+	#define OGL_COLOROUT_ATTACHMENT_ID         GL_COLOR_ATTACHMENT0_EXT
+	#define OGL_WORKING_ATTACHMENT_ID          GL_COLOR_ATTACHMENT1_EXT
+	#define OGL_POLYID_ATTACHMENT_ID           GL_COLOR_ATTACHMENT2_EXT
+	#define OGL_FOGATTRIBUTES_ATTACHMENT_ID    GL_COLOR_ATTACHMENT3_EXT
+
+	#define OGL_CI_COLOROUT_ATTACHMENT_ID      GL_COLOR_ATTACHMENT0_EXT
+	#define OGL_CI_FOGATTRIBUTES_ATTACHMENT_ID GL_COLOR_ATTACHMENT1_EXT
+#endif
+
+enum OpenGLVariantID
+{
+	OpenGLVariantID_Unknown         = 0,
+	OpenGLVariantID_LegacyAuto      = 0x1000,
+	OpenGLVariantID_Legacy_1_2      = 0x1012,
+	OpenGLVariantID_Legacy_1_3      = 0x1013,
+	OpenGLVariantID_Legacy_1_4      = 0x1014,
+	OpenGLVariantID_Legacy_1_5      = 0x1015,
+	OpenGLVariantID_Legacy_2_0      = 0x1020,
+	OpenGLVariantID_Legacy_2_1      = 0x1021,
+	OpenGLVariantID_CoreProfile_3_2 = 0x2032,
+	OpenGLVariantID_CoreProfile_3_3 = 0x2033,
+	OpenGLVariantID_CoreProfile_4_0 = 0x2040,
+	OpenGLVariantID_CoreProfile_4_1 = 0x2041,
+	OpenGLVariantID_CoreProfile_4_2 = 0x2042,
+	OpenGLVariantID_CoreProfile_4_3 = 0x2043,
+	OpenGLVariantID_CoreProfile_4_4 = 0x2044,
+	OpenGLVariantID_CoreProfile_4_5 = 0x2045,
+	OpenGLVariantID_CoreProfile_4_6 = 0x2046,
+	OpenGLVariantID_StandardAuto    = 0x3000,
+	OpenGLVariantID_ES3_Auto        = 0x4000,
+	OpenGLVariantID_ES3_3_0         = 0x4030,
+	OpenGLVariantID_ES3_3_1         = 0x4031,
+	OpenGLVariantID_ES3_3_2         = 0x4032,
+	OpenGLVariantID_ES_Auto         = 0x6000
+};
+
+enum OpenGLVariantFamily
+{
+	OpenGLVariantFamily_Standard    = (3 << 12),
+	OpenGLVariantFamily_Legacy      = (1 << 12),
+	OpenGLVariantFamily_CoreProfile = (1 << 13),
+	OpenGLVariantFamily_ES          = (3 << 14),
+	OpenGLVariantFamily_ES3         = (1 << 14)
+};
 
 enum OGLVertexAttributeID
 {
 	OGLVertexAttributeID_Position	= 0,
 	OGLVertexAttributeID_TexCoord0	= 8,
-	OGLVertexAttributeID_Color		= 3,
+	OGLVertexAttributeID_Color		= 3
 };
 
 enum OGLTextureUnitID
 {
 	// Main textures will always be on texture unit 0.
-	OGLTextureUnitID_ToonTable = 1,
-	OGLTextureUnitID_ClearImage
+	OGLTextureUnitID_FinalColor = 1,
+	OGLTextureUnitID_GColor,
+	OGLTextureUnitID_DepthStencil,
+	OGLTextureUnitID_GPolyID,
+	OGLTextureUnitID_FogAttr,
+	OGLTextureUnitID_PolyStates,
+	OGLTextureUnitID_LookupTable,
+	OGLTextureUnitID_CIColor,
+	OGLTextureUnitID_CIDepth,
+	OGLTextureUnitID_CIFogAttr
+};
+
+enum OGLBindingPointID
+{
+	OGLBindingPointID_RenderStates = 0,
+	OGLBindingPointID_PolyStates = 1
 };
 
 enum OGLErrorCode
 {
 	OGLERROR_NOERR = RENDER3DERROR_NOERR,
+	
+	OGLERROR_DRIVER_VERSION_TOO_OLD = 20000,
+	
+	OGLERROR_BEGINGL_FAILED,
+	OGLERROR_CLIENT_RESIZE_ERROR,
 	
 	OGLERROR_FEATURE_UNSUPPORTED,
 	OGLERROR_VBO_UNSUPPORTED,
@@ -295,79 +478,291 @@ enum OGLErrorCode
 	OGLERROR_FBO_CREATE_ERROR
 };
 
-struct OGLRenderRef
-{	
-	// OpenGL Feature Support
+enum OGLPolyDrawMode
+{
+	OGLPolyDrawMode_DrawOpaquePolys			= 0,
+	OGLPolyDrawMode_DrawTranslucentPolys	= 1,
+	OGLPolyDrawMode_ZeroAlphaPass			= 2
+};
+
+union GLvec4
+{
+	GLfloat vec[4];
+	struct { GLfloat r, g, b, a; };
+	struct { GLfloat x, y, z, w; };
+};
+typedef union GLvec4 GLvec4;
+
+struct OGLRenderStates
+{
+	GLuint enableAntialiasing;
+	GLuint enableFogAlphaOnly;
+	GLuint clearPolyID;
+	GLfloat clearDepth;
+	GLfloat alphaTestRef;
+	GLfloat fogOffset; // Currently unused, kept to preserve alignment
+	GLfloat fogStep; // Currently unused, kept to preserve alignment
+	GLfloat pad_0; // This needs to be here to preserve alignment
+	GLvec4 fogColor;
+	GLvec4 edgeColor[8];
+	GLvec4 toonColor[32];
+};
+typedef struct OGLRenderStates OGLRenderStates;
+
+union OGLPolyStates
+{
+	u32 packedState;
+	
+	struct
+	{
+		u8 PolygonID:6;
+		u8 PolygonMode:2;
+		
+		u8 PolygonAlpha:5;
+		u8 IsWireframe:1;
+		u8 EnableFog:1;
+		u8 SetNewDepthForTranslucent:1;
+		
+		u8 EnableTexture:1;
+		u8 TexSingleBitAlpha:1;
+		u8 TexSizeShiftS:3;
+		u8 TexSizeShiftT:3;
+		
+		u8 IsBackFacing:1;
+		u8 :7;
+	};
+};
+typedef union OGLPolyStates OGLPolyStates;
+
+union OGLGeometryFlags
+{
+	u8 value;
+	
+#ifndef MSB_FIRST
+	struct
+	{
+		u8 EnableFog:1;
+		u8 EnableEdgeMark:1;
+		u8 OpaqueDrawMode:1;
+		u8 EnableWDepth:1;
+		u8 EnableAlphaTest:1;
+		u8 EnableTextureSampling:1;
+		u8 ToonShadingMode:1;
+		u8 unused:1;
+	};
+	
+	struct
+	{
+		u8 DrawBuffersMode:3;
+		u8 :5;
+	};
+#else
+	struct
+	{
+		u8 unused:1;
+		u8 ToonShadingMode:1;
+		u8 EnableTextureSampling:1;
+		u8 EnableAlphaTest:1;
+		u8 EnableWDepth:1;
+		u8 OpaqueDrawMode:1;
+		u8 EnableEdgeMark:1;
+		u8 EnableFog:1;
+	};
+	
+	struct
+	{
+		u8 :5;
+		u8 DrawBuffersMode:3;
+	};
+#endif
+};
+typedef OGLGeometryFlags OGLGeometryFlags;
+
+union OGLFogProgramKey
+{
+	u32 key;
+	
+	struct
+	{
+		u16 offset;
+		u8 shift;
+		u8 :8;
+	};
+};
+typedef OGLFogProgramKey OGLFogProgramKey;
+
+struct OGLFogShaderID
+{
+	GLuint program;
+	GLuint fragShader;
+};
+typedef OGLFogShaderID OGLFogShaderID;
+
+struct OGLFeatureInfo
+{
+	OpenGLVariantID variantID;
+	
+	bool supportTextureMirroredRepeat; // Core in v1.4
+	bool supportBlendFuncSeparate;     // Core in v1.4
+	bool supportBlendEquationSeparate; // Core in v2.0
+	bool supportMapBufferRange;        // Core in v3.0 and ES v3.0
+	bool supportVBO;                   // Core in v1.5
+	bool supportPBO;                   // Core in v2.1
+	bool supportFBO;                   // Core in v3.0 and ES v2.0
+	bool supportFBOBlit;               // Core in v3.0 and ES v3.0
+	bool supportMultisampledFBO;       // Core in v3.0 and ES v2.0
+	bool supportVAO;                   // Core in v3.0 and ES v3.0
+	bool supportVAO_APPLE;             // GL_APPLE_vertex_array_object
+	bool supportUBO;                   // Core in v3.1 and ES v3.0
+	bool supportUBO64K;                // Core in v3.1 and ES v3.0
+	bool supportTBO;                   // Core in v3.1 and ES v3.2
+	bool supportShaders;               // Core in v2.0
+	bool supportSampleShading;         // Core in v3.2, not available in ES
+	bool supportShaderFixedLocation;   // Core in v3.3, not available in ES
+	bool supportConservativeDepth;     // Core in v4.0, not available in ES
+	bool supportConservativeDepth_AMD; // GL_AMD_conservative_depth
+	
+	bool supportTextureRange_APPLE;    // GL_APPLE_texture_range
+	bool supportClientStorage_APPLE;   // GL_APPLE_client_storage
+	
 	GLint stateTexMirroredRepeat;
+	GLint readPixelsBestFormat;
+	GLint readPixelsBestDataType;
+};
+typedef OGLFeatureInfo OGLFeatureInfo;
+
+struct OGLRenderRef
+{
+	// OpenGL Feature Support
+	GLenum textureSrcTypeCIColor;
+	GLenum textureSrcTypeCIFog;
+	GLenum textureSrcTypeEdgeColor;
+	GLenum textureSrcTypeToonTable;
 	
 	// VBO
-	GLuint vboVertexID;
-	GLuint iboIndexID;
-	
-	// PBO
-	GLuint pboRenderDataID[2];
+	GLuint vboGeometryVtxID;
+	GLuint iboGeometryIndexID;
+	GLuint vboPostprocessVtxID;
 	
 	// FBO
-	GLuint texClearImageColorID;
-	GLuint texClearImageDepthStencilID;
+	GLuint texCIColorID;
+	GLuint texCIFogAttrID;
+	GLuint texCIDepthStencilID;
 	
-	GLuint rboFragColorID;
-	GLuint rboFragDepthStencilID;
-	GLuint rboMSFragColorID;
-	GLuint rboMSFragDepthStencilID;
+	GLuint texGColorID;
+	GLuint texGFogAttrID;
+	GLuint texGPolyID;
+	GLuint texGDepthStencilID;
+	GLuint texFinalColorID;
+	GLuint texFogDensityTableID;
+	GLuint texToonTableID;
+	GLuint texEdgeColorTableID;
+	GLuint texMSGColorID;
+	GLuint texMSGWorkingID;
+	GLuint texMSGDepthStencilID;
+	GLuint texMSGPolyID;
+	GLuint texMSGFogAttrID;
+	
+	GLuint rboMSGColorID;
+	GLuint rboMSGWorkingID;
+	GLuint rboMSGPolyID;
+	GLuint rboMSGFogAttrID;
+	GLuint rboMSGDepthStencilID;
 	
 	GLuint fboClearImageID;
-	GLuint fboMSIntermediateRenderID;
 	GLuint fboRenderID;
+	GLuint fboMSClearImageID;
+	GLuint fboMSIntermediateRenderID;
 	GLuint selectedRenderingFBO;
 	
 	// Shader states
-	GLuint vertexShaderID;
-	GLuint fragmentShaderID;
-	GLuint shaderProgram;
+	GLuint vertexGeometryShaderID;
+	GLuint fragmentGeometryShaderID[128];
+	GLuint programGeometryID[128];
 	
-	GLint uniformTexScale;
+	GLuint vtxShaderGeometryZeroDstAlphaID;
+	GLuint fragShaderGeometryZeroDstAlphaID;
+	GLuint programGeometryZeroDstAlphaID;
 	
-	GLint uniformStateToonShadingMode;
-	GLint uniformStateEnableAlphaTest;
-	GLint uniformStateUseWDepth;
-	GLint uniformStateAlphaTestRef;
+	GLuint vsClearImageID;
+	GLuint fsClearImageID;
+	GLuint pgClearImageID;
 	
-	GLint uniformPolyMode;
-	GLint uniformPolyAlpha;
-	GLint uniformPolyID;
+	GLuint vtxShaderMSGeometryZeroDstAlphaID;
+	GLuint fragShaderMSGeometryZeroDstAlphaID;
+	GLuint programMSGeometryZeroDstAlphaID;
 	
-	GLint uniformPolyEnableTexture;
+	GLuint vertexMSEdgeMarkShaderID;
+	GLuint fragmentMSEdgeMarkShaderID;
+	GLuint programMSEdgeMarkID;
 	
-	GLuint texToonTableID;
+	GLuint vertexEdgeMarkShaderID;
+	GLuint vertexFogShaderID;
+	GLuint fragmentEdgeMarkShaderID;
+	GLuint programEdgeMarkID;
+	
+	GLint uniformStateEnableFogAlphaOnly;
+	GLint uniformStateClearPolyID;
+	GLint uniformStateClearDepth;
+	
+	GLint uniformStateAlphaTestRef[256];
+	GLint uniformPolyTexScale[256];
+	GLint uniformPolyMode[256];
+	GLint uniformPolyIsWireframe[256];
+	GLint uniformPolySetNewDepthForTranslucent[256];
+	GLint uniformPolyAlpha[256];
+	GLint uniformPolyID[256];
+	
+	GLint uniformPolyEnableTexture[256];
+	GLint uniformPolyEnableFog[256];
+	GLint uniformTexSingleBitAlpha[256];
+	GLint uniformTexDrawOpaque[256];
+	GLint uniformDrawModeDepthEqualsTest[256];
+	GLint uniformPolyIsBackFacing[256];
+	
+	GLint uniformPolyStateIndex[256];
+	GLfloat uniformPolyDepthOffset[256];
+	GLint uniformPolyDrawShadow[256];
 	
 	// VAO
-	GLuint vaoMainStatesID;
-	
-	// Textures
-	std::queue<GLuint> freeTextureIDs;
+	GLuint vaoGeometryStatesID;
+	GLuint vaoPostprocessStatesID;
 	
 	// Client-side Buffers
+	GLfloat *position4fBuffer;
+	GLfloat *texCoord2fBuffer;
 	GLfloat *color4fBuffer;
 	CACHE_ALIGN GLushort vertIndexBuffer[OGLRENDER_VERT_INDEX_BUFFER_COUNT];
+	CACHE_ALIGN GLuint toonTable32[32];
+	CACHE_ALIGN GLushort workingCIColorBuffer16[GPU_FRAMEBUFFER_NATIVE_WIDTH * GPU_FRAMEBUFFER_NATIVE_HEIGHT];
+	CACHE_ALIGN GLuint workingCIColorBuffer32[GPU_FRAMEBUFFER_NATIVE_WIDTH * GPU_FRAMEBUFFER_NATIVE_HEIGHT];
+	CACHE_ALIGN GLuint workingCIDepthStencilBuffer[2][GPU_FRAMEBUFFER_NATIVE_WIDTH * GPU_FRAMEBUFFER_NATIVE_HEIGHT];
+	CACHE_ALIGN GLuint workingCIFogAttributesBuffer[2][GPU_FRAMEBUFFER_NATIVE_WIDTH * GPU_FRAMEBUFFER_NATIVE_HEIGHT];
 };
+typedef struct OGLRenderRef OGLRenderRef;
 
 struct GFX3D_State;
-struct VERTLIST;
-struct POLYLIST;
-struct INDEXLIST;
 struct POLY;
-class TexCacheItem;
 class OpenGLRenderer;
 
 extern GPU3DInterface gpu3Dgl;
 extern GPU3DInterface gpu3DglOld;
 extern GPU3DInterface gpu3Dgl_3_2;
+extern GPU3DInterface gpu3Dgl_ES_3_0;
+
+extern CACHE_ALIGN const GLfloat divide5bitBy31_LUT[32];
+extern CACHE_ALIGN const GLfloat divide6bitBy63_LUT[64];
+extern const GLfloat PostprocessVtxBuffer[16];
+extern const GLubyte PostprocessElementBuffer[6];
 
 //This is called by OGLRender whenever it initializes.
 //Platforms, please be sure to set this up.
 //return true if you successfully init.
 extern bool (*oglrender_init)();
+
+// This is called by OGLRender whenever the renderer is switched
+// away from this one, or if the renderer is shut down.
+extern void (*oglrender_deinit)();
 
 //This is called by OGLRender before it uses opengl.
 //return true if youre OK with using opengl
@@ -375,6 +770,14 @@ extern bool (*oglrender_beginOpenGL)();
 
 //This is called by OGLRender after it is done using opengl.
 extern void (*oglrender_endOpenGL)();
+
+//This is called by OGLRender whenever the framebuffer is resized.
+extern bool (*oglrender_framebufferDidResizeCallback)(const bool isFBOSupported, size_t w, size_t h);
+
+// Helper functions for calling the above function pointers at the
+// beginning and ending of OpenGL commands.
+bool BEGINGL();
+void ENDGL();
 
 // These functions need to be assigned by ports that support using an
 // OpenGL 3.2 Core Profile context. The OGLRender_3_2.cpp file includes
@@ -385,104 +788,254 @@ extern void (*oglrender_endOpenGL)();
 extern void (*OGLLoadEntryPoints_3_2_Func)();
 extern void (*OGLCreateRenderer_3_2_Func)(OpenGLRenderer **rendererPtr);
 
-FORCEINLINE u32 BGRA8888_32_To_RGBA6665_32(const u32 srcPix);
-FORCEINLINE u32 BGRA8888_32Rev_To_RGBA6665_32Rev(const u32 srcPix);
-bool IsVersionSupported(unsigned int checkVersionMajor, unsigned int checkVersionMinor, unsigned int checkVersionRevision);
+// These functions need to be assigned by ports that support using an
+// OpenGL ES 3.0 context. The OGLRender_ES3.cpp file includes the corresponding
+// functions to assign to each function pointer.
+//
+// If any of these functions are unassigned, then the renderer object
+// creation will fail.
+extern void (*OGLLoadEntryPoints_ES_3_0_Func)();
+extern void (*OGLCreateRenderer_ES_3_0_Func)(OpenGLRenderer **rendererPtr);
 
-class OpenGLRenderer : public Render3D
+#define glDrawBuffer(theAttachment) glDrawBufferDESMUME((theAttachment), this->_feature.variantID)
+static inline void glDrawBufferDESMUME(GLenum theAttachment, const OpenGLVariantID variantID)
 {
-private:
-	// Driver's OpenGL Version
-	unsigned int versionMajor;
-	unsigned int versionMinor;
-	unsigned int versionRevision;
+	GLenum bufs[4] = { GL_NONE, GL_NONE, GL_NONE, GL_NONE };
+
+	if (variantID & OpenGLVariantFamily_ES)
+	{
+		switch (theAttachment)
+		{
+			case GL_NONE:
+				glDrawBuffers(1, bufs);
+				return;
+
+			case GL_COLOR_ATTACHMENT0_EXT:
+			case GL_COLOR_ATTACHMENT1_EXT:
+			case GL_COLOR_ATTACHMENT2_EXT:
+			case GL_COLOR_ATTACHMENT3_EXT:
+			{
+				const GLsizei i = theAttachment - GL_COLOR_ATTACHMENT0_EXT;
+				bufs[i] = theAttachment;
+				glDrawBuffers(i+1, bufs);
+				return;
+			}
+
+			default:
+				return;
+		}
+	}
+	else
+	{
+		bufs[0] = theAttachment;
+		glDrawBuffers(1, bufs);
+	}
+}
+
+bool IsOpenGLDriverVersionSupported(unsigned int checkVersionMajor, unsigned int checkVersionMinor, unsigned int checkVersionRevision);
+
+Render3DError ShaderProgramCreateOGL(GLuint &vtxShaderID, GLuint &fragShaderID, GLuint &programID, const char *vtxShaderCString, const char *fragShaderCString);
+bool ValidateShaderProgramLinkOGL(GLuint theProgram);
+
+class OpenGLRenderColorOut : public Render3DColorOut
+{
+protected:
+	OGLFeatureInfo _feature;
 	
+	GLuint _vsFramebufferOutput6665ShaderID;
+	GLuint _vsFramebufferOutput8888ShaderID;
+	GLuint _fsFramebufferRGBA6665OutputShaderID;
+	GLuint _fsFramebufferRGBA8888OutputShaderID;
+	GLuint _pgFramebufferRGBA6665OutputID;
+	GLuint _pgFramebufferRGBA8888OutputID;
+	
+	GLuint _vaoPostprocessStatesID;
+	GLuint _vboPostprocessVtxID;
+	GLuint _fboRenderID;
+	
+	bool _willConvertColorOnGPU;
+	
+	GLuint _pbo[2];
+	GLuint _texColorOut[2];
+	Color4u8 *_masterBufferCPU32;
+	Color4u8 *_bufferCPU32[2];
+	
+	virtual Color4u8* _MapBuffer32OGL() const;
+	virtual Render3DError _FramebufferConvertColorFormat();
+	
+	virtual Render3DError _CreateFramebufferOutput6665Program(const char *vtxShaderCString, const char *fragShaderCString);
+	virtual void _DestroyFramebufferOutput6665Programs();
+	virtual Render3DError _CreateFramebufferOutput8888Program(const char *vtxShaderCString, const char *fragShaderCString);
+	virtual void _DestroyFramebufferOutput8888Programs();
+	
+public:
+	OpenGLRenderColorOut(const OGLFeatureInfo &feature, size_t w, size_t h);
+	virtual ~OpenGLRenderColorOut();
+	
+	virtual void Reset();
+	
+	virtual size_t BindRead32();
+	virtual size_t UnbindRead32();
+	
+	virtual size_t BindRenderer();
+	virtual void UnbindRenderer(const size_t idxRead);
+	
+	virtual Render3DError SetSize(size_t w, size_t h);
+	virtual const Color4u8* GetFramebuffer32() const;
+	
+	virtual Render3DError FillZero();
+	virtual Render3DError FillColor32(const Color4u8 *src, const bool isSrcNativeSize);
+	
+	const OGLFeatureInfo& GetFeatureInfo() const;
+	
+	GLuint GetFBORenderID() const;
+	void SetFBORenderID(GLuint i);
+};
+
+class OpenGLTexture : public Render3DTexture
+{
+protected:
+	GLuint _texID;
+	GLfloat _invSizeS;
+	GLfloat _invSizeT;
+	bool _isTexInited;
+	
+	u32 *_upscaleBuffer;
+	
+public:
+	OpenGLTexture(TEXIMAGE_PARAM texAttributes, u32 palAttributes);
+	virtual ~OpenGLTexture();
+	
+	virtual void Load(bool forceTextureInit);
+	
+	GLuint GetID() const;
+	GLfloat GetInvWidth() const;
+	GLfloat GetInvHeight() const;
+	
+	void SetUnpackBuffer(void *unpackBuffer);
+	void SetDeposterizeBuffer(void *dstBuffer, void *workingBuffer);
+	void SetUpscalingBuffer(void *upscaleBuffer);
+};
+
+#if defined(ENABLE_AVX2)
+class OpenGLRenderer : public Render3D_AVX2
+#elif defined(ENABLE_SSE2)
+class OpenGLRenderer : public Render3D_SSE2
+#elif defined(ENABLE_NEON_A64)
+class OpenGLRenderer : public Render3D_NEON
+#elif defined(ENABLE_ALTIVEC)
+class OpenGLRenderer : public Render3D_AltiVec
+#else
+class OpenGLRenderer : public Render3D
+#endif
+{
 protected:
 	// OpenGL-specific References
 	OGLRenderRef *ref;
 	
 	// OpenGL Feature Support
-	bool isVBOSupported;
-	bool isPBOSupported;
-	bool isFBOSupported;
-	bool isMultisampledFBOSupported;
-	bool isShaderSupported;
-	bool isVAOSupported;
+	OGLFeatureInfo _feature;
+	bool _willUseMultisampleShaders;
 	
-	// Textures
-	TexCacheItem *currTexture;
+	bool _emulateShadowPolygon;
+	bool _emulateSpecialZeroAlphaBlending;
+	bool _emulateNDSDepthCalculation;
+	bool _emulateDepthLEqualPolygonFacing;
+	bool _isDepthLEqualPolygonFacingSupported;
 	
-	CACHE_ALIGN u32 GPU_screen3D[2][GFX3D_FRAMEBUFFER_WIDTH * GFX3D_FRAMEBUFFER_HEIGHT * sizeof(u32)];
-	bool gpuScreen3DHasNewData[2];
-	size_t doubleBufferIndex;
-	u8 clearImageStencilValue;
+	const GLenum (*_geometryDrawBuffersEnum)[4];
+	const GLint *_geometryAttachmentWorkingBuffer;
+	const GLint *_geometryAttachmentPolyID;
+	const GLint *_geometryAttachmentFogAttributes;
+	
+	Color4u8 *_workingTextureUnpackBuffer;
+	bool _needsZeroDstAlphaPass;
+	size_t _currentPolyIndex;
+	bool _enableAlphaBlending;
+	OGLGeometryFlags _geometryProgramFlags;
+	OGLFogProgramKey _fogProgramKey;
+	std::map<u32, OGLFogShaderID> _fogProgramMap;
+	
+	CACHE_ALIGN OGLRenderStates _pendingRenderStates;
+	
+	bool _enableMultisampledRendering;
+	int _selectedMultisampleSize;
+	size_t _clearImageIndex;
+	
+	OpenGLTexture* GetLoadedTextureFromPolygon(const POLY &thePoly, bool enableTexturing);
+	
+	template<OGLPolyDrawMode DRAWMODE> size_t DrawPolygonsForIndexRange(const POLY *rawPolyList, const CPoly *clippedPolyList, const size_t clippedPolyCount, size_t firstIndex, size_t lastIndex, size_t &indexOffset, POLYGON_ATTR &lastPolyAttr);
+	template<OGLPolyDrawMode DRAWMODE> Render3DError DrawAlphaTexturePolygon(const GLenum polyPrimitive,
+																			 const GLsizei vertIndexCount,
+																			 const GLushort *indexBufferPtr,
+																			 const bool performDepthEqualTest,
+																			 const bool enableAlphaDepthWrite,
+																			 const bool canHaveOpaqueFragments,
+																			 const u8 opaquePolyID,
+																			 const bool isPolyFrontFacing);
+	template<OGLPolyDrawMode DRAWMODE> Render3DError DrawOtherPolygon(const GLenum polyPrimitive,
+																	  const GLsizei vertIndexCount,
+																	  const GLushort *indexBufferPtr,
+																	  const bool performDepthEqualTest,
+																	  const bool enableAlphaDepthWrite,
+																	  const u8 opaquePolyID,
+																	  const bool isPolyFrontFacing);
 	
 	// OpenGL-specific methods
 	virtual Render3DError CreateVBOs() = 0;
 	virtual void DestroyVBOs() = 0;
-	virtual Render3DError CreatePBOs() = 0;
-	virtual void DestroyPBOs() = 0;
 	virtual Render3DError CreateFBOs() = 0;
 	virtual void DestroyFBOs() = 0;
-	virtual Render3DError CreateMultisampledFBO() = 0;
+	virtual Render3DError CreateMultisampledFBO(GLsizei numSamples) = 0;
 	virtual void DestroyMultisampledFBO() = 0;
-	virtual Render3DError CreateShaders(const std::string *vertexShaderProgram, const std::string *fragmentShaderProgram) = 0;
-	virtual void DestroyShaders() = 0;
+	virtual void ResizeMultisampledFBOs(GLsizei numSamples) = 0;
 	virtual Render3DError CreateVAOs() = 0;
 	virtual void DestroyVAOs() = 0;
-	virtual Render3DError InitTextures() = 0;
-	virtual Render3DError InitFinalRenderStates(const std::set<std::string> *oglExtensionSet) = 0;
-	virtual Render3DError InitTables() = 0;
 	
-	virtual Render3DError LoadShaderPrograms(std::string *outVertexShaderProgram, std::string *outFragmentShaderProgram) = 0;
-	virtual Render3DError SetupShaderIO() = 0;
-	virtual Render3DError CreateToonTable() = 0;
-	virtual Render3DError DestroyToonTable() = 0;
-	virtual Render3DError UploadToonTable(const u16 *toonTableBuffer) = 0;
-	virtual Render3DError UploadClearImage(const u16 *clearImageColor16Buffer, const u32 *clearImageDepthStencilBuffer) = 0;
+	virtual Render3DError CreateGeometryPrograms() = 0;
+	virtual void DestroyGeometryPrograms() = 0;
+	virtual Render3DError CreateClearImageProgram(const char *vsCString, const char *fsCString) = 0;
+	virtual void DestroyClearImageProgram() = 0;
+	virtual Render3DError CreateGeometryZeroDstAlphaProgram(const char *vtxShaderCString, const char *fragShaderCString) = 0;
+	virtual void DestroyGeometryZeroDstAlphaProgram() = 0;
+	virtual Render3DError CreateEdgeMarkProgram(const bool isMultisample, const char *vtxShaderCString, const char *fragShaderCString) = 0;
+	virtual void DestroyEdgeMarkProgram() = 0;
+	virtual Render3DError CreateFogProgram(const OGLFogProgramKey fogProgramKey, const bool isMultisample, const char *vtxShaderCString, const char *fragShaderCString) = 0;
+	virtual void DestroyFogProgram(const OGLFogProgramKey fogProgramKey) = 0;
+	virtual void DestroyFogPrograms() = 0;
+	
+	virtual Render3DError InitPostprocessingPrograms(const char *edgeMarkVtxShader, const char *edgeMarkFragShader) = 0;
+	
+	virtual Render3DError UploadClearImage(const u16 *__restrict colorBuffer, const u32 *__restrict depthBuffer, const u8 *__restrict fogBuffer, const u8 opaquePolyID) = 0;
 	
 	virtual void GetExtensionSet(std::set<std::string> *oglExtensionSet) = 0;
-	virtual Render3DError ExpandFreeTextures() = 0;
-	virtual Render3DError SetupVertices(const VERTLIST *vertList, const POLYLIST *polyList, const INDEXLIST *indexList, GLushort *outIndexBuffer, size_t *outIndexCount) = 0;
-	virtual Render3DError EnableVertexAttributes(const VERTLIST *vertList, const GLushort *indexBuffer, const size_t vertIndexCount) = 0;
-	virtual Render3DError DisableVertexAttributes() = 0;
-	virtual Render3DError SelectRenderingFramebuffer() = 0;
-	virtual Render3DError DownsampleFBO() = 0;
-	virtual Render3DError ReadBackPixels() = 0;
+	virtual void _SetupGeometryShaders(const OGLGeometryFlags flags) = 0;
+	virtual void _RenderGeometryVertexAttribEnable() = 0;
+	virtual void _RenderGeometryVertexAttribDisable() = 0;
+	virtual void _RenderGeometryLoopBegin() = 0;
+	virtual void _RenderGeometryLoopEnd() = 0;
+	virtual void _ResolveWorkingBackFacing() = 0;
+	virtual void _ResolveGeometry() = 0;
+	virtual void _ResolveFinalFramebuffer() = 0;
 	
-	// Base rendering methods
-	virtual Render3DError BeginRender(const GFX3D_State *renderState) = 0;
-	virtual Render3DError PreRender(const GFX3D_State *renderState, const VERTLIST *vertList, const POLYLIST *polyList, const INDEXLIST *indexList) = 0;
-	virtual Render3DError DoRender(const GFX3D_State *renderState, const VERTLIST *vertList, const POLYLIST *polyList, const INDEXLIST *indexList) = 0;
-	virtual Render3DError PostRender() = 0;
-	virtual Render3DError EndRender(const u64 frameCount) = 0;
-	
-	virtual Render3DError UpdateClearImage(const u16 *__restrict colorBuffer, const u32 *__restrict depthStencilBuffer) = 0;
-	virtual Render3DError UpdateToonTable(const u16 *toonTableBuffer) = 0;
-	
-	virtual Render3DError ClearUsingImage() const = 0;
-	virtual Render3DError ClearUsingValues(const u8 r, const u8 g, const u8 b, const u8 a, const u32 clearDepth, const u8 clearStencil) const = 0;
-	
-	virtual Render3DError SetupPolygon(const POLY *thePoly) = 0;
-	virtual Render3DError SetupTexture(const POLY *thePoly, bool enableTexturing) = 0;
-	virtual Render3DError SetupViewport(const u32 viewportValue) = 0;
+	virtual Render3DError DrawShadowPolygon(const GLenum polyPrimitive, const GLsizei vertIndexCount, const GLushort *indexBufferPtr, const bool performDepthEqualTest, const bool enableAlphaDepthWrite, const bool isTranslucent, const u8 opaquePolyID) = 0;
+	virtual void SetPolygonIndex(const size_t index) = 0;
+	virtual Render3DError SetupPolygon(const POLY &thePoly, bool treatAsTranslucent, bool willChangeStencilBuffer, bool isBackFacing) = 0;
 	
 public:
 	OpenGLRenderer();
-	virtual ~OpenGLRenderer() {};
+	virtual ~OpenGLRenderer();
+	
+	const OGLFeatureInfo& GetFeatureInfo() const;
 	
 	virtual Render3DError InitExtensions() = 0;
-	virtual Render3DError Reset() = 0;
-	virtual Render3DError RenderFinish() = 0;
-	
-	virtual Render3DError DeleteTexture(const TexCacheItem *item) = 0;
 	
 	bool IsExtensionPresent(const std::set<std::string> *oglExtensionSet, const std::string extensionName) const;
-	bool ValidateShaderCompile(GLuint theShader) const;
-	bool ValidateShaderProgramLink(GLuint theProgram) const;
-	void GetVersion(unsigned int *major, unsigned int *minor, unsigned int *revision) const;
-	void SetVersion(unsigned int major, unsigned int minor, unsigned int revision);
-	void ConvertFramebuffer(const u32 *__restrict srcBuffer, u32 *dstBuffer);
+	bool IsVersionSupported(unsigned int checkVersionMajor, unsigned int checkVersionMinor, unsigned int checkVersionRevision) const;
+	
+	virtual GLsizei GetLimitedMultisampleSize() const;
+	
+	Render3DError ApplyRenderingSettings(const GFX3D_State &renderState);
 };
 
 class OpenGLRenderer_1_2 : public OpenGLRenderer
@@ -491,52 +1044,56 @@ protected:
 	// OpenGL-specific methods
 	virtual Render3DError CreateVBOs();
 	virtual void DestroyVBOs();
-	virtual Render3DError CreatePBOs();
-	virtual void DestroyPBOs();
 	virtual Render3DError CreateFBOs();
 	virtual void DestroyFBOs();
-	virtual Render3DError CreateMultisampledFBO();
+	virtual Render3DError CreateMultisampledFBO(GLsizei numSamples);
 	virtual void DestroyMultisampledFBO();
-	virtual Render3DError CreateShaders(const std::string *vertexShaderProgram, const std::string *fragmentShaderProgram);
-	virtual void DestroyShaders();
+	virtual void ResizeMultisampledFBOs(GLsizei numSamples);
 	virtual Render3DError CreateVAOs();
 	virtual void DestroyVAOs();
-	virtual Render3DError InitTextures();
-	virtual Render3DError InitFinalRenderStates(const std::set<std::string> *oglExtensionSet);
-	virtual Render3DError InitTables();
 	
-	virtual Render3DError LoadShaderPrograms(std::string *outVertexShaderProgram, std::string *outFragmentShaderProgram);
-	virtual Render3DError SetupShaderIO();
-	virtual Render3DError CreateToonTable();
-	virtual Render3DError DestroyToonTable();
-	virtual Render3DError UploadToonTable(const u16 *toonTableBuffer);
-	virtual Render3DError UploadClearImage(const u16 *clearImageColor16Buffer, const u32 *clearImageDepthStencilBuffer);
+	virtual Render3DError CreateGeometryPrograms();
+	virtual void DestroyGeometryPrograms();
+	virtual Render3DError CreateClearImageProgram(const char *vsCString, const char *fsCString);
+	virtual void DestroyClearImageProgram();
+	virtual Render3DError CreateGeometryZeroDstAlphaProgram(const char *vtxShaderCString, const char *fragShaderCString);
+	virtual void DestroyGeometryZeroDstAlphaProgram();
+	virtual Render3DError CreateEdgeMarkProgram(const bool isMultisample, const char *vtxShaderCString, const char *fragShaderCString);
+	virtual void DestroyEdgeMarkProgram();
+	virtual Render3DError CreateFogProgram(const OGLFogProgramKey fogProgramKey, const bool isMultisample, const char *vtxShaderCString, const char *fragShaderCString);
+	virtual void DestroyFogProgram(const OGLFogProgramKey fogProgramKey);
+	virtual void DestroyFogPrograms();
+	
+	virtual Render3DError InitPostprocessingPrograms(const char *edgeMarkVtxShader, const char *edgeMarkFragShader);
+	
+	virtual Render3DError UploadClearImage(const u16 *__restrict colorBuffer, const u32 *__restrict depthBuffer, const u8 *__restrict fogBuffer, const u8 opaquePolyID);
 	
 	virtual void GetExtensionSet(std::set<std::string> *oglExtensionSet);
-	virtual Render3DError ExpandFreeTextures();
-	virtual Render3DError SetupVertices(const VERTLIST *vertList, const POLYLIST *polyList, const INDEXLIST *indexList, GLushort *outIndexBuffer, size_t *outIndexCount);
-	virtual Render3DError EnableVertexAttributes(const VERTLIST *vertList, const GLushort *indexBuffer, const size_t vertIndexCount);
-	virtual Render3DError DisableVertexAttributes();
-	virtual Render3DError SelectRenderingFramebuffer();
-	virtual Render3DError DownsampleFBO();
-	virtual Render3DError ReadBackPixels();
+	virtual void _SetupGeometryShaders(const OGLGeometryFlags flags);
+	virtual void _RenderGeometryVertexAttribEnable();
+	virtual void _RenderGeometryVertexAttribDisable();
+	virtual Render3DError ZeroDstAlphaPass(const POLY *rawPolyList, const CPoly *clippedPolyList, const size_t clippedPolyCount, const size_t clippedPolyOpaqueCount, bool enableAlphaBlending, size_t indexOffset, POLYGON_ATTR lastPolyAttr);
+	virtual void _RenderGeometryLoopBegin();
+	virtual void _RenderGeometryLoopEnd();
+	virtual void _ResolveWorkingBackFacing();
+	virtual void _ResolveGeometry();
+	virtual void _ResolveFinalFramebuffer();
 	
 	// Base rendering methods
-	virtual Render3DError BeginRender(const GFX3D_State *renderState);
-	virtual Render3DError PreRender(const GFX3D_State *renderState, const VERTLIST *vertList, const POLYLIST *polyList, const INDEXLIST *indexList);
-	virtual Render3DError DoRender(const GFX3D_State *renderState, const VERTLIST *vertList, const POLYLIST *polyList, const INDEXLIST *indexList);
-	virtual Render3DError PostRender();
-	virtual Render3DError EndRender(const u64 frameCount);
+	virtual Render3DError BeginRender(const GFX3D_State &renderState, const GFX3D_GeometryList &renderGList);
+	virtual Render3DError RenderGeometry();
+	virtual Render3DError PostprocessFramebuffer();
+	virtual Render3DError EndRender();
 	
-	virtual Render3DError UpdateClearImage(const u16 *__restrict colorBuffer, const u32 *__restrict depthStencilBuffer);
-	virtual Render3DError UpdateToonTable(const u16 *toonTableBuffer);
+	virtual Render3DError ClearUsingImage(const u16 *__restrict colorBuffer, const u32 *__restrict depthBuffer, const u8 *__restrict fogBuffer, const u8 opaquePolyID);
+	virtual Render3DError ClearUsingValues(const Color4u8 &clearColor6665, const FragmentAttributes &clearAttributes);
 	
-	virtual Render3DError ClearUsingImage() const;
-	virtual Render3DError ClearUsingValues(const u8 r, const u8 g, const u8 b, const u8 a, const u32 clearDepth, const u8 clearStencil) const;
+	virtual void SetPolygonIndex(const size_t index);
+	virtual Render3DError SetupPolygon(const POLY &thePoly, bool treatAsTranslucent, bool willChangeStencilBuffer, bool isBackFacing);
+	virtual Render3DError SetupTexture(const POLY &thePoly, size_t polyRenderIndex);
+	virtual Render3DError SetupViewport(const GFX3D_Viewport viewport);
 	
-	virtual Render3DError SetupPolygon(const POLY *thePoly);
-	virtual Render3DError SetupTexture(const POLY *thePoly, bool enableTexturing);
-	virtual Render3DError SetupViewport(const u32 viewportValue);
+	virtual Render3DError DrawShadowPolygon(const GLenum polyPrimitive, const GLsizei vertIndexCount, const GLushort *indexBufferPtr, const bool performDepthEqualTest, const bool enableAlphaDepthWrite, const bool isTranslucent, const u8 opaquePolyID);
 	
 public:
 	OpenGLRenderer_1_2();
@@ -544,67 +1101,23 @@ public:
 	
 	virtual Render3DError InitExtensions();
 	virtual Render3DError Reset();
-	virtual Render3DError RenderFinish();
-	
-	virtual Render3DError DeleteTexture(const TexCacheItem *item);
+	virtual Render3DError RenderFlush(bool willFlushBuffer32, bool willFlushBuffer16);
+	virtual Render3DError SetFramebufferSize(size_t w, size_t h);
 };
 
-class OpenGLRenderer_1_3 : public OpenGLRenderer_1_2
+class OpenGLRenderer_2_0 : public OpenGLRenderer_1_2
 {
-protected:
-	virtual Render3DError UploadToonTable(const u16 *toonTableBuffer);
-	virtual Render3DError UploadClearImage(const u16 *clearImageColor16Buffer, const u32 *clearImageDepthStencilBuffer);
-};
-
-class OpenGLRenderer_1_4 : public OpenGLRenderer_1_3
-{
-protected:
-	virtual Render3DError InitFinalRenderStates(const std::set<std::string> *oglExtensionSet);
-};
-
-class OpenGLRenderer_1_5 : public OpenGLRenderer_1_4
-{
-protected:
-	virtual Render3DError CreateVBOs();
-	virtual void DestroyVBOs();
-	virtual Render3DError CreatePBOs();
-	virtual void DestroyPBOs();
-	virtual Render3DError CreateVAOs();
-	
-	virtual Render3DError EnableVertexAttributes(const VERTLIST *vertList, const GLushort *indexBuffer, const size_t vertIndexCount);
-	virtual Render3DError DisableVertexAttributes();
-	virtual Render3DError ReadBackPixels();
-		
 public:
-	~OpenGLRenderer_1_5();
+	OpenGLRenderer_2_0();
 	
-	virtual Render3DError RenderFinish();
-};
-
-class OpenGLRenderer_2_0 : public OpenGLRenderer_1_5
-{
 protected:
-	virtual Render3DError InitExtensions();
-	virtual Render3DError InitFinalRenderStates(const std::set<std::string> *oglExtensionSet);
-	
-	virtual Render3DError SetupVertices(const VERTLIST *vertList, const POLYLIST *polyList, const INDEXLIST *indexList, GLushort *outIndexBuffer, size_t *outIndexCount);
-	virtual Render3DError EnableVertexAttributes(const VERTLIST *vertList, const GLushort *indexBuffer, const size_t vertIndexCount);
-	virtual Render3DError DisableVertexAttributes();
-	
-	virtual Render3DError BeginRender(const GFX3D_State *renderState);
-	virtual Render3DError PreRender(const GFX3D_State *renderState, const VERTLIST *vertList, const POLYLIST *polyList, const INDEXLIST *indexList);
-	
-	virtual Render3DError SetupPolygon(const POLY *thePoly);
-	virtual Render3DError SetupTexture(const POLY *thePoly, bool enableTexturing);
+	virtual Render3DError BeginRender(const GFX3D_State &renderState, const GFX3D_GeometryList &renderGList);
 };
 
 class OpenGLRenderer_2_1 : public OpenGLRenderer_2_0
 {
-protected:
-	virtual Render3DError ReadBackPixels();
-	
 public:
-	virtual Render3DError RenderFinish();
+	OpenGLRenderer_2_1();
 };
 
-#endif
+#endif // OGLRENDER_H
