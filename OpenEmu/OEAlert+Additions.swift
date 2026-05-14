@@ -42,6 +42,7 @@ extension OEAlert {
     @objc static let OEDeleteSaveStateAlertSuppressionKey = "OEDeleteSaveStateAlertSuppressionKey"
     @objc static let OEDownloadRomWarningSuppressionKey = "OEDownloadRomWarningSuppressionKey"
     @objc static let OEDeleteShaderPresetAlertSuppressionKey = "OEDeleteShaderPresetAlertSuppressionKey"
+    @objc static let OEInputMonitoringAlertSuppressionKey = "OEInputMonitoringAlertSuppressed"
     
     
     final class func quitApplication() -> OEAlert {

@@ -843,7 +843,7 @@ class AppDelegate: NSObject, UNUserNotificationCenterDelegate {
         #endif
 
         // Suppress the alert if the user has already dismissed it this session.
-        let suppressionKey = "OEInputMonitoringAlertSuppressed"
+        let suppressionKey = OEAlert.OEInputMonitoringAlertSuppressionKey
         if UserDefaults.standard.bool(forKey: suppressionKey) {
             return
         }
