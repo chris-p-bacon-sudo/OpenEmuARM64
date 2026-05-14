@@ -146,7 +146,7 @@ Things you do on every PR, where it's easy to forget:
 
 - **Commit format:** `<type>: <description>` where type is one of `fix:` / `feat:` / `chore:` / `docs:` / `refactor:`. Body includes `Fixes #N` (auto-closes on merge) or `Related to #N` (soft link).
 - **PR body:** **Always `cat .github/PULL_REQUEST_TEMPLATE.md` first.** Never improvise or reconstruct the PR body from memory — the template's bash test block has been hand-stabilized over many fix commits and must be preserved verbatim. Use `/ship` for the full loop.
-- **AI assistance:** Note in commits as `(assisted by Claude)` and in the PR template's "Did you use AI tools?" section.
+- **AI assistance:** Note in the PR template's "Did you use AI tools?" section.
 - **Core changes:** Use `Scripts/install-core.sh <CoreName>` to install — never `cp -R`. `verify.sh --core <Name>` does this for you.
 - **Always pass `--repo nickybmon/OpenEmu-Silicon`** on every `gh` command — there are forks.
 
@@ -161,7 +161,6 @@ Detailed rules are in `AGENTS.md`. The short version, because these failures kee
 3. One concern per issue, per branch, per PR.
 4. Close on fix: `gh issue close #N --repo nickybmon/OpenEmu-Silicon --comment "Resolved in <sha>."` — same session as the fix lands.
 5. Always pass `--repo nickybmon/OpenEmu-Silicon` on every `gh` command.
-6. Note AI assistance in commit messages (e.g. `fix: thing (assisted by Claude)`).
 
 ---
 
