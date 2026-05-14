@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2010-2015 DeSmuME team
+	Copyright (C) 2010-2021 DeSmuME team
 
 	This file is free software: you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
@@ -34,12 +34,12 @@ public:
 	u32 getAddress();
 	u32 incAddress();
 
-	void savestate(EMUFILE* os);
-	void loadstate(EMUFILE* is);
+	void savestate(EMUFILE &os);
+	void loadstate(EMUFILE &is);
 
 private:
-	u32 address;
-	eSlot1Operation operation;
+	u32 _address;
+	eSlot1Operation _operation;
 };
 
 #endif

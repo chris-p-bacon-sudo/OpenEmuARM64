@@ -1,7 +1,7 @@
 /*
 	Copyright (C) 2006 Normmatt
 	Copyright (C) 2007 Pascal Giard
-	Copyright (C) 2007-2012 DeSmuME team
+	Copyright (C) 2007-2017 DeSmuME team
 
 	This file is free software: you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
@@ -21,6 +21,7 @@
 #define _SRAM_H
 
 #include "types.h"
+#include "zlib.h"
 
 #define NB_STATES 10
 
@@ -63,10 +64,7 @@ bool savestate_save (const char *file_name);
 void savestate_slot(int num);
 void loadstate_slot(int num);
 
-bool savestate_load(class EMUFILE* is);
-bool savestate_save(class EMUFILE* outstream, int compressionLevel);
-
-void dorewind();
-void rewindsave();
+bool savestate_load(class EMUFILE &is);
+bool savestate_save(class EMUFILE &outstream, int compressionLevel = Z_DEFAULT_COMPRESSION);
 
 #endif

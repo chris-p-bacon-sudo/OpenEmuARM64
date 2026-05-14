@@ -25,13 +25,8 @@
 #ifndef _GDBSTUB_INTERNAL_H_
 #define _GDBSTUB_INTERNAL_H_ 1
 
-#ifdef WIN32
-	typedef __int32 int32_t;
-	typedef unsigned __int32 uint32_t;
-	typedef __int16 int16_t;
-	typedef unsigned __int16 uint16_t;
-	typedef __int8 int8_t;
-	typedef unsigned __int8 uint8_t;
+#if defined(_MSC_VER) || defined(__MINGW32__)
+	#include <stdint.h>
 
 	#include <winsock2.h>
 	#define SOCKET_TYPE SOCKET
@@ -176,8 +171,14 @@ struct gdb_stub_state {
   /** the free breakpoint descriptor list */
   struct breakpoint_gdb *free_breakpoints;
 
-  /** the control pipe (or socket) to the gdb stub */
+  /** the control pipe (or socket) to the gdb stub. this allows to send commands to the stub. */
   SOCKET_TYPE ctl_pipe[2];
+
+  /** this pipe allows the stub to communicate to the controlling program. */
+  SOCKET_TYPE info_pipe[2];
+
+  /** whether above pipe is enabled */
+  int info_pipe_enabled;
 };
 
 

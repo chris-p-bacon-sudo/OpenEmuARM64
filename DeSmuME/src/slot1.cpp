@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2010-2013 DeSmuME team
+	Copyright (C) 2010-2021 DeSmuME team
 
 	This file is free software: you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
@@ -45,7 +45,7 @@ static std::string fatDir;
 
 static void scanDir()
 {
-	if(fatDir == "") return;
+	if(fatDir == "" && !slot1_R4_path_type) return;
 	
 	if (fatImage)
 	{
@@ -112,7 +112,7 @@ void slot1_Init()
 
 void slot1_Shutdown()
 {
-	for(int i=0;i<ARRAY_SIZE(slot1_List);i++)
+	for (size_t i = 0; i < ARRAY_SIZE(slot1_List); i++)
 	{
 		if(slot1_List[i])
 			slot1_List[i]->shutdown();
@@ -152,17 +152,22 @@ void slot1_Reset()
 
 bool slot1_Change(NDS_SLOT1_TYPE changeToType)
 {
-	if((changeToType == slot1_device_type) || (changeToType == slot1_GetSelectedType()))
-		return FALSE; //nothing to do
-	if (changeToType > NDS_SLOT1_COUNT || changeToType < 0) return FALSE;
-	if(slot1_device != NULL)
+	if ( (changeToType == slot1_device_type) || (changeToType == slot1_GetSelectedType()) )
+		return false; //nothing to do
+	
+	if ( (changeToType >= NDS_SLOT1_COUNT) || (changeToType < 0) )
+		return false;
+	
+	if (slot1_device != NULL)
 		slot1_device->disconnect();
+	
 	slot1_device_type = changeToType;
 	slot1_device = slot1_List[slot1_device_type];
 	printf("Slot 1: %s\n", slot1_device->info()->name());
 	printf("sending eject signal to SLOT-1\n");
 	NDS_TriggerCardEjectIRQ();
 	slot1_device->connect();
+	
 	return true;
 }
 
@@ -198,11 +203,11 @@ NDS_SLOT1_TYPE slot1_GetSelectedType()
 	return slot1_device_type;
 }
 
-void slot1_Savestate(EMUFILE* os)
+void slot1_Savestate(EMUFILE &os)
 {
 	slot1_device->savestate(os);
 }
-void slot1_Loadstate(EMUFILE* is)
+void slot1_Loadstate(EMUFILE &is)
 {
 	slot1_device->loadstate(is);
 }

@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2008-2009 DeSmuME team
+	Copyright (C) 2008-2025 DeSmuME team
 
 	This file is free software: you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
@@ -16,8 +16,36 @@
 */
 
 #include <stdlib.h>
+#include <retro_inline.h>
 #include "guid.h"
 #include "../types.h"
+
+/* stores a 32bit value into the provided byte array in guaranteed little endian form */
+static INLINE void en32lsb(u8 *buf, u32 morp)
+{ 
+	buf[0]=(u8)(morp);
+	buf[1]=(u8)(morp>>8);
+	buf[2]=(u8)(morp>>16);
+	buf[3]=(u8)(morp>>24);
+} 
+
+static INLINE void en16lsb(u8* buf, u16 morp)
+{
+	buf[0]=(u8)morp;
+	buf[1]=(u8)(morp>>8);
+}
+
+/* unpacks a 32bit little endian value from the provided byte array into host byte order */
+static INLINE u32 de32lsb(u8 *morp)
+{
+	return morp[0]|(morp[1]<<8)|(morp[2]<<16)|(morp[3]<<24);
+}
+
+/* unpacks a 16bit little endian value from the provided byte array into host byte order */
+static INLINE u16 de16lsb(u8 *morp)
+{
+	return morp[0]|(morp[1]<<8);
+}
 
 void Desmume_Guid::newGuid()
 {
@@ -28,7 +56,7 @@ void Desmume_Guid::newGuid()
 std::string Desmume_Guid::toString()
 {
 	char buf[37];
-	sprintf(buf,"%08X-%04X-%04X-%04X-%02X%02X%02X%02X%02X%02X",
+	snprintf(buf, sizeof(buf), "%08X-%04X-%04X-%04X-%02X%02X%02X%02X%02X%02X",
 		de32lsb(data),de16lsb(data+4),de16lsb(data+6),de16lsb(data+8),data[10],data[11],data[12],data[13],data[14],data[15]);
 	return std::string(buf);
 }
@@ -40,7 +68,7 @@ Desmume_Guid Desmume_Guid::fromString(std::string str)
 	return ret;
 }
 
-uint8 Desmume_Guid::hexToByte(char** ptrptr)
+u8 Desmume_Guid::hexToByte(char** ptrptr)
 {
 	char a = toupper(**ptrptr);
 	(*ptrptr)++;
@@ -56,7 +84,7 @@ uint8 Desmume_Guid::hexToByte(char** ptrptr)
 void Desmume_Guid::scan(std::string& str)
 {
 	char* endptr = (char*)str.c_str();
-	en32lsb(data,strtoul(endptr,&endptr,16));
+	en32lsb(data+0,(u32)strtoul(endptr+0,&endptr,16));
 	en16lsb(data+4,(u16)strtoul(endptr+1,&endptr,16));
 	en16lsb(data+6,(u16)strtoul(endptr+1,&endptr,16));
 	en16lsb(data+8,(u16)strtoul(endptr+1,&endptr,16));

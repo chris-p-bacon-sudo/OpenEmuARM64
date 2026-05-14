@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2009-2013 DeSmuME team
+	Copyright (C) 2009-2022 DeSmuME team
 
 	This file is free software: you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
@@ -19,7 +19,7 @@
 #include "version.h"
 
 // Helper macros to convert numerics to strings
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) && !defined(__clang__)
 	//re: http://72.14.203.104/search?q=cache:HG-okth5NGkJ:mail.python.org/pipermail/python-checkins/2002-November/030704.html+_msc_ver+compiler+version+string&hl=en&gl=us&ct=clnk&cd=5
 	#define _Py_STRINGIZE(X) _Py_STRINGIZE1((X))
 	#define _Py_STRINGIZE1(X) _Py_STRINGIZE2 ## X
@@ -31,17 +31,16 @@
 	#define TOSTRING(x) STRINGIFY(x)
 #endif
 
-//todo - everyone will want to support this eventually, i suppose
-#if defined(HOST_WINDOWS) || defined(DESMUME_COCOA) || defined(DESMUME_QT)
-	#include "svnrev.h"
+//TODO - it isn't possible to build a core without a frontend, so really this belongs with frontend modules
+//the only stuff that belongs in the core is major/minor/build versions which are (in principle) used for versioning savestates and movies and such..
+#if (defined(HOST_WINDOWS) || defined(DESMUME_COCOA)) &&!defined(TARGET_INTERFACE)
+	#include "scmrev.h"
+	#define SVN_REV_STR SCM_DESC_STR
 #else
 	#ifndef SVN_REV
-		#define SVN_REV 0
 		#define SVN_REV_STR "0"
 	#endif
 #endif
-
-#define DESMUME_NAME "DeSmuME"
 
 #if defined(__x86_64__) || defined(__LP64) || defined(__IA64__) || defined(_M_X64) || defined(_WIN64) 
 	#define DESMUME_PLATFORM_STRING " x64"
@@ -51,6 +50,12 @@
 	#define DESMUME_PLATFORM_STRING " ARM"
 #elif defined(__thumb__)
 	#define DESMUME_PLATFORM_STRING " ARM-Thumb"
+#elif defined(__aarch64__) || defined(_M_ARM64)
+    #if defined(__APPLE__)
+	#define DESMUME_PLATFORM_STRING " ARM64"
+    #else
+    #define DESMUME_PLATFORM_STRING " AArch64"
+    #endif
 #elif defined(__ppc64__)
 	#define DESMUME_PLATFORM_STRING " PPC64"
 #elif defined(__ppc__) || defined(_M_PPC)
@@ -59,15 +64,47 @@
 	#define DESMUME_PLATFORM_STRING ""
 #endif
 
-#ifndef ENABLE_SSE2
-	#ifndef ENABLE_SSE
-		#define DESMUME_CPUEXT_STRING " NOSSE"
-	#else
-		#define DESMUME_CPUEXT_STRING " NOSSE2"
-	#endif
-#else
-	#define DESMUME_CPUEXT_STRING ""
+#if defined(ENABLE_SSE4_2)
+	#define DESMUME_CPUEXT_PRIMARY_STRING " SSE4.2"
+#elif defined(ENABLE_SSE4_1)
+	#define DESMUME_CPUEXT_PRIMARY_STRING " SSE4.1"
+#elif defined(ENABLE_SSSE3)
+	#define DESMUME_CPUEXT_PRIMARY_STRING " SSSE3"
+#elif defined(ENABLE_SSE3)
+	#define DESMUME_CPUEXT_PRIMARY_STRING " SSE3"
+#elif defined(ENABLE_SSE2)
+	#define DESMUME_CPUEXT_PRIMARY_STRING " SSE2"
+#elif defined(ENABLE_SSE)
+	#define DESMUME_CPUEXT_PRIMARY_STRING " SSE"
+#elif defined(ENABLE_ALTIVEC)
+	#define DESMUME_CPUEXT_PRIMARY_STRING " AltiVec"
+#elif defined(ENABLE_NEON_A64)
+	#define DESMUME_CPUEXT_PRIMARY_STRING " NEON-A64"
 #endif
+
+#if defined(ENABLE_AVX512_3)
+	#define DESMUME_CPUEXT_SECONDARY_STRING "+AVX-512,Tier-3"
+#elif defined(ENABLE_AVX512_2)
+	#define DESMUME_CPUEXT_SECONDARY_STRING "+AVX-512,Tier-2"
+#elif defined(ENABLE_AVX512_1)
+	#define DESMUME_CPUEXT_SECONDARY_STRING "+AVX-512,Tier-1"
+#elif defined(ENABLE_AVX512_0)
+	#define DESMUME_CPUEXT_SECONDARY_STRING "+AVX-512,Tier-0"
+#elif defined(ENABLE_AVX2)
+	#define DESMUME_CPUEXT_SECONDARY_STRING "+AVX2"
+#elif defined(ENABLE_AVX)
+	#define DESMUME_CPUEXT_SECONDARY_STRING "+AVX"
+#endif
+
+#ifndef DESMUME_CPUEXT_PRIMARY_STRING
+	#define DESMUME_CPUEXT_PRIMARY_STRING ""
+#endif
+
+#ifndef DESMUME_CPUEXT_SECONDARY_STRING
+	#define DESMUME_CPUEXT_SECONDARY_STRING ""
+#endif
+
+#define DESMUME_CPUEXT_STRING DESMUME_CPUEXT_PRIMARY_STRING DESMUME_CPUEXT_SECONDARY_STRING
 
 #ifdef DEVELOPER
 	#define DESMUME_FEATURE_STRING " dev+"
@@ -80,7 +117,7 @@
 #elif defined(PUBLIC_RELEASE)
 	#define DESMUME_SUBVERSION_STRING ""
 #else
-	#define DESMUME_SUBVERSION_STRING " svn" SVN_REV_STR
+	#define DESMUME_SUBVERSION_STRING " git#" SVN_REV_STR
 #endif
 
 #ifdef __INTEL_COMPILER
@@ -114,22 +151,15 @@
 	#define DESMUME_JIT ""
 #endif
 
-#ifdef PUBLIC_RELEASE
-const u32 DESMUME_SUBVERSION_NUMERIC = 0xFFFFFFFF;
-#else
-const u32 DESMUME_SUBVERSION_NUMERIC = 5324;
-#endif
-
 const u8 DESMUME_VERSION_MAJOR = 0;
 const u8 DESMUME_VERSION_MINOR = 9;
-const u8 DESMUME_VERSION_BUILD = 11;
+const u8 DESMUME_VERSION_BUILD = 14;
 
-#define DESMUME_VERSION_NUMERIC 91100
-#define DESMUME_VERSION_STRING " " "0.9.11" DESMUME_SUBVERSION_STRING DESMUME_FEATURE_STRING DESMUME_PLATFORM_STRING DESMUME_JIT DESMUME_CPUEXT_STRING
+#define DESMUME_VERSION_NUMERIC 91400
+#define DESMUME_VERSION_STRING " " "0.9.14" DESMUME_SUBVERSION_STRING DESMUME_FEATURE_STRING DESMUME_PLATFORM_STRING DESMUME_JIT DESMUME_CPUEXT_STRING
 #define DESMUME_NAME_AND_VERSION DESMUME_NAME DESMUME_VERSION_STRING
 
 u32 EMU_DESMUME_VERSION_NUMERIC() { return DESMUME_VERSION_NUMERIC; }
-u32 EMU_DESMUME_SUBVERSION_NUMERIC() { return DESMUME_SUBVERSION_NUMERIC; }
 const char* EMU_DESMUME_VERSION_STRING() { return DESMUME_VERSION_STRING; }
 const char* EMU_DESMUME_SUBVERSION_STRING() { return DESMUME_SUBVERSION_STRING; }
 const char* EMU_DESMUME_NAME_AND_VERSION() { return DESMUME_NAME_AND_VERSION; }

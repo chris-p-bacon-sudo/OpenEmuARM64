@@ -1,0 +1,50 @@
+option('opengl',
+  type: 'boolean',
+  value: false,
+  description: 'Build for OpenGL',
+)
+option('opengles',
+  type: 'boolean',
+  value: false,
+  description: 'Build for OpenGL ES',
+)
+option('glx',
+  type: 'boolean',
+  value: false,
+  description: 'Use a GLX context',
+)
+option('egl',
+  type: 'boolean',
+  value: false,
+  description: 'Use a EGL context',
+)
+option('openal',
+  type: 'boolean',
+  value: false,
+  description: 'Enable experimental OpenAL microphone input',
+)
+option('frontend-gtk',
+  type: 'boolean',
+  value: true,
+  description: 'Enable GTK3 frontend',
+)
+option('frontend-gtk2',
+  type: 'boolean',
+  value: false,
+  description: 'Enable GTK2 frontend',
+)
+option('frontend-cli',
+  type: 'boolean',
+  value: true,
+  description: 'Enable CLI frontend',
+)
+option('wifi',
+  type: 'boolean',
+  value: false,
+  description: 'Enable wifi support',
+)
+option('gdb-stub',
+  type: 'boolean',
+  value: false,
+  description: 'Enable gdb stub',
+)

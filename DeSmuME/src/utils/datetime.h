@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2010 DeSmuME team
+	Copyright (C) 2010-2023 DeSmuME team
 
 	This file is based on System.DateTime.cs and System.TimeSpan.cs from mono-2.6.7
 
@@ -194,30 +194,31 @@ public:
 		//catch (OverflowException) throw new OverflowException (Locale.GetText ("This TimeSpan value is MinValue so you cannot get the duration."));
 	}
 
-	static TimeSpan FromDays (double value)
-	{
-		return From (value, TicksPerDay);
-	}
+	//removed per http://sourceforge.net/p/desmume/bugs/1484/ since it was erroneous (well, From() was) and wasn't being used
+	//static TimeSpan FromDays (double value)
+	//{
+	//	return From (value, TicksPerDay);
+	//}
 
-	static TimeSpan FromHours (double value)
-	{
-		return From (value, TicksPerHour);
-	}
+	//static TimeSpan FromHours (double value)
+	//{
+	//	return From (value, TicksPerHour);
+	//}
 
-	static TimeSpan FromMinutes (double value)
-	{
-		return From (value, TicksPerMinute);
-	}
+	//static TimeSpan FromMinutes (double value)
+	//{
+	//	return From (value, TicksPerMinute);
+	//}
 
-	static TimeSpan FromSeconds (double value)
-	{
-		return From (value, TicksPerSecond);
-	}
+	//static TimeSpan FromSeconds (double value)
+	//{
+	//	return From (value, TicksPerSecond);
+	//}
 
-	static TimeSpan FromMilliseconds (double value)
-	{
-		return From (value, TicksPerMillisecond);
-	}
+	//static TimeSpan FromMilliseconds (double value)
+	//{
+	//	return From (value, TicksPerMillisecond);
+	//}
 
 	static TimeSpan FromTicks (s64 value)
 	{
@@ -343,28 +344,29 @@ private:
 		return t;
 	}
 
-	static TimeSpan From (double value, s64 tickMultiplicator) 
-	{
-		//a bunch of error handling removed
+	//removed per http://sourceforge.net/p/desmume/bugs/1484/ since it was erroneous and wasn't being used
+	//static TimeSpan From (double value, s64 tickMultiplicator) 
+	//{
+	//	//a bunch of error handling removed
 
-		//if (Double.IsNaN (value)) throw new ArgumentException (Locale.GetText ("Value cannot be NaN."), "value");
-		//if (Double.IsNegativeInfinity (value) || Double.IsPositiveInfinity (value) ||
-		//	(value < MinValue.Ticks) || (value > MaxValue.Ticks))
-		//	throw new OverflowException (Locale.GetText ("Outside range [MinValue,MaxValue]"));
+	//	//if (Double.IsNaN (value)) throw new ArgumentException (Locale.GetText ("Value cannot be NaN."), "value");
+	//	//if (Double.IsNegativeInfinity (value) || Double.IsPositiveInfinity (value) ||
+	//	//	(value < MinValue.Ticks) || (value > MaxValue.Ticks))
+	//	//	throw new OverflowException (Locale.GetText ("Outside range [MinValue,MaxValue]"));
 
-		//try {
-		value = (value * (tickMultiplicator / TicksPerMillisecond));
+	//	//try {
+	//	value = (value * (tickMultiplicator / TicksPerMillisecond));
 
-		//	checked {
-		//		long val = (long) Math.Round(value);
-		//		return new TimeSpan (val * TicksPerMillisecond);
-		//	}
-		//}
-		//catch (OverflowException) {
-		//	throw new OverflowException (Locale.GetText ("Resulting timespan is too big."));
-		//}
-		//}
-	}
+	//	//	checked {
+	//	//		long val = (long) Math.Round(value);
+	//	//		return new TimeSpan (val * TicksPerMillisecond);
+	//	//	}
+	//	//}
+	//	//catch (OverflowException) {
+	//	//	throw new OverflowException (Locale.GetText ("Resulting timespan is too big."));
+	//	//}
+	//	//}
+	//}
 
 };
 
@@ -655,7 +657,6 @@ public:
 	DateTime AddMonths (int months) const
 	{
 		int day, month, year,  maxday ;
-		DateTime temp;
 
 		day = get_Day();
 		month = get_Month() + (months % 12);
@@ -675,7 +676,7 @@ public:
 		if (day > maxday)
 			day = maxday;
 
-		temp = (year, month, day);
+		DateTime temp(year, month, day);
 		return  temp.Add (get_TimeOfDay());
 	}
 
@@ -782,7 +783,7 @@ public:
 	std::string ToString() const
 	{
 		char tmp[32];
-		sprintf(tmp,"%04d-%s-%02d %02d:%02d:%02d:%03d",get_Year(),monthnames[get_Month()],get_Day(),get_Hour(),get_Minute(),get_Second(),get_Millisecond());
+		snprintf(tmp, sizeof(tmp), "%04d-%s-%02d %02d:%02d:%02d:%03d",get_Year(),monthnames[get_Month()],get_Day(),get_Hour(),get_Minute(),get_Second(),get_Millisecond());
 		return tmp;
 	}
 
@@ -792,7 +793,7 @@ public:
 		char strmon[4];
 		int done = sscanf(str,"%04d-%3s-%02d %02d:%02d:%02d:%03d",&year,strmon,&day,&hour,&min,&sec,&ms);
 		if(done != 7) return false;
-		for(int i=1;i<12;i++)
+		for(int i=1;i<=12;i++)
 			if(!strncasecmp(monthnames[i],strmon,3))
 			{
 				mon=i;

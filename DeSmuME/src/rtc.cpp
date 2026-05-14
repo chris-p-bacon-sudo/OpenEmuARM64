@@ -20,16 +20,16 @@
 // TODO: interrupt handler
 
 #include "rtc.h"
-#include "common.h"
 #include "debug.h"
 #include "armcpu.h"
 #include <string.h>
 #include "saves.h"
 #ifdef WIN32
-#include "windows/main.h"
+#include "frontend/windows/main.h"
 #endif
 #include "movie.h"
 
+int rtcHourOverride = 0;
 
 typedef struct
 {
@@ -96,9 +96,8 @@ bool moviemode=false;
 
 DateTime rtcGetTime(void)
 {
-	DateTime tm;
 	if(movieMode == MOVIEMODE_INACTIVE) {
-		return DateTime::get_Now();
+		return DateTime::get_Now().AddHours(rtcHourOverride);
 	}
 	else {
 		//now, you might think it is silly to go through all these conniptions
@@ -114,6 +113,21 @@ DateTime rtcGetTime(void)
 		DateTime timer = currMovieData.rtcStart;
 		return timer.AddSeconds(totalseconds);
 	}
+}
+
+void rtcGetTimeAsString(char *buffer)
+{
+	static const char *wday[] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
+	
+	const DateTime rtcTime = rtcGetTime();
+	snprintf(buffer, 25, "%04d-%3s-%02d %s %02d:%02d:%02d",
+			 rtcTime.get_Year(),
+			 DateTime::GetNameOfMonth(rtcTime.get_Month()),
+			 rtcTime.get_Day(),
+			 wday[rtcTime.get_DayOfWeek()%7],
+			 rtcTime.get_Hour(),
+			 rtcTime.get_Minute(),
+			 rtcTime.get_Second());
 }
 
 static void rtcRecv()

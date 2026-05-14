@@ -104,13 +104,6 @@ if [ -z "$DERIVED" ]; then
   exit 1
 fi
 
-if [ ! -d "$DEST" ]; then
-  echo "error: ${CORE}.oecoreplugin not found at:"
-  echo "       $DEST"
-  echo "       Is the core installed? Launch OpenEmu once to install it."
-  exit 1
-fi
-
 if pgrep -xq "OpenEmu"; then
   echo "Quitting OpenEmu..."
   osascript -e 'tell application "OpenEmu" to quit'
@@ -121,10 +114,16 @@ if pgrep -xq "OpenEmu"; then
   fi
 fi
 
-echo "Installing ${CORE}.oecoreplugin (${CONFIG}) from:"
-echo "  ${DERIVED}"
-cp -f "${DERIVED}/Contents/MacOS/${CORE}" "${DEST}/Contents/MacOS/${CORE}"
-cp -f "${DERIVED}/Contents/Info.plist"    "${DEST}/Contents/Info.plist"
+if [ ! -d "$DEST" ]; then
+  echo "First-time install: creating ${DEST}"
+  mkdir -p "$(dirname "$DEST")"
+  cp -R "${DERIVED}" "${DEST}"
+else
+  echo "Installing ${CORE}.oecoreplugin (${CONFIG}) from:"
+  echo "  ${DERIVED}"
+  cp -f "${DERIVED}/Contents/MacOS/${CORE}" "${DEST}/Contents/MacOS/${CORE}"
+  cp -f "${DERIVED}/Contents/Info.plist"    "${DEST}/Contents/Info.plist"
+fi
 
 SRC_MD5=$(md5 -q "${DERIVED}/Contents/MacOS/${CORE}")
 DST_MD5=$(md5 -q "${DEST}/Contents/MacOS/${CORE}")

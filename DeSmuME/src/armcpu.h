@@ -1,6 +1,6 @@
 /*
 	Copyright (C) 2006 yopyop
-	Copyright (C) 2006-2015 DeSmuME team
+	Copyright (C) 2006-2021 DeSmuME team
 
 	This file is free software: you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
@@ -16,16 +16,21 @@
 	along with the this software.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef ARM_CPU
-#define ARM_CPU
+#ifndef DESMUME_ARMCPU_H
+#define DESMUME_ARMCPU_H
+
+//half of this stuff is arm cpu internals
+//half is public API
+//really a mess
 
 #include "types.h"
-#include "bits.h"
 #include "MMU.h"
 
-#define CODE(i)     (((i)>>25)&0x7)
-#define OPCODE(i)   (((i)>>21)&0xF)
-#define SIGNEBIT(i) BIT_N(i,20)
+#define CONDITION(i) ((i)>>28)
+#define REG_POS(i,n) (((i)>>n)&0xF)
+#define CODE(i) (((i)>>25)&0x7)
+#define OPCODE(i) (((i)>>21)&0xF)
+#define SIGNEBIT(i) (((i)>>20)&1)
 
 #define EXCEPTION_RESET 0x00
 #define EXCEPTION_UNDEFINED_INSTRUCTION 0x04
@@ -35,6 +40,13 @@
 #define EXCEPTION_RESERVED_0x14 0x14
 #define EXCEPTION_IRQ 0x18
 #define EXCEPTION_FAST_IRQ 0x1C
+
+
+#define CPU_FREEZE_NONE 0x00
+#define CPU_FREEZE_WAIT_IRQ 0x01 //waiting for some IRQ to happen, any IRQ
+#define CPU_FREEZE_IE_IF 0x02 //waiting for IE&IF to signal something (probably edge triggered on IRQ too)
+#define CPU_FREEZE_IRQ_IE_IF (CPU_FREEZE_WAIT_IRQ|CPU_FREEZE_IE_IF)
+#define CPU_FREEZE_OVERCLOCK_HACK 0x04
 
 #define INSTRUCTION_INDEX(i) ((((i)>>16)&0xFF0)|(((i)>>4)&0xF))
 
@@ -179,11 +191,11 @@ enum Mode
 	SYS = 0x1F
 };
 
-#ifdef WORDS_BIGENDIAN
 typedef union
 {
 	struct
 	{
+#ifdef MSB_FIRST
 		u32 N : 1,
 		Z : 1,
 		C : 1,
@@ -193,16 +205,9 @@ typedef union
 		I : 1,
 		F : 1,
 		T : 1,
-                mode : 5;
-	} bits;
-        u32 val;
-} Status_Reg;
+      mode : 5;
 #else
-typedef union
-{
-	struct
-	{
-                u32 mode : 5,
+      u32 mode : 5,
 		T : 1,
 		F : 1,
 		I : 1,
@@ -212,10 +217,10 @@ typedef union
 		C : 1,
 		Z : 1,
 		N : 1;
-	} bits;
-        u32 val;
-} Status_Reg;
 #endif
+	} bits;
+   u32 val;
+} Status_Reg;
 
 /**
  * The control interface to a CPU
@@ -259,25 +264,6 @@ struct armcpu_t
 	u32 R[16]; //16
 	Status_Reg CPSR;  //80
 	Status_Reg SPSR;
-	
-	void SetControlInterface(const armcpu_ctrl_iface *theCtrlInterface);
-	armcpu_ctrl_iface* GetControlInterface();
-	void SetControlInterfaceData(void *theData);
-	void* GetControlInterfaceData();
-	
-	void SetCurrentMemoryInterface(armcpu_memory_iface *theMemInterface);
-	armcpu_memory_iface* GetCurrentMemoryInterface();
-	void SetCurrentMemoryInterfaceData(void *theData);
-	void* GetCurrentMemoryInterfaceData();
-	
-	void SetBaseMemoryInterface(const armcpu_memory_iface *theMemInterface);
-	armcpu_memory_iface* GetBaseMemoryInterface();
-	void SetBaseMemoryInterfaceData(void *theData);
-	void* GetBaseMemoryInterfaceData();
-	
-	void ResetMemoryInterfaceToBase();
-	
-	void changeCPSR();
 
 	u32 R13_usr, R14_usr;
 	u32 R13_svc, R14_svc;
@@ -289,8 +275,11 @@ struct armcpu_t
 
 	u32 intVector;
 	u8 LDTBit;  //1 : ARMv5 style 0 : non ARMv5 (earlier)
-	BOOL waitIRQ;
-	BOOL halt_IE_and_IF; //the cpu is halted, waiting for IE&IF to signal something
+	
+	u32 freeze;
+	//BOOL waitIRQ;
+	//BOOL halt_IE_and_IF; 
+
 	u8 intrWaitARM_state;
 
 	BOOL BIOS_loaded;
@@ -319,7 +308,33 @@ struct armcpu_t
 	
 	/** the ctrl interface */
 	armcpu_ctrl_iface ctrl_iface;
+
+	// debugging stuff
+	u32 runToRetTmp;
+	bool runToRet;
+	u32 stepOverBreak;
+	std::vector<u32> *breakPoints;
+	bool debugStep;
 };
+
+void armcpu_SetControlInterface(armcpu_t *armcpu, const armcpu_ctrl_iface *theCtrlInterface);
+armcpu_ctrl_iface* armcpu_GetControlInterface(armcpu_t *armcpu);
+void armcpu_SetControlInterfaceData(armcpu_t *armcpu, void *theData);
+void* armcpu_GetControlInterfaceData(const armcpu_t *armcpu);
+
+void armcpu_SetCurrentMemoryInterface(armcpu_t *armcpu, armcpu_memory_iface *theMemInterface);
+armcpu_memory_iface* armcpu_GetCurrentMemoryInterface(const armcpu_t *armcpu);
+void armcpu_SetCurrentMemoryInterfaceData(armcpu_t *armcpu, void *theData);
+void* armcpu_GetCurrentMemoryInterfaceData(const armcpu_t *armcpu);
+
+void armcpu_SetBaseMemoryInterface(armcpu_t *armcpu, const armcpu_memory_iface *theMemInterface);
+armcpu_memory_iface* armcpu_GetBaseMemoryInterface(armcpu_t *armcpu);
+void armcpu_SetBaseMemoryInterfaceData(armcpu_t *armcpu, void *theData);
+void* armcpu_GetBaseMemoryInterfaceData(const armcpu_t *armcpu);
+
+void armcpu_ResetMemoryInterfaceToBase(armcpu_t *armcpu);
+
+void armcpu_changeCPSR();
 
 int armcpu_new( armcpu_t *armcpu, u32 id);
 void armcpu_init(armcpu_t *armcpu, u32 adr);
@@ -342,7 +357,6 @@ template<int PROCNUM, bool jit> u32 armcpu_exec();
 #endif
 
 void setIF(int PROCNUM, u32 flag);
-char* decodeIntruction(bool thumb_mode, u32 instr);
 
 static INLINE void NDS_makeIrq(int PROCNUM, u32 num)
 {

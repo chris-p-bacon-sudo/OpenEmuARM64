@@ -1,5 +1,5 @@
 /*
-	Copyright 2009-2015 DeSmuME team
+	Copyright 2009-2021 DeSmuME team
 
 	This file is free software: you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
@@ -73,7 +73,7 @@ static const u8 BOOTSIG1 = 0XAA;
 static void (*dateTime_)(u16* date, u16* time) = NULL;
 
 
-#include "PACKED.h"
+#include "../PACKED.h"
 
 //A partition table entry for a MBR formatted storage device.
 //The MBR partition table has four entries.
@@ -262,7 +262,7 @@ struct __PACKED TFat32BootSector {
 	u8 boot_sign[2];
 };
 
-#include "PACKED_END.h"
+#include "../PACKED_END.h"
 
 // End Of Chain values for FAT entries
 //FAT16 end of chain value used by Microsoft. 
@@ -514,7 +514,7 @@ class EmuFatFile
   u8 timestamp(u8 flag, u16 year, u8 month, u8 day, u8 hour, u8 minute, u8 second);
   u8 sync(void);
   u8 makeDir(EmuFatFile* dir, const char* dirName);
-  u8 open(EmuFatFile* dirFile, u16 index, u8 oflag);
+  u8 open(EmuFatFile* dirFile, u32 index, u8 oflag);
   u8 open(EmuFatFile* dirFile, const char* fileName, u8 oflag);
   u8 remove(EmuFatFile* dirFile, const char* fileName);
   u8 remove(void);

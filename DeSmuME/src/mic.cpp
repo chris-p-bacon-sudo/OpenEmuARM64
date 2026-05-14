@@ -1,6 +1,6 @@
 /* mic.cpp - this file is part of DeSmuME
  *
- * Copyright (C) 2009-2015 DeSmuME Team
+ * Copyright (C) 2009-2017 DeSmuME Team
  *
  * This file is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,7 +18,7 @@
  * Boston, MA 02111-1307, USA.
  */
 
-#if !defined(WIN32) || defined(DESMUME_QT)
+#if !defined(WIN32)
 
 #include <stdlib.h>
 #include "mic.h"
@@ -121,7 +121,7 @@ u8 Mic_ReadSample(void)
 {
 	// All mic modes other than Physical must have the mic hotkey pressed in order
 	// to work.
-	if (CommonSettings.micMode != TCommonSettings::Physical && !Mic_GetActivate()) {
+	if (CommonSettings.micMode != MicMode_Physical && !Mic_GetActivate()) {
 		return MIC_NULL_SAMPLE_VALUE;
 	}
 
@@ -180,9 +180,9 @@ void Mic_DoNoise(BOOL noise)
 
 	if (!noise) {
 		generator = &Mic_GenerateNullSample;
-	} else if (CommonSettings.micMode == TCommonSettings::InternalNoise) {
+	} else if (CommonSettings.micMode == MicMode_InternalNoise) {
 		generator = &Mic_GenerateInternalNoiseSample;
-	} else if (CommonSettings.micMode == TCommonSettings::Random) {
+	} else if (CommonSettings.micMode == MicMode_Random) {
 		generator = &Mic_GenerateWhiteNoiseSample;
 	}
 
@@ -195,14 +195,14 @@ void Mic_DoNoise(BOOL noise)
 	}
 }
 
-void mic_savestate(EMUFILE* os)
+void mic_savestate(EMUFILE &os)
 {
-	write32le(-1,os);
+	os.write_32LE(-1);
 }
 
-bool mic_loadstate(EMUFILE* is, int size)
+bool mic_loadstate(EMUFILE &is, int size)
 {
-	is->fseek(size, SEEK_CUR);
+	is.fseek(size, SEEK_CUR);
 	return TRUE;
 }
 

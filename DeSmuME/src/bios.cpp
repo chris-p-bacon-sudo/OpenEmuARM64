@@ -1,6 +1,6 @@
 /*
 	Copyright (C) 2006 yopyop
-	Copyright (C) 2008-2015 DeSmuME team
+	Copyright (C) 2008-2017 DeSmuME team
 	
 	This file is free software: you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
@@ -27,6 +27,7 @@
 #include "debug.h"
 #include "registers.h"
 #include "NDSSystem.h"
+#include "utils/bits.h"
 
 #define cpu (&ARMPROC)
 #define TEMPLATE template<int PROCNUM>
@@ -229,8 +230,7 @@ TEMPLATE static u32 WaitByLoop()
 
 TEMPLATE static u32 wait4IRQ()
 {
-   	cpu->waitIRQ = TRUE;
-	cpu->halt_IE_and_IF = TRUE;
+	cpu->freeze = CPU_FREEZE_IRQ_IE_IF;
 	return 1;
 }
 
@@ -277,8 +277,7 @@ TEMPLATE static u32 intrWaitARM()
 
 	//the condition wasn't satisfied. this means that we need to halt, wait for some enabled interrupt,
 	//and then ensure that we return to this opcode again to check the condition again
-	cpu->waitIRQ = TRUE;
-	cpu->halt_IE_and_IF = TRUE;
+	cpu->freeze = CPU_FREEZE_IRQ_IE_IF;
 
 	//(rewire PC to jump back to this opcode)
 	u32 instructAddr = cpu->instruct_adr;

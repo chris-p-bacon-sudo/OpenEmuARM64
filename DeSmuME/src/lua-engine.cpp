@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2009-2015 DeSmuME team
+	Copyright (C) 2009-2025 DeSmuME team
 
 	This file is free software: you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
@@ -19,20 +19,31 @@
 
 #if defined(WIN32)
 	#include <windows.h>
-	#include <direct.h>
+    #if defined(WIN32_FRONTEND)
+        #include <direct.h>
+        #include <mmsystem.h>
 
-	typedef HMENU PlatformMenu;    // hMenu
-	#define MAX_MENU_COUNT (IDC_LUAMENU_RESERVE_END - IDC_LUAMENU_RESERVE_START + 1)
+        typedef HMENU PlatformMenu;    // hMenu
+        #define MAX_MENU_COUNT (IDC_LUAMENU_RESERVE_END - IDC_LUAMENU_RESERVE_START + 1)
 
-	#include "windows/main.h"
-	#include "windows/video.h"
-	#include "windows/resource.h"
+        #include "frontend/windows/main.h"
+        #include "frontend/windows/video.h"
+        #include "frontend/windows/resource.h"
+        #include "frontend/windows/display.h"
+    #else
+        typedef void* PlatformMenu;
+        #define MAX_MENU_COUNT 0
+    #endif
 #else
 	// TODO: define appropriate types for menu
 	typedef void* PlatformMenu;
 	#define MAX_MENU_COUNT 0
 
 	#include <unistd.h>
+#endif
+
+#if HAVE_LIBAGG
+#include "frontend/modules/osd/agg/agg_osd.h"
 #endif
 
 #include <assert.h>
@@ -49,10 +60,11 @@
 #include "movie.h"
 #include "MMU.h"
 #include "GPU.h"
-#include "GPU_osd.h"
+#include "render3D.h"
 #include "SPU.h"
 #include "saves.h"
 #include "emufile.h"
+#include "types.h"
 
 using namespace std;
 
@@ -147,7 +159,7 @@ struct LuaContextInfo {
 	void(*onstop)(int uid, bool statusOK);
 };
 std::map<int, LuaContextInfo*> luaContextInfo;
-std::map<lua_State*, int> luaStateToUIDMap;
+std::map<lua_State*, uintptr_t> luaStateToUIDMap;
 int g_numScriptsStarted = 0;
 bool g_anyScriptsHighSpeed = false;
 bool g_stopAllScriptsEnabled = true;
@@ -177,8 +189,10 @@ static std::map<lua_CFunction, const char*> s_cFuncInfoMap;
 	static const char* name##_args = s_cFuncInfoMap[name] = argstring; \
 	static int name(lua_State* L)
 
-#ifdef _MSC_VER
-	#define snprintf _snprintf
+#if defined(_MSC_VER) || defined(__MINGW32__)
+	#ifndef snprintf
+		#define snprintf _snprintf
+	#endif
 	#define vscprintf _vscprintf
 #else
 	#define stricmp strcasecmp
@@ -197,6 +211,7 @@ static const char* luaCallIDStrings [] =
 	"CALL_AFTERLOAD",
 	"CALL_ONSTART",
 	"CALL_ONINITMENU",
+	"CALL_REGISTER3DEVENT",
 
 	"CALL_HOTKEY_1",
 	"CALL_HOTKEY_2",
@@ -215,7 +230,9 @@ static const char* luaCallIDStrings [] =
 	"CALL_HOTKEY_15",
 	"CALL_HOTKEY_16",
 };
-static const int _makeSureWeHaveTheRightNumberOfStrings [sizeof(luaCallIDStrings)/sizeof(*luaCallIDStrings) == LUACALL_COUNT ? 1 : 0];
+
+//make Sure We Have The Right Number Of Strings
+CTASSERT(ARRAY_SIZE(luaCallIDStrings) == LUACALL_COUNT);
 
 static const char* luaMemHookTypeStrings [] =
 {
@@ -227,7 +244,9 @@ static const char* luaMemHookTypeStrings [] =
 	"MEMHOOK_READ_SUB",
 	"MEMHOOK_EXEC_SUB",
 };
-static const int _makeSureWeHaveTheRightNumberOfStrings2 [sizeof(luaMemHookTypeStrings)/sizeof(*luaMemHookTypeStrings) == LUAMEMHOOK_COUNT ? 1 : 0];
+
+//make Sure We Have The Right Number Of Strings 2
+CTASSERT(ARRAY_SIZE(luaMemHookTypeStrings) == LUAMEMHOOK_COUNT);
 
 void StopScriptIfFinished(int uid, bool justReturned = false);
 void SetSaveKey(LuaContextInfo& info, const char* key);
@@ -495,11 +514,11 @@ static int doPopup(lua_State* L, const char* deftype, const char* deficon)
 
 	static const char * const titles [] = {"Notice", "Question", "Warning", "Error"};
 	const char* answer = "ok";
-#if defined(_WIN32)
+#if defined(WIN32_FRONTEND)
 	static const int etypes [] = {MB_OK, MB_YESNO, MB_YESNOCANCEL, MB_OKCANCEL, MB_ABORTRETRYIGNORE};
 	static const int eicons [] = {MB_ICONINFORMATION, MB_ICONQUESTION, MB_ICONWARNING, MB_ICONERROR};
 //	DialogsOpen++;
-	int uid = luaStateToUIDMap[L->l_G->mainthread];
+	uintptr_t uid = luaStateToUIDMap[L->l_G->mainthread];
 	EnableWindow(MainWindow->getHWnd(), false);
 //	if (Full_Screen)
 //	{
@@ -917,7 +936,7 @@ static void toCStringConverter(lua_State* L, int i, char*& ptr, int& remaining)
 		case LUA_TNIL: APPENDPRINT "nil" END break;
 		case LUA_TBOOLEAN: APPENDPRINT lua_toboolean(L,i) ? "true" : "false" END break;
 		case LUA_TSTRING: APPENDPRINT "%s",lua_tostring(L,i) END break;
-		case LUA_TNUMBER: APPENDPRINT "%.12Lg",lua_tonumber(L,i) END break;
+		case LUA_TNUMBER: APPENDPRINT "%.12g",lua_tonumber(L,i) END break;
 		case LUA_TFUNCTION: 
 			if((L->base + i-1)->value.gc->cl.c.isC)
 			{
@@ -1358,7 +1377,7 @@ bool luabitop_validate(lua_State *L) // originally named as luaopen_bit
   if (b != (UBits)1437217655L || BAD_SAR) {  /* Perform a simple self-test. */
     const char *msg = "compiled with incompatible luaconf.h";
 #ifdef LUA_NUMBER_DOUBLE
-#if defined(_WIN32)
+#if defined(WIN32_FRONTEND)
     if (b == (UBits)1610612736L)
       msg = "use D3DCREATE_FPU_PRESERVE with DirectX";
 #endif
@@ -1400,7 +1419,7 @@ DEFINE_LUA_FUNCTION(bitbit, "whichbit")
 	BRET(rv);
 }
 
-int emu_wait(lua_State* L);
+static int emu_wait(lua_State* L);
 int dontworry(LuaContextInfo& info);
 
 void indicateBusy(lua_State* L, bool busy)
@@ -1430,8 +1449,8 @@ void indicateBusy(lua_State* L, bool busy)
 		lua_pop(L, 1);
 	}
 */
-#if defined(_WIN32)
-	int uid = luaStateToUIDMap[L->l_G->mainthread];
+#if defined(WIN32_FRONTEND)
+	uintptr_t uid = luaStateToUIDMap[L->l_G->mainthread];
 	HWND hDlg = (HWND)uid;
 	char str [1024];
 	GetWindowText(hDlg, str, 1000);
@@ -1484,7 +1503,7 @@ void LuaRescueHook(lua_State* L, lua_Debug *dbg)
 		if(!info.panic)
 		{
 			SPU_ClearOutputBuffer();
-#if defined(ASK_USER_ON_FREEZE) && defined(_WIN32)
+#if defined(ASK_USER_ON_FREEZE) && defined(WIN32_FRONTEND)
 			DialogsOpen++;
 			int answer = MessageBox(HWnd, "A Lua script has been running for quite a while. Maybe it is in an infinite loop.\n\nWould you like to stop the script?\n\n(Yes to stop it now,\n No to keep running and not ask again,\n Cancel to keep running but ask again later)", "Lua Alert", MB_YESNOCANCEL | MB_DEFBUTTON3 | MB_ICONASTERISK);
 			DialogsOpen--;
@@ -1513,6 +1532,19 @@ void LuaRescueHook(lua_State* L, lua_Debug *dbg)
 		info.panic = false;
 	}
 }
+
+// vscprintf() is only available on Windows, so we need to make our own vscprintf() for other platforms.
+// https://stackoverflow.com/questions/4785381/replacement-for-ms-vscprintf-on-macos-linux
+#ifndef HOST_WINDOWS
+int vscprintf(const char * format, va_list pargs) {
+	int retval;
+	va_list argcopy;
+	va_copy(argcopy, pargs);
+	retval = vsnprintf(NULL, 0, format, argcopy);
+	va_end(argcopy);
+	return retval;
+}
+#endif
 
 void printfToOutput(const char* fmt, ...)
 {
@@ -1627,7 +1659,15 @@ int StepEmulationAtSpeed(lua_State* L, SpeedMode speedMode, bool allowPause)
 	}
 
 	driver->USR_SetDisplayPostpone(postponeTime, drawNextFrame);
-	allowPause ? dontworry(info) : worry(L, worryIntensity);
+	
+	if (allowPause)
+	{
+		dontworry(info);
+	}
+	else
+	{
+		worry(L, worryIntensity);
+	}
 
 	if(!allowPause && driver->EMU_IsEmulationPaused())
 		driver->EMU_PauseEmulation(false);
@@ -1732,7 +1772,18 @@ DEFINE_LUA_FUNCTION(emu_frameadvance, "")
 
 	return StepEmulationAtSpeed(L, info.speedMode, true);
 }
-
+DEFINE_LUA_FUNCTION(emu_gamecode, "")
+{
+	char tmp[5] = {gameInfo.header.gameCode[0],gameInfo.header.gameCode[1],gameInfo.header.gameCode[2],gameInfo.header.gameCode[3],0};
+	lua_pushstring(L,tmp);
+	return 1;
+}
+DEFINE_LUA_FUNCTION(emu_smallgamecode, "")
+{
+	char tmp[4] = {gameInfo.header.gameCode[0],gameInfo.header.gameCode[1],gameInfo.header.gameCode[2],0};
+	lua_pushstring(L,tmp);
+	return 1;
+}
 DEFINE_LUA_FUNCTION(emu_pause, "")
 {
 	driver->EMU_PauseEmulation(true);
@@ -1973,8 +2024,8 @@ DEFINE_LUA_FUNCTION(memory_getregister, "cpu_dot_registername_string")
 					switch(rpm.dataSize)
 					{ default:
 					case 1: lua_pushinteger(L, *(unsigned char*)rpm.pointer); break;
-					case 2: lua_pushinteger(L, *(unsigned short*)rpm.pointer); break;
-					case 4: lua_pushinteger(L, *(unsigned long*)rpm.pointer); break;
+					case 2: lua_pushinteger(L, *(u16*)rpm.pointer); break;
+					case 4: lua_pushinteger(L, *(u32*)rpm.pointer); break;
 					}
 					return 1;
 				}
@@ -1989,7 +2040,7 @@ DEFINE_LUA_FUNCTION(memory_getregister, "cpu_dot_registername_string")
 DEFINE_LUA_FUNCTION(memory_setregister, "cpu_dot_registername_string,value")
 {
 	const char* qualifiedRegisterName = luaL_checkstring(L,1);
-	unsigned long value = (unsigned long)(luaL_checkinteger(L,2));
+	unsigned long value = (u32)(luaL_checkinteger(L,2));
 	lua_settop(L,0);
 	for(int cpu = 0; cpu < sizeof(cpuToRegisterMaps)/sizeof(*cpuToRegisterMaps); cpu++)
 	{
@@ -2006,8 +2057,8 @@ DEFINE_LUA_FUNCTION(memory_setregister, "cpu_dot_registername_string,value")
 					switch(rpm.dataSize)
 					{ default:
 					case 1: *(unsigned char*)rpm.pointer = (unsigned char)(value & 0xFF); break;
-					case 2: *(unsigned short*)rpm.pointer = (unsigned short)(value & 0xFFFF); break;
-					case 4: *(unsigned long*)rpm.pointer = value; break;
+					case 2: *(u16*)rpm.pointer = (u16)(value & 0xFFFF); break;
+					case 4: *(u32*)rpm.pointer = value; break;
 					}
 					return 0;
 				}
@@ -2075,7 +2126,7 @@ DEFINE_LUA_FUNCTION(state_save, "location[,option]")
 			if((*ppEmuFile)->fail())
 				luaL_error(L, "failed to save, savestate object was dead.");
 
-			savestate_save(*ppEmuFile, 0);
+			savestate_save(**ppEmuFile, 0);
 
 			if((*ppEmuFile)->fail())
 				luaL_error(L, "failed to save savestate!");
@@ -2130,7 +2181,7 @@ DEFINE_LUA_FUNCTION(state_load, "location[,option]")
 			if((*ppEmuFile)->size() == 0)
 				luaL_error(L, "failed to load, savestate wasn't saved first.");
 
-			savestate_load(*ppEmuFile);
+			savestate_load(**ppEmuFile);
 
 			if((*ppEmuFile)->fail())
 				luaL_error(L, "failed to load savestate!");
@@ -2212,7 +2263,7 @@ public:
 
 	virtual size_t fwrite(const void *ptr, size_t bytes)
 	{
-		if(!failbit)
+		if(!this->_failbit)
 		{
 			u8* dst = buf()+pos;
 			const u8* src = (const u8*)ptr;
@@ -2222,13 +2273,14 @@ public:
 				if(*src != *dst)
 				{
 					if(differences.size() == 100)
-						failbit = true;
+						this->_failbit = true;
 					else
 					{
+						const NDSDisplayInfo &dispInfo = GPU->GetDisplayInfo();
 						char temp [256];
-						sprintf(temp, " " /*"mismatch at "*/ "byte %d(0x%X at 0x%X): %d(0x%X) != %d(0x%X)\n", i, i, dst, *src,*src, *dst,*dst);
+						sprintf(temp, " " /*"mismatch at "*/ "byte %d(0x%X at %p): %d(0x%X) != %d(0x%X)\n", i, i, dst, *src,*src, *dst,*dst);
 
-						if(ptr == GPU_screen || ptr == gfx3d_convertedScreen) // ignore screen-only differences since frame skipping can cause them and it's probably ok
+						if(ptr == dispInfo.masterNativeBuffer16 || ptr == dispInfo.masterCustomBuffer || ptr == CurrentRenderer->GetFramebuffer32()) // ignore screen-only differences since frame skipping can cause them and it's probably ok
 							break;
 
 						differences.push_back(temp); // <-- probably the best place for a breakpoint
@@ -2270,7 +2322,7 @@ DEFINE_LUA_FUNCTION(state_verify, "location[,option]")
 				luaL_error(L, "failed to verify, savestate object was dead.");
 
 			EMUFILE_MEMORY_VERIFIER verifier (*ppEmuFile);
-			savestate_save(&verifier, 0);
+			savestate_save(verifier, 0);
 			if(verifier.differences.size())
 			{
 				fputs("\n", stdout);
@@ -2446,25 +2498,25 @@ DEFINE_LUA_FUNCTION(joy_peekup, "")
 static const struct ColorMapping
 {
 	const char* name;
-	int value;
+	s32 value;
 }
 s_colorMapping [] =
 {
-	{"white",     0xFFFFFFFF},
-	{"black",     0x000000FF},
-	{"clear",     0x00000000},
-	{"gray",      0x7F7F7FFF},
-	{"grey",      0x7F7F7FFF},
-	{"red",       0xFF0000FF},
-	{"orange",    0xFF7F00FF},
-	{"yellow",    0xFFFF00FF},
-	{"chartreuse",0x7FFF00FF},
-	{"green",     0x00FF00FF},
-	{"teal",      0x00FF7FFF},
-	{"cyan" ,     0x00FFFFFF},
-	{"blue",      0x0000FFFF},
-	{"purple",    0x7F00FFFF},
-	{"magenta",   0xFF00FFFF},
+	{"white",     (s32)0xFFFFFFFF},
+	{"black",     (s32)0x000000FF},
+	{"clear",     (s32)0x00000000},
+	{"gray",      (s32)0x7F7F7FFF},
+	{"grey",      (s32)0x7F7F7FFF},
+	{"red",       (s32)0xFF0000FF},
+	{"orange",    (s32)0xFF7F00FF},
+	{"yellow",    (s32)0xFFFF00FF},
+	{"chartreuse",(s32)0x7FFF00FF},
+	{"green",     (s32)0x00FF00FF},
+	{"teal",      (s32)0x00FF7FFF},
+	{"cyan" ,     (s32)0x00FFFFFF},
+	{"blue",      (s32)0x0000FFFF},
+	{"purple",    (s32)0x7F00FFFF},
+	{"magenta",   (s32)0xFF00FFFF},
 };
 
 inline int getcolor_unmodified(lua_State *L, int idx, int defaultColor)
@@ -2600,6 +2652,7 @@ static void prepare_drawing()
 }
 static void prepare_reading()
 {
+#if HAVE_LIBAGG
 	curGuiData = GetCurrentInfo().guiData;
 	u32* buf = (u32*)aggDraw.screen->buf().buf();
 	if(buf)
@@ -2609,12 +2662,13 @@ static void prepare_reading()
 	}
 	else
 	{
-#if defined(WIN32)
+#if defined(WIN32_FRONTEND)
 		extern VideoInfo video;
 		curGuiData.data = video.buffer;
 		curGuiData.stridePix = 256;
 #endif
 	}
+#endif
 }
 
 // note: prepare_drawing or prepare_reading must be called,
@@ -2887,10 +2941,8 @@ static void PutTextInternal (const char *str, int len, short x, short y, int col
 		if(dxdy < 0 && x < curGuiData.xMin) break;
 
 		int c = *str++;
-		if(dxdx > 0 && x >= curGuiData.xMax
-		|| dxdx < 0 && x < curGuiData.xMin
-		|| dydx > 0 && y >= curGuiData.yMax
-		|| dydx < 0 && y < curGuiData.yMin)
+		if ( (dxdx > 0 && x >= curGuiData.xMax) || (dxdx < 0 && x < curGuiData.xMin) ||
+			 (dydx > 0 && y >= curGuiData.yMax) || (dydx < 0 && y < curGuiData.yMin) )
 		{
 			while (c != '\n') {
 				c = *str;
@@ -2943,7 +2995,7 @@ static void PutTextInternal (const char *str, int len, short x, short y, int col
 						{
 							for(int x3 = max(0,x2-1); x3 <= min(4,x2+1); x3++)
 							{
-								on |= y3 >= 0 && y3 < 8 && (Cur_Glyph[y3*8] & (1 << x3));
+								on |= (y3 >= 0) && (y3 < 8) && ((Cur_Glyph[y3*8] & (1 << x3)) != 0);
 								if (on)
 									goto draw_outline; // speedup?
 							}
@@ -3234,6 +3286,20 @@ DEFINE_LUA_FUNCTION(gui_settransparency, "transparency_4_to_0")
 	return 0;
 }
 
+// gui.setlayermask(int main, int sub)
+// enables or disables display layers for each GPU according to the bitfields provided
+// e.g. 31 (11111) shows all layers; 0 (00000) hides all layers; 16 (10000) shows only the object layer (layer 4)
+// this function is only supported by the windows frontend.
+DEFINE_LUA_FUNCTION(gui_setlayermask, "main,sub")
+{
+#if defined(WIN32_FRONTEND)
+	lua_Integer main = luaL_checkint(L, 1);
+	lua_Integer sub = luaL_checkint(L, 2);
+	SetLayerMasks(main, sub);
+#endif
+	return 0;
+}
+
 // takes a screenshot and returns it in gdstr format
 // example: gd.createFromGdStr(gui.gdscreenshot()):png("outputimage.png")
 DEFINE_LUA_FUNCTION(gui_gdscreenshot, "[whichScreen='both']")
@@ -3457,7 +3523,7 @@ static void GetCurrentScriptDir(char* buffer, int bufLen)
 
 DEFINE_LUA_FUNCTION(emu_openscript, "filename")
 {
-#if defined(WIN32)
+#if defined(WIN32_FRONTEND)
 	char curScriptDir[1024]; GetCurrentScriptDir(curScriptDir, 1024); // make sure we can always find scripts that are in the same directory as the current script
 	const char* filename = lua_isstring(L,1) ? lua_tostring(L,1) : NULL;
 	extern const char* OpenLuaScript(const char* filename, const char* extraDirToCheck, bool makeSubservient);
@@ -3479,7 +3545,7 @@ DEFINE_LUA_FUNCTION(emu_reset, "")
 
 static bool IsLuaMenuItem(PlatformMenuItem menuItem)
 {
-#if defined(WIN32)
+#if defined(WIN32_FRONTEND)
 	return (menuItem >= IDC_LUAMENU_RESERVE_START && menuItem <= IDC_LUAMENU_RESERVE_END);
 #else
 	return false;
@@ -3488,7 +3554,7 @@ static bool IsLuaMenuItem(PlatformMenuItem menuItem)
 
 static bool SearchFreeMenuItem(PlatformMenu menu, PlatformMenuItem& menuItem)
 {
-#if defined(WIN32)
+#if defined(WIN32_FRONTEND)
 	for (UINT menuItemId = IDC_LUAMENU_RESERVE_START; menuItemId <= IDC_LUAMENU_RESERVE_END; menuItemId++)
 	{
 		MENUITEMINFO mii;
@@ -3510,7 +3576,7 @@ static bool SearchFreeMenuItem(PlatformMenu menu, PlatformMenuItem& menuItem)
 
 static PlatformMenu AddSubMenu(PlatformMenu topMenu, PlatformMenu menu, const char* menuName)
 {
-#if defined(WIN32)
+#if defined(WIN32_FRONTEND)
 	LuaContextInfo& info = GetCurrentInfo();
 	MENUITEMINFO mii;
 
@@ -3568,7 +3634,7 @@ static PlatformMenu AddSubMenu(PlatformMenu topMenu, PlatformMenu menu, const ch
 
 bool AddMenuEntries(PlatformMenu topMenu, PlatformMenu menu)
 {
-#if defined(WIN32)
+#if defined(WIN32_FRONTEND)
 	LuaContextInfo& info = GetCurrentInfo();
 	lua_State* L = info.L;
 	luaL_checktype(L, -1, LUA_TTABLE);
@@ -3672,7 +3738,7 @@ bool AddMenuEntries(PlatformMenu topMenu, PlatformMenu menu)
 
 DEFINE_LUA_FUNCTION(emu_addmenu, "menuName, menuEntries")
 {
-#if defined(WIN32)
+#if defined(WIN32_FRONTEND)
 	int nargs = lua_gettop(L);
 	if (nargs > 1 && !lua_isnil(L, 1))
 	{
@@ -3708,7 +3774,7 @@ DEFINE_LUA_FUNCTION(emu_setmenuiteminfo, "menuItem, infoTable")
 {
 	luaL_checktype(L, 1, LUA_TFUNCTION);
 	luaL_checktype(L, 2, LUA_TTABLE);
-#if defined(WIN32)
+#if defined(WIN32_FRONTEND)
 	LuaContextInfo& info = GetCurrentInfo();
 	map<PlatformMenuItem, PlatformMenu>::iterator it = info.menuData.menuItemMap.begin();
 	while(it != info.menuData.menuItemMap.end())
@@ -3799,6 +3865,38 @@ DEFINE_LUA_FUNCTION(emu_registermenustart, "func")
 	lua_getfield(L, LUA_REGISTRYINDEX, luaCallIDStrings[LUACALL_ONINITMENU]);
 	lua_insert(L,1);
 	lua_setfield(L, LUA_REGISTRYINDEX, luaCallIDStrings[LUACALL_ONINITMENU]);
+	StopScriptIfFinished(luaStateToUIDMap[L->l_G->mainthread]);
+	return 1;
+}
+
+DEFINE_LUA_FUNCTION(emu_set3dtransform, "mode, matrix")
+{
+	extern int freelookMode;
+	extern s32 freelookMatrix[16];
+
+	int mode = luaL_checkinteger(L,1);
+	freelookMode = mode;
+	if(mode == 2 || mode == 3)
+	{
+		for(int i=0;i<16;i++)
+		{
+			lua_rawgeti(L, 2, i+1);
+			freelookMatrix[i] = (s32)(lua_tonumber(L,-1)*(1<<12));
+			lua_pop(L,1);
+		}
+	}
+
+	return 0;
+}
+
+DEFINE_LUA_FUNCTION(emu_register3devent, "func")
+{
+	if (!lua_isnil(L,1))
+		luaL_checktype(L, 1, LUA_TFUNCTION);
+	lua_settop(L,1);
+	lua_getfield(L, LUA_REGISTRYINDEX, luaCallIDStrings[LUACALL_REGISTER3DEVENT]);
+	lua_insert(L,1);
+	lua_setfield(L, LUA_REGISTRYINDEX, luaCallIDStrings[LUACALL_REGISTER3DEVENT]);
 	StopScriptIfFinished(luaStateToUIDMap[L->l_G->mainthread]);
 	return 1;
 }
@@ -3963,7 +4061,7 @@ DEFINE_LUA_FUNCTION(sound_clear, "")
 	return 0;
 }
 
-#if defined(_WIN32)
+#if defined(WIN32_FRONTEND)
 const char* s_keyToName[256] =
 {
 	NULL,
@@ -4077,7 +4175,7 @@ DEFINE_LUA_FUNCTION(input_getcurrentinputstatus, "")
 {
 	lua_newtable(L);
 
-#if defined(_WIN32)
+#if defined(WIN32_FRONTEND)
 	// keyboard and mouse button status
 	{
 		extern bool allowBackgroundInput;
@@ -4168,7 +4266,7 @@ int dontworry(LuaContextInfo& info)
 //agg basic shapes
 //TODO polygon and polyline, maybe the overloads for roundedRect and curve
 
-#include "aggdraw.h"
+#ifdef HAVE_LIBAGG
 
 static int line(lua_State *L) {
 
@@ -4284,6 +4382,50 @@ static int curve(lua_State *L) {
 	return 0;
 }
 
+#else
+
+static int line(lua_State *L)
+{
+	return 0;
+}
+
+static int triangle(lua_State *L)
+{
+	return 0;
+}
+
+static int rectangle(lua_State *L)
+{
+	return 0;
+}
+
+static int roundedRect(lua_State *L)
+{
+	return 0;
+}
+
+static int ellipse(lua_State *L)
+{
+	return 0;
+}
+
+static int arc(lua_State *L)
+{
+	return 0;
+}
+
+static int star(lua_State *L)
+{
+	return 0;
+}
+
+static int curve(lua_State *L)
+{
+	return 0;
+}
+
+#endif
+
 static const struct luaL_reg aggbasicshapes [] =
 {
 	{"line", line},
@@ -4294,8 +4436,8 @@ static const struct luaL_reg aggbasicshapes [] =
 	{"arc", arc},
 	{"star", star},
 	{"curve", curve},
-//	{"polygon", polygon},
-//	{"polyline", polyline},
+	//	{"polygon", polygon},
+	//	{"polyline", polyline},
 	{NULL, NULL}
 };
 
@@ -4320,6 +4462,8 @@ static void getColorForAgg(lua_State *L, int&r,int&g,int&b,int&a)
 		a = luaL_optinteger(L,4,255);
 	}
 }
+
+#ifdef HAVE_LIBAGG
 
 static int fillColor(lua_State *L) {
 
@@ -4363,6 +4507,35 @@ static int lineWidth(lua_State *L) {
 	return 0;
 }
 
+#else
+
+static int fillColor(lua_State *L)
+{
+	return 0;
+}
+
+static int noFill(lua_State *L)
+{
+	return 0;
+}
+
+static int lineColor(lua_State *L)
+{
+	return 0;
+}
+
+static int noLine(lua_State *L)
+{
+	return 0;
+}
+
+static int lineWidth(lua_State *L)
+{
+	return 0;
+}
+
+#endif
+
 static const struct luaL_reg agggeneralattributes [] =
 {
 //	{"blendMode", blendMode},
@@ -4386,6 +4559,8 @@ static const struct luaL_reg agggeneralattributes [] =
 	{NULL, NULL}
 };
 
+#ifdef HAVE_LIBAGG
+
 static int setFont(lua_State *L) {
 
 	const char *choice;
@@ -4406,6 +4581,20 @@ static int text(lua_State *L) {
 	aggDraw.hud->renderTextDropshadowed(x,y,choice);
 	return 0;
 }
+
+#else
+
+static int setFont(lua_State *L)
+{
+	return 0;
+}
+
+static int text(lua_State *L)
+{
+	return 0;
+}
+
+#endif
 
 static const struct luaL_reg aggcustom [] =
 {
@@ -4431,8 +4620,10 @@ static int gui_osdtext(lua_State *L)
 
 	const char* msg = toCString(L,3);
 
+#ifdef HAVE_LIBAGG
 	osd->addFixed(x, y, "%s", msg);
-
+#endif
+	
 	return 0;
 }
 
@@ -4504,6 +4695,128 @@ DEFINE_LUA_FUNCTION(stylus_write, "table")
 	return 0;
 }
 
+#if defined(_WIN32)
+	const char* s_dpadDirections[4] = {"up", "right", "down", "left"};
+	const char* s_buttonNames[33] = {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31", "32"};
+#endif
+// this function takes two optional variables
+// joystickID: a value (0-15) that identifies the controller to read; default is 0 which is the "preferred device" set in the control panel
+// returnDiagonals: a boolean (true/false) that determines whether or not to return diagonal values from a supported D-pad; default is false, which ignores diagonal values
+DEFINE_LUA_FUNCTION(controller_get, "[joystickID = 0 [,returnDiagonals = false]]") {
+#if defined(WIN32_FRONTEND)
+	unsigned int i_joystickID = 0;bool f_returnDiagonals = 0; // initialize optional variables
+	switch (lua_gettop(L)) { // get number of arguments
+		case 1:
+			i_joystickID = lua_tonumber(L,1);
+			break;
+		case 2:
+			i_joystickID = lua_tonumber(L,1);
+			if (lua_isboolean(L,2)) { // only accept true/false
+				f_returnDiagonals = lua_toboolean(L,2);
+			}
+			break;
+	}
+	lua_newtable(L); // create new empty table
+
+	JOYCAPS joycaps;
+	MMRESULT joygetdevcaps_result = joyGetDevCaps(i_joystickID, &joycaps, sizeof(joycaps)); // get controller's joystick (dpad) capabilities and number of buttons
+	if (joygetdevcaps_result != JOYERR_NOERROR) {return 1;} // joystick doesn't exist so return an empty table
+
+	JOYINFOEX joyinfoex;
+	joyinfoex.dwSize = sizeof(joyinfoex);
+	joyinfoex.dwFlags = JOY_RETURNBUTTONS | JOY_RETURNPOV;
+	MMRESULT joygetposex_result = joyGetPosEx(i_joystickID, &joyinfoex); // query joystick's pov and buttons
+	if (joygetposex_result != JOYERR_NOERROR) {return 1;} // joystick doesn't exist so return an empty table
+
+	bool dpad[4] = {0,0,0,0}; // up, right, down, left;
+	if ((joycaps.wCaps & JOYCAPS_HASPOV) && (joycaps.wCaps & JOYCAPS_POV4DIR)) { // confirm joystick has a pov that supports discrete values
+		if (joyinfoex.dwPOV != JOY_POVCENTERED) { // dpad is neutral
+			if (!(joyinfoex.dwPOV % 9000)) { // dpad is not currently on a diagonal so don't bother checking them
+				dpad[(joyinfoex.dwPOV / 4500)/2] = true; // divide by 2 to ignore diagonals
+			} else if (f_returnDiagonals) { // get the diagonal values if asked
+				switch (joyinfoex.dwPOV) {
+					case 4500: // up/right
+						dpad[0] = true;
+						dpad[1] = true;
+						break;
+					case 13500: // down/right
+						dpad[2] = true;
+						dpad[1] = true;
+						break;
+					case 22500: // down/left
+						dpad[2] = true;
+						dpad[3] = true;
+						break;
+					case 31500: // up/left
+						dpad[0] = true;
+						dpad[3] = true;
+						break;
+				}
+			}
+
+		}
+	} else {
+		// there is no supported dpad so all dpad booleans will default to false
+		// should add support for JOYCAPS_POVCTS here but my three test controllers don't use it; unsure if it's even needed
+	}
+
+	for (int i = 0; i < 4; i++) { // add dpad data to the table
+		lua_pushboolean(L, dpad[i]); // dpad direction isPressed
+		lua_setfield(L, -2, s_dpadDirections[i]); // dpad direction name
+	}
+
+	int pow = 1; // joyinfoex.dwButtons is the total value of all pressed buttons; button values are powers of 2, starting with 2^0 for button 1
+	for (unsigned int i = 1; i <= joycaps.wNumButtons; i++) { // add button data to the table
+		lua_pushboolean(L, (joyinfoex.dwButtons & pow) ? (true) : (false)); // button isPressed
+		lua_setfield(L, -2, s_buttonNames[i]); // button number
+		pow *= 2;
+	}
+
+	// add all available joystick axes to the table; axes will be scaled from -1 to 1
+	double scaledpos;
+	#define SCALEAXIS(pos, srcmin, srcmax, dstmin, dstmax) ((pos - srcmin) * (dstmax - dstmin) / (srcmax - srcmin) + dstmin)
+	if (joycaps.wNumAxes > 0) {
+		scaledpos = SCALEAXIS(joyinfoex.dwXpos, joycaps.wXmin, joycaps.wXmax, -1.0, 1.0);
+		lua_pushnumber(L, scaledpos);
+		lua_setfield(L, -2, "x");
+	}
+	if (joycaps.wNumAxes > 1) {
+		scaledpos = SCALEAXIS(joyinfoex.dwYpos, joycaps.wYmin, joycaps.wYmax, -1.0, 1.0);
+		lua_pushnumber(L, scaledpos);
+		lua_setfield(L, -2, "y");
+	}
+	if (joycaps.wCaps & JOYCAPS_HASZ) {
+		scaledpos = SCALEAXIS(joyinfoex.dwZpos, joycaps.wZmin, joycaps.wZmax, -1.0, 1.0);
+		lua_pushnumber(L, scaledpos);
+		lua_setfield(L, -2, "z");
+	}
+	if (joycaps.wCaps & JOYCAPS_HASR) {
+		scaledpos = SCALEAXIS(joyinfoex.dwRpos, joycaps.wRmin, joycaps.wRmax, -1.0, 1.0);
+		lua_pushnumber(L, scaledpos);
+		lua_setfield(L, -2, "r");
+	}
+	if (joycaps.wCaps & JOYCAPS_HASU) {
+		scaledpos = SCALEAXIS(joyinfoex.dwUpos, joycaps.wUmin, joycaps.wUmax, -1.0, 1.0);
+		lua_pushnumber(L, scaledpos);
+		lua_setfield(L, -2, "u");
+	}
+	if (joycaps.wCaps & JOYCAPS_HASV) {
+		scaledpos = SCALEAXIS(joyinfoex.dwVpos, joycaps.wVmin, joycaps.wVmax, -1.0, 1.0);
+		lua_pushnumber(L, scaledpos);
+		lua_setfield(L, -2, "v");
+	}
+
+	return 1; // return the table
+#else
+    return 0;
+#endif
+}
+static const struct luaL_reg controllerlib [] = {
+	{"get", controller_get},
+	{"read", controller_get},
+	{NULL, NULL}
+};
+
 static int gcEMUFILE_MEMORY(lua_State *L)
 {
 	EMUFILE_MEMORY** ppEmuFile = (EMUFILE_MEMORY**)luaL_checkudata(L, 1, "EMUFILE_MEMORY*");
@@ -4527,6 +4840,8 @@ static const struct luaL_reg styluslib [] =
 static const struct luaL_reg emulib [] =
 {
 	{"frameadvance", emu_frameadvance},
+	{"gamecode", emu_gamecode},
+	{"smallgamecode", emu_smallgamecode},
 	{"speedmode", emu_speedmode},
 	{"wait", emu_wait},
 	{"pause", emu_pause},
@@ -4554,6 +4869,8 @@ static const struct luaL_reg emulib [] =
 	{"addmenu", emu_addmenu},
 	{"setmenuiteminfo", emu_setmenuiteminfo},
 	{"registermenustart", emu_registermenustart},
+	{"register3devent", emu_register3devent},
+	{"set3dtransform", emu_set3dtransform},
 	// alternative names
 //	{"openrom", emu_loadrom},
 	{NULL, NULL}
@@ -4570,6 +4887,7 @@ static const struct luaL_reg guilib [] =
 	{"transparency", gui_settransparency},
 	{"popup", gui_popup},
 	{"parsecolor", gui_parsecolor},
+	{"setlayermask", gui_setlayermask},
 	{"gdscreenshot", gui_gdscreenshot},
 	{"gdoverlay", gui_gdoverlay},
 	{"redraw", emu_redraw}, // some people might think of this as more of a GUI function
@@ -4867,6 +5185,9 @@ void registerLibs(lua_State* L)
 	luaL_register(L, "agg", aggbasicshapes);
 	luaL_register(L, "agg", agggeneralattributes);
 	luaL_register(L, "agg", aggcustom);
+
+	luaL_register(L, "controller", controllerlib);
+
 	
 	lua_settop(L, 0); // clean the stack, because each call to luaL_register leaves a table on top
 	
@@ -4980,8 +5301,14 @@ void ResetInfo(LuaContextInfo& info)
 	info.numMemHooks = 0;
 	info.persistVars.clear();
 	info.newDefaultData.ClearRecords();
+#ifdef HAVE_LIBAGG
 	info.guiData.data = (u32*)aggDraw.hud->buf().buf();
 	info.guiData.stridePix = aggDraw.hud->buf().stride_abs() / 4;
+#else
+	static u32 dummyBuffer[GPU_FRAMEBUFFER_NATIVE_WIDTH * GPU_FRAMEBUFFER_NATIVE_HEIGHT * 2];
+	info.guiData.data = dummyBuffer;
+	info.guiData.stridePix = GPU_FRAMEBUFFER_NATIVE_WIDTH;
+#endif
 	info.guiData.xMin = 0;
 	info.guiData.xMax = 256;
 	info.guiData.yMin = 0;
@@ -5353,7 +5680,7 @@ void StopLuaScript(int uid)
 			for(int i = 0; i < LUAMEMHOOK_COUNT; i++)
 				CalculateMemHookRegions((LuaMemHookType)i);
 
-#if defined(WIN32)
+#if defined(WIN32_FRONTEND)
 			// remove items
 			map<PlatformMenuItem, PlatformMenu>::iterator it = info.menuData.menuItemMap.begin();
 			while(it != info.menuData.menuItemMap.end())
@@ -5557,7 +5884,7 @@ bool AnyLuaActive()
 	return false;
 }
 
-void CallRegisteredLuaFunctions(LuaCallID calltype)
+void _CallRegisteredLuaFunctions(LuaCallID calltype, int (*beforeCallback)(lua_State*, void*), void* beforeCallbackArg)
 {
 	assert((unsigned int)calltype < (unsigned int)LUACALL_COUNT);
 	const char* idstring = luaCallIDStrings[calltype];
@@ -5594,7 +5921,9 @@ void CallRegisteredLuaFunctions(LuaCallID calltype)
 				bool wasRunning = info.running;
 				info.running = true;
 				RefreshScriptSpeedStatus();
-				int errorcode = lua_pcall(L, 0, 0, 0);
+				int nargs = 0;
+				if(beforeCallback) nargs = beforeCallback(L,beforeCallbackArg);
+				int errorcode = lua_pcall(L, nargs, 0, 0);
 				info.running = wasRunning;
 				RefreshScriptSpeedStatus();
 				if (errorcode)
@@ -5616,6 +5945,45 @@ void CallRegisteredLuaFunctions(LuaCallID calltype)
 
 		++iter;
 	}
+}
+
+void CallRegisteredLuaFunctions(LuaCallID calltype)
+{
+	_CallRegisteredLuaFunctions(calltype, NULL, NULL);
+}
+
+static struct {
+	int which;
+	void* arg;
+} todo3devent;
+
+int CallRegistered3dEvent_callback(lua_State* L, void* userarg)
+{
+	if(todo3devent.which == 0)
+	{
+		float* mat = (float*)todo3devent.arg;
+		lua_newtable(L);
+		for(int i=0;i<16;i++)
+		{
+			lua_pushnumber(L,mat[i]);
+			lua_rawseti(L,-2,i+1);
+		}
+		lua_setfield(L,LUA_GLOBALSINDEX,"registered3devent_arg");
+
+		lua_pushnumber(L,todo3devent.which);
+		lua_setfield(L,LUA_GLOBALSINDEX,"registered3devent_which");
+
+		return 0;
+	}
+
+	return 0;
+}
+
+void CallRegistered3dEvent(int which, void* arg)
+{
+	todo3devent.which = which;
+	todo3devent.arg = arg;
+	_CallRegisteredLuaFunctions(LUACALL_REGISTER3DEVENT, &CallRegistered3dEvent_callback, NULL);
 }
 
 void CallRegisteredLuaSaveFunctions(int savestateNumber, LuaSaveData& saveData)

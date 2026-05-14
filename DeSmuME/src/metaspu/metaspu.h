@@ -1,4 +1,5 @@
-/*  Copyright 2009-2015 DeSmuME team
+/*
+	Copyright (C) 2009-2025 DeSmuME team
 
 	This file is free software: you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
@@ -43,6 +44,9 @@ static FORCEINLINE T GetClamped( T src, T min, T max )
 class ISynchronizingAudioBuffer
 {
 public:
+	ISynchronizingAudioBuffer() {};
+	virtual ~ISynchronizingAudioBuffer() {};
+	
 	virtual void enqueue_samples(s16* buf, int samples_provided) = 0;
 
 	//returns the number of samples actually supplied, which may not match the number requested
@@ -59,7 +63,7 @@ enum ESynchMethod
 {
 	ESynchMethod_N, //nitsuja's
 	ESynchMethod_Z, //zero's
-	ESynchMethod_P, //PCSX2 spu2-x
+	ESynchMethod_P  //PCSX2 spu2-x
 };
 
 ISynchronizingAudioBuffer* metaspu_construct(ESynchMethod method);

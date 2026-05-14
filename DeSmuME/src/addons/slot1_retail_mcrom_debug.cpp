@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2013-2015 DeSmuME team
+	Copyright (C) 2013-2025 DeSmuME team
 
 	This file is free software: you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
@@ -15,6 +15,11 @@
 	along with the this software.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+//This module implements a device which is capable of building a nitro FS on the fly
+//(and REBUILDING it! -- Q: under what conditions?)
+//so that you can test your homebrew games and patches without having to rebuild the ROM and restart it.
+//Q. can it handle resized files?
+
 #include "slot1comp_mc.h"
 #include "slot1comp_rom.h"
 #include "slot1comp_protocol.h"
@@ -27,12 +32,6 @@
 #include "../NDSSystem.h"
 #include "../utils/fsnitro.h"
 
-//quick architecture overview:
-//MCROM receives GC bus commands from MMU.cpp
-//those are passed on to the protocol component for parsing
-//protocol calls back into MCROM via ISlot1Comp_Protocol_Client interface for things the protocol doesnt know about (the contents of the rom, chiefly)
-//MCROM utilizes the rom component for address logic and delivering data
-
 class Slot1_Retail_DEBUG : public ISlot1Interface, public ISlot1Comp_Protocol_Client
 {
 private:
@@ -41,7 +40,7 @@ private:
 	FILE	*fpROM;
 	FS_NITRO *fs;
 	u16		curr_file_id;
-	string	pathData;
+	std::string	pathData;
 
 public:
 
@@ -61,15 +60,10 @@ public:
 		fpROM = NULL;
 		fs = NULL;
 
-		if (!CommonSettings.loadToMemory) 
-		{
-			printf("NitroFS: change load type to \"Load to RAM\"\n");
-			return;
-		}
 		pathData = path.getpath(path.SLOT1D) + path.GetRomNameWithoutExtension();
 		printf("Path to Slot1 data: %s\n", pathData.c_str());
 		
-		fs = new FS_NITRO(gameInfo.romdata);
+		fs = new FS_NITRO();
 		fs->rebuildFAT(pathData);
 	}
 
@@ -102,19 +96,19 @@ public:
 		protocol.mode = eCardMode_NORMAL;
 	}
 
-	virtual void savestate(EMUFILE* os)
+	virtual void savestate(EMUFILE &os)
 	{
 		protocol.savestate(os);
 		rom.savestate(os);
 	}
 
-	virtual void loadstate(EMUFILE* is)
+	virtual void loadstate(EMUFILE &is)
 	{
 		protocol.loadstate(is);
 		rom.loadstate(is);
 	}
 
-	virtual void slot1client_startOperation(eSlot1Operation operation)
+	virtual void slot1client_startOperation(eSlot1Operation theOperation)
 	{
 		if (protocol.operation == eSlot1Operation_B7_Read)
 		{
@@ -131,7 +125,7 @@ public:
 				{
 					if (file_id != curr_file_id)
 					{
-						string tmp = fs->getFullPathByFileID(file_id);
+						std::string tmp = fs->getFullPathByFileID(file_id);
 						printf("%04X:[%08X, ofs %08X] %s\n", file_id, protocol.address, offset, tmp.c_str());
 						
 						if (fpROM)
@@ -174,7 +168,7 @@ public:
 
 			curr_file_id = file_id;
 		}
-		rom.start(operation, protocol.address);
+		rom.start(theOperation, protocol.address);
 	}
 
 private:
@@ -199,7 +193,7 @@ private:
 				if (fpROM)
 				{
 					u32 data = 0;
-					u32 readed = fread(&data, 1, 4, fpROM);
+					u32 readed = (u32)fread(&data, 1, 4, fpROM);
 					if (readed)
 					{
 						rom.incAddress();

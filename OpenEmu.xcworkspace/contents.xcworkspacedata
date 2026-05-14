@@ -32,7 +32,7 @@
       location = "group:CrabEmu/CrabEmu.xcodeproj">
    </FileRef>
    <FileRef
-      location = "group:DeSmuME/src/cocoa/DeSmuME (Latest).xcodeproj">
+      location = "group:DeSmuME/src/frontend/cocoa/DeSmuME (Latest).xcodeproj">
    </FileRef>
    <FileRef
       location = "group:FCEU/FCEU.xcodeproj">

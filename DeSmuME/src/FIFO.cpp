@@ -1,7 +1,7 @@
 /*
 	Copyright 2006 yopyop
 	Copyright 2007 shash
-	Copyright 2007-2015 DeSmuME team
+	Copyright 2007-2024 DeSmuME team
 
 	This file is free software: you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
@@ -28,6 +28,28 @@
 #include "registers.h"
 #include "NDSSystem.h"
 #include "gfx3d.h"
+
+#if defined(ENABLE_AVX512_1)
+	#define USEVECTORSIZE_512
+	#define VECTORSIZE 64
+#elif defined(ENABLE_AVX2)
+	#define USEVECTORSIZE_256
+	#define VECTORSIZE 32
+#elif defined(ENABLE_SSE2)
+	#define USEVECTORSIZE_128
+	#define VECTORSIZE 16
+#elif defined(ENABLE_NEON_A64)
+	#define USEVECTORSIZE_128
+	#define VECTORSIZE 16
+#elif defined(ENABLE_ALTIVEC)
+	#define USEVECTORSIZE_128
+	#define VECTORSIZE 16
+#endif
+
+#if defined(USEVECTORSIZE_512) || defined(USEVECTORSIZE_256) || defined(USEVECTORSIZE_128)
+	#define USEMANUALVECTORIZATION
+#endif
+
 
 // ========================================================= IPC FIFO
 IPC_FIFO ipc_fifo[2];
@@ -237,6 +259,15 @@ void GFX_FIFOsend(u8 cmd, u32 param)
 	if(IsMatrixStackCommand(cmd))
 		gxFIFO.matrix_stack_op_size++;
 
+	//along the same lines:
+	//american girls julie finds a way will put a bunch of stuff and then a box test into the fifo and then immediately test the busy flag
+	//so we need to set the busy flag here.
+	//does it expect the fifo to be running then? well, it's definitely jammed -- making it unjammed at one point did fix this bug.
+	//it's still not clear whether we're handling the immediate vs fifo commands properly at all :(
+	//anyway, here we go, similar treatment. consider this a hack.
+	if(cmd == 0x70) MMU_new.gxstat.tb = 1; //just set the flag--youre insane if you queue more than one of these anyway
+	if(cmd == 0x71) MMU_new.gxstat.tb = 1;
+
 	if(gxFIFO.size>=HACK_GXIFO_SIZE) {
 		printf("--FIFO FULL-- : %d\n",gxFIFO.size);
 	}
@@ -297,32 +328,222 @@ void GFX_FIFOcnt(u32 val)
 	//	val &= 0xFFFF5FFF;		// clear reset (bit15) & stack level (bit13)
 	//}
 
-	T1WriteLong(MMU.MMU_MEM[ARMCPU_ARM9][0x40], 0x600, val);
+	T1WriteLong(MMU.ARM9_REG, 0x600, val);
 }
 
 // ========================================================= DISP FIFO
-DISP_FIFO	disp_fifo;
+DISP_FIFO disp_fifo;
 
 void DISP_FIFOinit()
 {
 	memset(&disp_fifo, 0, sizeof(DISP_FIFO));
 }
 
-void DISP_FIFOsend(u32 val)
+template <typename T, size_t ADDROFFSET>
+void DISP_FIFOsend(const T val)
 {
 	//INFO("DISP_FIFO send value 0x%08X (head 0x%06X, tail 0x%06X)\n", val, disp_fifo.head, disp_fifo.tail);
-	disp_fifo.buf[disp_fifo.tail] = val;
-	disp_fifo.tail++;
-	if (disp_fifo.tail > 0x5FFF)
+	
+	const size_t numBytes = sizeof(T);
+	const size_t baseWriteAddress = disp_fifo.tail * sizeof(u32);
+	const size_t finalWriteAddress = baseWriteAddress + ADDROFFSET;
+	
+	switch (numBytes)
+	{
+		case 1:
+		{
+#ifndef MSB_FIRST
+			HostWriteByte((u8 *)disp_fifo.buf, (u32)finalWriteAddress, val);
+#else
+			switch (ADDROFFSET)
+			{
+				case 0:
+					HostWriteByte((u8 *)disp_fifo.buf, (u32)baseWriteAddress + 2, val);
+					break;
+					
+				case 1:
+					HostWriteByte((u8 *)disp_fifo.buf, (u32)baseWriteAddress + 3, val);
+					break;
+					
+				case 2:
+					HostWriteByte((u8 *)disp_fifo.buf, (u32)baseWriteAddress + 0, val);
+					break;
+					
+				case 3:
+					HostWriteByte((u8 *)disp_fifo.buf, (u32)baseWriteAddress + 1, val);
+					break;
+					
+				default:
+					break;
+			}
+#endif
+				
+#ifndef MSB_FIRST
+			if (ADDROFFSET == 3)
+#else
+			if (ADDROFFSET == 1)
+#endif
+			{
+				disp_fifo.tail++;
+			}
+			break;
+		}
+			
+		case 2:
+		{
+#ifndef MSB_FIRST
+			HostWriteWord((u8 *)disp_fifo.buf, (u32)finalWriteAddress, val);
+#else
+			switch (ADDROFFSET)
+			{
+				case 0:
+					HostWriteWord((u8 *)disp_fifo.buf, (u32)baseWriteAddress + 2, val);
+					break;
+					
+				case 2:
+					HostWriteWord((u8 *)disp_fifo.buf, (u32)baseWriteAddress + 0, val);
+					break;
+					
+				default:
+					break;
+			}
+#endif
+				
+#ifndef MSB_FIRST
+			if (ADDROFFSET == 2)
+#else
+			if (ADDROFFSET == 0)
+#endif
+			{
+				disp_fifo.tail++;
+			}
+			break;
+		}
+			
+		case 4:
+			HostWriteTwoWords((u8 *)disp_fifo.buf, (u32)finalWriteAddress, val);
+			disp_fifo.tail++;
+			break;
+			
+		default:
+			break;
+	}
+	
+	if (disp_fifo.tail >= 0x6000)
+	{
 		disp_fifo.tail = 0;
+	}
 }
 
-u32 DISP_FIFOrecv()
+u32 DISP_FIFOrecv_u32()
 {
 	//if (disp_fifo.tail == disp_fifo.head) return (0); // FIFO is empty
 	u32 val = disp_fifo.buf[disp_fifo.head];
+	
 	disp_fifo.head++;
-	if (disp_fifo.head > 0x5FFF)
+	if (disp_fifo.head >= 0x6000)
+	{
 		disp_fifo.head = 0;
-	return (val);
+	}
+
+	return val;
 }
+
+static void _DISP_FIFOrecv_LineAdvance()
+{
+	disp_fifo.head += (GPU_FRAMEBUFFER_NATIVE_WIDTH * sizeof(u16)) / sizeof(u32);
+	if (disp_fifo.head >= 0x6000)
+	{
+		disp_fifo.head -= 0x6000;
+	}
+}
+
+void DISP_FIFOrecv_Line16(u16 *__restrict dst)
+{
+#ifdef USEMANUALVECTORIZATION
+	if ( (disp_fifo.head + (GPU_FRAMEBUFFER_NATIVE_WIDTH * sizeof(u16)) / sizeof(u32) <= 0x6000) && (disp_fifo.head == (disp_fifo.head & ~(VECTORSIZE - 1))) )
+	{
+		buffer_copy_fast<GPU_FRAMEBUFFER_NATIVE_WIDTH * sizeof(u16)>(dst, disp_fifo.buf + disp_fifo.head);
+		_DISP_FIFOrecv_LineAdvance();
+	}
+	else
+#endif // USEMANUALVECTORIZATION
+	{
+		for (size_t i = 0; i < GPU_FRAMEBUFFER_NATIVE_WIDTH * sizeof(u16) / sizeof(u32); i++)
+		{
+			const u32 src = DISP_FIFOrecv_u32();
+			((u32 *)dst)[i] = src;
+		}
+	}
+}
+
+template <NDSColorFormat OUTPUTFORMAT>
+void DISP_FIFOrecv_LineOpaque(u32 *__restrict dst)
+{
+#ifdef USEMANUALVECTORIZATION
+	if ( (disp_fifo.head + (GPU_FRAMEBUFFER_NATIVE_WIDTH * sizeof(u16)) / sizeof(u32) <= 0x6000) && (disp_fifo.head == (disp_fifo.head & ~(VECTORSIZE - 1))) )
+	{
+		if (OUTPUTFORMAT == NDSColorFormat_BGR555_Rev)
+		{
+			buffer_copy_or_constant_s16_fast<GPU_FRAMEBUFFER_NATIVE_WIDTH * sizeof(u16), false>(dst, disp_fifo.buf + disp_fifo.head, 0x8000);
+		}
+		else if (OUTPUTFORMAT == NDSColorFormat_BGR666_Rev)
+		{
+			ColorspaceConvertBuffer555xTo6665Opaque<false, false, BESwapDst>((u16 *)(disp_fifo.buf + disp_fifo.head), dst, GPU_FRAMEBUFFER_NATIVE_WIDTH);
+		}
+		else if (OUTPUTFORMAT == NDSColorFormat_BGR888_Rev)
+		{
+			ColorspaceConvertBuffer555xTo8888Opaque<false, false, BESwapDst>((u16 *)(disp_fifo.buf + disp_fifo.head), dst, GPU_FRAMEBUFFER_NATIVE_WIDTH);
+		}
+		
+		_DISP_FIFOrecv_LineAdvance();
+	}
+	else
+#endif // USEMANUALVECTORIZATION
+	{
+		if (OUTPUTFORMAT == NDSColorFormat_BGR555_Rev)
+		{
+			for (size_t i = 0; i < GPU_FRAMEBUFFER_NATIVE_WIDTH * sizeof(u16) / sizeof(u32); i++)
+			{
+				const u32 src = DISP_FIFOrecv_u32();
+				dst[i] = src | 0x80008000;
+			}
+		}
+		else
+		{
+			for (size_t i = 0; i < GPU_FRAMEBUFFER_NATIVE_WIDTH; i+=2)
+			{
+				const u32 src = DISP_FIFOrecv_u32();
+				
+				if (OUTPUTFORMAT == NDSColorFormat_BGR666_Rev)
+				{
+					dst[i+0] = ColorspaceConvert555To6665Opaque<false>(src >>  0);
+					dst[i+1] = ColorspaceConvert555To6665Opaque<false>(src >> 16);
+				}
+				else if (OUTPUTFORMAT == NDSColorFormat_BGR888_Rev)
+				{
+					dst[i+0] = ColorspaceConvert555To8888Opaque<false>(src >>  0);
+					dst[i+1] = ColorspaceConvert555To8888Opaque<false>(src >> 16);
+				}
+			}
+		}
+	}
+}
+
+void DISP_FIFOreset()
+{
+	disp_fifo.head = 0;
+	disp_fifo.tail = 0;
+}
+
+template void DISP_FIFOsend< u8, 0>(const  u8 val);
+template void DISP_FIFOsend< u8, 1>(const  u8 val);
+template void DISP_FIFOsend< u8, 2>(const  u8 val);
+template void DISP_FIFOsend< u8, 3>(const  u8 val);
+template void DISP_FIFOsend<u16, 0>(const u16 val);
+template void DISP_FIFOsend<u16, 2>(const u16 val);
+template void DISP_FIFOsend<u32, 0>(const u32 val);
+
+template void DISP_FIFOrecv_LineOpaque<NDSColorFormat_BGR555_Rev>(u32 *__restrict dst);
+template void DISP_FIFOrecv_LineOpaque<NDSColorFormat_BGR666_Rev>(u32 *__restrict dst);
+template void DISP_FIFOrecv_LineOpaque<NDSColorFormat_BGR888_Rev>(u32 *__restrict dst);

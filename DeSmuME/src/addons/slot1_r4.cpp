@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2010-2015 DeSmuME team
+	Copyright (C) 2010-2021 DeSmuME team
 
 	This file is free software: you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
@@ -44,14 +44,6 @@ public:
 		static Slot1InfoSimple info("R4", "Slot1 R4 emulation", 0x03);
 		return &info;
 	}
-
-	//called once when the emulator starts up, or when the device springs into existence
-	virtual bool init()
-	{
-		//strange to do this here but we need to make sure its done at some point
-		srand(time(NULL));
-		return true;
-	}
 	
 	virtual void connect()
 	{
@@ -90,9 +82,9 @@ public:
 		return protocol.read_GCDATAIN(PROCNUM);
 	}
 
-	virtual void slot1client_startOperation(eSlot1Operation operation)
+	virtual void slot1client_startOperation(eSlot1Operation theOperation)
 	{
-		if(operation != eSlot1Operation_Unknown)
+		if (theOperation != eSlot1Operation_Unknown)
 			return;
 
 		u32 address;
@@ -117,17 +109,17 @@ public:
 		}
 	}
 
-	virtual u32 slot1client_read_GCDATAIN(eSlot1Operation operation)
+	virtual u32 slot1client_read_GCDATAIN(eSlot1Operation theOperation)
 	{
-		if(operation != eSlot1Operation_Unknown)
+		if (theOperation != eSlot1Operation_Unknown)
 			return 0;
 
-		u32 val;
+		u32 val = 0;
 		int cmd = protocol.command.bytes[0];
-		switch(cmd)
+		switch (cmd)
 		{
 			case 0xB0:
-				val = (img) ? 0x1F4 : 0x1F2;
+				val = (img != NULL) ? 0x1F4 : 0x1F2;
 				break;
 			case 0xB9:
 				val = (rand() % 100) ? (img) ? 0x1F4 : 0x1F2 : 0;
@@ -138,7 +130,7 @@ public:
 				break;
 			case 0xBA:
 				//INFO("Read from sd at sector %08X at adr %08X ",card.address/512,ftell(img));
-				img->fread(&val, 4);
+				img->read_32LE(val);
 				//INFO("val %08X\n",val);
 				break;
 			default:
@@ -149,24 +141,25 @@ public:
 		return val;
 	}
 
-	void slot1client_write_GCDATAIN(eSlot1Operation operation, u32 val)
+	void slot1client_write_GCDATAIN(eSlot1Operation theOperation, u32 val)
 	{
-		if(operation != eSlot1Operation_Unknown)
+		if (theOperation != eSlot1Operation_Unknown)
 			return;
 
 		int cmd = protocol.command.bytes[0];
-		switch(cmd)
+		switch (cmd)
 		{
 			case 0xBB:
 			{
-				if(write_count && write_enabled)
+				if (write_count && write_enabled)
 				{
-					img->fwrite(&val, 4);
+					img->write_32LE(val);
 					img->fflush();
 					write_count--;
 				}
 				break;
 			}
+				
 			default:
 				break;
 		}
@@ -186,7 +179,7 @@ public:
 
 		//can someone tell me ... what the hell is this doing, anyway?
 		//seems odd to use card.command[4] for this... isnt it part of the address?
-		if(protocol.command.bytes[4])
+		if (protocol.command.bytes[4])
 		{
 			// transfer is done
 			//are you SURE this is logical? there doesnt seem to be any way for the card to signal that
@@ -198,23 +191,24 @@ public:
 		}
 
 		int cmd = protocol.command.bytes[0];
-		switch(cmd)
+		switch (cmd)
 		{
 			case 0xBB:
 			{
-				if(write_count && write_enabled)
+				if (write_count && write_enabled)
 				{
-					img->fwrite(&val, 4);
+					img->write_32LE(val);
 					img->fflush();
 					write_count--;
 				}
 				break;
 			}
+				
 			default:
 				break;
 		}
 
-		if(write_count==0)
+		if (write_count == 0)
 		{
 			write_enabled = 0;
 

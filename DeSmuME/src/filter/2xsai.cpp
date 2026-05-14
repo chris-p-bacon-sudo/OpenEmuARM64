@@ -117,14 +117,14 @@ static inline u32 INTERPOLATE (u32 A, u32 B)
 
 static inline u32 Q_INTERPOLATE (u32 A, u32 B, u32 C, u32 D)
 {
-  register u32 x = ((A & qcolorMask) >> 2) +
-    ((B & qcolorMask) >> 2) +
-    ((C & qcolorMask) >> 2) + ((D & qcolorMask) >> 2);
-  register u32 y = (A & qlowpixelMask) +
-    (B & qlowpixelMask) + (C & qlowpixelMask) + (D & qlowpixelMask);
+	u32 x = ((A & qcolorMask) >> 2) +
+	        ((B & qcolorMask) >> 2) +
+	        ((C & qcolorMask) >> 2) + ((D & qcolorMask) >> 2);
+	u32 y = (A & qlowpixelMask) +
+	        (B & qlowpixelMask) + (C & qlowpixelMask) + (D & qlowpixelMask);
 
-  y = (y >> 2) & qlowpixelMask;
-  return x + y;
+	y = (y >> 2) & qlowpixelMask;
+	return x + y;
 }
 
 #define BLUE_MASK565 0x001F001F
@@ -189,7 +189,7 @@ void Super2xSaI (u8 *srcPtr, u32 srcPitch,
           } else if (color5 == color3 && color2 != color6) {
             product2b = product1b = color5;
           } else if (color5 == color3 && color2 == color6) {
-            register int r = 0;
+			int r = 0;
 
             r += GetResult (color6, color5, color1, colorA1);
             r += GetResult (color6, color5, color4, colorB1);
@@ -247,7 +247,7 @@ void Super2xSaI (u8 *srcPtr, u32 srcPitch,
             else
               product1a = color5;
 
-#ifdef WORDS_BIGENDIAN
+#ifdef MSB_FIRST
           product1a = (product1a << 16) | product1b;
           product2a = (product2a << 16) | product2b;
 #else
@@ -321,7 +321,7 @@ void Super2xSaI32 (u8 *srcPtr, u32 srcPitch,
       } else if (color5 == color3 && color2 != color6) {
         product2b = product1b = color5;
       } else if (color5 == color3 && color2 == color6) {
-        register int r = 0;
+		int r = 0;
 
         r += GetResult (color6, color5, color1, colorA1);
         r += GetResult (color6, color5, color4, colorB1);
@@ -470,7 +470,7 @@ void SuperEagle (u8 *srcPtr, u32 srcPitch, u8 * /* deltaPtr */,
           }
 
         } else if (color5 == color3 && color2 == color6) {
-          register int r = 0;
+          int r = 0;
 
           r += GetResult (color6, color5, color1, colorA1);
           r += GetResult (color6, color5, color4, colorB1);
@@ -505,7 +505,7 @@ void SuperEagle (u8 *srcPtr, u32 srcPitch, u8 * /* deltaPtr */,
           //                    product2a = color2;
           //                    product2b = color3;
         }
-#ifdef WORDS_BIGENDIAN
+#ifdef MSB_FIRST
         product1a = (product1a << 16) | product1b;
         product2a = (product2a << 16) | product2b;
 #else
@@ -605,7 +605,7 @@ void SuperEagle32 (u8 *srcPtr, u32 srcPitch, u8 * /* deltaPtr */,
         }
 
       } else if (color5 == color3 && color2 == color6) {
-        register int r = 0;
+        int r = 0;
 
         r += GetResult (color6, color5, color1, colorA1);
         r += GetResult (color6, color5, color4, colorB1);
@@ -675,7 +675,7 @@ void _2xSaI (u8 *srcPtr, u32 srcPitch, u8 * /* deltaPtr */,
 
       for (u32 finish = width; finish; finish -= inc_bP) {
 
-        register u32 colorA, colorB;
+        u32 colorA, colorB;
         u32 colorC, colorD,
           colorE, colorF, colorG, colorH,
           colorI, colorJ, colorK, colorL,
@@ -748,7 +748,7 @@ void _2xSaI (u8 *srcPtr, u32 srcPitch, u8 * /* deltaPtr */,
             product1 = colorA;
             product2 = colorA;
           } else {
-            register int r = 0;
+            int r = 0;
 
             product1 = INTERPOLATE (colorA, colorC);
             product = INTERPOLATE (colorA, colorB);
@@ -790,7 +790,7 @@ void _2xSaI (u8 *srcPtr, u32 srcPitch, u8 * /* deltaPtr */,
           }
         }
 
-#ifdef WORDS_BIGENDIAN
+#ifdef MSB_FIRST
         product = (colorA << 16) | product ;
         product1 = (product1 << 16) | product2 ;
 #else
@@ -825,7 +825,7 @@ void _2xSaI32 (u8 *srcPtr, u32 srcPitch, u8 * /* deltaPtr */,
     dP = (u32 *) dstPtr;
 
     for (u32 finish = width; finish; finish -= inc_bP) {
-      register u32 colorA, colorB;
+      u32 colorA, colorB;
       u32 colorC, colorD,
         colorE, colorF, colorG, colorH,
         colorI, colorJ, colorK, colorL,
@@ -898,7 +898,7 @@ void _2xSaI32 (u8 *srcPtr, u32 srcPitch, u8 * /* deltaPtr */,
           product1 = colorA;
           product2 = colorA;
         } else {
-          register int r = 0;
+          int r = 0;
 
           product1 = INTERPOLATE (colorA, colorC);
           product = INTERPOLATE (colorA, colorB);
@@ -1034,9 +1034,9 @@ void Scale_2xSaI (u8 *srcPtr, u32 srcPitch, u8 * /* deltaPtr */,
       u32 E, F, G, H;
       u32 I, J, K, L;
       u32 x1, x2, a1, f1, f2;
-      u32 position, product1;
 
-      position = w >> 16;
+      u32 position = w >> 16;
+
       A = bP[position]; // current pixel
       B = bP[position + 1];     // next pixel
       C = bP[position + Nextline];
@@ -1052,6 +1052,8 @@ void Scale_2xSaI (u8 *srcPtr, u32 srcPitch, u8 * /* deltaPtr */,
 
       x1 = w & 0xffff;  // fraction part of fixed point
       x2 = 0x10000 - x1;
+
+      u32 product1 = A;
 
       /*0*/
       if (A == B && C == D && A == C)

@@ -1,6 +1,6 @@
 /*
-	Copyright (C) 2007 Tim Seidel
-	Copyright (C) 2008-2015 DeSmuME team
+		Copyright (C) 2007 Tim Seidel
+		Copyright (C) 2008-2025 DeSmuME team
 
 	This file is free software: you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
@@ -16,67 +16,97 @@
 	along with the this software.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "types.h"
-
-#ifdef HOST_WINDOWS
-	#include <winsock2.h>
-	#include <ws2tcpip.h>
-	#define socket_t    SOCKET 	 
-	#define sockaddr_t  SOCKADDR
-	#include "windriver.h"
-	#define PCAP_DEVICE_NAME description
-#else
-	#include <unistd.h>
-	#include <stdlib.h> 	 
-	#include <string.h> 	 
-	#include <arpa/inet.h> 	 
-	#include <sys/socket.h> 	 
-	#define socket_t    int 	 
-	#define sockaddr_t  struct sockaddr
-	#define closesocket close
-	#define PCAP_DEVICE_NAME name
-#endif
-
-#include "wifi.h"
-
 #include <assert.h>
-
+#include "wifi.h"
 #include "armcpu.h"
 #include "NDSSystem.h"
+#include "emufile.h"
 #include "debug.h"
-#include "bits.h"
-#include "registers.h"
+#include "utils/bits.h"
+#include "utils/task.h"
+#include <driver.h>
+#include <registers.h>
+#include <rthreads/rthreads.h>
 
-#ifndef INVALID_SOCKET 	 
-	#define INVALID_SOCKET  (socket_t)-1 	 
-#endif 
+#ifdef HOST_WINDOWS
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#define socket_t    SOCKET
+#define sockaddr_t  SOCKADDR
+#ifndef WXPORT
+#include "windriver.h"
+#endif
+#define PCAP_DEVICE_NAME description
+#else
+#include <stddef.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <string.h>
+#include <arpa/inet.h>
+#include <sys/socket.h>
+#define socket_t    int
+#define sockaddr_t  struct sockaddr
+#define closesocket close
+#define PCAP_DEVICE_NAME name
+#endif
+
+#ifndef INVALID_SOCKET
+#define INVALID_SOCKET  (socket_t)-1
+#endif
 
 #define BASEPORT 7000
+#define PACKET_SIZE 65535
 
-const u8 BroadcastMAC[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
-
-bool bWFCUserWarned = false;
-
-#ifdef EXPERIMENTAL_WIFI_COMM
-socket_t wifi_socket = INVALID_SOCKET;
-sockaddr_t sendAddr;
-#ifndef WIN32
-#include "pcap/pcap.h"
+// Some platforms need HAVE_REMOTE to work with libpcap, but
+// Apple platforms are not among them.
+#ifndef __APPLE__
+#define HAVE_REMOTE
 #endif
-pcap_t *wifi_bridge = NULL;
+
+#ifdef HOST_WINDOWS
+#define WPCAP
 #endif
+
+#include <pcap.h>
+typedef struct pcap pcap_t;
 
 //sometimes this isnt defined
 #ifndef PCAP_OPENFLAG_PROMISCUOUS
 #define PCAP_OPENFLAG_PROMISCUOUS 1
 #endif
 
-static WifiHandler _defaultHandler;
-WifiHandler *CurrentWifiHandler = &_defaultHandler;
+// PCAP_ERRBUF_SIZE should 256 bytes according to POSIX libpcap and winpcap.
+// Define it if it isn't available.
+#ifndef PCAP_ERRBUF_SIZE
+#define PCAP_ERRBUF_SIZE 256
+#endif
 
-wifimac_t wifiMac;
-SoftAP_t SoftAP;
-int wifi_lastmode;
+static const u8 BBDefaultData[105] = {
+	0x6D, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // 0x00 - 0x0F
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // 0x10 - 0x1F
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // 0x20 - 0x2F
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // 0x30 - 0x3F
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // 0x40 - 0x4F
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, // 0x50 - 0x5F
+	0x00, 0x00, 0x00, 0x00, 0xFF, 0x00, 0x00, 0x00, 0x00 // 0x60 - 0x68
+};
+
+static const bool BBIsDataWritable[105] = {
+	false,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true, false, false, false, // 0x00 - 0x0F
+	false, false, false,  true,  true,  true, false, false, false, false, false,  true,  true,  true,  true,  true, // 0x10 - 0x1F
+	 true,  true,  true,  true,  true,  true,  true, false,  true,  true,  true,  true,  true,  true,  true,  true, // 0x20 - 0x2F
+	 true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true, // 0x30 - 0x3F
+	 true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true, false,  true,  true, // 0x40 - 0x4F
+	 true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true, false, false, false, // 0x50 - 0x5F
+	false, false,  true,  true, false,  true, false,  true,  true // 0x60 - 0x68
+};
+
+static const u16 RFPinsLUT[10] = { 0x04, 0x84, 0, 0x46, 0, 0x84, 0x87, 0, 0x46, 0x04 };
+static const WifiLLCSNAPHeader DefaultSNAPHeader = { 0xAA, 0xAA, 0x03, {0x00, 0x00, 0x00}, 0x0800 };
+LegacyWifiSFormat legacyWifiSF;
+
+DummyPCapInterface dummyPCapInterface;
+WifiHandler* wifiHandler = NULL;
 
 /*******************************************************************************
 
@@ -89,22 +119,22 @@ int wifi_lastmode;
 
  *******************************************************************************/
 
-/*******************************************************************************
+ /*******************************************************************************
 
-	Firmware info needed for if no firmware image is available
-	see: http://www.akkit.org/info/dswifi.htm#WifiInit
+	 Firmware info needed for if no firmware image is available
+	 see: http://www.akkit.org/info/dswifi.htm#WifiInit
 
-	written in bytes, to avoid endianess issues
+	 written in bytes, to avoid endianess issues
 
- *******************************************************************************/
+	*******************************************************************************/
 
-u8 FW_Mac[6] 			= { 0x00, 0x09, 0xBF, 0x12, 0x34, 0x56 };
+u8 FW_Mac[6] = { 0x00, 0x09, 0xBF, 0x12, 0x34, 0x56 };
 
-const u8 FW_WIFIInit[32] 		= { 0x02,0x00,  0x17,0x00,  0x26,0x00,  0x18,0x18,
+const u8 FW_WIFIInit[32] = { 0x02,0x00,  0x17,0x00,  0x26,0x00,  0x18,0x18,
 							0x48,0x00,  0x40,0x48,  0x58,0x00,  0x42,0x00,
 							0x40,0x01,  0x64,0x80,  0xE0,0xE0,  0x43,0x24,
 							0x0E,0x00,  0x32,0x00,  0xF4,0x01,  0x01,0x01 };
-const u8 FW_BBInit[105] 		= { 0x6D, 0x9E, 0x40, 0x05,
+const u8 FW_BBInit[105] = { 0x6D, 0x9E, 0x40, 0x05,
 							0x1B, 0x6C, 0x48, 0x80,
 							0x38, 0x00, 0x35, 0x07,
 							0x00, 0x00, 0x00, 0x00,
@@ -130,8 +160,8 @@ const u8 FW_BBInit[105] 		= { 0x6D, 0x9E, 0x40, 0x05,
 							0xff, 0xff, 0x00, 0x0e,
 							0x13, 0x00, 0x00, 0x28,
 							0x1c
-						  };
-const u8 FW_RFInit[36] 		= { 0x07, 0xC0, 0x00,
+};
+const u8 FW_RFInit[36] = { 0x07, 0xC0, 0x00,
 							0x03, 0x9C, 0x12,
 							0x28, 0x17, 0x14,
 							0xba, 0xe8, 0x1a,
@@ -143,19 +173,19 @@ const u8 FW_RFInit[36] 		= { 0x07, 0xC0, 0x00,
 							0x03, 0x9c, 0x06,
 							0x22, 0x00, 0x08,
 							0x6f, 0xff, 0x0d
-						  };
-const u8 FW_RFChannel[6*14]	= { 0x28, 0x17, 0x14,		/* Channel 1 */
-							0xba, 0xe8, 0x1a,		
+};
+const u8 FW_RFChannel[6 * 14] = { 0x28, 0x17, 0x14,		/* Channel 1 */
+							0xba, 0xe8, 0x1a,
 							0x37, 0x17, 0x14,		/* Channel 2 */
-							0x46, 0x17, 0x19,		
+							0x46, 0x17, 0x19,
 							0x45, 0x17, 0x14,		/* Channel 3 */
-							0xd1, 0x45, 0x1b,		
+							0xd1, 0x45, 0x1b,
 							0x54, 0x17, 0x14,		/* Channel 4 */
-							0x5d, 0x74, 0x19,		
+							0x5d, 0x74, 0x19,
 							0x62, 0x17, 0x14,		/* Channel 5 */
-							0xe9, 0xa2, 0x1b,		
+							0xe9, 0xa2, 0x1b,
 							0x71, 0x17, 0x14,		/* Channel 6 */
-							0x74, 0xd1, 0x19,		
+							0x74, 0xd1, 0x19,
 							0x80, 0x17, 0x14,		/* Channel 7 */
 							0x00, 0x00, 0x18,
 							0x8e, 0x17, 0x14,		/* Channel 8 */
@@ -172,14 +202,14 @@ const u8 FW_RFChannel[6*14]	= { 0x28, 0x17, 0x14,		/* Channel 1 */
 							0x46, 0x17, 0x19,
 							0xfa, 0x17, 0x14,		/* Channel 14 */
 							0x2f, 0xba, 0x18
-						  };
-const u8 FW_BBChannel[14]		= { 0xb3, 0xb3, 0xb3, 0xb3, 0xb3,	/* channel  1- 6 */
-							0xb4, 0xb4, 0xb4, 0xb4, 0xb4,	/* channel  7-10 */ 
+};
+const u8 FW_BBChannel[14] = { 0xb3, 0xb3, 0xb3, 0xb3, 0xb3,	/* channel  1- 6 */
+							0xb4, 0xb4, 0xb4, 0xb4, 0xb4,	/* channel  7-10 */
 							0xb5, 0xb5,						/* channel 11-12 */
 							0xb6, 0xb6						/* channel 13-14 */
-						  };
+};
 
-FW_WFCProfile FW_WFCProfile1 = {"SoftAP",
+FW_WFCProfile FW_WFCProfile1 = { "SoftAP",
 								"",
 								"",
 								"",
@@ -198,9 +228,9 @@ FW_WFCProfile FW_WFCProfile1 = {"SoftAP",
 								0,
 								{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 								{0, 0}
-							   };
+};
 
-FW_WFCProfile FW_WFCProfile2 = {"",
+FW_WFCProfile FW_WFCProfile2 = { "",
 								"",
 								"",
 								"",
@@ -219,9 +249,9 @@ FW_WFCProfile FW_WFCProfile2 = {"",
 								0,
 								{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 								{0, 0}
-							   };
+};
 
-FW_WFCProfile FW_WFCProfile3 = {"",
+FW_WFCProfile FW_WFCProfile3 = { "",
 								"",
 								"",
 								"",
@@ -240,61 +270,7 @@ FW_WFCProfile FW_WFCProfile3 = {"",
 								0,
 								{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 								{0, 0}
-							   };
-
-/*******************************************************************************
-
-	Communication interface
-
- *******************************************************************************/
-
-struct WifiComInterface
-{
-	bool (*Init)();
-	void (*DeInit)();
-	void (*Reset)();
-	void (*SendPacket)(u8* packet, u32 len);
-	void (*msTrigger)();
 };
-
-#ifdef EXPERIMENTAL_WIFI_COMM
-bool SoftAP_Init();
-void SoftAP_DeInit();
-void SoftAP_Reset();
-void SoftAP_SendPacket(u8 *packet, u32 len);
-void SoftAP_msTrigger();
-
-WifiComInterface CI_SoftAP = {
-	SoftAP_Init,
-	SoftAP_DeInit,
-	SoftAP_Reset,
-	SoftAP_SendPacket,
-	SoftAP_msTrigger
-};
-
-bool Adhoc_Init();
-void Adhoc_DeInit();
-void Adhoc_Reset();
-void Adhoc_SendPacket(u8* packet, u32 len);
-void Adhoc_msTrigger();
-
-WifiComInterface CI_Adhoc = {
-        Adhoc_Init,
-        Adhoc_DeInit,
-        Adhoc_Reset,
-        Adhoc_SendPacket,
-        Adhoc_msTrigger
-};
-#endif
-
-WifiComInterface* wifiComs[] = {
-#ifdef EXPERIMENTAL_WIFI_COMM
-	&CI_Adhoc,
-	&CI_SoftAP,
-#endif
-	NULL
-};
-WifiComInterface* wifiCom;
 
 /*******************************************************************************
 
@@ -302,39 +278,29 @@ WifiComInterface* wifiCom;
 
  *******************************************************************************/
 
-// 0: disable logging
-// 1: lowest logging, shows most important messages such as errors
-// 2: low logging, shows things such as warnings
-// 3: medium logging, for debugging, shows lots of stuff
-// 4: high logging, for debugging, shows almost everything, may slow down
-// 5: highest logging, for debugging, shows everything, may slow down a lot
-#define WIFI_LOGGING_LEVEL 3
+ // 0: disable logging
+ // 1: lowest logging, shows most important messages such as errors
+ // 2: low logging, shows things such as warnings
+ // 3: medium logging, for debugging, shows lots of stuff
+ // 4: high logging, for debugging, shows almost everything, may slow down
+ // 5: highest logging, for debugging, shows everything, may slow down a lot
+#define WIFI_LOGGING_LEVEL 1
 
 #define WIFI_LOG_USE_LOGC 0
 
 #if (WIFI_LOGGING_LEVEL >= 1)
-	#if WIFI_LOG_USE_LOGC
-		#define WIFI_LOG(level, ...) if(level <= WIFI_LOGGING_LEVEL) LOGC(8, "WIFI: " __VA_ARGS__);
-	#else
-		#define WIFI_LOG(level, ...) if(level <= WIFI_LOGGING_LEVEL) printf("WIFI: " __VA_ARGS__);
-	#endif
+#if WIFI_LOG_USE_LOGC
+#define WIFI_LOG(level, ...) if(level <= WIFI_LOGGING_LEVEL) LOGC(8, "WIFI: " __VA_ARGS__);
+#else
+#define WIFI_LOG(level, ...) if(level <= WIFI_LOGGING_LEVEL) printf("WIFI: " __VA_ARGS__);
+#endif
 #else
 #define WIFI_LOG(level, ...) {}
 #endif
 
-/*******************************************************************************
-
-	Hax
-
- *******************************************************************************/
-
-// TODO: find the right value
-// GBAtek says it is 10µs, however that value seems too small
-// (MP host sends floods of data frames, clients can't keep up)
-// 100 would make more sense since CMDCOUNT is set to 166
-// that would be 16.6ms ~= 1 frame
-// however this is guessed, like a lot of the wifi here
-#define WIFI_CMDCOUNT_SLICE 100
+// For debugging purposes, the results of libpcap can be written to a file.
+// Note that enabling this setting can negatively affect emulation performance.
+#define WIFI_SAVE_PCAP_TO_FILE 0
 
 /*******************************************************************************
 
@@ -342,22 +308,20 @@ WifiComInterface* wifiCom;
 
  *******************************************************************************/
 
-INLINE u32 WIFI_alignedLen(u32 len)
-{
-	return ((len + 3) & ~3);
-}
-
-// Fast MAC compares
-
-INLINE bool WIFI_compareMAC(u8* a, u8* b)
+ // Fast MAC compares
+INLINE bool WIFI_compareMAC(const u8* a, const u8* b)
 {
 	return ((*(u32*)&a[0]) == (*(u32*)&b[0])) && ((*(u16*)&a[4]) == (*(u16*)&b[4]));
 }
 
-INLINE bool WIFI_isBroadcastMAC(u8* a)
+INLINE bool WIFI_isBroadcastMAC(const u8* a)
 {
-	return (a[0] & 0x01);
-	//return ((*(u32*)&a[0]) == 0xFFFFFFFF) && ((*(u16*)&a[4]) == 0xFFFF);
+	return ((*(u32*)&a[0]) == 0xFFFFFFFF) && ((*(u16*)&a[4]) == 0xFFFF);
+}
+
+INLINE bool WIFI_IsLLCSNAPHeader(const u8* snapHeader)
+{
+	return ((*(u16*)&snapHeader[0] == *(u16*)&DefaultSNAPHeader.dsap) && (*(u32*)&snapHeader[2] == *(u32*)&DefaultSNAPHeader.control));
 }
 
 /*******************************************************************************
@@ -370,24 +334,24 @@ u32 WIFI_CRC32Table[256];
 
 static u32 reflect(u32 ref, char ch)
 {
-    u32 value = 0;
+	u32 value = 0;
 
-    for(int i = 1; i < (ch + 1); i++)
-    {
-        if (ref & 1)
-            value |= 1 << (ch - i);
-        ref >>= 1;
-    } 
-	
+	for(int i = 1; i < (ch + 1); i++)
+	{
+		if(ref & 1)
+			value |= 1 << (ch - i);
+		ref >>= 1;
+	}
+
 	return value;
 }
 
-static u32 WIFI_calcCRC32(u8 *data, int len)
+static u32 WIFI_calcCRC32(u8* data, int len)
 {
 	u32 crc = 0xFFFFFFFF;
 
 	while(len--)
-        crc = (crc >> 8) ^ WIFI_CRC32Table[(crc & 0xFF) ^ *data++];
+		crc = (crc >> 8) ^ WIFI_CRC32Table[(crc & 0xFF) ^ *data++];
 
 	return (crc ^ 0xFFFFFFFF);
 }
@@ -401,12 +365,12 @@ static void WIFI_initCRC32Table()
 	u32 polynomial = 0x04C11DB7;
 
 	for(int i = 0; i < 0x100; i++)
-    {
-        WIFI_CRC32Table[i] = reflect(i, 8) << 24;
-        for(int j = 0; j < 8; j++)
-            WIFI_CRC32Table[i] = (WIFI_CRC32Table[i] << 1) ^ (WIFI_CRC32Table[i] & (1 << 31) ? polynomial : 0);
-        WIFI_CRC32Table[i] = reflect(WIFI_CRC32Table[i],  32);
-    }
+	{
+		WIFI_CRC32Table[i] = reflect(i, 8) << 24;
+		for(int j = 0; j < 8; j++)
+			WIFI_CRC32Table[i] = (WIFI_CRC32Table[i] << 1) ^ (WIFI_CRC32Table[i] & (1 << 31) ? polynomial : 0);
+		WIFI_CRC32Table[i] = reflect(WIFI_CRC32Table[i], 32);
+	}
 }
 
 /*******************************************************************************
@@ -415,174 +379,79 @@ static void WIFI_initCRC32Table()
 
  *******************************************************************************/
 
-static void WIFI_resetRF(rffilter_t *rf) 
+static void WIFI_resetRF(RF2958_IOREG_MAP& rf)
 {
 	/* reinitialize RF chip with the default values refer RF2958 docs */
 	/* CFG1 */
-	rf->CFG1.bits.IF_VGA_REG_EN = 1;
-	rf->CFG1.bits.IF_VCO_REG_EN = 1;
-	rf->CFG1.bits.RF_VCO_REG_EN = 1;
-	rf->CFG1.bits.HYBERNATE = 0;
-	rf->CFG1.bits.REF_SEL = 0;
+	rf.CFG1.IF_VGA_REG_EN = 1;
+	rf.CFG1.IF_VCO_REG_EN = 1;
+	rf.CFG1.RF_VCO_REG_EN = 1;
+	rf.CFG1.HYBERNATE = 0;
+	rf.CFG1.REF_SEL = 0;
 	/* IFPLL1 */
-	rf->IFPLL1.bits.DAC = 3;
-	rf->IFPLL1.bits.P1 = 0;
-	rf->IFPLL1.bits.LD_EN1 = 0;
-	rf->IFPLL1.bits.AUTOCAL_EN1 = 0;
-	rf->IFPLL1.bits.PDP1 = 1;
-	rf->IFPLL1.bits.CPL1 = 0;
-	rf->IFPLL1.bits.LPF1 = 0;
-	rf->IFPLL1.bits.VTC_EN1 = 1;
-	rf->IFPLL1.bits.KV_EN1 = 0;
-	rf->IFPLL1.bits.PLL_EN1 = 0;
+	rf.IFPLL1.DAC = 3;
+	rf.IFPLL1.P1 = 0;
+	rf.IFPLL1.LD_EN1 = 0;
+	rf.IFPLL1.AUTOCAL_EN1 = 0;
+	rf.IFPLL1.PDP1 = 1;
+	rf.IFPLL1.CPL1 = 0;
+	rf.IFPLL1.LPF1 = 0;
+	rf.IFPLL1.VTC_EN1 = 1;
+	rf.IFPLL1.KV_EN1 = 0;
+	rf.IFPLL1.PLL_EN1 = 0;
 	/* IFPLL2 */
-	rf->IFPLL2.bits.IF_N = 0x22;
+	rf.IFPLL2.IF_N = 0x22;
 	/* IFPLL3 */
-	rf->IFPLL3.bits.KV_DEF1 = 8;
-	rf->IFPLL3.bits.CT_DEF1 = 7;
-	rf->IFPLL3.bits.DN1 = 0x1FF;
+	rf.IFPLL3.KV_DEF1 = 8;
+	rf.IFPLL3.CT_DEF1 = 7;
+	rf.IFPLL3.DN1 = 0x1FF;
 	/* RFPLL1 */
-	rf->RFPLL1.bits.DAC = 3;
-	rf->RFPLL1.bits.P = 0;
-	rf->RFPLL1.bits.LD_EN = 0;
-	rf->RFPLL1.bits.AUTOCAL_EN = 0;
-	rf->RFPLL1.bits.PDP = 1;
-	rf->RFPLL1.bits.CPL = 0;
-	rf->RFPLL1.bits.LPF = 0;
-	rf->RFPLL1.bits.VTC_EN = 0;
-	rf->RFPLL1.bits.KV_EN = 0;
-	rf->RFPLL1.bits.PLL_EN = 0;
+	rf.RFPLL1.DAC = 3;
+	rf.RFPLL1.P = 0;
+	rf.RFPLL1.LD_EN = 0;
+	rf.RFPLL1.AUTOCAL_EN = 0;
+	rf.RFPLL1.PDP = 1;
+	rf.RFPLL1.CPL = 0;
+	rf.RFPLL1.LPF = 0;
+	rf.RFPLL1.VTC_EN = 1;
+	rf.RFPLL1.KV_EN = 0;
+	rf.RFPLL1.PLL_EN = 0;
 	/* RFPLL2 */
-	rf->RFPLL2.bits.NUM2 = 0;
-	rf->RFPLL2.bits.N2 = 0x5E;
+	rf.RFPLL2.NUM2 = 0;
+	rf.RFPLL2.N2 = 0x5E;
 	/* RFPLL3 */
-	rf->RFPLL3.bits.NUM2 = 0;
+	rf.RFPLL3.NUM2 = 0;
 	/* RFPLL4 */
-	rf->RFPLL4.bits.KV_DEF = 8;
-	rf->RFPLL4.bits.CT_DEF = 7;
-	rf->RFPLL4.bits.DN = 0x145;
+	rf.RFPLL4.KV_DEF = 8;
+	rf.RFPLL4.CT_DEF = 7;
+	rf.RFPLL4.DN = 0x145;
 	/* CAL1 */
-	rf->CAL1.bits.LD_WINDOW = 2;
-	rf->CAL1.bits.M_CT_VALUE = 8;
-	rf->CAL1.bits.TLOCK = 7;
-	rf->CAL1.bits.TVCO = 0x0F;
+	rf.CAL1.LD_WINDOW = 2;
+	rf.CAL1.M_CT_VALUE = 8;
+	rf.CAL1.TLOCK = 7;
+	rf.CAL1.TVCO = 0x0F;
 	/* TXRX1 */
-	rf->TXRX1.bits.TXBYPASS = 0;
-	rf->TXRX1.bits.INTBIASEN = 0;
-	rf->TXRX1.bits.TXENMODE = 0;
-	rf->TXRX1.bits.TXDIFFMODE = 0;
-	rf->TXRX1.bits.TXLPFBW = 2;
-	rf->TXRX1.bits.RXLPFBW = 2;
-	rf->TXRX1.bits.TXVGC = 0;
-	rf->TXRX1.bits.PCONTROL = 0;
-	rf->TXRX1.bits.RXDCFBBYPS = 0;
+	rf.TXRX1.TXBYPASS = 0;
+	rf.TXRX1.INTBIASEN = 0;
+	rf.TXRX1.TXENMODE = 0;
+	rf.TXRX1.TXDIFFMODE = 0;
+	rf.TXRX1.TXLPFBW = 2;
+	rf.TXRX1.RXLPFBW = 2;
+	rf.TXRX1.TXVGC = 0;
+	rf.TXRX1.PCONTROL = 0;
+	rf.TXRX1.RXDCFBBYPS = 0;
 	/* PCNT1 */
-	rf->PCNT1.bits.TX_DELAY = 0;
-	rf->PCNT1.bits.PC_OFFSET = 0;
-	rf->PCNT1.bits.P_DESIRED = 0;
-	rf->PCNT1.bits.MID_BIAS = 0;
+	rf.PCNT1.TX_DELAY = 0;
+	rf.PCNT1.PC_OFFSET = 0;
+	rf.PCNT1.P_DESIRED = 0;
+	rf.PCNT1.MID_BIAS = 0;
 	/* PCNT2 */
-	rf->PCNT2.bits.MIN_POWER = 0;
-	rf->PCNT2.bits.MID_POWER = 0;
-	rf->PCNT2.bits.MAX_POWER = 0;
+	rf.PCNT2.MIN_POWER = 0;
+	rf.PCNT2.MID_POWER = 0;
+	rf.PCNT2.MAX_POWER = 0;
 	/* VCOT1 */
-	rf->VCOT1.bits.AUX1 = 0;
-	rf->VCOT1.bits.AUX = 0;
-}
-
-
-void WIFI_setRF_CNT(u16 val)
-{
-	if (!wifiMac.rfIOStatus.bits.busy)
-		wifiMac.rfIOCnt.val = val;
-}
-
-void WIFI_setRF_DATA(u16 val, u8 part)
-{
-	if (!wifiMac.rfIOStatus.bits.busy)
-	{
-        rfIOData_t *rfreg = (rfIOData_t *)&wifiMac.RF;
-		switch (wifiMac.rfIOCnt.bits.readOperation)
-		{
-			case 1: /* read from RF chip */
-				/* low part of data is ignored on reads */
-				/* on high part, the address is read, and the data at this is written back */
-				if (part==1)
-				{
-					wifiMac.rfIOData.array16[part] = val;
-					if (wifiMac.rfIOData.bits.address > (sizeof(wifiMac.RF) / 4)) return; /* out of bound */
-					/* get content of the addressed register */
-					wifiMac.rfIOData.bits.content = rfreg[wifiMac.rfIOData.bits.address].bits.content;
-				}
-				break;
-			case 0: /* write to RF chip */
-				wifiMac.rfIOData.array16[part] = val;
-				if (wifiMac.rfIOData.bits.address > (sizeof(wifiMac.RF) / 4)) return; /* out of bound */
-				/* the actual transfer is done on high part write */
-				if (part==1)
-				{
-					switch (wifiMac.rfIOData.bits.address)
-					{
-						case 5:		/* write to upper part of the frequency filter */
-						case 6:		/* write to lower part of the frequency filter */
-							{
-								u32 channelFreqN;
-								rfreg[wifiMac.rfIOData.bits.address].bits.content = wifiMac.rfIOData.bits.content;
-								/* get the complete rfpll.n */
-								channelFreqN = (u32)wifiMac.RF.RFPLL3.bits.NUM2 + ((u32)wifiMac.RF.RFPLL2.bits.NUM2 << 18) + ((u32)wifiMac.RF.RFPLL2.bits.N2 << 24);
-								/* frequency setting is out of range */
-								if (channelFreqN<0x00A2E8BA) return;
-								/* substract base frequency (channel 1) */
-								channelFreqN -= 0x00A2E8BA;
-							}
-							return;
-						case 13:
-							/* special purpose register: TEST1, on write, the RF chip resets */
-							WIFI_resetRF(&wifiMac.RF);
-							return;
-					}
-					/* set content of the addressed register */
-					rfreg[wifiMac.rfIOData.bits.address].bits.content = wifiMac.rfIOData.bits.content;
-				}
-				break;
-		}
-	}
-}
-
-u16 WIFI_getRF_DATA(u8 part)
-{
-	if (!wifiMac.rfIOStatus.bits.busy)
-		return wifiMac.rfIOData.array16[part];
-	else
-		/* data is not (yet) available */
-		return 0;
- }
-
-u16 WIFI_getRF_STATUS()
-{
-	return wifiMac.rfIOStatus.val;
-}
-
-/*******************************************************************************
-
-	BB-Chip
-
- *******************************************************************************/
-
-void WIFI_setBB_CNT(u16 val)
-{
-	wifiMac.bbIOCnt.val = val;
-
-	if(wifiMac.bbIOCnt.bits.mode == 1)
-		wifiMac.BB.data[wifiMac.bbIOCnt.bits.address] = WIFI_IOREG(REG_WIFI_BBWRITE);
-}
-
-u8 WIFI_getBB_DATA()
-{
-	if((!wifiMac.bbIOCnt.bits.enable) || (wifiMac.bbIOCnt.bits.mode != 2))
-		return 0;
-
-	return wifiMac.BB.data[wifiMac.bbIOCnt.bits.address];
+	rf.VCOT1.AUX1 = 0;
+	rf.VCOT1.AUX = 0;
 }
 
 /*******************************************************************************
@@ -595,1353 +464,2545 @@ u8 WIFI_getBB_DATA()
 
  *******************************************************************************/
 
-static void WIFI_TXStart(u32 slot);
+static void WIFI_TXStart(const WifiTXLocIndex txSlotIndex, IOREG_W_TXBUF_LOCATION& txLocation);
 
-static void WIFI_triggerIRQMask(u16 mask)
+static void WIFI_SetIRQ(const WifiIRQ irq)
 {
-	u16 oResult,nResult;
-	oResult = wifiMac.IE & wifiMac.IF;
-	wifiMac.IF = wifiMac.IF | (mask & ~0x0400);
-	nResult = wifiMac.IE & wifiMac.IF;
+	WIFI_IOREG_MAP& io = wifiHandler->GetWifiData().io;
 
-	if (!oResult && nResult)
+	u16 oldFlags = io.IF.value & io.IE.value;
+
+	io.IF.value |= ((1 << irq) & 0xFBFF);
+	u16 newFlags = io.IF.value & io.IE.value;
+
+	if((oldFlags == 0) && (newFlags != 0))
 	{
-		NDS_makeIrq(ARMCPU_ARM7,IRQ_BIT_ARM7_WIFI);   /* cascade it via arm7 wifi irq */
+		NDS_makeIrq(ARMCPU_ARM7, IRQ_BIT_ARM7_WIFI); // cascade it via arm7 wifi irq
 	}
 }
 
-static void WIFI_triggerIRQ(u8 irq)
+static void WIFI_triggerIRQ(const WifiIRQ irq)
 {
-	switch (irq)
+	WIFI_IOREG_MAP& io = wifiHandler->GetWifiData().io;
+
+	switch(irq)
 	{
-	case WIFI_IRQ_TXSTART:
-		break;
-	case WIFI_IRQ_TIMEPREBEACON:
-		if (wifiMac.TXPower & 0x0001)
-		{
-			//wifiMac.rfStatus = 1;
-			//wifiMac.rfPins = 0x0084;
-		}
-		break;
-	case WIFI_IRQ_TIMEBEACON:
-		wifiMac.BeaconCount1 = wifiMac.BeaconInterval;
+		case WifiIRQ00_RXComplete:
+		case WifiIRQ01_TXComplete:
+		case WifiIRQ02_RXEventIncrement:
+		case WifiIRQ03_TXErrorIncrement:
+		case WifiIRQ04_RXEventOverflow:
+		case WifiIRQ05_TXErrorOverflow:
+		case WifiIRQ08_TXCountExpired:
+		case WifiIRQ09_RXCountExpired:
+		case WifiIRQ11_RFWakeup:
+			WIFI_SetIRQ(irq);
+			break;
 
-		if (wifiMac.ucmpEnable)
-		{
-			wifiMac.BeaconCount2 = 0xFFFF;
-			wifiMac.TXCnt &= 0xFFF2;
+		case WifiIRQ06_RXStart:
+			io.RF_STATUS.RFStatus = WifiRFStatus6_RXEnabled;
+			io.RF_PINS.value = RFPinsLUT[WifiRFStatus6_RXEnabled];
+			WIFI_SetIRQ(irq);
+			break;
 
-			WIFI_TXStart(WIFI_TXSLOT_BEACON);
+		case WifiIRQ07_TXStart:
+			io.TX_SEQNO.Number++;
+			WIFI_SetIRQ(irq);
+			break;
 
-			if (wifiMac.ListenCount == 0) wifiMac.ListenCount = wifiMac.ListenInterval;
-			wifiMac.ListenCount--;
-		}
-		break;
-	case WIFI_IRQ_TIMEPOSTBEACON:
-		if (wifiMac.TXPower & 0x0002)
-		{
-			//wifiMac.rfStatus = 9;
-			//wifiMac.rfPins = 0x0004;
-		}
-		break;
-	case WIFI_IRQ_UNK:
-		WIFI_LOG(3, "IRQ 12 triggered.\n");
-		break;
-	}
+		case WifiIRQ10_UNUSED:
+			// Do nothing.
+			break;
 
-	WIFI_triggerIRQMask(1<<irq);
-}
+		case WifiIRQ12_UNKNOWN:
+			WIFI_LOG(2, "IRQ 12 triggered.\n");
+			io.TX_SEQNO.Number++;
+			WIFI_SetIRQ(irq);
+			break;
 
-
-bool WIFI_Init()
-{
-	WIFI_initCRC32Table();
-	wifi_lastmode = -999;
-	WIFI_Reset();
-	return true;
-}
-
-void WIFI_DeInit()
-{
-	if (wifiCom) wifiCom->DeInit();
-}
-
-void WIFI_Reset()
-{
-#ifdef EXPERIMENTAL_WIFI_COMM
-	//memset(&wifiMac, 0, sizeof(wifimac_t));
-
-	WIFI_resetRF(&wifiMac.RF);
-
-	memset(wifiMac.IOPorts, 0, sizeof(wifiMac.IOPorts));
-
-	wifiMac.randomSeed = 1;
-
-	wifiMac.crystalEnabled = FALSE;
-	wifiMac.powerOn = FALSE;
-	wifiMac.powerOnPending = FALSE;
-
-	wifiMac.GlobalUsecTimer = wifiMac.usec = wifiMac.ucmp = 0ULL;
-	
-	//wifiMac.rfStatus = 0x0000;
-	//wifiMac.rfPins = 0x0004;
-	wifiMac.rfStatus = 0x0009;
-	wifiMac.rfPins = 0x00C6;
-
-	memset(wifiMac.TXSlots, 0, sizeof(wifiMac.TXSlots));
-	wifiMac.TXCurSlot = -1;
-	wifiMac.TXCnt = wifiMac.TXStat = wifiMac.TXSeqNo = wifiMac.TXBusy = 0;
-	while (!wifiMac.RXPacketQueue.empty())
-		wifiMac.RXPacketQueue.pop();
-
-	if((u32)CommonSettings.wifi.mode >= ARRAY_SIZE(wifiComs))
-		CommonSettings.wifi.mode = 0;
-	if (wifiCom && (wifi_lastmode != CommonSettings.wifi.mode))
-		wifiCom->DeInit();
-	wifiCom = wifiComs[CommonSettings.wifi.mode];
-	if (wifiCom && (wifi_lastmode != CommonSettings.wifi.mode))
-		wifiCom->Init();
-	else if (wifiCom)
-		wifiCom->Reset();
-	wifi_lastmode = CommonSettings.wifi.mode;
-
-	bWFCUserWarned = false;
-#endif
-}
-
-
-INLINE u16 WIFI_GetRXFlags(u8* packet)
-{
-	u16 ret = 0x0010;
-	u16 frameCtl = *(u16*)&packet[0];
-	u32 bssid_offset = 10;
-
-	frameCtl &= 0xE7FF;
-
-	switch(frameCtl & 0x000C)
-	{
-	case 0x0000:  // Management frame
-		{
-			bssid_offset = 16;
-
-			if ((frameCtl & 0x00F0) == 0x0080)
-				ret |= 0x0001;
-		}
-		break;
-
-	case 0x0004:  // Control frame
-		ret |= 0x0005;
-		break;
-
-	case 0x0008:  // Data frame
-		{
-			switch (frameCtl & 0x0300)
+		case WifiIRQ13_TimeslotPostBeacon:
 			{
-			case 0x0000: bssid_offset = 16; break;
-			case 0x0100: bssid_offset = 4; break;
-			case 0x0200: bssid_offset = 10; break;
+				WIFI_SetIRQ(irq);
+
+				if(io.POWER_TX.AutoSleep != 0)
+				{
+					io.RF_STATUS.RFStatus = 0x9;
+					io.RF_PINS.CarrierSense = 0;
+					io.RF_PINS.TXMain = 1;
+					io.RF_PINS.UNKNOWN1 = 1;
+					io.RF_PINS.TX_On = 1;
+					io.RF_PINS.RX_On = 0;
+
+					io.INTERNAL_034 = 0x0002;
+					io.TXREQ_READ.value &= 0x0010;
+					io.POWERSTATE.WillPowerOn = 0;
+					io.POWERSTATE.IsPowerOff = 1;
+				}
+				break;
 			}
 
-			if (frameCtl == 0x0228)
-				ret |= 0x000C;
-			else if (frameCtl == 0x0218)
-				ret |= 0x000D;
-			else if (frameCtl == 0x0118)
-				ret |= 0x000E;
-			else
-				ret |= 0x0008;
-		}
-		break;
+		case WifiIRQ14_TimeslotBeacon:
+			{
+				if(io.US_COMPARECNT.ForceIRQ14 == 0)
+				{
+					io.BEACONCOUNT1 = io.BEACONINT.Interval;
+				}
+
+				if(io.US_COMPARECNT.EnableCompare != 0)
+				{
+					WIFI_SetIRQ(irq);
+
+					io.BEACONCOUNT2 = 0xFFFF;
+					io.TXREQ_READ.Loc1 = 0;
+					io.TXREQ_READ.Loc2 = 0;
+					io.TXREQ_READ.Loc3 = 0;
+
+					if(io.TXBUF_BEACON.TransferRequest != 0)
+					{
+						io.TXBUSY.Beacon = 1;
+						io.RF_PINS.value = RFPinsLUT[WifiRFStatus3_TXEnabled];
+
+						IOREG_W_TXBUF_LOCATION txBufBeacon = io.TXBUF_BEACON;
+						WIFI_TXStart(WifiTXLocIndex_BEACON, txBufBeacon);
+						io.TXBUF_BEACON = txBufBeacon;
+					}
+
+					if(io.LISTENCOUNT.Count == 0)
+					{
+						io.LISTENCOUNT.Count = io.LISTENINT.Interval;
+					}
+
+					io.LISTENCOUNT.Count--;
+				}
+				break;
+			}
+
+		case WifiIRQ15_TimeslotPreBeacon:
+			{
+				WIFI_SetIRQ(irq);
+
+				if(io.POWER_TX.AutoWakeup != 0)
+				{
+					io.RF_STATUS.RFStatus = 0x1;
+					io.RF_PINS.RX_On = 1;
+				}
+				break;
+			}
+	}
+}
+
+TXPacketHeader WIFI_GenerateTXHeader(bool isTXRate20, size_t txLength)
+{
+	TXPacketHeader txHeader;
+	txHeader.txStatus = 1;
+	txHeader.mpSlaves = 0;
+	txHeader.seqNumberControl = 0;
+	txHeader.UNKNOWN1 = 0;
+	txHeader.UNKNOWN2 = 0;
+	txHeader.txRate = (isTXRate20) ? 20 : 10;
+	txHeader.UNKNOWN3 = 0;
+	txHeader.length = txLength;
+
+	return txHeader;
+}
+
+RXPacketHeader WIFI_GenerateRXHeader(const u8* packetIEEE80211HeaderPtr, const u16 timeStamp, const bool isTXRate20, const u16 emuPacketSize)
+{
+	const WIFI_IOREG_MAP& io = wifiHandler->GetWifiData().io;
+
+	RXPacketHeader rxHeader;
+	rxHeader.rxFlags.value = 0;
+
+	const WifiFrameControl& fc = (WifiFrameControl&)packetIEEE80211HeaderPtr[0];
+
+	switch((WifiFrameType)fc.Type)
+	{
+		case WifiFrameType_Management:
+			{
+				const WifiMgmtFrameHeader& IEEE80211Header = (WifiMgmtFrameHeader&)packetIEEE80211HeaderPtr[0];
+				rxHeader.rxFlags.MatchingBSSID = (WIFI_compareMAC(IEEE80211Header.BSSID, io.BSSID)) ? 1 : 0;
+
+				if(fc.Subtype == WifiFrameManagementSubtype_Beacon)
+				{
+					rxHeader.rxFlags.FrameType = 0x1;
+				}
+				else
+				{
+					rxHeader.rxFlags.FrameType = 0x0;
+				}
+				break;
+			}
+
+		case WifiFrameType_Control:
+			{
+				rxHeader.rxFlags.FrameType = 0x5;
+
+				switch((WifiFrameControlSubtype)fc.Subtype)
+				{
+					case WifiFrameControlSubtype_PSPoll:
+						{
+							const WifiCtlFrameHeaderPSPoll& IEEE80211Header = (WifiCtlFrameHeaderPSPoll&)packetIEEE80211HeaderPtr[0];
+							rxHeader.rxFlags.MatchingBSSID = (WIFI_compareMAC(IEEE80211Header.BSSID, io.BSSID)) ? 1 : 0;
+							break;
+						}
+
+					case WifiFrameControlSubtype_RTS:
+					case WifiFrameControlSubtype_CTS:
+					case WifiFrameControlSubtype_ACK:
+						rxHeader.rxFlags.MatchingBSSID = 1;
+						break;
+
+					case WifiFrameControlSubtype_End:
+						{
+							const WifiCtlFrameHeaderEnd& IEEE80211Header = (WifiCtlFrameHeaderEnd&)packetIEEE80211HeaderPtr[0];
+							rxHeader.rxFlags.MatchingBSSID = (WIFI_compareMAC(IEEE80211Header.BSSID, io.BSSID)) ? 1 : 0;
+							break;
+						}
+
+					case WifiFrameControlSubtype_EndAck:
+						{
+							const WifiCtlFrameHeaderEndAck& IEEE80211Header = (WifiCtlFrameHeaderEndAck&)packetIEEE80211HeaderPtr[0];
+							rxHeader.rxFlags.MatchingBSSID = (WIFI_compareMAC(IEEE80211Header.BSSID, io.BSSID)) ? 1 : 0;
+							break;
+						}
+
+					default:
+						break;
+				}
+				break;
+			}
+
+		case WifiFrameType_Data:
+			{
+				// By default, set the FrameType flags to 8 for a data frame.
+				// This can be overridden based on other frame control states.
+				rxHeader.rxFlags.FrameType = 0x8;
+
+				switch((WifiFCFromToState)fc.FromToState)
+				{
+					case WifiFCFromToState_STA2STA:
+						{
+							const WifiDataFrameHeaderSTA2STA& IEEE80211Header = (WifiDataFrameHeaderSTA2STA&)packetIEEE80211HeaderPtr[0];
+							rxHeader.rxFlags.MatchingBSSID = (WIFI_compareMAC(IEEE80211Header.BSSID, io.BSSID)) ? 1 : 0;
+							break;
+						}
+
+					case WifiFCFromToState_STA2DS:
+						{
+							const WifiDataFrameHeaderSTA2DS& IEEE80211Header = (WifiDataFrameHeaderSTA2DS&)packetIEEE80211HeaderPtr[0];
+							rxHeader.rxFlags.MatchingBSSID = (WIFI_compareMAC(IEEE80211Header.BSSID, io.BSSID)) ? 1 : 0;
+
+							if(fc.Subtype == WifiFrameDataSubtype_DataAck)
+							{
+								rxHeader.rxFlags.FrameType = 0xE;
+							}
+							else if(fc.Subtype == WifiFrameDataSubtype_Ack)
+							{
+								rxHeader.rxFlags.FrameType = 0xF;
+							}
+							break;
+						}
+
+					case WifiFCFromToState_DS2STA:
+						{
+							const WifiDataFrameHeaderDS2STA& IEEE80211Header = (WifiDataFrameHeaderDS2STA&)packetIEEE80211HeaderPtr[0];
+							rxHeader.rxFlags.MatchingBSSID = (WIFI_compareMAC(IEEE80211Header.BSSID, io.BSSID)) ? 1 : 0;
+
+							if(fc.Subtype == WifiFrameDataSubtype_DataPoll)
+							{
+								rxHeader.rxFlags.FrameType = 0xC;
+							}
+							else if(fc.Subtype == WifiFrameDataSubtype_DataAck)
+							{
+								rxHeader.rxFlags.FrameType = 0xD;
+							}
+							break;
+						}
+
+					case WifiFCFromToState_DS2DS:
+						{
+							// We shouldn't be receiving any DS-to-DS packets, but include this case anyways
+							// to account for all possible code paths.
+							rxHeader.rxFlags.MatchingBSSID = 0;
+							break;
+						}
+				}
+				break;
+			}
+
+		default:
+			break;
 	}
 
-	if (frameCtl & 0x0400)
-		ret |= 0x0100;
+	rxHeader.rxFlags.UNKNOWN1 = 1;
+	rxHeader.rxFlags.MoreFragments = fc.MoreFragments;
 
-	if (WIFI_compareMAC(&packet[bssid_offset], &wifiMac.bss.bytes[0]))
-		ret |= 0x8000;
+	rxHeader.UNKNOWN1 = 0x0040;
+	rxHeader.timeStamp = timeStamp;
+	rxHeader.txRate = (isTXRate20) ? 20 : 10;
+	rxHeader.length = emuPacketSize;
+	rxHeader.rssiMax = 255;
+	rxHeader.rssiMin = 240;
 
-	return ret;
+	return rxHeader;
 }
 
-INLINE void WIFI_MakeRXHeader(u8* buf, u16 flags, u16 xferRate, u16 len, u8 maxRSSI, u8 minRSSI)
+static void WIFI_TXStart(const WifiTXLocIndex txSlotIndex, IOREG_W_TXBUF_LOCATION& txLocation)
 {
-	*(u16*)&buf[0] = flags;
+	WifiData& wifi = wifiHandler->GetWifiData();
+	WIFI_IOREG_MAP& io = wifi.io;
 
-	// Unknown, seems to always be 0x0040
-	// except with from-DS-to-STA data+cfpoll frames (0228)
-	*(u16*)&buf[2] = ((flags & 0xF) == 0xC) ? 0x0000 : 0x0040;
+	WIFI_LOG(3, "TX slot %i trying to send a packet: TXCnt = %04X, TXBufLoc = %04X\n",
+		(int)txSlotIndex, io.TXREQ_READ.value, txLocation.value);
 
-	// random (probably left unchanged)
-	//*(u16*)&buf[4] = 0x0000;
-
-	*(u16*)&buf[6] = xferRate;
-	*(u16*)&buf[8] = len;
-
-	// idk about those, really
-	buf[10] = 0x20;//maxRSSI;
-	buf[11] = 0xA0;//minRSSI;
-}
-
-static void WIFI_RXPutWord(u16 val)
-{
-	/* abort when RX data queuing is not enabled */
-	if (!(wifiMac.RXCnt & 0x8000)) return;
-	/* write the data to cursor position */
-	wifiMac.RAM[wifiMac.RXWriteCursor & 0xFFF] = val;
-	/* move cursor by one */
-	wifiMac.RXWriteCursor++;
-	
-	/* wrap around */
-	if(wifiMac.RXWriteCursor >= (wifiMac.RXRangeEnd >> 1))
-		wifiMac.RXWriteCursor = (wifiMac.RXRangeBegin >> 1);
-	
-	wifiMac.RXTXAddr = wifiMac.RXWriteCursor;
-}
-
-#ifdef EXPERIMENTAL_WIFI_COMM
-static void WIFI_RXQueuePacket(u8* packet, u32 len)
-{
-	if (!(wifiMac.RXCnt & 0x8000)) return;
-
-	Wifi_RXPacket pkt;
-	pkt.Data = packet;
-	pkt.RemHWords = (len - 11) >> 1;
-	pkt.CurOffset = 12;
-	pkt.NotStarted = true;
-	wifiMac.RXPacketQueue.push(pkt);
-}
-#endif
-
-template<int stat> static void WIFI_IncrementRXStat()
-{
-	u16 bitmasks[] = {	0x0001, 0, 0x0002, 0x0004, 0x0008, 0x0010, 0x0020, 0x0040,
-						0x0080, 0, 0x0100, 0, 0x0200, 0x0400, 0x0800, 0x1000};
-
-	u16 bitmask = bitmasks[stat];
-
-	wifiMac.RXStat[stat]++;
-	if (wifiMac.RXStatIncIE & bitmask)
+	if(txLocation.TransferRequest != 0)	/* is slot enabled? */
 	{
-		wifiMac.RXStatIncIF |= bitmask;
-		WIFI_triggerIRQ(WIFI_IRQ_RXINC);
-	}
+		//printf("send packet at %08X, lr=%08X\n", NDS_ARM7.instruct_adr, NDS_ARM7.R[14]);
+		u32 byteAddress = txLocation.HalfwordAddress << 1;
 
-	if (wifiMac.RXStat[stat] & 0x80)
-	{
-		if (wifiMac.RXStatOvfIE & bitmask)
+		// is there even enough space for the header (6 hwords) in the tx buffer?
+		if(byteAddress > (0x2000 - sizeof(TXPacketHeader) - sizeof(WifiFrameControl)))
 		{
-			wifiMac.RXStatOvfIF |= bitmask;
-			WIFI_triggerIRQ(WIFI_IRQ_RXOVF);
-		}
-	}
-}
-
-// TODO: find out if this is correct at all
-// this was mostly guessed, like most of the MP reply functionality
-static void WIFI_DoAutoReply(u8* cmd)
-{
-	cmd += 12;
-
-	u16 frameCtl = *(u16*)&cmd[0] & 0xE7FF;
-	if (frameCtl == 0x0228)
-	{
-		// if the packet we got is a multiplayer command (data+cf-poll),
-		// check if it was destined to us
-		u16 slaveflags = *(u16*)&cmd[24 + 2];
-		if (!(slaveflags & (1 << wifiMac.pid)))
+			WIFI_LOG(1, "TX slot %i trying to send a packet overflowing from the TX buffer (address %04X). Attempt ignored.\n",
+				(int)txSlotIndex, (int)byteAddress);
 			return;
+		}
 
-		// if it was destined to us, (try to) send a reply
-		u16 regval = WIFI_IOREG(REG_WIFI_TXBUF_REPLY1);
-		wifiMac.TXSlots[WIFI_TXSLOT_MPREPLY].RegVal = regval;
+		TXPacketHeader& txHeader = (TXPacketHeader&)wifi.RAM[byteAddress];
+		const WifiFrameControl& fc = (WifiFrameControl&)wifi.RAM[byteAddress + sizeof(TXPacketHeader)];
 
-		regval &= 0x0FFF;
-		wifiMac.RAM[regval + 6 + 1] = *(u16*)&cmd[24];
+		//printf("---------- SENDING A PACKET ON SLOT %i, FrameCtl = %04X ----------\n",
+		//	slot, wifi.RAM[byteAddress + sizeof(TXPacketHeader)]);
 
-		WIFI_TXStart(WIFI_TXSLOT_MPREPLY);
-	}
-	/*else if (frameCtl == 0x0118)
-	{
-		// broadcast MP ACK
-		// this packet appears to be sent automatically
-		// PS: nope. Enabling this code causes NSMB to break the connection even quicker.
-		// Probably it should send the ACK itself whenever it wants to...
+		// 12 byte header TX Header: http://www.akkit.org/info/dswifi.htm#FmtTx
 
-		u8 ack[32];
-		*(u16*)&ack[0] = 0x0218;
-		*(u16*)&ack[2] = 0x0000;
-		*(u16*)&ack[4] = 0x0903;
-		*(u16*)&ack[6] = 0x00BF;
-		*(u16*)&ack[8] = 0x0300;
-		memcpy(&ack[10], &wifiMac.mac.bytes[0], 6);
-		memcpy(&ack[16], &wifiMac.mac.bytes[0], 6);
-		*(u16*)&ack[22] = wifiMac.TXSeqNo << 4; wifiMac.TXSeqNo++;
-		*(u16*)&ack[24] = 0x0555; // lol random
-		*(u16*)&ack[26] = 0x0000;
-		*(u32*)&ack[28] = 0x00000000;
-
-		wifiCom->SendPacket(ack, 32);
-	}*/
-}
-
-static void WIFI_TXStart(u32 slot)
-{
-	WIFI_LOG(4, "TX slot %i trying to send a packet: TXCnt = %04X, TXBufLoc = %04X\n", 
-		slot, wifiMac.TXCnt, wifiMac.TXSlots[slot].RegVal);
-
-	u16 reg = wifiMac.TXSlots[slot].RegVal;
-	if (BIT15(reg))
-	{
-		u16 address = reg & 0x0FFF;
-		if (address > 0x1000-6)
+		// The minimum possible frame length is 14 bytes.
+		// - The TX frame length is header + body + FCS.
+		// - Possible header sizes range from 10 - 30 bytes.
+		// - It is possible for the frame body to be 0 bytes for certain frame types/subtypes.
+		// - The frame check sequence (FCS) is always 4 bytes.
+		if(txHeader.length < 14)
 		{
-			WIFI_LOG(1, "TX slot %i trying to send a packet overflowing from the TX buffer (address %04X). Attempt ignored.\n", 
-				slot, (address << 1));
+			WIFI_LOG(1, "TX slot %i trying to send a packet with length field set to zero. Attempt ignored.\n",
+				(int)txSlotIndex);
 			return;
 		}
 
-		u16 txLen = wifiMac.RAM[address+5] & 0x3FFF;
-		if (txLen == 0) // zero length
+		// Align packet length
+		txHeader.length = ((txHeader.length + 3) & 0xFFFC);
+
+		// Set sequence number if required
+		if((txSlotIndex == WifiTXLocIndex_BEACON) || (txLocation.IEEESeqCtrl == 0))
 		{
-			WIFI_LOG(1, "TX slot %i trying to send a packet with length field set to zero. Attempt ignored.\n", 
-				slot);
-			return;
+			if(fc.Type == WifiFrameType_Management)
+			{
+				WifiMgmtFrameHeader& mgmtHeader = (WifiMgmtFrameHeader&)wifi.RAM[byteAddress + sizeof(TXPacketHeader)];
+				mgmtHeader.seqCtl.SequenceNumber = io.TX_SEQNO.Number;
+				mgmtHeader.seqCtl.FragmentNumber = 0;
+			}
+			else if(fc.Type == WifiFrameType_Data)
+			{
+				// The frame header may not necessarily be a STA-to-STA header, but all of the data frame headers
+				// place the sequence number value at the same location in memory, so we can just use the
+				// STA-to-STA header to represent all of the data frame headers.
+				WifiDataFrameHeaderSTA2STA& dataHeader = (WifiDataFrameHeaderSTA2STA&)wifi.RAM[byteAddress + sizeof(TXPacketHeader)];
+				dataHeader.seqCtl.SequenceNumber = io.TX_SEQNO.Number;
+				dataHeader.seqCtl.FragmentNumber = 0;
+			}
 		}
 
-		u32 timemask = ((wifiMac.RAM[address+4] & 0xFF) == 20) ? 7 : 15;
-		
-		wifiMac.TXSlots[slot].CurAddr = address + 6;
-		wifiMac.TXSlots[slot].RemHWords = (txLen + 1) >> 1;
-		wifiMac.TXSlots[slot].RemPreamble = (BIT2(WIFI_IOREG(REG_WIFI_PREAMBLE)) && (timemask == 7)) ? 96 : 192;
-		wifiMac.TXSlots[slot].TimeMask = timemask;
-		wifiMac.TXSlots[slot].NotStarted = true;
+		// Calculate and set FCS
+		u32 crc32 = WIFI_calcCRC32(&wifi.RAM[byteAddress + sizeof(TXPacketHeader)], txHeader.length - 4);
+		*(u32*)&wifi.RAM[byteAddress + sizeof(TXPacketHeader) + txHeader.length - 4] = crc32;
 
-		if (wifiMac.TXCurSlot < 0)
-			wifiMac.TXCurSlot = slot;
-		wifiMac.TXBusy |= (1 << slot);
+		WIFI_triggerIRQ(WifiIRQ07_TXStart);
 
-		//wifiMac.rfStatus = 3;
-		//wifiMac.rfPins = 0x0046;
+		if((txSlotIndex == WifiTXLocIndex_LOC1) || (txSlotIndex == WifiTXLocIndex_LOC2) || (txSlotIndex == WifiTXLocIndex_LOC3))
+		{
+			TXPacketInfo& txPacketInfo = wifiHandler->GetPacketInfoAtSlot(txSlotIndex);
+			txPacketInfo.emuPacketLength = txHeader.length;
+			txPacketInfo.remainingBytes = txHeader.length + sizeof(TXPacketHeader);
+
+			switch(txSlotIndex)
+			{
+				case WifiTXLocIndex_LOC1: io.TXBUSY.Loc1 = 1; break;
+					//case WifiTXLocIndex_CMD: io.TXBUSY.Cmd = 1; break;
+				case WifiTXLocIndex_LOC2: io.TXBUSY.Loc2 = 1; break;
+				case WifiTXLocIndex_LOC3: io.TXBUSY.Loc3 = 1; break;
+					//case WifiTXLocIndex_BEACON: io.TXBUSY.Beacon = 1; break;
+
+				default:
+					break;
+			}
+
+			if(txSlotIndex == WifiTXLocIndex_LOC3)
+			{
+				wifi.txCurrentSlot = WifiTXLocIndex_LOC3;
+			}
+			else if((txSlotIndex == WifiTXLocIndex_LOC2) && (wifi.txCurrentSlot == WifiTXLocIndex_LOC1))
+			{
+				wifi.txCurrentSlot = WifiTXLocIndex_LOC2;
+			}
+
+			io.RXTX_ADDR.HalfwordAddress = byteAddress >> 1;
+
+			io.RF_STATUS.RFStatus = 0x03;
+			io.RF_PINS.CarrierSense = 0;
+			io.RF_PINS.TXMain = 1;
+			io.RF_PINS.UNKNOWN1 = 1;
+			io.RF_PINS.TX_On = 1;
+			io.RF_PINS.RX_On = 0;
+			#if 0
+			WIFI_SoftAP_RecvPacketFromDS(&wifi.RAM[address + sizeof(TXPacketHeader)], txHeader.length);
+			WIFI_triggerIRQ(WifiIRQ01_TXComplete);
+
+			txHeader.txStatus = 0x0001;
+			txHeader.UNKNOWN3 = 0;
+			#endif
+		}
+		else if(txSlotIndex == WifiTXLocIndex_CMD)
+		{
+			wifiHandler->CommSendPacket(txHeader, &wifi.RAM[byteAddress + sizeof(TXPacketHeader)]);
+			WIFI_triggerIRQ(WifiIRQ12_UNKNOWN);
+
+			// If bit 13 is set, then it has priority over bit 14
+			if(io.TXSTATCNT.UpdateTXStat_0B01 != 0)
+			{
+				WIFI_triggerIRQ(WifiIRQ01_TXComplete);
+				io.TXSTAT.value = 0x0B01;
+			}
+			else if(io.TXSTATCNT.UpdateTXStat_0800 != 0)
+			{
+				WIFI_triggerIRQ(WifiIRQ01_TXComplete);
+				io.TXSTAT.value = 0x0800;
+			}
+
+			txLocation.TransferRequest = 0;
+
+			txHeader.txStatus = 0x0001;
+			txHeader.UNKNOWN3 = 0;
+		}
+		else if(txSlotIndex == WifiTXLocIndex_BEACON)
+		{
+			// Set timestamp
+			*(u64*)&wifi.RAM[byteAddress + sizeof(TXPacketHeader) + sizeof(WifiMgmtFrameHeader)] = io.US_COUNT;
+
+			wifiHandler->CommSendPacket(txHeader, &wifi.RAM[byteAddress + sizeof(TXPacketHeader)]);
+
+			if(io.TXSTATCNT.UpdateTXStatBeacon != 0)
+			{
+				WIFI_triggerIRQ(WifiIRQ01_TXComplete);
+				io.TXSTAT.value = 0x0301;
+			}
+
+			txHeader.txStatus = 0x0001;
+			txHeader.UNKNOWN3 = 0;
+		}
 	}
-}
-
-static void WIFI_PreTXAdjustments(u32 slot)
-{
-	u16 reg = wifiMac.TXSlots[slot].RegVal;
-	u16 address = reg & 0x0FFF;
-	u16 txLen = wifiMac.RAM[address+5] & 0x3FFF;
-
-	// Set sequence number if required
-	if ((!BIT13(reg)) || (slot == WIFI_TXSLOT_BEACON))
-	{
-		wifiMac.RAM[address + 6 + 11] = wifiMac.TXSeqNo << 4;
-		wifiMac.TXSeqNo++;
-		// TODO: find out when this happens (if it actually happens at all)
-		// real-life NSMB multiplayer traffic capture shows no such behavior
-		//if (slot == WIFI_TXSLOT_MPCMD) wifiMac.TXSeqNo++;
-	}
-
-	// Set timestamp (for beacons only)
-	if (slot == WIFI_TXSLOT_BEACON)
-	{
-		*(u64*)&wifiMac.RAM[address + 6 + 12] = wifiMac.usec;
-		//((u8*)wifiMac.RAM)[((address+6+12)<<1) + WIFI_IOREG(0x84)] = 0x01;
-	}
-
-	// TODO: check if this is correct
-	// this sometimes happens in real world, but not always
-	/*if (slot == WIFI_TXSLOT_MPREPLY)
-	{
-		wifiMac.RAM[address + 6 + 12] |= 0x8000;
-	}*/
-
-	// Calculate and set FCS
-	u32 crc32 = WIFI_calcCRC32((u8*)&wifiMac.RAM[address + 6], txLen - 4);
-	*(u32*)&wifiMac.RAM[address + 6 + ((txLen-4) >> 1)] = crc32;
 }
 
 void WIFI_write16(u32 address, u16 val)
 {
-	BOOL action = FALSE;
-	if (!nds.power2.wifi) return;
+	bool action = false;
+	if(!nds.power2.wifi) return;
+
+	WifiData& wifi = wifiHandler->GetWifiData();
+	WIFI_IOREG_MAP& io = wifi.io;
 
 	u32 page = address & 0x7000;
 
 	// 0x2000 - 0x3FFF: unused
-	if ((page >= 0x2000) && (page < 0x4000))
+	if((page >= 0x2000) && (page < 0x4000))
 		return;
 
 	WIFI_LOG(5, "Write at address %08X, %04X\n", address, val);
-	/*if (address == 0x04804008 && val == 0x0200)
-	{
-		printf("WIFI: Write at address %08X, %04X, pc=%08X\n", address, val, NDS_ARM7.instruct_adr);
-		emu_halt();
-	}*/
+	//printf("WIFI: Write at address %08X, %04X, pc=%08X\n", address, val, NDS_ARM7.instruct_adr);
 
 	// 0x4000 - 0x5FFF: wifi RAM
-	if ((page >= 0x4000) && (page < 0x6000))
+	if((page >= 0x4000) && (page < 0x6000))
 	{
 		/* access to the circular buffer */
-		address &= 0x1FFF;
-		/*if (address >= 0x958 && address < (0x95A)) //address < (0x958+0x2A)) 
-			printf("PACKET[%04X] = %04X %08X %08X\n", 
-			NDS_ARM7.R[12], val, NDS_ARM7.R[14], NDS_ARM7.R[5]);*/
-        wifiMac.RAM[address >> 1] = val;
+		*(u16*)&wifi.RAM[address & 0x1FFE] = val;
 		return;
 	}
 
 	// anything else: I/O ports
 	// only the first mirror (0x0000 - 0x0FFF) causes a special action
-	if (page == 0x0000) action = TRUE;
+	if(page == 0x0000) action = true;
 
 	address &= 0x0FFF;
-	switch (address)
+	switch(address)
 	{
-		case REG_WIFI_ID:
-			break;
-		case REG_WIFI_MODE:
+		case REG_WIFI_MODE: // 0x004
 			{
-				u16 oldval = wifiMac.macMode;
+				IOREG_W_MODE_RST MODE_RST;
+				MODE_RST.value = val;
 
-				if (!BIT0(oldval) && BIT0(val))
+				io.MODE_RST.UNKNOWN1 = MODE_RST.UNKNOWN1;
+				io.MODE_RST.UNKNOWN2 = MODE_RST.UNKNOWN2;
+				io.MODE_RST.UNKNOWN3 = MODE_RST.UNKNOWN3;
+
+				if((io.MODE_RST.TXMasterEnable == 0) && (MODE_RST.TXMasterEnable != 0))
 				{
-					WIFI_IOREG(0x034)					= 0x0002;
-					wifiMac.rfPins 						= 0x0046;
-					wifiMac.rfStatus 					= 0x0009;
-					WIFI_IOREG(0x27C)					= 0x0005;
+					io.INTERNAL_034 = 0x0002;
+					io.RF_STATUS.value = 0x0009;
+					io.RF_PINS.value = 0x0046;
+					io.INTERNAL_27C = 0x0005;
+
+					// According to GBATEK, the following registers might be reset to some unknown values.
+					// io.INTERNAL_2A2					= ???;
 				}
 
-				if (BIT0(oldval) && !BIT0(val))
+				if((io.MODE_RST.TXMasterEnable != 0) && (MODE_RST.TXMasterEnable == 0))
 				{
-					WIFI_IOREG(0x27C)		 			= 0x000A;
+					io.INTERNAL_27C = 0x000A;
 				}
 
-				if (BIT13(val))
+				io.MODE_RST.TXMasterEnable = MODE_RST.TXMasterEnable;
+
+				if(MODE_RST.ResetPortSet1 != 0)
 				{
-					WIFI_IOREG(REG_WIFI_WRITECSRLATCH) 	= 0x0000;
-					WIFI_IOREG(0x0C0)		 			= 0x0000;
-					WIFI_IOREG(0x0C4)		 			= 0x0000;
-					WIFI_IOREG(REG_WIFI_MAYBE_RATE)		= 0x0000;
-					WIFI_IOREG(0x278)		 			= 0x000F;
+					io.RXBUF_WR_ADDR.value = 0x0000;
+					io.CMD_TOTALTIME = 0x0000;
+					io.CMD_REPLYTIME = 0x0000;
+					io.X_1A4 = 0x0000;
+					io.INTERNAL_278 = 0x000F;
+
+					// According to GBATEK, the following registers might be reset to some unknown values.
+					//io.TXREQ_SET.value				= ???;
+					//io.INTERNAL_0BA					= ???;
+					//io.INTERNAL_204					= ???;
+					//io.INTERNAL_25C					= ???;
+					//io.RXTX_ADDR.value				= ???;
+					//io.INTERNAL_274					= ???;
 				}
 
-				if (BIT14(val))
+				if(MODE_RST.ResetPortSet2 != 0)
 				{
-					wifiMac.wepMode 					= 0x0000;
-					wifiMac.TXStatCnt					= 0x0000;
-					WIFI_IOREG(REG_WIFI_0A)				= 0x0000;
-					wifiMac.mac.words[0]				= 0x0000;
-					wifiMac.mac.words[1]				= 0x0000;
-					wifiMac.mac.words[2]				= 0x0000;
-					wifiMac.bss.words[0]				= 0x0000;
-					wifiMac.bss.words[1]				= 0x0000;
-					wifiMac.bss.words[2]				= 0x0000;
-					wifiMac.pid							= 0x0000;
-					wifiMac.aid 						= 0x0000;
-					WIFI_IOREG(REG_WIFI_RETRYLIMIT)		= 0x0707;
-					WIFI_IOREG(0x02E)		 			= 0x0000;
-					WIFI_IOREG(REG_WIFI_RXRANGEBEGIN)	= 0x4000;
-					WIFI_IOREG(REG_WIFI_RXRANGEEND)		= 0x4800;
-					wifiMac.RXRangeBegin				= 0x0000; // 0x4000
-					wifiMac.RXRangeEnd					= 0x0800; // 0x4800
-					WIFI_IOREG(0x084)					= 0x0000;
-					WIFI_IOREG(REG_WIFI_PREAMBLE) 		= 0x0001;
-					WIFI_IOREG(REG_WIFI_RXFILTER) 		= 0x0401;
-					WIFI_IOREG(0x0D4)					= 0x0001;
-					WIFI_IOREG(REG_WIFI_RXFILTER2)		= 0x0008;
-					WIFI_IOREG(0x0EC)		 			= 0x3F03;
-					WIFI_IOREG(0x194)		 			= 0x0000;
-					WIFI_IOREG(0x198) 					= 0x0000;
-					WIFI_IOREG(0x1A2)		 			= 0x0001;
-					WIFI_IOREG(0x224)		 			= 0x0003;
-					WIFI_IOREG(0x230)		 			= 0x0047;
+					io.MODE_WEP.value = 0x0000;
+					io.TXSTATCNT.value = 0x0000;
+					io.X_00A = 0x0000;
+					io.MACADDR[0] = 0x00;
+					io.MACADDR[1] = 0x00;
+					io.MACADDR[2] = 0x00;
+					io.MACADDR[3] = 0x00;
+					io.MACADDR[4] = 0x00;
+					io.MACADDR[5] = 0x00;
+					io.BSSID[0] = 0x00;
+					io.BSSID[1] = 0x00;
+					io.BSSID[2] = 0x00;
+					io.BSSID[3] = 0x00;
+					io.BSSID[4] = 0x00;
+					io.BSSID[5] = 0x00;
+					io.AID_LOW.value = 0x0000;
+					io.AID_FULL.value = 0x0000;
+					io.TX_RETRYLIMIT.value = 0x0707;
+					io.INTERNAL_02E = 0x0000;
+					io.RXBUF_BEGIN = 0x4000;
+					io.RXBUF_END = 0x4800;
+					io.TXBUF_TIM.value = 0x0000;
+					io.PREAMBLE.value = 0x0001;
+					io.RXFILTER.value = 0x0401;
+					io.CONFIG_0D4 = 0x0001;
+					io.RXFILTER2.value = 0x0008;
+					io.CONFIG_0EC = 0x3F03;
+					io.TX_HDR_CNT.value = 0x0000;
+					io.INTERNAL_198 = 0x0000;
+					io.X_1A2.value = 0x0001;
+					io.INTERNAL_224 = 0x0003;
+					io.INTERNAL_230 = 0x0047;
 				}
-
-				wifiMac.macMode = val & 0xAFFF;
+				break;
 			}
+
+		case REG_WIFI_WEP: // 0x006
+			io.MODE_WEP.value = val;
 			break;
-		case REG_WIFI_WEP:
-			wifiMac.wepMode = val;
+
+		case REG_WIFI_TXSTATCNT: // 0x008
+			io.TXSTATCNT.value = val;
 			break;
-		case REG_WIFI_TXSTATCNT:
-			wifiMac.TXStatCnt = val;
-			//printf("txstatcnt=%04X\n", val);
+
+		case REG_WIFI_X_00A: // 0x00A
+			io.X_00A = val;
 			break;
-		case REG_WIFI_IE:
-			wifiMac.IE = val;
-			//printf("wifi ie write %04X\n", val);
+
+		case REG_WIFI_IF: // 0x010
+			io.IF.value &= ~val;
 			break;
-		case REG_WIFI_IF:
-			wifiMac.IF &= ~val;		/* clear flagging bits */
+
+		case REG_WIFI_IE: // 0x012
+			io.IE.value = val;
 			break;
-		case REG_WIFI_MAC0:
-		case REG_WIFI_MAC1:
-		case REG_WIFI_MAC2:
-			wifiMac.mac.words[(address - REG_WIFI_MAC0) >> 1] = val;
+
+		case REG_WIFI_MAC0: // 0x018
+			io.MACADDR0.value = val;
 			break;
-		case REG_WIFI_BSS0:
-		case REG_WIFI_BSS1:
-		case REG_WIFI_BSS2:
-			wifiMac.bss.words[(address - REG_WIFI_BSS0) >> 1] = val;
+
+		case REG_WIFI_MAC1: // 0x01A
+			io.MACADDR1.value = val;
 			break;
-		case REG_WIFI_RETRYLIMIT:
-			wifiMac.retryLimit = val;
+
+		case REG_WIFI_MAC2: // 0x01C
+			io.MACADDR2.value = val;
 			break;
-		case REG_WIFI_WEPCNT:
-			wifiMac.WEP_enable = (val & 0x8000) != 0;
+
+		case REG_WIFI_BSS0: // 0x020
+			io.BSSID0.value = val;
 			break;
-		case REG_WIFI_POWERSTATE:
-			wifiMac.powerOn = ((val & 0x0002)?TRUE:FALSE);
-			if(wifiMac.powerOn) WIFI_triggerIRQ(WIFI_IRQ_RFWAKEUP);
+
+		case REG_WIFI_BSS1: // 0x022
+			io.BSSID1.value = val;
 			break;
-		case REG_WIFI_POWERFORCE:
-			if((val & 0x8000) && (!wifiMac.powerOnPending))
+
+		case REG_WIFI_BSS2: // 0x024
+			io.BSSID2.value = val;
+			break;
+
+		case REG_WIFI_AID_LOW: // 0x028
+			io.AID_LOW.value = val & 0x000F;
+			break;
+
+		case REG_WIFI_AID_HIGH: // 0x02A
+			io.AID_FULL.value = val & 0x07FF;
+			break;
+
+		case REG_WIFI_RETRYLIMIT: // 0x02C
+			io.TX_RETRYLIMIT.value = val;
+			break;
+
+		case 0x02E: // 0x02E
+			io.INTERNAL_02E = val;
+			break;
+
+		case REG_WIFI_RXCNT: // 0x030
 			{
-			/*	BOOL newPower = ((val & 0x0001)?FALSE:TRUE);
-				if(newPower != wifiMac.powerOn)
+				IOREG_W_RXCNT RXCNT;
+				RXCNT.value = val & 0xFF8F;
+
+				io.RXCNT.EnableRXFIFOQueuing = RXCNT.EnableRXFIFOQueuing;
+				if(io.RXCNT.EnableRXFIFOQueuing == 0)
 				{
-					if(!newPower)
-						wifiMac.powerOn = FALSE;
+					wifiHandler->CommEmptyRXQueue();
+				}
+
+				if(io.RXCNT.UNKNOWN1 != RXCNT.UNKNOWN1)
+				{
+					io.RXCNT.UNKNOWN1 = RXCNT.UNKNOWN1;
+					WIFI_LOG(2, "Writing value of %04Xh to RXCNT.UNKNOWN1\n", (int)io.RXCNT.UNKNOWN1);
+				}
+
+				if(io.RXCNT.UNKNOWN2 != RXCNT.UNKNOWN2)
+				{
+					io.RXCNT.UNKNOWN2 = RXCNT.UNKNOWN2;
+					WIFI_LOG(2, "Writing value of %04Xh to RXCNT.UNKNOWN2\n", (int)io.RXCNT.UNKNOWN2);
+				}
+
+				if(RXCNT.CopyAddrToWRCSR != 0)
+				{
+					io.RXBUF_WRCSR.HalfwordAddress = io.RXBUF_WR_ADDR.HalfwordAddress;
+				}
+
+				if(RXCNT.CopyTXBufReply1To2 != 0)
+				{
+					io.TXBUF_REPLY2.HalfwordAddress = io.TXBUF_REPLY1.HalfwordAddress;
+					io.TXBUF_REPLY1.value = 0x0000;
+				}
+				break;
+			}
+
+		case REG_WIFI_WEPCNT: // 0x032
+			io.WEP_CNT.value = val & 0x8000;
+			break;
+
+		case 0x034: // 0x034
+			io.INTERNAL_034 = val;
+			WIFI_LOG(2, "Writing value of %04Xh to possible read-only INTERNAL_034\n", (int)io.INTERNAL_034);
+			break;
+
+		case REG_WIFI_POWER_US: // 0x036
+			{
+				IOREG_W_POWER_US POWER_US;
+				POWER_US.value = val & 0x0003;
+
+				io.POWER_US.Disable = (wifiHandler->GetCurrentEmulationLevel() == WifiEmulationLevel_Off) ? 1 : POWER_US.Disable;
+
+				if(io.POWER_US.UNKNOWN1 != POWER_US.UNKNOWN1)
+				{
+					io.POWER_US.UNKNOWN1 = POWER_US.UNKNOWN1;
+					WIFI_LOG(2, "Writing value of %d to POWER_US.UNKNOWN1\n", (int)POWER_US.UNKNOWN1);
+				}
+				break;
+			}
+
+		case REG_WIFI_POWER_TX: // 0x038
+			{
+				IOREG_W_POWER_TX POWER_TX;
+				POWER_TX.value = val & 0x000F;
+
+				io.POWER_TX.AutoWakeup = POWER_TX.AutoWakeup;
+				io.POWER_TX.AutoSleep = POWER_TX.AutoSleep;
+
+				if(io.POWER_TX.UNKNOWN1 != POWER_TX.UNKNOWN1)
+				{
+					io.POWER_TX.UNKNOWN1 = POWER_TX.UNKNOWN1;
+					WIFI_LOG(2, "Writing value of %d to POWER_TX.UNKNOWN1\n", (int)POWER_TX.UNKNOWN1);
+				}
+
+				if(POWER_TX.UNKNOWN2 != 0)
+				{
+					WIFI_LOG(2, "Performing unknown action of POWER_TX.UNKNOWN2\n");
+				}
+				break;
+			}
+
+		case REG_WIFI_POWERSTATE: // 0x03C
+			{
+				IOREG_W_POWERSTATE newPowerState;
+				newPowerState.value = val;
+
+				io.POWERSTATE.UNKNOWN1 = newPowerState.UNKNOWN1;
+				io.POWERSTATE.RequestPowerOn = newPowerState.RequestPowerOn;
+
+				if(io.POWERSTATE.RequestPowerOn != 0)
+				{
+					WIFI_triggerIRQ(WifiIRQ11_RFWakeup);
+
+					// This is supposedly the TX beacon transfer flag.
+					// Since reading TXREQ_READ bit 4 should always return a 1 (unless
+					// POWERFORCE clears it), we'll simply set this bit to 1 on power up
+					// so that bit 4 gets its default value.
+					io.TXREQ_READ.UNKNOWN1 = 1;
+
+					// Most likely, there should be some delay between firing the IRQ and
+					// setting the register bits. But we're not going to emulate the delay
+					// right now, so we simply change all of the bits immediately.
+					io.POWERSTATE.RequestPowerOn = 0;
+					io.POWERSTATE.WillPowerOn = 0;
+					io.POWERSTATE.IsPowerOff = 0;
+				}
+				break;
+			}
+
+		case REG_WIFI_POWERFORCE: // 0x040
+			{
+
+				io.POWERFORCE.value = val & (u16)0x8001;
+
+				if(io.POWERFORCE.ApplyNewPowerOffState != 0)
+				{
+					if((io.POWERFORCE.NewPowerOffState != 0) && (io.POWERSTATE.IsPowerOff == 0))
+					{
+						// Immediate action
+						io.INTERNAL_034 = 0x0002;
+						io.TXREQ_READ.value = 0x0000; // Note that even bit 4 gets cleared here
+						io.RF_STATUS.value = 0x0009;
+						io.RF_PINS.value = 0x0046;
+
+						io.POWERSTATE.WillPowerOn = 0;
+						io.POWERSTATE.IsPowerOff = 1;
+					}
+					else if((io.POWERFORCE.NewPowerOffState == 0) && (io.POWERSTATE.IsPowerOff != 0))
+					{
+						// Delayed action
+						io.POWERSTATE.WillPowerOn = 1;
+					}
+
+					// This probably shouldn't happen right here, but we need to write to
+					// POWERSTATE.IsPowerOff because we need to keep the power on in order
+					// to force certain in-game errors to occur. Otherwise, the user might
+					// get caught up in an infinite loop.
+					if(io.POWERSTATE.WillPowerOn != 0)
+					{
+						io.POWERSTATE.IsPowerOff = io.POWERFORCE.NewPowerOffState;
+					}
+				}
+				break;
+			}
+
+		case REG_WIFI_POWER_UNK: // 0x048
+			io.POWER_UNKNOWN.value = val;
+			break;
+
+		case REG_WIFI_RXRANGEBEGIN: // 0x050
+			{
+				io.RXBUF_BEGIN = val;
+				if(io.RXBUF_WRCSR.HalfwordAddress < ((io.RXBUF_BEGIN & 0x1FFE) >> 1))
+				{
+					io.RXBUF_WRCSR.HalfwordAddress = ((io.RXBUF_BEGIN & 0x1FFE) >> 1);
+				}
+				break;
+			}
+
+		case REG_WIFI_RXRANGEEND: // 0x052
+			{
+				io.RXBUF_END = val;
+				if(io.RXBUF_WRCSR.HalfwordAddress >= ((io.RXBUF_END & 0x1FFE) >> 1))
+				{
+					io.RXBUF_WRCSR.HalfwordAddress = ((io.RXBUF_BEGIN & 0x1FFE) >> 1);
+				}
+				break;
+			}
+
+		case REG_WIFI_WRITECSRLATCH: // 0x056
+			io.RXBUF_WR_ADDR.value = val & 0x0FFF;
+			break;
+
+		case REG_WIFI_CIRCBUFRADR: // 0x058
+			io.RXBUF_RD_ADDR.value = val & 0x1FFE;
+			break;
+
+		case REG_WIFI_RXREADCSR: // 0x05A
+			io.RXBUF_READCSR.value = val & 0x0FFF;
+			break;
+
+		case REG_WIFI_RXBUF_COUNT: // 0x05C
+			io.RXBUF_COUNT.value = val & 0x0FFF;
+			break;
+
+		case REG_WIFI_CIRCBUFRD_END: // 0x062
+			io.RXBUF_GAP.value = val & 0x1FFE;
+			break;
+
+		case REG_WIFI_CIRCBUFRD_SKIP: // 0x064
+			io.RXBUF_GAPDISP.value = val & 0x0FFF;
+			break;
+
+		case REG_WIFI_CIRCBUFWADR: // 0x068
+			io.TXBUF_WR_ADDR.value = val & 0x1FFE;
+			break;
+
+		case REG_WIFI_TXBUFCOUNT: // 0x06C
+			io.TXBUF_COUNT.value = val & 0x0FFF;
+			break;
+
+		case REG_WIFI_CIRCBUFWRITE: // 0x070
+			{
+				/* set value into the circ buffer, and move cursor to the next hword on action */
+				//printf("wifi: circbuf fifo write at %04X, %04X (action=%i)\n", (wifiMac.CircBufWriteAddress & 0x1FFF), val, action);
+				*(u16*)&wifi.RAM[io.TXBUF_WR_ADDR.HalfwordAddress << 1] = val;
+				if(action)
+				{
+					/* move to next hword */
+					io.TXBUF_WR_ADDR.HalfwordAddress++;
+					if(io.TXBUF_WR_ADDR.HalfwordAddress == io.TXBUF_GAP.HalfwordAddress)
+					{
+						/* on end of buffer, add skip hwords to it */
+						io.TXBUF_GAP.HalfwordAddress += io.TXBUF_GAPDISP.HalfwordOffset;
+					}
+
+					if(io.TXBUF_COUNT.Count > 0)
+					{
+						io.TXBUF_COUNT.Count--;
+						if(io.TXBUF_COUNT.Count == 0)
+						{
+							WIFI_triggerIRQ(WifiIRQ08_TXCountExpired);
+						}
+					}
+				}
+				break;
+			}
+
+		case REG_WIFI_CIRCBUFWR_END: // 0x074
+			io.TXBUF_GAP.value = val & 0x1FFF;
+			break;
+
+		case REG_WIFI_CIRCBUFWR_SKIP: // 0x076
+			io.TXBUF_GAPDISP.value = val & 0x0FFF;
+			break;
+
+		case 0x078: // 0x078
+			io.INTERNAL_078 = val;
+			break;
+
+		case REG_WIFI_TXLOCBEACON: // 0x080
+			{
+				IOREG_W_TXBUF_LOCATION TXBUF_BEACON;
+				TXBUF_BEACON.value = val;
+
+				io.TXBUF_BEACON.HalfwordAddress = TXBUF_BEACON.HalfwordAddress;
+				io.TXBUF_BEACON.Bit12 = TXBUF_BEACON.Bit12;
+				io.TXBUF_BEACON.IEEESeqCtrl = TXBUF_BEACON.IEEESeqCtrl;
+				io.TXBUF_BEACON.TransferRequest = TXBUF_BEACON.TransferRequest;
+
+				if(io.TXBUF_BEACON.UNKNOWN1 != TXBUF_BEACON.UNKNOWN1)
+				{
+					io.TXBUF_BEACON.UNKNOWN1 = TXBUF_BEACON.UNKNOWN1;
+					WIFI_LOG(2, "Writing value of %d to TXBUF_BEACON.UNKNOWN1\n", (int)TXBUF_BEACON.UNKNOWN1);
+				}
+
+				if(io.TXBUF_BEACON.TransferRequest != 0)
+				{
+					WIFI_LOG(3, "Beacon transmission enabled to send the packet at %08X every %i milliseconds.\n",
+						0x04804000 + (io.TXBUF_BEACON.HalfwordAddress << 1), io.BEACONINT.Interval);
+				}
+				break;
+			}
+
+		case REG_WIFI_TXBUF_TIM: // 0x084
+			io.TXBUF_TIM.value = val & 0x00FF;
+			break;
+
+		case REG_WIFI_LISTENCOUNT: // 0x088
+			io.LISTENCOUNT.value = val & 0x00FF;
+			break;
+
+		case REG_WIFI_BEACONPERIOD: // 0x08C
+			io.BEACONINT.value = val & 0x03FF;
+			break;
+
+		case REG_WIFI_LISTENINT: // 0x08E
+			io.LISTENINT.value = val & 0x00FF;
+			break;
+
+		case REG_WIFI_TXLOCEXTRA: // 0x090
+			{
+				IOREG_W_TXBUF_LOCATION TXBUF_CMD;
+				TXBUF_CMD.value = val;
+
+				io.TXBUF_CMD.HalfwordAddress = TXBUF_CMD.HalfwordAddress;
+				io.TXBUF_CMD.Bit12 = TXBUF_CMD.Bit12;
+				io.TXBUF_CMD.IEEESeqCtrl = TXBUF_CMD.IEEESeqCtrl;
+
+				if(wifi.cmdCount_u32 != 0)
+				{
+					io.TXBUF_CMD.TransferRequest = TXBUF_CMD.TransferRequest;
+				}
+
+				if(io.TXBUF_CMD.UNKNOWN1 != TXBUF_CMD.UNKNOWN1)
+				{
+					io.TXBUF_CMD.UNKNOWN1 = TXBUF_CMD.UNKNOWN1;
+					WIFI_LOG(2, "Writing value of %d to TXBUF_CMD.UNKNOWN1\n", (int)TXBUF_CMD.UNKNOWN1);
+				}
+				break;
+			}
+
+		case REG_WIFI_TXBUF_REPLY1: // 0x094
+			io.TXBUF_REPLY1.value = val;
+			break;
+
+		case 0x09C: // 0x09C
+			io.INTERNAL_09C = val;
+			break;
+
+		case REG_WIFI_TXLOC1: // 0x0A0
+			{
+				IOREG_W_TXBUF_LOCATION TXBUF_LOCn;
+				TXBUF_LOCn.value = val;
+
+				io.TXBUF_LOC1.HalfwordAddress = TXBUF_LOCn.HalfwordAddress;
+				io.TXBUF_LOC1.Bit12 = TXBUF_LOCn.Bit12;
+				io.TXBUF_LOC1.IEEESeqCtrl = TXBUF_LOCn.IEEESeqCtrl;
+				io.TXBUF_LOC1.TransferRequest = TXBUF_LOCn.TransferRequest;
+
+				if(io.TXBUF_LOC1.UNKNOWN1 != TXBUF_LOCn.UNKNOWN1)
+				{
+					io.TXBUF_LOC1.UNKNOWN1 = TXBUF_LOCn.UNKNOWN1;
+					WIFI_LOG(2, "Writing value of %d to TXBUF_LOC1.UNKNOWN1\n", (int)TXBUF_LOCn.UNKNOWN1);
+				}
+				break;
+			}
+
+		case REG_WIFI_TXLOC2: // 0x0A4
+			{
+				IOREG_W_TXBUF_LOCATION TXBUF_LOCn;
+				TXBUF_LOCn.value = val;
+
+				io.TXBUF_LOC2.HalfwordAddress = TXBUF_LOCn.HalfwordAddress;
+				io.TXBUF_LOC2.Bit12 = TXBUF_LOCn.Bit12;
+				io.TXBUF_LOC2.IEEESeqCtrl = TXBUF_LOCn.IEEESeqCtrl;
+				io.TXBUF_LOC2.TransferRequest = TXBUF_LOCn.TransferRequest;
+
+				if(io.TXBUF_LOC2.UNKNOWN1 != TXBUF_LOCn.UNKNOWN1)
+				{
+					io.TXBUF_LOC2.UNKNOWN1 = TXBUF_LOCn.UNKNOWN1;
+					WIFI_LOG(2, "Writing value of %d to TXBUF_LOC2.UNKNOWN1\n", (int)TXBUF_LOCn.UNKNOWN1);
+				}
+				break;
+			}
+
+		case REG_WIFI_TXLOC3: // 0x0A8
+			{
+				IOREG_W_TXBUF_LOCATION TXBUF_LOCn;
+				TXBUF_LOCn.value = val;
+
+				io.TXBUF_LOC3.HalfwordAddress = TXBUF_LOCn.HalfwordAddress;
+				io.TXBUF_LOC3.Bit12 = TXBUF_LOCn.Bit12;
+				io.TXBUF_LOC3.IEEESeqCtrl = TXBUF_LOCn.IEEESeqCtrl;
+				io.TXBUF_LOC3.TransferRequest = TXBUF_LOCn.TransferRequest;
+
+				if(io.TXBUF_LOC3.UNKNOWN1 != TXBUF_LOCn.UNKNOWN1)
+				{
+					io.TXBUF_LOC3.UNKNOWN1 = TXBUF_LOCn.UNKNOWN1;
+					WIFI_LOG(2, "Writing value of %d to TXBUF_LOC3.UNKNOWN1\n", (int)TXBUF_LOCn.UNKNOWN1);
+				}
+				break;
+			}
+
+		case REG_WIFI_TXREQ_RESET: // 0x0AC
+			{
+				IOREG_W_TXREQ_RESET TXREQ_RESET;
+				TXREQ_RESET.value = val;
+
+				if(TXREQ_RESET.Loc1 != 0)
+				{
+					io.TXREQ_READ.Loc1 = 0;
+				}
+
+				if(TXREQ_RESET.Cmd != 0)
+				{
+					io.TXREQ_READ.Cmd = 0;
+				}
+
+				if(TXREQ_RESET.Loc2 != 0)
+				{
+					io.TXREQ_READ.Loc2 = 0;
+				}
+
+				if(TXREQ_RESET.Loc3 != 0)
+				{
+					io.TXREQ_READ.Loc3 = 0;
+				}
+
+				if(TXREQ_RESET.UNKNOWN1 != 0)
+				{
+					WIFI_LOG(2, "Prevented clearing of TXREQ_READ.UNKNOWN1, for beacon?\n");
+				}
+				break;
+			}
+
+		case REG_WIFI_TXREQ_SET: // 0x0AE
+			{
+				IOREG_W_TXREQ_SET TXREQ_SET;
+				TXREQ_SET.value = val;
+
+				if(TXREQ_SET.Loc1 != 0)
+				{
+					io.TXREQ_READ.Loc1 = 1;
+					IOREG_W_TXBUF_LOCATION txBufLoc1 = io.TXBUF_LOC1;
+					WIFI_TXStart(WifiTXLocIndex_LOC1, txBufLoc1);
+					io.TXBUF_LOC1 = txBufLoc1;
+				}
+
+				if(TXREQ_SET.Cmd != 0)
+				{
+					io.TXREQ_READ.Cmd = 1;
+					IOREG_W_TXBUF_LOCATION txBufCmd = io.TXBUF_CMD;
+					WIFI_TXStart(WifiTXLocIndex_CMD, txBufCmd);
+					io.TXBUF_CMD = txBufCmd;
+				}
+
+				if(TXREQ_SET.Loc2 != 0)
+				{
+					io.TXREQ_READ.Loc2 = 1;
+					IOREG_W_TXBUF_LOCATION txBufLoc2 = io.TXBUF_LOC2;
+					WIFI_TXStart(WifiTXLocIndex_LOC2, txBufLoc2);
+					io.TXBUF_LOC2 = txBufLoc2;
+				}
+
+				if(TXREQ_SET.Loc3 != 0)
+				{
+					io.TXREQ_READ.Loc3 = 1;
+					IOREG_W_TXBUF_LOCATION txBufLoc3 = io.TXBUF_LOC3;
+					WIFI_TXStart(WifiTXLocIndex_LOC3, txBufLoc3);
+					io.TXBUF_LOC3 = txBufLoc3;
+				}
+
+				if(TXREQ_SET.UNKNOWN1 != 0)
+				{
+					io.TXREQ_READ.UNKNOWN1 = 1;
+					WIFI_LOG(2, "Setting of TXREQ_SET.UNKNOWN1, for beacon?\n");
+				}
+				break;
+			}
+
+		case REG_WIFI_TXRESET: // 0x0B4
+			{
+				IOREG_W_TXBUF_RESET TXBUF_RESET;
+				TXBUF_RESET.value = val;
+
+				if(TXBUF_RESET.Loc1 != 0)
+				{
+					io.TXBUF_LOC1.TransferRequest = 0;
+				}
+
+				if(TXBUF_RESET.Cmd != 0)
+				{
+					io.TXBUF_CMD.TransferRequest = 0;
+				}
+
+				if(TXBUF_RESET.Loc2 != 0)
+				{
+					io.TXBUF_LOC2.TransferRequest = 0;
+				}
+
+				if(TXBUF_RESET.Loc3 != 0)
+				{
+					io.TXBUF_LOC3.TransferRequest = 0;
+				}
+
+				if(TXBUF_RESET.Reply2 != 0)
+				{
+					io.TXBUF_REPLY2.TransferRequest = 0;
+				}
+
+				if(TXBUF_RESET.Reply1 != 0)
+				{
+					io.TXBUF_REPLY1.TransferRequest = 0;
+				}
+
+				const bool reportUnknownWrite = (val != 0xFFFF);
+
+				if(io.TXBUF_RESET.UNKNOWN1 != TXBUF_RESET.UNKNOWN1)
+				{
+					io.TXBUF_RESET.UNKNOWN1 = TXBUF_RESET.UNKNOWN1;
+
+					if(reportUnknownWrite)
+					{
+						WIFI_LOG(2, "Writing value of %04Xh to TXBUF_RESET.UNKNOWN1\n", (int)io.TXBUF_RESET.UNKNOWN1);
+					}
+				}
+
+				if(io.TXBUF_RESET.UNKNOWN2 != TXBUF_RESET.UNKNOWN2)
+				{
+					io.TXBUF_RESET.UNKNOWN2 = TXBUF_RESET.UNKNOWN2;
+
+					if(reportUnknownWrite)
+					{
+						WIFI_LOG(2, "Writing value of %04Xh to TXBUF_RESET.UNKNOWN2\n", (int)io.TXBUF_RESET.UNKNOWN2);
+					}
+				}
+				break;
+			}
+
+		case 0x0BA: // 0x0BA
+			io.INTERNAL_0BA = val;
+			WIFI_LOG(2, "Writing value of %04Xh to possible read-only INTERNAL_0BA\n", (int)io.INTERNAL_0BA);
+			break;
+
+		case REG_WIFI_PREAMBLE: // 0x0BC
+			io.PREAMBLE.value = val;
+			break;
+
+		case REG_WIFI_CMD_TOTALTIME: // 0x0C0
+			io.CMD_TOTALTIME = val;
+			break;
+
+		case REG_WIFI_CMD_REPLYTIME: // 0x0C4
+			io.CMD_REPLYTIME = val;
+			break;
+
+		case 0x0C8: // 0x0C8
+			io.INTERNAL_0C8 = val;
+			WIFI_LOG(2, "Writing value of %04Xh to possible read-only INTERNAL_0C8\n", (int)io.INTERNAL_0C8);
+			break;
+
+		case REG_WIFI_RXFILTER: // 0x0D0
+			io.RXFILTER.value = val;
+			break;
+
+		case REG_WIFI_CONFIG_0D4: // 0x0D4
+			io.CONFIG_0D4 = val;
+			break;
+
+		case REG_WIFI_CONFIG_0D8: // 0x0D8
+			io.CONFIG_0D8 = val;
+			break;
+
+		case REG_WIFI_RX_LEN_CROP: // 0x0DA
+			io.RX_LEN_CROP.value = val;
+			break;
+
+		case REG_WIFI_RXFILTER2: // 0x0E0
+			io.RXFILTER2.value = val;
+			break;
+
+		case REG_WIFI_USCOUNTERCNT: // 0x0E8
+			io.US_COUNTCNT.value = val & 0x0001;
+			break;
+
+		case REG_WIFI_USCOMPARECNT: // 0x0EA
+			{
+				IOREG_W_US_COMPARECNT US_COMPARECNT;
+				US_COMPARECNT.value = val & 0x0003;
+
+				io.US_COMPARECNT.EnableCompare = US_COMPARECNT.EnableCompare;
+
+				if(US_COMPARECNT.ForceIRQ14 != 0)
+				{
+					WIFI_triggerIRQ(WifiIRQ14_TimeslotBeacon);
+					io.US_COMPARECNT.ForceIRQ14 = 0;
+				}
+				break;
+			}
+
+		case REG_WIFI_CONFIG_0EC: // 0x0EC
+			io.CONFIG_0EC = val;
+			break;
+
+		case REG_WIFI_EXTRACOUNTCNT: // 0x0EE
+			io.CMD_COUNTCNT.value = val & 0x0001;
+			break;
+
+		case REG_WIFI_USCOMPARE0: // 0x0F0
+			io.US_COMPARE0 = val;
+			break;
+
+		case REG_WIFI_USCOMPARE1: // 0x0F2
+			io.US_COMPARE1 = val;
+			break;
+
+		case REG_WIFI_USCOMPARE2: // 0x0F4
+			io.US_COMPARE2 = val;
+			break;
+
+		case REG_WIFI_USCOMPARE3: // 0x0F6
+			io.US_COMPARE3 = val;
+			break;
+
+		case REG_WIFI_USCOUNTER0: // 0x0F8
+			io.US_COUNT0 = val;
+			break;
+
+		case REG_WIFI_USCOUNTER1: // 0x0FA
+			io.US_COUNT1 = val;
+			break;
+
+		case REG_WIFI_USCOUNTER2: // 0x0FC
+			io.US_COUNT2 = val;
+			break;
+
+		case REG_WIFI_USCOUNTER3: // 0x0FE
+			io.US_COUNT3 = val;
+			break;
+
+		case 0x100: // 0x100
+			io.INTERNAL_100 = val;
+			WIFI_LOG(2, "Writing value of %04Xh to possible read-only INTERNAL_100\n", (int)io.INTERNAL_100);
+			break;
+
+		case 0x102: // 0x102
+			io.INTERNAL_102 = val;
+			WIFI_LOG(2, "Writing value of %04Xh to possible read-only INTERNAL_102\n", (int)io.INTERNAL_102);
+			break;
+
+		case 0x104: // 0x104
+			io.INTERNAL_104 = val;
+			WIFI_LOG(2, "Writing value of %04Xh to possible read-only INTERNAL_104\n", (int)io.INTERNAL_104);
+			break;
+
+		case 0x106: // 0x106
+			io.INTERNAL_106 = val;
+			WIFI_LOG(2, "Writing value of %04Xh to possible read-only INTERNAL_106\n", (int)io.INTERNAL_106);
+			break;
+
+		case REG_WIFI_CONTENTFREE: // 0x10C
+			io.CONTENTFREE = val;
+			break;
+
+		case REG_WIFI_PREBEACONCOUNT: // 0x110
+			io.PRE_BEACON = val;
+			break;
+
+		case REG_WIFI_EXTRACOUNT: // 0x118
+			io.CMD_COUNT = val;
+			wifi.cmdCount_u32 = (u32)val * 10;
+			break;
+
+		case REG_WIFI_BEACONCOUNT1: // 0x11C
+			io.BEACONCOUNT1 = val;
+			break;
+
+		case REG_WIFI_CONFIG_120: // 0x120
+			io.CONFIG_120 = val;
+			break;
+
+		case REG_WIFI_CONFIG_122: // 0x122
+			io.CONFIG_122 = val;
+			break;
+
+		case REG_WIFI_CONFIG_124: // 0x124
+			io.CONFIG_124 = val;
+			break;
+
+		case 0x126: // 0x126
+			io.INTERNAL_126 = val;
+			WIFI_LOG(2, "Writing value of %04Xh to possible read-only INTERNAL_126\n", (int)io.INTERNAL_126);
+			break;
+
+		case REG_WIFI_CONFIG_128: // 0x128
+			io.CONFIG_128 = val;
+			break;
+
+		case 0x12A: // 0x12A
+			io.INTERNAL_12A = val;
+			WIFI_LOG(2, "Writing value of %04Xh to possible read-only INTERNAL_12A\n", (int)io.INTERNAL_12A);
+			break;
+
+		case REG_WIFI_CONFIG_130: // 0x130
+			io.CONFIG_130 = val;
+			break;
+
+		case REG_WIFI_CONFIG_132: // 0x132
+			io.CONFIG_132 = val;
+			break;
+
+		case REG_WIFI_BEACONCOUNT2: // 0x134
+			io.BEACONCOUNT2 = val;
+			break;
+
+		case REG_WIFI_CONFIG_140: // 0x140
+			io.CONFIG_140 = val;
+			break;
+
+		case REG_WIFI_CONFIG_142: // 0x142
+			io.CONFIG_142 = val;
+			break;
+
+		case REG_WIFI_CONFIG_144: // 0x144
+			io.CONFIG_144 = val;
+			break;
+
+		case REG_WIFI_CONFIG_146: // 0x146
+			io.CONFIG_146 = val;
+			break;
+
+		case REG_WIFI_CONFIG_148: // 0x148
+			io.CONFIG_148 = val;
+			break;
+
+		case REG_WIFI_CONFIG_14A: // 0x14A
+			io.CONFIG_14A = val;
+			break;
+
+		case REG_WIFI_CONFIG_14C: // 0x14C
+			io.CONFIG_14C = val;
+			break;
+
+		case REG_WIFI_CONFIG_150: // 0x150
+			io.CONFIG_150 = val;
+			break;
+
+		case REG_WIFI_CONFIG_154: // 0x154
+			io.CONFIG_154 = val;
+			break;
+
+		case REG_WIFI_BBCNT: // 0x158
+			{
+				bb_t& bb = wifiHandler->GetWifiData().bb;
+
+				io.BB_CNT.value = val & 0xF0FF;
+
+				if(io.BB_CNT.Direction == 5)  // Perform a write
+				{
+					io.BB_BUSY.Busy = 1;
+
+					if(io.BB_CNT.Index > 0x68)
+					{
+						WIFI_LOG(2, "Writing value of %02Xh to BB_CNT.Index %02Xh, BB_CNT.Index should be 00h-68h\n", (int)io.BB_WRITE.Data, (int)io.BB_CNT.Index);
+					}
+					else if(BBIsDataWritable[io.BB_CNT.Index])
+					{
+						bb.data[io.BB_CNT.Index] = io.BB_WRITE.Data;
+					}
+				}
+				else if(io.BB_CNT.Direction == 6) // Perform a read
+				{
+					io.BB_BUSY.Busy = 1;
+
+					if(io.BB_CNT.Index > 0x68)
+					{
+						io.BB_READ.Data = 0x00;
+					}
 					else
-						wifiMac.powerOnPending = TRUE;
-				}*/
-				wifiMac.powerOn = ((val & 0x0001) ? FALSE : TRUE);
-			}
-			break;
-		case REG_WIFI_POWERACK:
-			if((val == 0x0000) && wifiMac.powerOnPending)
-			{
-				wifiMac.powerOn = TRUE;
-				wifiMac.powerOnPending = FALSE;
-			}
-			break;
-		case REG_WIFI_POWER_TX:
-			wifiMac.TXPower = val & 0x0007;
-			break;
-		case REG_WIFI_RXCNT:
-			wifiMac.RXCnt = val & 0xFF0E;
-			if (BIT0(val))
-			{
-				wifiMac.RXWriteCursor = WIFI_IOREG(REG_WIFI_WRITECSRLATCH);
-				WIFI_IOREG(REG_WIFI_RXHWWRITECSR) = wifiMac.RXWriteCursor;
-				//printf("latch RX cursor: %04X @ %08X\n", wifiMac.RXWriteCursor, NDS_ARM7.instruct_adr);
-			}
-			if (BIT7(val))
-			{
-				WIFI_LOG(2, "TXBUF_REPLY=%04X\n", WIFI_IOREG(REG_WIFI_TXBUF_REPLY1));
-				wifiMac.TXSlots[WIFI_TXSLOT_MPREPLY].RegVal = WIFI_IOREG(REG_WIFI_TXBUF_REPLY1);
-				WIFI_IOREG(REG_WIFI_TXBUF_REPLY1) = 0x0000;
-			}
-			if (!BIT15(val))
-			{
-				while (!wifiMac.RXPacketQueue.empty())
-					wifiMac.RXPacketQueue.pop();
-			}
-			break;
-		case REG_WIFI_RXRANGEBEGIN:
-			wifiMac.RXRangeBegin = val & 0x1FFE;
-			if(wifiMac.RXWriteCursor < (wifiMac.RXRangeBegin >> 1))
-				wifiMac.RXWriteCursor = (wifiMac.RXRangeBegin >> 1);
-			break;
-		case REG_WIFI_RXRANGEEND:
-			wifiMac.RXRangeEnd = val & 0x1FFE;
-			if(wifiMac.RXWriteCursor >= (wifiMac.RXRangeEnd >> 1))
-				wifiMac.RXWriteCursor = (wifiMac.RXRangeBegin >> 1);
-			break;
-
-		case REG_WIFI_CIRCBUFRADR:
-			wifiMac.CircBufReadAddress = (val & 0x1FFE);
-			break;
-		case REG_WIFI_RXREADCSR:
-			wifiMac.RXReadCursor = val;
-			break;
-		case REG_WIFI_CIRCBUFWADR:
-			wifiMac.CircBufWriteAddress = val;
-			break;
-		case REG_WIFI_CIRCBUFWRITE:
-			/* set value into the circ buffer, and move cursor to the next hword on action */
-			//printf("wifi: circbuf fifo write at %04X, %04X (action=%i)\n", (wifiMac.CircBufWriteAddress & 0x1FFF), val, action);
-			wifiMac.RAM[(wifiMac.CircBufWriteAddress >> 1) & 0xFFF] = val;
-			if (action)
-			{
-				/* move to next hword */
-                wifiMac.CircBufWriteAddress+=2;
-				if (wifiMac.CircBufWriteAddress == wifiMac.CircBufWrEnd)
-				{
-					/* on end of buffer, add skip hwords to it */
-					wifiMac.CircBufWrEnd += wifiMac.CircBufWrSkip * 2;
+					{
+						io.BB_READ.Data = bb.data[io.BB_CNT.Index];
+					}
 				}
+
+				// Normally, there should be some sort of transfer delay, but we're
+				// not going to emulate the delay right now. Therefore, assume for
+				// now that the transfer occurs instantaneously and clear the busy
+				// flag accordingly.
+				io.BB_BUSY.Busy = 0;
+				break;
 			}
+
+		case REG_WIFI_BBWRITE: // 0x15A
+			io.BB_WRITE.value = val & 0x00FF;
 			break;
-		case REG_WIFI_CIRCBUFWR_SKIP:
-			wifiMac.CircBufWrSkip = val;
+
+		case REG_WIFI_BBMODE: // 0x160
+			io.BB_MODE.value = val & 0x0041;
 			break;
-		case REG_WIFI_TXBUF_BEACON:
-			wifiMac.TXSlots[WIFI_TXSLOT_BEACON].RegVal = val;
-			if (BIT15(val)) 
-				WIFI_LOG(3, "Beacon transmission enabled to send the packet at %08X every %i milliseconds.\n",
-					0x04804000 + ((val & 0x0FFF) << 1), wifiMac.BeaconInterval);
+
+		case REG_WIFI_BBPOWER: // 0x168
+			io.BB_POWER.value = val & 0x800F;
 			break;
-		case REG_WIFI_TXBUF_CMD:
-			wifiMac.TXSlots[WIFI_TXSLOT_MPCMD].RegVal = val;
+
+		case 0x16A: // 0x16A
+			io.INTERNAL_16A = val;
+			WIFI_LOG(2, "Writing value of %04Xh to possible read-only INTERNAL_16A\n", (int)io.INTERNAL_16A);
 			break;
-		case REG_WIFI_TXBUF_LOC1:
-			//printf("-------- TXBUF_LOC1 = %04X %08X --------\n", val, NDS_ARM7.instruct_adr);
-			wifiMac.TXSlots[WIFI_TXSLOT_LOC1].RegVal = val;
+
+		case 0x170: // 0x170
+			io.INTERNAL_170 = val;
+			WIFI_LOG(2, "Writing value of %04Xh to possible read-only INTERNAL_170\n", (int)io.INTERNAL_170);
 			break;
-		case REG_WIFI_TXBUF_LOC2:
-			//printf("-------- TXBUF_LOC2 = %04X %08X --------\n", val, NDS_ARM7.instruct_adr);
-			wifiMac.TXSlots[WIFI_TXSLOT_LOC2].RegVal = val;
+
+		case 0x172: // 0x172
+			io.INTERNAL_172 = val;
+			WIFI_LOG(2, "Writing value of %04Xh to possible read-only INTERNAL_172\n", (int)io.INTERNAL_172);
 			break;
-		case REG_WIFI_TXBUF_LOC3:
-			//printf("-------- TXBUF_LOC3 = %04X %08X --------\n", val, NDS_ARM7.instruct_adr);
-			wifiMac.TXSlots[WIFI_TXSLOT_LOC3].RegVal = val;
+
+		case 0x174: // 0x174
+			io.INTERNAL_174 = val;
+			WIFI_LOG(2, "Writing value of %04Xh to possible read-only INTERNAL_174\n", (int)io.INTERNAL_174);
 			break;
-		case REG_WIFI_TXRESET:
-			WIFI_LOG(4, "Write to TXRESET: %04X\n", val);
+
+		case 0x176: // 0x176
+			io.INTERNAL_176 = val;
+			WIFI_LOG(2, "Writing value of %04Xh to possible read-only INTERNAL_176\n", (int)io.INTERNAL_176);
 			break;
-		case REG_WIFI_TXREQ_RESET:
-			wifiMac.TXCnt &= ~val;
+
+		case 0x178: // 0x178
+			io.INTERNAL_178 = val;
 			break;
-		case REG_WIFI_TXREQ_SET:
-			//printf("--- TXREQ=%04X ---\n", val);
-			wifiMac.TXCnt |= val;
-			if (BIT0(val)) WIFI_TXStart(WIFI_TXSLOT_LOC1);
-			if (BIT1(val)) WIFI_TXStart(WIFI_TXSLOT_MPCMD);
-			if (BIT2(val)) WIFI_TXStart(WIFI_TXSLOT_LOC2);
-			if (BIT3(val)) WIFI_TXStart(WIFI_TXSLOT_LOC3);
-			if (val & 0xFFF0) WIFI_LOG(2, "Unknown TXREQ bits set: %04X\n", val);
-			break;
-		case REG_WIFI_RFCNT:
-			WIFI_setRF_CNT(val);
-			break;
-		case REG_WIFI_RFBUSY:
-			/* CHECKME: read only? */
-			break;
-		case REG_WIFI_RFDATA1:
-			WIFI_setRF_DATA(val,0);
-			break;
-		case REG_WIFI_RFDATA2:
-			WIFI_setRF_DATA(val,1);
-			break;
-		case REG_WIFI_USCOUNTERCNT:
-			wifiMac.usecEnable = BIT0(val);
-			break;
-		case REG_WIFI_USCOMPARECNT:
-			wifiMac.ucmpEnable = BIT0(val);
-			break;
-		case REG_WIFI_USCOUNTER0:
-			wifiMac.usec = (wifiMac.usec & 0xFFFFFFFFFFFF0000ULL) | (u64)val;
-			break;
-		case REG_WIFI_USCOUNTER1:
-			wifiMac.usec = (wifiMac.usec & 0xFFFFFFFF0000FFFFULL) | (u64)val << 16;
-			break;
-		case REG_WIFI_USCOUNTER2:
-			wifiMac.usec = (wifiMac.usec & 0xFFFF0000FFFFFFFFULL) | (u64)val << 32;
-			break;
-		case REG_WIFI_USCOUNTER3:
-			wifiMac.usec = (wifiMac.usec & 0x0000FFFFFFFFFFFFULL) | (u64)val << 48;
-			break;
-		case REG_WIFI_USCOMPARE0:
-			wifiMac.ucmp = (wifiMac.ucmp & 0xFFFFFFFFFFFF0000ULL) | (u64)(val & 0xFFFE);
-			// in NSMB multiplayer, Luigi sets USCOMPARE to the USCOUNTER of Mario, and sets bit0
-			// possibly bit0 writes USCOMPARE into USCOUNTER?
-			// it seems to also trigger IRQ14
-			// in NSMB, Luigi sends packets on the first attempt only if we trigger IRQ14 here
-			if (BIT0(val))
+
+		case REG_WIFI_RFDATA2: // 0x17C
 			{
-				//printf("OBSCURE BIT SET @ %08X\n", NDS_ARM7.instruct_adr);
-				wifiMac.usec = wifiMac.ucmp;
-				WIFI_triggerIRQ(WIFI_IRQ_TIMEBEACON);
+				RF2958_IOREG_MAP& rf = wifiHandler->GetWifiData().rf;
+
+				io.RF_DATA2.value = val & 0x00FF;
+				io.RF_BUSY.Busy = 1;
+
+				const RegAddrRF2958 index = (RegAddrRF2958)io.RF_DATA2.Type2.Index;
+
+				if(io.RF_DATA2.Type2.ReadCommand == 0) // Perform a write
+				{
+					switch(index)
+					{
+						case REG_RF2958_CFG1:
+						case REG_RF2958_IPLL1:
+						case REG_RF2958_IPLL2:
+						case REG_RF2958_IPLL3:
+						case REG_RF2958_RFPLL1:
+						case REG_RF2958_RFPLL4:
+						case REG_RF2958_CAL1:
+						case REG_RF2958_TXRX1:
+						case REG_RF2958_PCNT1:
+						case REG_RF2958_PCNT2:
+						case REG_RF2958_VCOT1:
+							rf.reg[index].DataLSB = io.RF_DATA1.Type2.DataLSB;
+							rf.reg[index].DataMSB = io.RF_DATA2.Type2.DataMSB;
+							break;
+
+						case REG_RF2958_RFPLL2:
+						case REG_RF2958_RFPLL3:
+							{
+								u32 channelFreqN;
+
+								rf.reg[index].DataLSB = io.RF_DATA1.Type2.DataLSB;
+								rf.reg[index].DataMSB = io.RF_DATA2.Type2.DataMSB;
+
+								// get the complete rfpll.n
+								channelFreqN = (u32)rf.RFPLL3.NUM2 | ((u32)rf.RFPLL2.NUM2 << 18) | ((u32)rf.RFPLL2.N2 << 24);
+
+								// frequency setting is out of range
+								if(channelFreqN < 0x00A2E8BA)
+								{
+									break;
+								}
+
+								// substract base frequency (channel 1)
+								channelFreqN -= 0x00A2E8BA;
+								break;
+							}
+
+						case REG_RF2958_TEST:
+							WIFI_LOG(2, "Writing value of %04Xh to RF test register\n", (int)rf.reg[index].Data);
+							break;
+
+						case REG_RF2958_RESET:
+							WIFI_resetRF(rf);
+							break;
+
+							// Any unlisted register is assumed to be unused padding,
+							// so just do nothing in this case.
+						default:
+							break;
+					}
+				}
+				else // Perform a read
+				{
+					io.RF_DATA1.Type2.DataLSB = rf.reg[index].DataLSB;
+					io.RF_DATA2.Type2.DataMSB = rf.reg[index].DataMSB;
+				}
+
+				// Normally, there should be some sort of transfer delay, but we're
+				// not going to emulate the delay right now. Therefore, assume for
+				// now that the transfer occurs instantaneously and clear the busy
+				// flag accordingly.
+				io.RF_BUSY.Busy = 0;
+				break;
 			}
-			break;
-		case REG_WIFI_USCOMPARE1:
-			wifiMac.ucmp = (wifiMac.ucmp & 0xFFFFFFFF0000FFFFULL) | (u64)val << 16;
-			break;
-		case REG_WIFI_USCOMPARE2:
-			wifiMac.ucmp = (wifiMac.ucmp & 0xFFFF0000FFFFFFFFULL) | (u64)val << 32;
-			break;
-		case REG_WIFI_USCOMPARE3:
-			wifiMac.ucmp = (wifiMac.ucmp & 0x0000FFFFFFFFFFFFULL) | (u64)val << 48;
-			break;
-		case REG_WIFI_BEACONPERIOD:
-			wifiMac.BeaconInterval = val & 0x03FF;
-			break;
-		case REG_WIFI_BEACONCOUNT1:
-			wifiMac.BeaconCount1 = val;
-			break;
-		case REG_WIFI_BEACONCOUNT2:
-			wifiMac.BeaconCount2 = val;
-			break;
-		case REG_WIFI_BBCNT:
-            WIFI_setBB_CNT(val);
-			break;
-		case REG_WIFI_RXBUF_COUNT:
-			wifiMac.RXBufCount = val & 0x0FFF;
-			break;
-		case REG_WIFI_EXTRACOUNTCNT:
-			wifiMac.eCountEnable = BIT0(val);
-			break;
-		case REG_WIFI_EXTRACOUNT:
-			WIFI_LOG(3, "EXTRACOUNT=%i (%i µs)\n", val, val*WIFI_CMDCOUNT_SLICE);
-			wifiMac.eCount = (u32)val * WIFI_CMDCOUNT_SLICE;
-			break;
-		case REG_WIFI_LISTENINT:
-			wifiMac.ListenInterval = val & 0x00FF;
-			break;
-		case REG_WIFI_LISTENCOUNT:
-			wifiMac.ListenCount = val & 0x00FF;
-			break;
-		case REG_WIFI_POWER_US:
-			wifiMac.crystalEnabled = !BIT0(val);
-			break;
-		case REG_WIFI_IF_SET:
-			WIFI_triggerIRQMask(val);
-			break;
-		case REG_WIFI_CIRCBUFRD_END:
-			wifiMac.CircBufRdEnd = (val & 0x1FFE);
-			break;
-		case REG_WIFI_CIRCBUFRD_SKIP:
-			wifiMac.CircBufRdSkip = val & 0xFFF;
-			break;
-		case REG_WIFI_AID_LOW:
-			//printf("AID_LOW = %04X @ %08X %08X\n", val, NDS_ARM7.instruct_adr, NDS_ARM7.R[14]);
-			wifiMac.pid = val & 0x0F;
-			break;
-		case REG_WIFI_AID_HIGH:
-			//printf("AID_HIGH = %04X @ %08X %08X\n", val, NDS_ARM7.instruct_adr, NDS_ARM7.R[14]);
-			wifiMac.aid = val & 0x07FF;
-			break;
-		case 0xD0:
-			//printf("wifi: rxfilter=%04X\n", val);
-			break;
-		case 0x0E0:
-			//printf("wifi: rxfilter2=%04X\n", val);
+
+		case REG_WIFI_RFDATA1: // 0x17E
+			io.RF_DATA1.value = val;
 			break;
 
-		case 0x84:
-			//printf("TXBUF_TIM = %04X\n", val);
+		case REG_WIFI_RFCNT: // 0x184
+			{
+				if(io.RF_BUSY.Busy == 0)
+				{
+					IOREG_W_RF_CNT RF_CNT;
+					RF_CNT.value = val;
+
+					io.RF_CNT.TransferLen = RF_CNT.TransferLen;
+
+					if(io.RF_CNT.UNKNOWN1 != RF_CNT.UNKNOWN1)
+					{
+						io.RF_CNT.UNKNOWN1 = RF_CNT.UNKNOWN1;
+						WIFI_LOG(2, "Writing value of %d to RF_CNT.UNKNOWN1\n", (int)RF_CNT.UNKNOWN1);
+					}
+
+					if(io.RF_CNT.UNKNOWN2 != RF_CNT.UNKNOWN2)
+					{
+						io.RF_CNT.UNKNOWN2 = RF_CNT.UNKNOWN2;
+						WIFI_LOG(2, "Writing value of %d to RF_CNT.UNKNOWN2\n", (int)RF_CNT.UNKNOWN2);
+					}
+				}
+				break;
+			}
+
+		case 0x190: // 0x190
+			io.INTERNAL_190 = val;
 			break;
 
-		case 0x94:
-			printf("!!!!! TXBUF_REPLY = %04X !!!!!\n", val);
+		case REG_WIFI_TX_HDR_CNT: // 0x194
+			io.TX_HDR_CNT.value = val;
 			break;
 
-		case REG_WIFI_RXSTAT_INC_IE: wifiMac.RXStatIncIE = val; break;
-		case REG_WIFI_RXSTAT_OVF_IE: wifiMac.RXStatOvfIE = val; break;
-
-		case 0x1A8:
-		case 0x1AC:
-		case 0x1B0:
-		case 0x1B2:
-		case 0x1B4:
-		case 0x1B6:
-		case 0x1B8:
-		case 0x1BA:
-		case 0x1BC:
-		case 0x1BE:
-			WIFI_LOG(2, "Write to RXSTAT register: %03X = %04X\n", address, val);
+		case REG_WIFI_X_1A0: // 0x1A0
+			io.X_1A0.value = val;
+			WIFI_LOG(2, "Writing value of %04Xh to X_1A0\n", (int)io.X_1A0.value);
 			break;
 
-		case 0x194:
-			printf("TX_HDR_CNT = %04X\n", val);
+		case REG_WIFI_X_1A2: // 0x1A2
+			io.X_1A2.value = val;
+			WIFI_LOG(2, "Writing value of %04Xh to X_1A2\n", (int)io.X_1A2.value);
 			break;
 
+		case REG_WIFI_X_1A4: // 0x1A4
+			io.X_1A4 = val;
+			WIFI_LOG(2, "Writing value of %04Xh to X_1A4\n", (int)io.X_1A4);
+			break;
+
+		case REG_WIFI_RXSTAT_INC_IE: // 0x1AA
+			io.RXSTAT_INC_IE.value = val;
+			break;
+
+		case REG_WIFI_RXSTAT_OVF_IE: // 0x1AE
+			io.RXSTAT_OVF_IE.value = val;
+			break;
+
+		case REG_WIFI_RXSTAT0: // 0x1B0
+			io.RXSTAT_COUNT.RXSTAT_1B0 = val;
+			break;
+
+		case REG_WIFI_RXSTAT1: // 0x1B2
+			io.RXSTAT_COUNT.RXSTAT_1B2 = val;
+			break;
+
+		case REG_WIFI_RXSTAT2: // 0x1B4
+			io.RXSTAT_COUNT.RXSTAT_1B4 = val;
+			break;
+
+		case REG_WIFI_RXSTAT3: // 0x1B6
+			io.RXSTAT_COUNT.RXSTAT_1B6 = val;
+			break;
+
+		case REG_WIFI_RXSTAT4: // 0x1B8
+			io.RXSTAT_COUNT.RXSTAT_1B8 = val;
+			break;
+
+		case REG_WIFI_RXSTAT5: // 0x1BA
+			io.RXSTAT_COUNT.RXSTAT_1BA = val;
+			break;
+
+		case REG_WIFI_RXSTAT6: // 0x1BC
+			io.RXSTAT_COUNT.RXSTAT_1BC = val;
+			break;
+
+		case REG_WIFI_RXSTAT7: // 0x1BE
+			io.RXSTAT_COUNT.RXSTAT_1BE = val;
+			break;
+
+		case REG_WIFI_TXERR_COUNT: // 0x1C0
+			io.TX_ERR_COUNT.Count++;
+			break;
+
+		case REG_WIFI_CMD_STAT0: // 0x1D0
+			io.CMD_STAT_COUNT.CMD_STAT_1D0 = val;
+			break;
+
+		case REG_WIFI_CMD_STAT1: // 0x1D2
+			io.CMD_STAT_COUNT.CMD_STAT_1D2 = val;
+			break;
+
+		case REG_WIFI_CMD_STAT2: // 0x1D4
+			io.CMD_STAT_COUNT.CMD_STAT_1D4 = val;
+			break;
+
+		case REG_WIFI_CMD_STAT3: // 0x1D6
+			io.CMD_STAT_COUNT.CMD_STAT_1D6 = val;
+			break;
+
+		case REG_WIFI_CMD_STAT4: // 0x1D8
+			io.CMD_STAT_COUNT.CMD_STAT_1D8 = val;
+			break;
+
+		case REG_WIFI_CMD_STAT5: // 0x1DA
+			io.CMD_STAT_COUNT.CMD_STAT_1DA = val;
+			break;
+
+		case REG_WIFI_CMD_STAT6: // 0x1DC
+			io.CMD_STAT_COUNT.CMD_STAT_1DC = val;
+			break;
+
+		case REG_WIFI_CMD_STAT7: // 0x1DE
+			io.CMD_STAT_COUNT.CMD_STAT_1DE = val;
+			break;
+
+		case 0x1F0: // 0x1F0
+			io.INTERNAL_1F0 = val;
+			break;
+
+		case 0x204: // 0x204
+			io.INTERNAL_204 = val;
+			WIFI_LOG(2, "Writing value of %04Xh to possible read-only INTERNAL_204\n", (int)io.INTERNAL_204);
+			break;
+
+		case 0x208: // 0x208
+			io.INTERNAL_208 = val;
+			WIFI_LOG(2, "Writing value of %04Xh to possible read-only INTERNAL_208\n", (int)io.INTERNAL_208);
+			break;
+
+		case 0x20C: // 0x20C
+			io.INTERNAL_20C = val;
+			break;
+
+		case REG_WIFI_IF_SET: // 0x21C
+			WIFI_SetIRQ((WifiIRQ)(val & 0x000F));
+			break;
+
+		case 0x220: // 0x220
+			io.INTERNAL_220 = val;
+			break;
+
+		case 0x224: // 0x224
+			io.INTERNAL_224 = val;
+			break;
+
+		case REG_WIFI_X_228: // 0x228
+			io.X_228 = val;
+			break;
+
+		case 0x230: // 0x230
+			io.INTERNAL_230 = val;
+			break;
+
+		case 0x234: // 0x234
+			io.INTERNAL_234 = val;
+			break;
+
+		case 0x238: // 0x238
+			io.INTERNAL_238 = val;
+			break;
+
+		case 0x23C: // 0x23C
+			io.INTERNAL_23C = val;
+			WIFI_LOG(2, "Writing value of %04Xh to possible read-only INTERNAL_23C\n", (int)io.INTERNAL_23C);
+			break;
+
+		case REG_WIFI_X_244: // 0x244
+			io.X_244 = val;
+			break;
+
+		case 0x248: // 0x248
+			io.INTERNAL_248 = val;
+			break;
+
+		case REG_WIFI_CONFIG_254: // 0x254
+			io.CONFIG_254 = val;
+			WIFI_LOG(2, "Writing value of %04Xh to possible read-only CONFIG_254\n", (int)io.CONFIG_254);
+			break;
+
+		case 0x258: // 0x258
+			io.INTERNAL_258 = val;
+			WIFI_LOG(2, "Writing value of %04Xh to possible read-only INTERNAL_258\n", (int)io.INTERNAL_258);
+			break;
+
+		case 0x25C: // 0x25C
+			io.INTERNAL_25C = val;
+			WIFI_LOG(2, "Writing value of %04Xh to possible read-only INTERNAL_25C\n", (int)io.INTERNAL_25C);
+			break;
+
+		case 0x260: // 0x260
+			io.INTERNAL_260 = val;
+			WIFI_LOG(2, "Writing value of %04Xh to possible read-only INTERNAL_260\n", (int)io.INTERNAL_260);
+			break;
+
+		case 0x274: // 0x274
+			io.INTERNAL_274 = val;
+			WIFI_LOG(2, "Writing value of %04Xh to possible read-only INTERNAL_274\n", (int)io.INTERNAL_274);
+			break;
+
+		case 0x278: // 0x278
+			io.INTERNAL_278 = val;
+			break;
+
+		case 0x27C: // 0x27C
+			io.INTERNAL_27C = val;
+			WIFI_LOG(2, "Writing value of %04Xh to possible read-only INTERNAL_27C\n", (int)io.INTERNAL_27C);
+			break;
+
+		case REG_WIFI_X_290: // 0x290
+			io.X_290.value = val;
+			break;
+
+		case 0x298: // 0x298
+			io.INTERNAL_298 = val;
+			break;
+
+		case 0x2A0: // 0x2A0
+			io.INTERNAL_2A0 = val;
+			break;
+
+		case 0x2A8: // 0x2A8
+			io.INTERNAL_2A8 = val;
+			break;
+
+		case 0x2AC: // 0x2AC
+			io.INTERNAL_2AC = val;
+			WIFI_LOG(2, "Writing value of %04Xh to possible read-only INTERNAL_2AC\n", (int)io.INTERNAL_2AC);
+			break;
+
+		case 0x2B0: // 0x2B0
+			io.INTERNAL_2B0 = val;
+			break;
+
+		case 0x2B4: // 0x2B4
+			io.INTERNAL_2B4 = val;
+			break;
+
+		case 0x2B8: // 0x2B8
+			io.INTERNAL_2B8 = val;
+			WIFI_LOG(2, "Writing value of %04Xh to possible read-only INTERNAL_2B8\n", (int)io.INTERNAL_2B8);
+			break;
+
+		case 0x2C0: // 0x2C0
+			io.INTERNAL_2C0 = val;
+			break;
+
+		case REG_WIFI_POWERACK: // 0x2D0
+			{
+				if(io.POWERSTATE.WillPowerOn != 0)
+				{
+					io.POWERACK = val;
+
+					if(io.POWERACK == 0x0000)
+					{
+						io.POWERSTATE.WillPowerOn = 0;
+						io.POWERSTATE.IsPowerOff = io.POWERFORCE.NewPowerOffState;
+
+						if(io.POWERSTATE.IsPowerOff == 0)
+						{
+							io.POWERSTATE.RequestPowerOn = 0;
+							WIFI_triggerIRQ(WifiIRQ11_RFWakeup);
+
+							// This is supposedly the TX beacon transfer flag.
+							// Since reading TXREQ_READ bit 4 should always return a 1 (unless
+							// POWERFORCE clears it), we'll simply set this bit to 1 on power up
+							// so that bit 4 gets its default value.
+							io.TXREQ_READ.UNKNOWN1 = 1;
+						}
+						else
+						{
+							io.RF_STATUS.RFStatus = 0x9;
+							io.RF_PINS.CarrierSense = 0;
+							io.RF_PINS.TXMain = 1;
+							io.RF_PINS.UNKNOWN1 = 1;
+							io.RF_PINS.TX_On = 1;
+							io.RF_PINS.RX_On = 0;
+
+							io.INTERNAL_034 = 0x0002;
+							io.TXREQ_READ.value &= 0x0010;
+							io.POWERSTATE.WillPowerOn = 0;
+							io.POWERSTATE.IsPowerOff = 1;
+						}
+					}
+				}
+				break;
+			}
+
+		case 0x2F0: // 0x2F0
+			io.INTERNAL_2F0 = val;
+			break;
+
+		case 0x2F2: // 0x2F2
+			io.INTERNAL_2F2 = val;
+			break;
+
+		case 0x2F4: // 0x2F4
+			io.INTERNAL_2F4 = val;
+			break;
+
+		case 0x2F6: // 0x2F6
+			io.INTERNAL_2F6 = val;
+			break;
+
+			// Report any writes to read-only registers because this shouldn't happen.
+		case REG_WIFI_ID:						// 0x000
+		case REG_WIFI_RANDOM:					// 0x044
+		case REG_WIFI_RXHWWRITECSR:				// 0x054
+		case REG_WIFI_CIRCBUFREAD:				// 0x060
+		case REG_WIFI_TXBUF_REPLY2:				// 0x098
+		case REG_WIFI_TXREQ_READ:				// 0x0B0
+		case REG_WIFI_TXBUSY:					// 0x0B6
+		case REG_WIFI_TXSTAT:					// 0x0B8
+		case REG_WIFI_BBREAD:					// 0x15C
+		case REG_WIFI_BBBUSY:					// 0x15E
+		case REG_WIFI_RFBUSY:					// 0x180
+		case REG_WIFI_RFPINS:					// 0x19C
+		case REG_WIFI_RXSTAT_INC_IF:			// 0x1A8
+		case REG_WIFI_RXSTAT_OVF_IF:			// 0x1AC
+		case REG_WIFI_RX_COUNT:					// 0x1C4
+		case REG_WIFI_TXSEQNO:					// 0x210
+		case REG_WIFI_RFSTATUS:					// 0x214
+		case 0x24C:								// 0x24C
+		case 0x24E:								// 0x24E
+		case 0x250:								// 0x250
+		case 0x264:								// 0x264
+		case REG_WIFI_RXTX_ADDR:				// 0x268
+		case 0x270:								// 0x270
+		case 0x2A2:								// 0x2A2
+		case 0x2A4:								// 0x2A4
+		case 0x2C4:								// 0x2C4
+		case 0x2C8:								// 0x2C8
+		case 0x2CC:								// 0x2CC
+			WIFI_LOG(2, "Preventing writing value of %04Xh to read-only port 0x%03X\n", val, address);
+			break;
+
+			// Assume that any unlisted register is just padding. It's meaningless to
+			// write to padding, so report that here.
 		default:
+			WIFI_LOG(2, "Preventing writing value of %04Xh to padding address 0x%03X\n", val, address);
 			break;
 	}
-
-	WIFI_IOREG(address) = val;
 }
 
 u16 WIFI_read16(u32 address)
 {
-	BOOL action = FALSE;
-	if (!nds.power2.wifi) return 0;
+	bool action = false;
+	if(!nds.power2.wifi) return 0;
+
+	WifiData& wifi = wifiHandler->GetWifiData();
+	WIFI_IOREG_MAP& io = wifi.io;
 
 	u32 page = address & 0x7000;
 
 	// 0x2000 - 0x3FFF: unused
-	if ((page >= 0x2000) && (page < 0x4000))
+	if((page >= 0x2000) && (page < 0x4000))
 		return 0xFFFF;
 
 	WIFI_LOG(5, "Read at address %08X\n", address);
 
 	// 0x4000 - 0x5FFF: wifi RAM
-	if ((page >= 0x4000) && (page < 0x6000))
+	if((page >= 0x4000) && (page < 0x6000))
 	{
-        return wifiMac.RAM[(address & 0x1FFF) >> 1];
+		return *(u16*)&wifi.RAM[address & 0x1FFE];
 	}
 
 	// anything else: I/O ports
 	// only the first mirror causes a special action
-	if (page == 0x0000) action = TRUE;
+	if(page == 0x0000) action = true;
 
 	address &= 0x0FFF;
-	switch (address)
+	switch(address)
 	{
-		case REG_WIFI_ID:
+		case REG_WIFI_ID: // 0x000
 			return WIFI_CHIPID;
-		case REG_WIFI_MODE:
-			return wifiMac.macMode;
-		case REG_WIFI_WEP:
-			return wifiMac.wepMode;
-		case REG_WIFI_IE:
-			return wifiMac.IE;
-		case REG_WIFI_IF:
-			return wifiMac.IF;
-		case REG_WIFI_POWERSTATE:
-			return ((wifiMac.powerOn ? 0x0000 : 0x0200) | (wifiMac.powerOnPending ? 0x0102 : 0x0000));
-		case REG_WIFI_RFDATA1:
-			return WIFI_getRF_DATA(0);
-		case REG_WIFI_RFDATA2:
-			return WIFI_getRF_DATA(1);
-		case REG_WIFI_RFBUSY:
-		case REG_WIFI_BBBUSY:
-			return 0;	/* we are never busy :p */
-		case REG_WIFI_BBREAD:
-			return WIFI_getBB_DATA();
-		case REG_WIFI_RANDOM:
-			// probably not right, but it's better than using the unsaved and shared rand().
-			// at the very least, rand() shouldn't be used when movieMode is active.
+
+		case REG_WIFI_MODE: // 0x004
+			return io.MODE_RST.value;
+
+		case REG_WIFI_WEP: // 0x006
+			return io.MODE_WEP.value;
+
+		case REG_WIFI_TXSTATCNT: // 0x008
+			return io.TXSTATCNT.value;
+
+		case REG_WIFI_X_00A: // 0x00A
+			return io.X_00A;
+
+		case REG_WIFI_IF: // 0x010
+			return io.IF.value;
+
+		case REG_WIFI_IE: // 0x012
+			return io.IE.value;
+
+		case REG_WIFI_MAC0: // 0x018
+			return io.MACADDR0.value;
+
+		case REG_WIFI_MAC1: // 0x01A
+			return io.MACADDR1.value;
+
+		case REG_WIFI_MAC2: // 0x01C
+			return io.MACADDR2.value;
+
+		case REG_WIFI_BSS0: // 0x020
+			return io.BSSID0.value;
+
+		case REG_WIFI_BSS1: // 0x022
+			return io.BSSID1.value;
+
+		case REG_WIFI_BSS2: // 0x024
+			return io.BSSID2.value;
+
+		case REG_WIFI_AID_LOW: // 0x028
+			return io.AID_LOW.value;
+
+		case REG_WIFI_AID_HIGH: // 0x02A
+			return io.AID_FULL.value;
+
+		case REG_WIFI_RETRYLIMIT: // 0x02C
+			return io.TX_RETRYLIMIT.value;
+
+		case 0x2E: // 0x02E
+			return io.INTERNAL_02E;
+
+		case REG_WIFI_RXCNT: // 0x030
+			return io.RXCNT.value;
+
+		case REG_WIFI_WEPCNT: // 0x032
+			return io.WEP_CNT.value;
+
+		case 0x034: // 0x034
+			return io.INTERNAL_034;
+
+		case REG_WIFI_POWER_US: // 0x036
+			return io.POWER_US.value;
+
+		case REG_WIFI_POWER_TX: // 0x038
+			return io.POWER_TX.value;
+
+		case REG_WIFI_POWERSTATE: // 0x03C
+			if(io.POWERSTATE.IsPowerOff)
 			{
-				u16 returnValue = wifiMac.randomSeed;
-				wifiMac.randomSeed = (wifiMac.randomSeed & 1) ^ (((wifiMac.randomSeed << 1) & 0x7FE) | ((wifiMac.randomSeed >> 10) & 0x1));
+				int zzz=9;
+			}
+			return io.POWERSTATE.value;
+
+		case REG_WIFI_POWERFORCE: // 0x040
+			return io.POWERFORCE.value;
+
+		case REG_WIFI_RANDOM: // 0x044
+			{
+				u16 returnValue = io.RANDOM.Random;
+				io.RANDOM.Random = (io.RANDOM.Random & 1) ^ (((io.RANDOM.Random << 1) & 0x7FE) | ((io.RANDOM.Random >> 10) & 0x1));
 				return returnValue;
 			}
 
-			return 0;
-		case REG_WIFI_MAC0:
-		case REG_WIFI_MAC1:
-		case REG_WIFI_MAC2:
-			return wifiMac.mac.words[(address - REG_WIFI_MAC0) >> 1];
-		case REG_WIFI_BSS0:
-		case REG_WIFI_BSS1:
-		case REG_WIFI_BSS2:
-			return wifiMac.bss.words[(address - REG_WIFI_BSS0) >> 1];
-		case REG_WIFI_RXCNT:
-			return wifiMac.RXCnt;
-		case REG_WIFI_CIRCBUFREAD:
-			{
-				u16 val = wifiMac.RAM[wifiMac.CircBufReadAddress >> 1];
-				if (action)
-				{
-					wifiMac.CircBufReadAddress += 2;
+		case REG_WIFI_POWER_UNK: // 0x048
+			return io.POWER_UNKNOWN.value;
 
-					if (wifiMac.CircBufReadAddress >= wifiMac.RXRangeEnd) 
-					{ 
-						wifiMac.CircBufReadAddress = wifiMac.RXRangeBegin;
-					} 
-					else
+		case REG_WIFI_RXRANGEBEGIN: // 0x050
+			return io.RXBUF_BEGIN;
+
+		case REG_WIFI_RXRANGEEND: // 0x052
+			return io.RXBUF_END;
+
+		case REG_WIFI_RXHWWRITECSR: // 0x054
+			return io.RXBUF_WRCSR.value;
+
+		case REG_WIFI_WRITECSRLATCH: // 0x056
+			return io.RXBUF_WR_ADDR.value;
+
+		case REG_WIFI_CIRCBUFRADR: // 0x058
+			return io.RXBUF_RD_ADDR.value;
+
+		case REG_WIFI_RXREADCSR: // 0x05A
+			return io.RXBUF_READCSR.value;
+
+		case REG_WIFI_RXBUF_COUNT: // 0x05C
+			return io.RXBUF_COUNT.value;
+
+		case REG_WIFI_CIRCBUFREAD: // 0x060
+		case REG_WIFI_CIRCBUFWRITE: // 0x070 - mirrored read of 0x060
+			{
+				if(action)
+				{
+					io.RXBUF_RD_ADDR.HalfwordAddress++;
+
+					if(io.RXBUF_RD_ADDR.ByteAddress >= io.RXBUF_END)
 					{
-						/* skip does not fire after a reset */
-						if (wifiMac.CircBufReadAddress == wifiMac.CircBufRdEnd)
+						io.RXBUF_RD_ADDR.ByteAddress = io.RXBUF_BEGIN;
+					}
+					else if(io.RXBUF_RD_ADDR.HalfwordAddress == io.RXBUF_GAP.HalfwordAddress)
+					{
+						io.RXBUF_RD_ADDR.HalfwordAddress += io.RXBUF_GAPDISP.HalfwordOffset;
+
+						if(io.RXBUF_RD_ADDR.ByteAddress >= io.RXBUF_END)
 						{
-							wifiMac.CircBufReadAddress += wifiMac.CircBufRdSkip * 2;
-							wifiMac.CircBufReadAddress &= 0x1FFE;
-							if (wifiMac.CircBufReadAddress + wifiMac.RXRangeBegin == wifiMac.RXRangeEnd) wifiMac.CircBufReadAddress = 0;
+							io.RXBUF_RD_ADDR.ByteAddress = io.RXBUF_RD_ADDR.ByteAddress + io.RXBUF_BEGIN - io.RXBUF_END;
 						}
 					}
 
-					if (wifiMac.RXBufCount > 0)
+					io.RXBUF_RD_DATA = *(u16*)&wifi.RAM[io.RXBUF_RD_ADDR.HalfwordAddress << 1];
+
+					if(io.RXBUF_COUNT.Count > 0)
 					{
-						if (wifiMac.RXBufCount == 1)
+						io.RXBUF_COUNT.Count--;
+						if(io.RXBUF_COUNT.Count == 0)
 						{
-							WIFI_triggerIRQ(WIFI_IRQ_RXCOUNTEXP);
+							WIFI_triggerIRQ(WifiIRQ09_RXCountExpired);
 						}
-						wifiMac.RXBufCount--;
-					}				
+					}
 				}
-				return val;
+
+				return io.RXBUF_RD_DATA;
 			}
-		case REG_WIFI_CIRCBUFRADR:
-			return wifiMac.CircBufReadAddress;
-		case REG_WIFI_RXBUF_COUNT:
-			return wifiMac.RXBufCount;
-		case REG_WIFI_TXREQ_READ:
-			return wifiMac.TXCnt | 0x10;
-		case REG_WIFI_TXBUSY:
-			return wifiMac.TXBusy;
-		case REG_WIFI_TXSTAT:
-			return wifiMac.TXStat;
-		case REG_WIFI_TXBUF_CMD:
-			return wifiMac.TXSlots[WIFI_TXSLOT_MPCMD].RegVal;
-		case REG_WIFI_TXBUF_REPLY2:
-			return wifiMac.TXSlots[WIFI_TXSLOT_MPREPLY].RegVal;
-		case REG_WIFI_TXBUF_LOC1:
-			return wifiMac.TXSlots[WIFI_TXSLOT_LOC1].RegVal;
-		case REG_WIFI_TXBUF_LOC2:
-			return wifiMac.TXSlots[WIFI_TXSLOT_LOC2].RegVal;
-		case REG_WIFI_TXBUF_LOC3:
-			return wifiMac.TXSlots[WIFI_TXSLOT_LOC3].RegVal;
-		case REG_WIFI_TXBUF_BEACON:
-			return wifiMac.TXSlots[WIFI_TXSLOT_BEACON].RegVal;
-		case REG_WIFI_EXTRACOUNTCNT:
-			return wifiMac.eCountEnable?1:0;
-		case REG_WIFI_EXTRACOUNT:
-			return (u16)((wifiMac.eCount + (WIFI_CMDCOUNT_SLICE-1)) / WIFI_CMDCOUNT_SLICE);
-		case REG_WIFI_USCOUNTER0:
-			return (u16)wifiMac.usec;
-		case REG_WIFI_USCOUNTER1:
-			return (u16)(wifiMac.usec >> 16);
-		case REG_WIFI_USCOUNTER2:
-			return (u16)(wifiMac.usec >> 32);
-		case REG_WIFI_USCOUNTER3:
-			return (u16)(wifiMac.usec >> 48);
-		case REG_WIFI_USCOMPARE0:
-			return (u16)wifiMac.ucmp;
-		case REG_WIFI_USCOMPARE1:
-			return (u16)(wifiMac.ucmp >> 16);
-		case REG_WIFI_USCOMPARE2:
-			return (u16)(wifiMac.ucmp >> 32);
-		case REG_WIFI_USCOMPARE3:
-			return (u16)(wifiMac.ucmp >> 48);
-		case REG_WIFI_BEACONCOUNT1:
-			return wifiMac.BeaconCount1;
-		case REG_WIFI_BEACONCOUNT2:
-			return wifiMac.BeaconCount2;
-		case REG_WIFI_LISTENCOUNT:
-			return wifiMac.ListenCount;
-		case REG_WIFI_POWER_US:
-			return wifiMac.crystalEnabled?0:1;
-		case REG_WIFI_CIRCBUFRD_END:
-			return wifiMac.CircBufRdEnd;
-		case REG_WIFI_CIRCBUFRD_SKIP:
-			return wifiMac.CircBufRdSkip;
-		case REG_WIFI_AID_LOW:
-			return wifiMac.pid;
-		case REG_WIFI_AID_HIGH:
-			return wifiMac.aid;
+
+		case REG_WIFI_CIRCBUFRD_END: // 0x062
+			return io.RXBUF_GAP.value;
+
+		case REG_WIFI_CIRCBUFRD_SKIP: // 0x064
+			return io.RXBUF_GAPDISP.value;
+
+		case REG_WIFI_CIRCBUFWADR: // 0x068
+			return io.TXBUF_WR_ADDR.value;
+
+		case REG_WIFI_TXBUFCOUNT: // 0x06C
+			return io.TXBUF_COUNT.value;
+
+		case REG_WIFI_CIRCBUFWR_END: // 0x074
+			return io.TXBUF_GAP.value;
+
+		case REG_WIFI_CIRCBUFWR_SKIP: // 0x076
+			return io.TXBUF_GAPDISP.value;
+
+		case 0x078: // 0x078 - mirrored read of 0x068
+			return io.TXBUF_WR_ADDR.value;
+
+		case REG_WIFI_TXLOCBEACON: // 0x080
+			return io.TXBUF_BEACON.value;
+
+		case REG_WIFI_TXBUF_TIM: // 0x084
+			return io.TXBUF_TIM.value;
+
+		case REG_WIFI_LISTENCOUNT: // 0x088
+			return io.LISTENCOUNT.value;
+
+		case REG_WIFI_BEACONPERIOD: // 0x08C
+			return io.BEACONINT.value;
+
+		case REG_WIFI_LISTENINT: // 0x08E
+			return io.LISTENINT.value;
+
+		case REG_WIFI_TXLOCEXTRA: // 0x090
+			return io.TXBUF_CMD.value;
+
+		case REG_WIFI_TXBUF_REPLY1: // 0x094
+			return io.TXBUF_REPLY1.value;
+
+		case REG_WIFI_TXBUF_REPLY2: // 0x098
+			return io.TXBUF_REPLY2.value;
+
+		case 0x09C: // 0x09C
+			return io.INTERNAL_09C;
+
+		case REG_WIFI_TXLOC1: // 0x0A0
+			return io.TXBUF_LOC1.value;
+
+		case REG_WIFI_TXLOC2: // 0x0A4
+			return io.TXBUF_LOC2.value;
+
+		case REG_WIFI_TXLOC3: // 0x0A8
+			return io.TXBUF_LOC3.value;
+
+		case REG_WIFI_TXREQ_RESET: // 0x0AC - mirrored read of 0x09C
+		case REG_WIFI_TXREQ_SET: // 0x0AE - mirrored read of 0x09C
+			return io.INTERNAL_09C;
+
+		case REG_WIFI_TXREQ_READ: // 0x0B0
+			return io.TXREQ_READ.value;
+
+		case REG_WIFI_TXRESET: // 0x0B4 - mirrored read of 0x0B6
+		case REG_WIFI_TXBUSY: // 0x0B6
+			return io.TXBUSY.value;
+
+		case REG_WIFI_TXSTAT: // 0x0B8
+			return io.TXSTAT.value;
+
+		case 0x0BA: // 0x0BA
+			return io.INTERNAL_0BA;
+
+		case REG_WIFI_PREAMBLE: // 0x0BC
+			return io.PREAMBLE.value;
+
+		case REG_WIFI_CMD_TOTALTIME: // 0x0C0
+			return io.CMD_TOTALTIME;
+
+		case REG_WIFI_CMD_REPLYTIME: // 0x0C4
+			return io.CMD_REPLYTIME;
+
+		case 0x0C8: // 0x0C8
+			return io.INTERNAL_0C8;
+
+		case REG_WIFI_RXFILTER: // 0x0D0
+			return io.RXFILTER.value;
+
+		case REG_WIFI_CONFIG_0D4: // 0x0D4
+			return io.CONFIG_0D4;
+
+		case REG_WIFI_CONFIG_0D8: // 0x0D8
+			return io.CONFIG_0D8;
+
+		case REG_WIFI_RX_LEN_CROP: // 0x0DA
+			return io.RX_LEN_CROP.value;
+
+		case REG_WIFI_RXFILTER2: // 0x0E0
+			return io.RXFILTER2.value;
+
+		case REG_WIFI_USCOUNTERCNT: // 0x0E8
+			return io.US_COUNTCNT.value;
+
+		case REG_WIFI_USCOMPARECNT: // 0x0EA
+			return io.US_COMPARECNT.value;
+
+		case REG_WIFI_CONFIG_0EC: // 0x0EC
+			return io.CONFIG_0EC;
+
+		case REG_WIFI_EXTRACOUNTCNT: // 0x0EE
+			return io.CMD_COUNTCNT.value;
+
+		case REG_WIFI_USCOMPARE0: // 0x0F0
+			return io.US_COMPARE0;
+
+		case REG_WIFI_USCOMPARE1: // 0x0F2
+			return io.US_COMPARE1;
+
+		case REG_WIFI_USCOMPARE2: // 0x0F4
+			return io.US_COMPARE2;
+
+		case REG_WIFI_USCOMPARE3: // 0x0F6
+			return io.US_COMPARE3;
+
+		case REG_WIFI_USCOUNTER0: // 0x0F8
+			return io.US_COUNT0;
+
+		case REG_WIFI_USCOUNTER1: // 0x0FA
+			return io.US_COUNT1;
+
+		case REG_WIFI_USCOUNTER2: // 0x0FC
+			return io.US_COUNT2;
+
+		case REG_WIFI_USCOUNTER3: // 0x0FE
+			return io.US_COUNT3;
+
+		case 0x100: // 0x100
+			return io.INTERNAL_100;
+
+		case 0x102: // 0x102
+			return io.INTERNAL_102;
+
+		case 0x104: // 0x104
+			return io.INTERNAL_104;
+
+		case 0x106: // 0x106
+			return io.INTERNAL_106;
+
+		case REG_WIFI_CONTENTFREE: // 0x10C
+			return io.CONTENTFREE;
+
+		case REG_WIFI_PREBEACONCOUNT: // 0x110
+			return io.PRE_BEACON;
+
+		case REG_WIFI_EXTRACOUNT: // 0x118
+			return (u16)((wifi.cmdCount_u32 + 9) / 10);
+
+		case REG_WIFI_BEACONCOUNT1: // 0x11C
+			return io.BEACONCOUNT1;
+
+		case REG_WIFI_CONFIG_120: // 0x120
+			return io.CONFIG_120;
+
+		case REG_WIFI_CONFIG_122: // 0x122
+			return io.CONFIG_122;
+
+		case REG_WIFI_CONFIG_124: // 0x124
+			return io.CONFIG_124;
+
+		case 0x126: // 0x126
+			return io.INTERNAL_126;
+
+		case REG_WIFI_CONFIG_128: // 0x128
+			return io.CONFIG_128;
+
+		case 0x12A: // 0x12A
+			return io.INTERNAL_12A;
+
+		case REG_WIFI_CONFIG_130: // 0x130
+			return io.CONFIG_130;
+
+		case REG_WIFI_CONFIG_132: // 0x132
+			return io.CONFIG_132;
+
+		case REG_WIFI_BEACONCOUNT2: // 0x134
+			return io.BEACONCOUNT2;
+
+		case REG_WIFI_CONFIG_140: // 0x140
+			return io.CONFIG_140;
+
+		case REG_WIFI_CONFIG_142: // 0x142
+			return io.CONFIG_142;
+
+		case REG_WIFI_CONFIG_144: // 0x144
+			return io.CONFIG_144;
+
+		case REG_WIFI_CONFIG_146: // 0x146
+			return io.CONFIG_146;
+
+		case REG_WIFI_CONFIG_148: // 0x148
+			return io.CONFIG_148;
+
+		case REG_WIFI_CONFIG_14A: // 0x14A
+			return io.CONFIG_14A;
+
+		case REG_WIFI_CONFIG_14C: // 0x14C
+			return io.CONFIG_14C;
+
+		case REG_WIFI_CONFIG_150: // 0x150
+			return io.CONFIG_150;
+
+		case REG_WIFI_CONFIG_154: // 0x154
+			return io.CONFIG_154;
+
+		case REG_WIFI_BBCNT: // 0x158 - mirrored read of 0x15C
+			return io.BB_READ.value;
+
+		case REG_WIFI_BBWRITE: // 0x15A
+			return 0;
+
+		case REG_WIFI_BBREAD: // 0x15C
+			return io.BB_READ.value;
+
+		case REG_WIFI_BBBUSY: // 0x15E
+			return io.BB_BUSY.value;
+
+		case REG_WIFI_BBMODE: // 0x160
+			return io.BB_MODE.value;
+
+		case REG_WIFI_BBPOWER: // 0x168
+			return io.BB_POWER.value;
+
+		case 0x16A: // 0x16A
+			return io.INTERNAL_16A;
+
+		case 0x170: // 0x170
+			return io.INTERNAL_170;
+
+		case 0x172: // 0x172
+			return io.INTERNAL_172;
+
+		case 0x174: // 0x174
+			return io.INTERNAL_174;
+
+		case 0x176: // 0x176
+			return io.INTERNAL_176;
+
+		case 0x178: // 0x178 - mirrored read of 0x17C
+		case REG_WIFI_RFDATA2: // 0017C
+			{
+				if(io.RF_BUSY.Busy == 0)
+				{
+					return io.RF_DATA2.value;
+				}
+				else
+				{
+					return 0;
+				}
+			}
+
+		case REG_WIFI_RFDATA1: // 0x17E
+			{
+				if(io.RF_BUSY.Busy == 0)
+				{
+					return io.RF_DATA1.value;
+				}
+				else
+				{
+					return 0;
+				}
+			}
+
+		case REG_WIFI_RFBUSY: // 0x180
+			return io.RF_BUSY.value;
+
+		case REG_WIFI_RFCNT: // 0x184
+			return io.RF_CNT.value;
+
+		case 0x190: // 0x190
+			return io.INTERNAL_190;
+
+		case REG_WIFI_TX_HDR_CNT: // 0x194
+			return io.TX_HDR_CNT.value;
+
+		case 0x198: // 0x198
+			return io.INTERNAL_198;
+
+		case REG_WIFI_X_1A0: // 0x1A0
+			return io.X_1A0.value;
+
+		case REG_WIFI_X_1A2: // 0x1A2
+			return io.X_1A2.value;
+
+		case REG_WIFI_X_1A4: // 0x1A4
+			return io.X_1A4;
+
+		case REG_WIFI_RXSTAT_INC_IF: // 0x1A8
+			return io.RXSTAT_INC_IF.value;
+
+		case REG_WIFI_RXSTAT_INC_IE: // 0x1AA
+			return io.RXSTAT_INC_IE.value;
+
+		case REG_WIFI_RXSTAT_OVF_IF: // 0x1AC
+			return io.RXSTAT_OVF_IF.value;
+
+		case REG_WIFI_RXSTAT_OVF_IE: // 0x1AE
+			return io.RXSTAT_OVF_IE.value;
+
+		case REG_WIFI_RXSTAT0: // 0x1B0
+			return io.RXSTAT_COUNT.RXSTAT_1B0;
+
+		case REG_WIFI_RXSTAT1: // 0x1B2
+			return io.RXSTAT_COUNT.RXSTAT_1B2;
+
+		case REG_WIFI_RXSTAT2: // 0x1B4
+			return io.RXSTAT_COUNT.RXSTAT_1B4;
+
+		case REG_WIFI_RXSTAT3: // 0x1B6
+			return io.RXSTAT_COUNT.RXSTAT_1B6;
+
+		case REG_WIFI_RXSTAT4: // 0x1B8
+			return io.RXSTAT_COUNT.RXSTAT_1B8;
+
+		case REG_WIFI_RXSTAT5: // 0x1BA
+			return io.RXSTAT_COUNT.RXSTAT_1BA;
+
+		case REG_WIFI_RXSTAT6: // 0x1BC
+			return io.RXSTAT_COUNT.RXSTAT_1BC;
+
+		case REG_WIFI_RXSTAT7: // 0x1BE
+			return io.RXSTAT_COUNT.RXSTAT_1BE;
+
+		case REG_WIFI_TXERR_COUNT: // 0x1C0
+			return io.TX_ERR_COUNT.value;
+
+		case REG_WIFI_RX_COUNT: // 0x1C4
+			return io.RX_COUNT.value;
+
+		case REG_WIFI_CMD_STAT0: // 0x1D0
+			return io.CMD_STAT_COUNT.CMD_STAT_1D0;
+
+		case REG_WIFI_CMD_STAT1: // 0x1D2
+			return io.CMD_STAT_COUNT.CMD_STAT_1D2;
+
+		case REG_WIFI_CMD_STAT2: // 0x1D4
+			return io.CMD_STAT_COUNT.CMD_STAT_1D4;
+
+		case REG_WIFI_CMD_STAT3: // 0x1D6
+			return io.CMD_STAT_COUNT.CMD_STAT_1D6;
+
+		case REG_WIFI_CMD_STAT4: // 0x1D8
+			return io.CMD_STAT_COUNT.CMD_STAT_1D8;
+
+		case REG_WIFI_CMD_STAT5: // 0x1DA
+			return io.CMD_STAT_COUNT.CMD_STAT_1DA;
+
+		case REG_WIFI_CMD_STAT6: // 0x1DC
+			return io.CMD_STAT_COUNT.CMD_STAT_1DC;
+
+		case REG_WIFI_CMD_STAT7: // 0x1DE
+			return io.CMD_STAT_COUNT.CMD_STAT_1DE;
+
+		case 0x1F0: // 0x1F0
+			return io.INTERNAL_1F0;
+
+		case 0x204: // 0x204
+			return io.INTERNAL_204;
+
+		case 0x208: // 0x208
+			return io.INTERNAL_208;
+
+		case 0x20C: // 0x20C - mirrored read of 0x09C
+			return io.INTERNAL_09C;
+
+		case REG_WIFI_TXSEQNO: // 0x210
+			return io.TX_SEQNO.value;
+
+		case REG_WIFI_IF_SET: // 0x21C - mirrored read of 0x010
+			return io.IF.value;
+
+		case 0x220: // 0x220
+			return io.INTERNAL_220;
+
+		case 0x224: // 0x224
+			return io.INTERNAL_224;
+
+		case REG_WIFI_X_228: // 0x228
+			return 0;
+
+		case 0x230: // 0x230
+			return io.INTERNAL_230;
+
+		case 0x234: // 0x234
+			return io.INTERNAL_234;
+
+		case 0x238: // 0x238
+			return io.INTERNAL_238;
+
+		case 0x23C: // 0x23C
+			return io.INTERNAL_23C;
+
+		case REG_WIFI_X_244: // 0x244
+			return io.X_244;
+
+		case 0x248: // 0x248
+			return io.INTERNAL_248;
+
+		case 0x24C: // 0x24C
+			return io.INTERNAL_24C;
+
+		case 0x24E: // 0x24E
+			return io.INTERNAL_24E;
+
+		case 0x250: // 0x250
+			return io.INTERNAL_250;
+
+		case REG_WIFI_CONFIG_254: // 0x254
+			return io.CONFIG_254;
+
+		case 0x258: // 0x258
+			return io.INTERNAL_258;
+
+		case 0x25C: // 0x25C
+			return io.INTERNAL_25C;
+
+		case 0x260: // 0x260
+			return io.INTERNAL_260;
+
+		case 0x264: // 0x264
+			return io.INTERNAL_264;
+
+		case REG_WIFI_RXTX_ADDR: // 0x268
+			return io.RXTX_ADDR.value;
+
+		case 0x270: // 0x270
+			return io.INTERNAL_270;
+
+		case 0x274: // 0x274
+			return io.INTERNAL_274;
+
+		case 0x278: // 0x278
+			return io.INTERNAL_278;
+
+		case 0x27C: // 0x27C
+			return io.INTERNAL_27C;
+
+		case REG_WIFI_X_290: // 0x290
+			return io.X_290.value;
+
+		case 0x298: // 0x298 - mirrored read of 0x084
+			return io.TXBUF_TIM.value;
+
+		case 0x2A0: // 0x2A0
+			return io.INTERNAL_2A0;
+
+		case 0x2A2: // 0x2A2
+			return io.INTERNAL_2A2;
+
+		case 0x2A4: // 0x2A4
+			return io.INTERNAL_2A4;
+
+		case 0x2A8: // 0x2A8 - mirrored read of 0x238
+			return io.INTERNAL_238;
+
+		case 0x2AC: // 0x2AC
+			return io.INTERNAL_2AC;
+
+		case 0x2B0: // 0x2B0 - mirrored read of 0x084
+			return io.TXBUF_TIM.value;
+
+		case 0x2B4: // 0x2B4
+			return io.INTERNAL_2B4;
+
+		case 0x2B8: // 0x2B8
+			return io.INTERNAL_2B8;
+
+		case 0x2C0: // 0x2C0
+			return io.INTERNAL_2C0;
+
+		case 0x2C4: // 0x2C4
+			return io.INTERNAL_2C4;
+
+		case 0x2C8: // 0x2C8
+			return io.INTERNAL_2C8;
+
+		case 0x2CC: // 0x2CC
+			return io.INTERNAL_2CC;
+
+		case REG_WIFI_POWERACK: // 0x2D0
+			{
+				if(io.POWERSTATE.WillPowerOn != 0)
+				{
+					return io.POWERACK;
+				}
+				else
+				{
+					break;
+				}
+			}
+
+		case 0x2F0: // 0x2F0
+			return io.INTERNAL_2F0;
+
+		case 0x2F2: // 0x2F2
+			return io.INTERNAL_2F2;
+
+		case 0x2F4: // 0x2F4
+			return io.INTERNAL_2F4;
+
+		case 0x2F6: // 0x2F6
+			return io.INTERNAL_2F6;
 
 			// RFSTATUS, RFPINS
 			// TODO: figure out how to emulate those correctly
 			// without breaking Nintendo's games
-		case REG_WIFI_RFSTATUS:
-			return wifiMac.rfStatus;
-			//return 9;
-		case REG_WIFI_RFPINS:
-			return wifiMac.rfPins;
-			//return 0x00C6;
-
-		case REG_WIFI_RXSTAT_INC_IF:
-			{
-				u16 ret = wifiMac.RXStatIncIF;
-				wifiMac.RXStatIncIF = 0;
-				return ret;
-			}
-		case REG_WIFI_RXSTAT_OVF_IF:
-			{
-				u16 ret = wifiMac.RXStatOvfIF;
-				wifiMac.RXStatOvfIF = 0;
-				return ret;
-			}
-
-		case REG_WIFI_RXSTAT_INC_IE: return wifiMac.RXStatIncIE;
-		case REG_WIFI_RXSTAT_OVF_IE: return wifiMac.RXStatOvfIE;
-
-		case 0x1B0:
-		case 0x1B2:
-		case 0x1B4:
-		case 0x1B6:
-		case 0x1B8:
-		case 0x1BA:
-		case 0x1BC:
-		case 0x1BE:
-			{
-				u16 ret = *(u16*)&wifiMac.RXStat[address & 0xF];
-				*(u16*)&wifiMac.RXStat[address & 0xF] = 0;
-				return ret;
-			}
-
-		case REG_WIFI_RXTXADDR:
-			return wifiMac.RXTXAddr;
-
-		case 0x84:
-			WIFI_LOG(2, "Read to TXBUF_TIM @ %08X %08X\n", NDS_ARM7.instruct_adr, NDS_ARM7.R[14]);
-			break;
+		case REG_WIFI_RFSTATUS: // 0x214
+			return 0x0009;
+		case REG_WIFI_RFPINS: // 0x19C
+			return 0x00C6;
 
 		default:
-		//	printf("wifi: read unhandled reg %03X\n", address);
+			//	printf("wifi: read unhandled reg %03X\n", address);
 			break;
 	}
 
-	return WIFI_IOREG(address);
-}
-
-
-void WIFI_usTrigger()
-{
-	wifiMac.GlobalUsecTimer++;
-
-	if (wifiMac.crystalEnabled)
-	{
-		/* a usec has passed */
-		if (wifiMac.usecEnable)
-			wifiMac.usec++;
-
-		// Note: the extra counter is decremented every 10 microseconds.
-		// To avoid a modulo every microsecond, we multiply the counter
-		// value by 10 and decrement it every microsecond :)
-		if (wifiMac.eCountEnable)
-		{
-			if (wifiMac.eCount > 0)
-			{
-				wifiMac.eCount--;
-				if (wifiMac.eCount == 0)
-					WIFI_TXStart(WIFI_TXSLOT_MPCMD);
-			}
-		}
-
-		// The beacon counters are in milliseconds
-		// GBATek says they're decremented every 1024 usecs
-		if (!(wifiMac.usec & 1023))
-		{
-			wifiMac.BeaconCount1--;
-
-			if (wifiMac.BeaconCount1 == (WIFI_IOREG(REG_WIFI_PREBEACONCOUNT) >> 10))
-				WIFI_triggerIRQ(WIFI_IRQ_TIMEPREBEACON);
-			else if (wifiMac.BeaconCount1 == 0)
-				WIFI_triggerIRQ(WIFI_IRQ_TIMEBEACON);
-
-			if (wifiMac.BeaconCount2 > 0)
-			{
-				wifiMac.BeaconCount2--;
-				if (wifiMac.BeaconCount2 == 0)
-					WIFI_triggerIRQ(WIFI_IRQ_TIMEPOSTBEACON);
-			}
-		}
-	}
-
-	if ((wifiMac.ucmpEnable) && (wifiMac.ucmp == wifiMac.usec))
-		WIFI_triggerIRQ(WIFI_IRQ_TIMEBEACON);
-
-	if (wifiMac.TXCurSlot >= 0)
-	{
-		Wifi_TXSlot& slot = wifiMac.TXSlots[wifiMac.TXCurSlot];
-		if (slot.RemPreamble > 0)
-			slot.RemPreamble--;
-		else if ((wifiMac.GlobalUsecTimer & slot.TimeMask) == 0)
-		{
-			if (slot.NotStarted)
-			{
-				WIFI_PreTXAdjustments(wifiMac.TXCurSlot);
-				WIFI_triggerIRQ(WIFI_IRQ_TXSTART);
-				if (wifiCom) wifiCom->SendPacket((u8*)&wifiMac.RAM[slot.CurAddr], slot.RemHWords << 1);
-				slot.NotStarted = false;
-			}
-
-			slot.RemHWords--;
-			slot.CurAddr++;
-			wifiMac.RXTXAddr = slot.CurAddr;
-
-			if (slot.RemHWords == 0)
-			{
-				if (wifiMac.TXCurSlot == WIFI_TXSLOT_MPCMD)
-				{
-					WIFI_triggerIRQ(WIFI_IRQ_UNK);
-					if (BIT13(wifiMac.TXStatCnt))
-					{
-						WIFI_triggerIRQ(WIFI_IRQ_TXEND);
-						wifiMac.TXStat = 0x0B01;
-					}
-					else if (BIT14(wifiMac.TXStatCnt))
-					{
-						WIFI_triggerIRQ(WIFI_IRQ_TXEND);
-						wifiMac.TXStat = 0x0801;
-					}
-
-					slot.RegVal &= 0x7FFF;
-				}
-				else if (wifiMac.TXCurSlot == WIFI_TXSLOT_BEACON)
-				{
-					if (BIT15(wifiMac.TXStatCnt))
-					{
-						WIFI_triggerIRQ(WIFI_IRQ_TXEND);
-						wifiMac.TXStat = 0x0301;
-					}
-				}
-				else if (wifiMac.TXCurSlot == WIFI_TXSLOT_MPREPLY)
-				{
-					WIFI_triggerIRQ(WIFI_IRQ_TXEND);
-					slot.RegVal &= 0x7FFF;
-					WIFI_IOREG(REG_WIFI_TXBUF_REPLY1) = 0;
-				}
-				else
-				{
-					WIFI_triggerIRQ(WIFI_IRQ_TXEND);
-					wifiMac.TXStat = 0x0001 | (wifiMac.TXCurSlot == 0 ? 0 : ((wifiMac.TXCurSlot - 1) << 12));
-					if (BIT12(slot.RegVal)) wifiMac.TXStat |= 0x0700;
-
-					slot.RegVal &= 0x7FFF;
-				}
-				
-				u16 addr = slot.RegVal & 0x0FFF;
-				wifiMac.RAM[addr] = 0x0001;
-				wifiMac.RAM[addr+4] &= 0x00FF;
-
-				wifiMac.TXBusy &= ~(1 << wifiMac.TXCurSlot);
-				int nextslot = -1;
-				for (int i = WIFI_TXSLOT_NUM-1; i >= 0; i--)
-				{
-					if (BIT_N(wifiMac.TXBusy, i))
-					{
-						nextslot = i;
-						break;
-					}
-				}
-
-				if (nextslot < 0)
-				{
-					//wifiMac.rfStatus = 9;
-					//wifiMac.rfPins = 0x00C6;
-					wifiMac.TXCurSlot = -1;
-				}
-				else
-				{
-					wifiMac.TXCurSlot = nextslot;
-				}
-			}
-		}
-	}
-	else if (!wifiMac.RXPacketQueue.empty())
-	{
-		if ((wifiMac.GlobalUsecTimer & 7) == 0)
-		{
-			Wifi_RXPacket& pkt = wifiMac.RXPacketQueue.front();
-			if (pkt.NotStarted)
-			{
-				WIFI_RXPutWord(*(u16*)&pkt.Data[0]);
-				WIFI_RXPutWord(*(u16*)&pkt.Data[2]);
-				WIFI_RXPutWord(*(u16*)&pkt.Data[4]);
-				WIFI_RXPutWord(*(u16*)&pkt.Data[6]);
-				WIFI_RXPutWord(*(u16*)&pkt.Data[8]);
-				WIFI_RXPutWord(*(u16*)&pkt.Data[10]);
-
-				WIFI_triggerIRQ(WIFI_IRQ_RXSTART);
-				pkt.NotStarted = false;
-
-				//wifiMac.rfStatus = 1;
-				wifiMac.rfPins = 0x00C7;
-			}
-
-			WIFI_RXPutWord(*(u16*)&pkt.Data[pkt.CurOffset]);
-
-			pkt.CurOffset += 2;
-			pkt.RemHWords--;
-
-			if (pkt.RemHWords == 0)
-			{
-				wifiMac.RXWriteCursor = ((wifiMac.RXWriteCursor + 1) & (~1));
-				if (wifiMac.RXWriteCursor >= (wifiMac.RXRangeEnd >> 1))
-					wifiMac.RXWriteCursor = (wifiMac.RXRangeBegin >> 1);
-				WIFI_IOREG(REG_WIFI_RXHWWRITECSR) = wifiMac.RXWriteCursor;
-
-				wifiMac.RXNum++;
-				WIFI_triggerIRQ(WIFI_IRQ_RXEND);
-
-				WIFI_IncrementRXStat<7>();
-				WIFI_DoAutoReply(pkt.Data);
-
-				delete[] pkt.Data;
-				wifiMac.RXPacketQueue.pop();
-
-				wifiMac.rfStatus = 9;
-				wifiMac.rfPins = 0x00C6;
-			}
-		}
-	}
-
-	if ((wifiMac.GlobalUsecTimer & 1023) == 0)
-		if (wifiCom)
-			wifiCom->msTrigger();
-}
-
-/*******************************************************************************
-
-	Ad-hoc communication interface
-
- *******************************************************************************/
-
-#ifdef EXPERIMENTAL_WIFI_COMM
-#define ADHOC_MAGIC					"NDSWIFI\0"
-#define ADHOC_PROTOCOL_VERSION 		0x0100  // v1.0
-
-typedef struct _Adhoc_FrameHeader
-{
-	char magic[8];			// "NDSWIFI\0" (null terminated string)
-	u16 version;			// Ad-hoc protocol version (for example 0x0502 = v5.2)
-	u16 packetLen;			// Length of the packet
-
-} Adhoc_FrameHeader;
-
-
-bool Adhoc_Init()
-{
-	BOOL opt_true = TRUE;
-	int res;
-
-	if (!CurrentWifiHandler->WIFI_SocketsAvailable())
-	{
-		WIFI_LOG(1, "Ad-hoc: failed to initialize sockets.\n");
-		wifi_socket = INVALID_SOCKET;
-		return false;
-	}
-
-	// Create an UDP socket
-	wifi_socket = socket(AF_INET, SOCK_DGRAM, 0);
-	if (wifi_socket < 0)
-	{
-		WIFI_LOG(1, "Ad-hoc: Failed to create socket.\n");
-		return false;
-	}
-
-	// Enable the socket to be bound to an address/port that is already in use
-	// This enables us to communicate with another DeSmuME instance running on the same computer.
-	res = setsockopt(wifi_socket, SOL_SOCKET, SO_REUSEADDR, (const char*)&opt_true, sizeof(BOOL));
-
-	// Bind the socket to any address on port 7000
-	sockaddr_t saddr;
-	saddr.sa_family = AF_INET;
-	*(u32*)&saddr.sa_data[2] = htonl(INADDR_ANY); 
-	*(u16*)&saddr.sa_data[0] = htons(BASEPORT);
-	res = bind(wifi_socket, &saddr, sizeof(sockaddr_t));
-	if (res < 0)
-	{
-		WIFI_LOG(1, "Ad-hoc: failed to bind the socket.\n");
-		closesocket(wifi_socket); wifi_socket = INVALID_SOCKET;
-		return false;
-	}
-
-	// Enable broadcast mode
-	// Not doing so results in failure when sendto'ing to broadcast address
-	res = setsockopt(wifi_socket, SOL_SOCKET, SO_BROADCAST, (const char*)&opt_true, sizeof(BOOL));
-	if (res < 0)
-	{
-		WIFI_LOG(1, "Ad-hoc: failed to enable broadcast mode.\n");
-		closesocket(wifi_socket); wifi_socket = INVALID_SOCKET;
-		return false;
-	}
-
-	// Prepare an address structure for sending packets
-	sendAddr.sa_family = AF_INET;
-	*(u32*)&sendAddr.sa_data[2] = htonl(INADDR_BROADCAST); 
-	*(u16*)&sendAddr.sa_data[0] = htons(BASEPORT);
-
-	Adhoc_Reset();
-
-	WIFI_LOG(1, "Ad-hoc: initialization successful.\n");
-
-	return true;
-}
-
-void Adhoc_DeInit()
-{
-	if (wifi_socket >= 0)
-		closesocket(wifi_socket);
-}
-
-void Adhoc_Reset()
-{
-	CurrentWifiHandler->WIFI_GetUniqueMAC(FW_Mac);
-	NDS_PatchFirmwareMAC();
-
-	printf("WIFI: ADHOC: MAC = %02X:%02X:%02X:%02X:%02X:%02X\n",
-		FW_Mac[0], FW_Mac[1], FW_Mac[2], FW_Mac[3], FW_Mac[4], FW_Mac[5]);
-}
-
-void Adhoc_SendPacket(u8* packet, u32 len)
-{
-	if (wifi_socket < 0)
-		return;
-
-	WIFI_LOG(3, "Ad-hoc: sending a packet of %i bytes, frame control: %04X\n", len, *(u16*)&packet[0]);
-
-	u32 frameLen = sizeof(Adhoc_FrameHeader) + len;
-
-	u8* frame = new u8[frameLen];
-	u8* ptr = frame;
-
-	Adhoc_FrameHeader header;
-	strncpy(header.magic, ADHOC_MAGIC, 8);
-	header.version = ADHOC_PROTOCOL_VERSION;
-	header.packetLen = len;
-	memcpy(ptr, &header, sizeof(Adhoc_FrameHeader));
-	ptr += sizeof(Adhoc_FrameHeader);
-
-	memcpy(ptr, packet, len);
-
-	int nbytes = sendto(wifi_socket, (const char*)frame, frameLen, 0, &sendAddr, sizeof(sockaddr_t));
-	
-	WIFI_LOG(4, "Ad-hoc: sent %i/%i bytes of packet.\n", nbytes, frameLen);
-
-	delete[] frame;
-}
-
-void Adhoc_msTrigger()
-{
-	if (wifi_socket < 0)
-		return;
-
-	// Check every millisecond if we received a packet
-	fd_set fd;
-	struct timeval tv;
-
-	FD_ZERO(&fd);
-	FD_SET(wifi_socket, &fd);
-	tv.tv_sec = 0; 
-	tv.tv_usec = 0;
-
-	if (select(1, &fd, 0, 0, &tv))
-	{
-		sockaddr_t fromAddr;
-		socklen_t fromLen = sizeof(sockaddr_t);
-		u8 buf[1536];
-		u8* ptr;
-		u16 packetLen;
-
-		int nbytes = recvfrom(wifi_socket, (char*)buf, 1536, 0, &fromAddr, &fromLen);
-
-		// No packet arrived (or there was an error)
-		if (nbytes <= 0)
-			return;
-
-		ptr = buf;
-		Adhoc_FrameHeader header = *(Adhoc_FrameHeader*)ptr;
-		
-		// Check the magic string in header
-		if (strncmp(header.magic, ADHOC_MAGIC, 8))
-			return;
-
-		// Check the ad-hoc protocol version
-		if (header.version != ADHOC_PROTOCOL_VERSION)
-			return;
-
-		packetLen = header.packetLen - 4;
-		ptr += sizeof(Adhoc_FrameHeader);
-
-		// If the packet is for us, send it to the wifi core
-		if (!WIFI_compareMAC(&ptr[10], &wifiMac.mac.bytes[0]))
-		{
-			if (WIFI_isBroadcastMAC(&ptr[16]) ||
-				WIFI_compareMAC(&ptr[16], &wifiMac.bss.bytes[0]) ||
-				WIFI_isBroadcastMAC(&wifiMac.bss.bytes[0]))
-			{
-			/*	WIFI_LOG(3, "Ad-hoc: received a packet of %i bytes from %i.%i.%i.%i (port %i).\n",
-					nbytes,
-					(u8)fromAddr.sa_data[2], (u8)fromAddr.sa_data[3], 
-					(u8)fromAddr.sa_data[4], (u8)fromAddr.sa_data[5],
-					ntohs(*(u16*)&fromAddr.sa_data[0]));*/
-				WIFI_LOG(3, "Ad-hoc: received a packet of %i bytes, frame control: %04X\n", packetLen, *(u16*)&ptr[0]);
-				WIFI_LOG(4, "Storing packet at %08X.\n", 0x04804000 + (wifiMac.RXWriteCursor<<1));
-
-				u8* packet = new u8[12 + packetLen];
-
-				WIFI_MakeRXHeader(packet, WIFI_GetRXFlags(ptr), 20, packetLen, 0, 0);
-				memcpy(&packet[12], ptr, packetLen);
-				WIFI_RXQueuePacket(packet, 12+packetLen);
-			}
-		}
-	}
+	// TODO: We return the default value for the original NDS. However, the default value is different for NDS Lite.
+	WIFI_LOG(2, "Reading value of %04Xh from unlabeled register 0x%03X\n", 0xFFFF, address);
+	return 0xFFFF;
 }
 
 /*******************************************************************************
@@ -1950,18 +3011,18 @@ void Adhoc_msTrigger()
 
  *******************************************************************************/
 
-// Note on the CRC32 field in received packets:
-// The wifi hardware doesn't store the CRC32 in memory when receiving a packet
-// so the RX header length field is indeed header+body
-// Hence the CRC32 has been removed from those templates.
+ // Note on the CRC32 field in received packets:
+ // The wifi hardware doesn't store the CRC32 in memory when receiving a packet
+ // so the RX header length field is indeed header+body
+ // Hence the CRC32 has been removed from those templates.
 
-// If you wanna change SoftAP's MAC address, change this
-// Warning, don't mistake this for an array, it isn't
+ // If you wanna change SoftAP's MAC address, change this
+ // Warning, don't mistake this for an array, it isn't
 #define SOFTAP_MACADDR 0x00, 0xF0, 0x1A, 0x2B, 0x3C, 0x4D
 
-const u8 SoftAP_MACAddr[6] = {SOFTAP_MACADDR};
+static const u8 SoftAP_MACAddr[6] = { SOFTAP_MACADDR };
 
-const u8 SoftAP_Beacon[] = {
+static const u8 SoftAP_Beacon[] = {
 	/* 802.11 header */
 	0x80, 0x00,											// Frame control
 	0x00, 0x00,											// Duration ID
@@ -1980,7 +3041,7 @@ const u8 SoftAP_Beacon[] = {
 	0x00, 0x06, 'S', 'o', 'f', 't', 'A', 'P',			// SSID
 };
 
-const u8 SoftAP_ProbeResponse[] = {
+static const u8 SoftAP_ProbeResponse[] = {
 	/* 802.11 header */
 	0x50, 0x00,											// Frame control
 	0x00, 0x00,											// Duration ID
@@ -1998,8 +3059,7 @@ const u8 SoftAP_ProbeResponse[] = {
 	0x00, 0x06, 'S', 'o', 'f', 't', 'A', 'P',			// SSID
 };
 
-
-const u8 SoftAP_AuthFrame[] = {
+static const u8 SoftAP_AuthFrame[] = {
 	/* 802.11 header */
 	0xB0, 0x00,											// Frame control
 	0x00, 0x00,											// Duration ID
@@ -2014,7 +3074,7 @@ const u8 SoftAP_AuthFrame[] = {
 	0x00, 0x00,											// Status
 };
 
-const u8 SoftAP_AssocResponse[] = {
+static const u8 SoftAP_AssocResponse[] = {
 	/* 802.11 header */
 	0x10, 0x00,											// Frame control
 	0x00, 0x00,											// Duration ID
@@ -2031,7 +3091,7 @@ const u8 SoftAP_AssocResponse[] = {
 };
 
 // Deauthentication frame - sent if the user chose not to connect to WFC
-const u8 SoftAP_DeauthFrame[] = {
+static const u8 SoftAP_DeauthFrame[] = {
 	/* 802.11 header */
 	0xC0, 0x00,											// Frame control
 	0x00, 0x00,											// Duration ID
@@ -2044,114 +3104,538 @@ const u8 SoftAP_DeauthFrame[] = {
 	0x01, 0x00,											// Reason code (is "unspecified" ok?)
 };
 
-//todo - make a class to wrap this
-//todo - zeromus - inspect memory leak safety of all this
-static pcap_if_t * WIFI_index_device(pcap_if_t *alldevs, int index)
+static void SoftAP_RXPacketGet_Callback(u_char* userData, const pcap_pkthdr* pktHeader, const u_char* pktData)
 {
-	pcap_if_t *curr = alldevs;
+	const WIFI_IOREG_MAP& io = wifiHandler->GetWifiData().io;
 
-	for(int i = 0; i < index; i++)
+	if((userData == NULL) || (pktData == NULL) || (pktHeader == NULL))
 	{
-		if (curr->next == NULL) 
-		{
-			CommonSettings.wifi.infraBridgeAdapter = i;
-			break;
-		}
-		curr = curr->next;
+		return;
 	}
 
-	WIFI_LOG(2, "SoftAP: using %s as device.\n", curr->PCAP_DEVICE_NAME);
+	if(pktHeader->len == 0)
+	{
+		return; // No packet data was received.
+	}
 
-	return curr;
+	// This is the smallest possible frame size there can be. As of this time:
+	// 14 bytes - The IEEE 802.3 frame header size (EthernetFrameHeader)
+	// 4 bytes - Size of the FCS at the end of every IEEE 802.3 frame. (not included because libpcap is not guaranteed to include this)
+	if(pktHeader->len <= sizeof(EthernetFrameHeader))
+	{
+		return; // The packet is too small to be of any use.
+	}
+
+	// Check the 802.3 header and do a precheck on the relevant MAC addresses to see
+	// if we can reject the packet early.
+	const EthernetFrameHeader& IEEE8023Header = (EthernetFrameHeader&)pktData[0];
+	if(!(WIFI_compareMAC(io.MACADDR, IEEE8023Header.destMAC) || (WIFI_isBroadcastMAC(IEEE8023Header.destMAC) && WIFI_compareMAC(io.BSSID, SoftAP_MACAddr))))
+	{
+		// Don't process packets that aren't for us.
+		return;
+	}
+	else if(WIFI_compareMAC(io.MACADDR, IEEE8023Header.sendMAC))
+	{
+		// Don't process packets that we just sent.
+		return;
+	}
+
+	RXRawPacketData* rawPacket = (RXRawPacketData*)userData;
+	u8* targetPacket = &rawPacket->buffer[rawPacket->writeLocation];
+
+	// Generate the emulator header.
+	DesmumeFrameHeader& emulatorHeader = (DesmumeFrameHeader&)targetPacket[0];
+	strncpy(emulatorHeader.frameID, DESMUME_EMULATOR_FRAME_ID, 8);
+	emulatorHeader.version = DESMUME_EMULATOR_FRAME_CURRENT_VERSION;
+	emulatorHeader.timeStamp = 0;
+	emulatorHeader.emuPacketSize = (pktHeader->len + (sizeof(WifiDataFrameHeaderDS2STA) + sizeof(WifiLLCSNAPHeader) - sizeof(EthernetFrameHeader)) + 3) & 0xFFFC;
+
+	emulatorHeader.packetAttributes.value = 0;
+	emulatorHeader.packetAttributes.IsTXRate20 = 1;
+
+	WifiHandler::ConvertDataFrame8023To80211((u8*)pktData, pktHeader->len, (u8*)userData + sizeof(DesmumeFrameHeader));
+
+	rawPacket->writeLocation += emulatorHeader.emuPacketSize;
+	rawPacket->count++;
 }
 
-bool SoftAP_Init()
+static void* Adhoc_RXPacketGetOnThread(void* arg)
 {
-	if (!CurrentWifiHandler->WIFI_PCapAvailable())
+	AdhocCommInterface* commInterface = (AdhocCommInterface*)arg;
+	commInterface->RXPacketGet();
+
+	return NULL;
+}
+
+static void* Infrastructure_RXPacketGetOnThread(void* arg)
+{
+	SoftAPCommInterface* commInterface = (SoftAPCommInterface*)arg;
+	commInterface->RXPacketGet();
+
+	return NULL;
+}
+
+void DummyPCapInterface::__CopyErrorString(char* errbuf)
+{
+	const char* errString = "libpcap is not available";
+	strncpy(errbuf, errString, PCAP_ERRBUF_SIZE);
+}
+
+int DummyPCapInterface::findalldevs(void** alldevs, char* errbuf)
+{
+	this->__CopyErrorString(errbuf);
+	return -1;
+}
+
+void DummyPCapInterface::freealldevs(void* alldevs)
+{
+	// Do nothing.
+}
+
+void* DummyPCapInterface::open(const char* source, int snaplen, int flags, int readtimeout, char* errbuf)
+{
+	this->__CopyErrorString(errbuf);
+	return NULL;
+}
+
+void DummyPCapInterface::close(void* dev)
+{
+	// Do nothing.
+}
+
+int DummyPCapInterface::setnonblock(void* dev, int nonblock, char* errbuf)
+{
+	this->__CopyErrorString(errbuf);
+	return -1;
+}
+
+int DummyPCapInterface::sendpacket(void* dev, const void* data, int len)
+{
+	return -1;
+}
+
+int DummyPCapInterface::dispatch(void* dev, int num, void* callback, void* userdata)
+{
+	return -1;
+}
+
+void DummyPCapInterface::breakloop(void* dev)
+{
+	// Do nothing.
+}
+
+#ifndef HOST_WINDOWS
+
+int POSIXPCapInterface::findalldevs(void** alldevs, char* errbuf)
+{
+	return pcap_findalldevs((pcap_if_t**)alldevs, errbuf);
+}
+
+void POSIXPCapInterface::freealldevs(void* alldevs)
+{
+	pcap_freealldevs((pcap_if_t*)alldevs);
+}
+
+void* POSIXPCapInterface::open(const char* source, int snaplen, int flags, int readtimeout, char* errbuf)
+{
+	return pcap_open_live(source, snaplen, flags, readtimeout, errbuf);
+}
+
+void POSIXPCapInterface::close(void* dev)
+{
+	pcap_close((pcap_t*)dev);
+}
+
+int POSIXPCapInterface::setnonblock(void* dev, int nonblock, char* errbuf)
+{
+	return pcap_setnonblock((pcap_t*)dev, nonblock, errbuf);
+}
+
+int POSIXPCapInterface::sendpacket(void* dev, const void* data, int len)
+{
+	return pcap_sendpacket((pcap_t*)dev, (u_char*)data, len);
+}
+
+int POSIXPCapInterface::dispatch(void* dev, int num, void* callback, void* userdata)
+{
+	if(callback == NULL)
 	{
-		WIFI_LOG(1, "SoftAP: PCap library not available on your system.\n");
-		wifi_bridge = NULL;
+		return -1;
+	}
+
+	return pcap_dispatch((pcap_t*)dev, num, (pcap_handler)callback, (u_char*)userdata);
+}
+
+void POSIXPCapInterface::breakloop(void* dev)
+{
+	pcap_breakloop((pcap_t*)dev);
+}
+
+#endif
+
+WifiCommInterface::WifiCommInterface()
+{
+	_rxTask = new Task();
+	_mutexRXThreadRunningFlag = slock_new();
+	_isRXThreadRunning = false;
+	_rawPacket = NULL;
+	_wifiHandler = NULL;
+}
+
+WifiCommInterface::~WifiCommInterface()
+{
+	slock_lock(this->_mutexRXThreadRunningFlag);
+
+	if(this->_isRXThreadRunning)
+	{
+		this->_isRXThreadRunning = false;
+		slock_unlock(this->_mutexRXThreadRunningFlag);
+
+		this->_rxTask->finish();
+		delete this->_rxTask;
+	}
+	else
+	{
+		slock_unlock(this->_mutexRXThreadRunningFlag);
+	}
+
+	free(this->_rawPacket);
+	this->_rawPacket = NULL;
+	this->_wifiHandler = NULL;
+
+	slock_free(this->_mutexRXThreadRunningFlag);
+}
+
+AdhocCommInterface::AdhocCommInterface()
+{
+	_commInterfaceID = WifiCommInterfaceID_AdHoc;
+
+	_wifiSocket = (socket_t*)malloc(sizeof(socket_t));
+	*((socket_t*)_wifiSocket) = INVALID_SOCKET;
+
+	_sendAddr = (sockaddr_t*)malloc(sizeof(sockaddr_t));
+}
+
+AdhocCommInterface::~AdhocCommInterface()
+{
+	this->Stop();
+
+	free(this->_wifiSocket);
+	free(this->_sendAddr);
+}
+
+bool AdhocCommInterface::Start(WifiHandler* currentWifiHandler)
+{
+	socket_t& thisSocket = *((socket_t*)this->_wifiSocket);
+	int socketOptValueTrue = 1;
+	int result = -1;
+
+	// Create an UDP socket.
+	thisSocket = socket(AF_INET, SOCK_DGRAM, 0);
+	if(thisSocket < 0)
+	{
+		thisSocket = INVALID_SOCKET;
+
+		// Ad-hoc mode really needs a socket to work at all, so don't even bother
+		// running this comm interface if we didn't get a working socket.
+		WIFI_LOG(1, "Ad-hoc: Failed to create socket.\n");
 		return false;
+	}
+
+	// Enable the socket to be bound to an address/port that is already in use
+	// This enables us to communicate with another DeSmuME instance running on the same computer.
+	result = setsockopt(thisSocket, SOL_SOCKET, SO_REUSEADDR, (const char*)&socketOptValueTrue, sizeof(int));
+	if(result < 0)
+	{
+		closesocket(thisSocket);
+		thisSocket = INVALID_SOCKET;
+
+		WIFI_LOG(1, "Ad-hoc: Failed set socket option SO_REUSEADDR.\n");
+		return false;
+	}
+
+	#ifdef SO_REUSEPORT
+	// Some platforms also need to enable SO_REUSEPORT, so do so if its necessary.
+	result = setsockopt(thisSocket, SOL_SOCKET, SO_REUSEPORT, (const char*)&socketOptValueTrue, sizeof(int));
+	if(result < 0)
+	{
+		closesocket(thisSocket);
+		thisSocket = INVALID_SOCKET;
+
+		WIFI_LOG(1, "Ad-hoc: Failed set socket option SO_REUSEPORT.\n");
+		return false;
+	}
+	#endif
+
+	// Bind the socket to any address on port 7000.
+	sockaddr_t saddr;
+	saddr.sa_family = AF_INET;
+	*(u32*)&saddr.sa_data[2] = htonl(INADDR_ANY);
+	*(u16*)&saddr.sa_data[0] = htons(BASEPORT);
+
+	result = bind(thisSocket, &saddr, sizeof(sockaddr_t));
+	if(result < 0)
+	{
+		closesocket(thisSocket);
+		thisSocket = INVALID_SOCKET;
+
+		WIFI_LOG(1, "Ad-hoc: Failed to bind the socket.\n");
+		return false;
+	}
+
+	// Enable broadcast mode
+	// Not doing so results in failure when sendto'ing to broadcast address
+	result = setsockopt(thisSocket, SOL_SOCKET, SO_BROADCAST, (const char*)&socketOptValueTrue, sizeof(int));
+	if(result < 0)
+	{
+		closesocket(thisSocket);
+		thisSocket = INVALID_SOCKET;
+
+		WIFI_LOG(1, "Ad-hoc: Failed to enable broadcast mode.\n");
+		return false;
+	}
+
+	// Prepare an address structure for sending packets.
+	sockaddr_t& thisSendAddr = *((sockaddr_t*)this->_sendAddr);
+
+	thisSendAddr.sa_family = AF_INET;
+	*(u32*)&thisSendAddr.sa_data[2] = htonl(INADDR_BROADCAST);
+	*(u16*)&thisSendAddr.sa_data[0] = htons(BASEPORT);
+
+	// Start the RX packet thread.
+	this->_wifiHandler = currentWifiHandler;
+	this->_rawPacket = (RXRawPacketData*)calloc(1, sizeof(RXRawPacketData));
+	
+#ifdef DESMUME_COCOA
+	if (CommonSettings.num_cores > 1)
+	{
+		this->_rxTask->start(false, 43, "wifi ad-hoc");
+	}
+	else
+#endif
+	{
+		this->_rxTask->start(false, 0, "wifi ad-hoc");
 	}
 	
-	char errbuf[PCAP_ERRBUF_SIZE];
-	pcap_if_t *alldevs;
-	int ret = 0;
+	this->_isRXThreadRunning = true;
+	this->_rxTask->execute(&Adhoc_RXPacketGetOnThread, this);
 
-	ret = CurrentWifiHandler->PCAP_findalldevs(&alldevs, errbuf);
-	if (ret == -1 || alldevs == NULL)
-	{
-		WIFI_LOG(1, "SoftAP: PCap: failed to find any network adapter: %s\n", errbuf);
-		return false;
-	}
-
-	pcap_if_t* dev = WIFI_index_device(alldevs,CommonSettings.wifi.infraBridgeAdapter);
-	wifi_bridge = CurrentWifiHandler->PCAP_open(dev->name, PACKET_SIZE, PCAP_OPENFLAG_PROMISCUOUS, 1, errbuf);
-	if(wifi_bridge == NULL)
-	{
-		WIFI_LOG(1, "SoftAP: PCap: failed to open %s: %s\n", dev->PCAP_DEVICE_NAME, errbuf);
-		return false;
-	}
-
-	CurrentWifiHandler->PCAP_freealldevs(alldevs);
-
-	// Set non-blocking mode
-	if (CurrentWifiHandler->PCAP_setnonblock(wifi_bridge, 1, errbuf) == -1)
-	{
-		WIFI_LOG(1, "SoftAP: PCap: failed to set non-blocking mode: %s\n", errbuf);
-		CurrentWifiHandler->PCAP_close(wifi_bridge); wifi_bridge = NULL;
-		return false;
-	}
-
-	SoftAP_Reset();
-
+	WIFI_LOG(1, "Ad-hoc: Initialization successful.\n");
 	return true;
 }
 
-void SoftAP_DeInit()
+void AdhocCommInterface::Stop()
 {
-	if(wifi_bridge != NULL)
-		CurrentWifiHandler->PCAP_close(wifi_bridge);
+	socket_t& thisSocket = *((socket_t*)this->_wifiSocket);
+
+	if(thisSocket >= 0)
+	{
+		slock_lock(this->_mutexRXThreadRunningFlag);
+
+		if(this->_isRXThreadRunning)
+		{
+			this->_isRXThreadRunning = false;
+			slock_unlock(this->_mutexRXThreadRunningFlag);
+
+			this->_rxTask->finish();
+			this->_rxTask->shutdown();
+		}
+		else
+		{
+			slock_unlock(this->_mutexRXThreadRunningFlag);
+		}
+
+		closesocket(thisSocket);
+		thisSocket = INVALID_SOCKET;
+	}
+
+	free(this->_rawPacket);
+	this->_rawPacket = NULL;
+	this->_wifiHandler = NULL;
 }
 
-void SoftAP_Reset()
+size_t AdhocCommInterface::TXPacketSend(u8* txTargetBuffer, size_t txLength)
 {
-	SoftAP.status = APStatus_Disconnected;
-	SoftAP.seqNum = 0;
+	size_t txPacketSize = 0;
+	socket_t& thisSocket = *((socket_t*)this->_wifiSocket);
+	sockaddr_t& thisSendAddr = *((sockaddr_t*)this->_sendAddr);
+
+	if((thisSocket < 0) || (txTargetBuffer == NULL) || (txLength == 0))
+	{
+		return txPacketSize;
+	}
+
+	txPacketSize = sendto(thisSocket, (const char*)txTargetBuffer, txLength, 0, &thisSendAddr, sizeof(sockaddr_t));
+	WIFI_LOG(4, "Ad-hoc: sent %i/%i bytes of packet, frame control: %04X\n", (int)txPacketSize, (int)txLength, *(u16*)(txTargetBuffer + sizeof(DesmumeFrameHeader)));
+
+	return txPacketSize;
 }
 
-static bool SoftAP_IsDNSRequestToWFC(u16 ethertype, u8* body)
+int AdhocCommInterface::_RXPacketGetFromSocket(RXRawPacketData& rawPacket)
 {
+	socket_t& thisSocket = *((socket_t*)this->_wifiSocket);
+	int rxPacketSizeInt = 0;
+
+	fd_set fd;
+	struct timeval tv;
+
+	FD_ZERO(&fd);
+	FD_SET(thisSocket, &fd);
+	tv.tv_sec = 0;
+	tv.tv_usec = 250000;
+
+	if(select(thisSocket + 1, &fd, NULL, NULL, &tv))
+	{
+		sockaddr_t fromAddr;
+		socklen_t fromLen = sizeof(sockaddr_t);
+
+		u8* targetPacket = &rawPacket.buffer[rawPacket.writeLocation];
+
+		rxPacketSizeInt = (int)recvfrom(thisSocket, (char*)targetPacket, WIFI_WORKING_PACKET_BUFFER_SIZE, 0, &fromAddr, &fromLen);
+		if(rxPacketSizeInt <= 0)
+		{
+			return rxPacketSizeInt; // No packet data was received.
+		}
+
+		// This is the smallest possible frame size there can be. As of this time:
+		// 16 bytes - The smallest emulator frame header size (DesmumeFrameHeader)
+		// 10 bytes - The smallest possible IEEE 802.11 frame header size (WifiCtlFrameHeaderCTS/WifiCtlFrameHeaderACK)
+		// 4 bytes - Size of the FCS at the end of every IEEE 802.11 frame
+		if(rxPacketSizeInt <= (16 + 10 + 4))
+		{
+			rxPacketSizeInt = 0;
+			return rxPacketSizeInt; // The packet is too small to be of any use.
+		}
+
+		// Set the packet size to a non-zero value.
+		DesmumeFrameHeader& emulatorHeader = (DesmumeFrameHeader&)targetPacket[0];
+		rawPacket.writeLocation += emulatorHeader.emuPacketSize;
+		rawPacket.count++;
+	}
+
+	return rxPacketSizeInt;
+}
+
+void AdhocCommInterface::RXPacketGet()
+{
+	socket_t& thisSocket = *((socket_t*)this->_wifiSocket);
+
+	if((thisSocket < 0) || (this->_rawPacket == NULL) || (this->_wifiHandler == NULL))
+	{
+		return;
+	}
+
+	slock_lock(this->_mutexRXThreadRunningFlag);
+
+	while(this->_isRXThreadRunning)
+	{
+		slock_unlock(this->_mutexRXThreadRunningFlag);
+
+		this->_rawPacket->writeLocation = 0;
+		this->_rawPacket->count = 0;
+
+		int result = this->_RXPacketGetFromSocket(*this->_rawPacket);
+		if(result <= 0)
+		{
+			this->_rawPacket->count = 0;
+		}
+		else
+		{
+			this->_wifiHandler->RXPacketRawToQueue<false>(*this->_rawPacket);
+		}
+
+		slock_lock(this->_mutexRXThreadRunningFlag);
+	}
+
+	slock_unlock(this->_mutexRXThreadRunningFlag);
+}
+
+SoftAPCommInterface::SoftAPCommInterface()
+{
+	_commInterfaceID = WifiCommInterfaceID_Infrastructure;
+	_pcap = &dummyPCapInterface;
+	_bridgeDeviceIndex = 0;
+	_bridgeDevice = NULL;
+}
+
+SoftAPCommInterface::~SoftAPCommInterface()
+{
+	this->Stop();
+}
+
+void* SoftAPCommInterface::_GetBridgeDeviceAtIndex(int deviceIndex, char* outErrorBuf)
+{
+	void* deviceList = NULL;
+	void* theDevice = NULL;
+	int result = this->_pcap->findalldevs((void**)&deviceList, outErrorBuf);
+
+	if((result == -1) || (deviceList == NULL))
+	{
+		WIFI_LOG(1, "SoftAP: Failed to find any network adapter: %s\n", outErrorBuf);
+		return theDevice;
+	}
+
+	pcap_if_t* currentDevice = (pcap_if_t*)deviceList;
+
+	for(int i = 0; i < deviceIndex; i++)
+	{
+		currentDevice = currentDevice->next;
+	}
+
+	theDevice = this->_pcap->open(currentDevice->name, PACKET_SIZE, PCAP_OPENFLAG_PROMISCUOUS, 1, outErrorBuf);
+	if(theDevice == NULL)
+	{
+		WIFI_LOG(1, "SoftAP: Failed to open device %s: %s\n", currentDevice->PCAP_DEVICE_NAME, outErrorBuf);
+	}
+	else
+	{
+		WIFI_LOG(1, "SoftAP: Device %s successfully opened.\n", currentDevice->PCAP_DEVICE_NAME);
+	}
+
+	this->_pcap->freealldevs(deviceList);
+
+	return theDevice;
+}
+
+bool SoftAPCommInterface::_IsDNSRequestToWFC(u16 ethertype, const u8* body)
+{
+	const IPv4Header& ipv4Header = (IPv4Header&)body[0];
+
 	// Check the various headers...
-	if (ntohs(ethertype) != 0x0800) return false;		// EtherType: IP
-	if (body[0] != 0x45) return false;					// Version: 4, header len: 5
-	if (body[9] != 0x11) return false;					// Protocol: UDP
-	if (ntohs(*(u16*)&body[22]) != 53) return false;	// Dest. port: 53 (DNS)
-	if (htons(ntohs(*(u16*)&body[28+2])) & 0x8000) return false;	// must be a query
-	
+	if(ntohs(ethertype) != 0x0800) return false;		// EtherType: IP
+	if(ipv4Header.version != 4) return false;			// Version: 4
+	if(ipv4Header.headerLen != 5) return false;		// Header Length: 5
+	if(ipv4Header.protocol != 0x11) return false;		// Protocol: UDP
+	if(ntohs(*(u16*)&body[22]) != 53) return false;	// Dest. port: 53 (DNS)
+	if(htons(ntohs(*(u16*)&body[28 + 2])) & 0x8000) return false;	// must be a query
+
 	// Analyze each question
-	u16 numquestions = ntohs(*(u16*)&body[28+4]);
-	u32 curoffset = 28+12;
-	for (u16 curquestion = 0; curquestion < numquestions; curquestion++)
+	u16 numquestions = ntohs(*(u16*)&body[28 + 4]);
+	u32 curoffset = 28 + 12;
+	for(u16 curquestion = 0; curquestion < numquestions; curquestion++)
 	{
 		// Assemble the requested domain name
 		u8 bitlength = 0; char domainname[256] = "";
-		while ((bitlength = body[curoffset++]) != 0)
+		while((bitlength = body[curoffset++]) != 0)
 		{
 			strncat(domainname, (const char*)&body[curoffset], bitlength);
-			
+
 			curoffset += bitlength;
-			if (body[curoffset] != 0)
+			if(body[curoffset] != 0)
+			{
 				strcat(domainname, ".");
+			}
 		}
 
 		// if the domain name contains nintendowifi.net
 		// it is most likely a WFC server
 		// (note, conntest.nintendowifi.net just contains a dummy HTML page and
 		// is used for connection tests, I think we can let this one slide)
-		if ((strstr(domainname, "nintendowifi.net") != NULL) && 
+		if((strstr(domainname, "nintendowifi.net") != NULL) &&
 			(strcmp(domainname, "conntest.nintendowifi.net") != 0))
+		{
 			return true;
+		}
 
 		// Skip the type and class - we don't care about that
 		curoffset += 4;
@@ -2160,229 +3644,1555 @@ static bool SoftAP_IsDNSRequestToWFC(u16 ethertype, u8* body)
 	return false;
 }
 
-static void SoftAP_Deauthenticate()
+void SoftAPCommInterface::SetPCapInterface(ClientPCapInterface* pcapInterface)
 {
-	u32 packetLen = sizeof(SoftAP_DeauthFrame);
-	u8* packet = new u8[12 + packetLen];
-
-	memcpy(&packet[12], SoftAP_DeauthFrame, packetLen);
-
-	memcpy(&packet[12 + 4], FW_Mac, 6); // Receiver MAC
-
-	*(u16*)&packet[12 + 22] = SoftAP.seqNum << 4;		// Sequence number
-	SoftAP.seqNum++;
-
-	u16 rxflags = 0x0010;
-	if (WIFI_compareMAC(wifiMac.bss.bytes, &packet[12 + 16]))
-		rxflags |= 0x8000;
-
-	WIFI_MakeRXHeader(packet, rxflags, 20, packetLen, 0, 0);
-	WIFI_RXQueuePacket(packet, 12 + packetLen);
-
-	SoftAP.status = APStatus_Disconnected;
+	this->_pcap = (pcapInterface == NULL) ? &dummyPCapInterface : pcapInterface;
 }
 
-void SoftAP_SendPacket(u8 *packet, u32 len)
+ClientPCapInterface* SoftAPCommInterface::GetPCapInterface()
 {
-	u16 frameCtl = *(u16*)&packet[0];
+	return this->_pcap;
+}
 
-	WIFI_LOG(3, "SoftAP: Received a packet of length %i bytes. Frame control = %04X\n",
-		len, frameCtl);
+int SoftAPCommInterface::GetBridgeDeviceIndex()
+{
+	return this->_bridgeDeviceIndex;
+}
 
-	//use this to log wifi messages easily
-	/*static int ctr=0;
-	char buf[100];
-	sprintf(buf,"wifi%04d.txt",ctr);
-	FILE* outf = fopen(buf,"wb");
-	fwrite(packet,1,len,outf);
-	fclose(outf);
-	ctr++;*/
+void SoftAPCommInterface::SetBridgeDeviceIndex(int deviceIndex)
+{
+	this->_bridgeDeviceIndex = deviceIndex;
+}
 
-	switch((frameCtl >> 2) & 0x3)
+bool SoftAPCommInterface::Start(WifiHandler* currentWifiHandler)
+{
+	const bool isPCapSupported = (this->_pcap != &dummyPCapInterface);
+	char errbuf[PCAP_ERRBUF_SIZE];
+
+	if(isPCapSupported)
 	{
-	case 0x0:				// Management frame
+		this->_bridgeDevice = this->_GetBridgeDeviceAtIndex(this->_bridgeDeviceIndex, errbuf);
+	}
+	else
+	{
+		this->_bridgeDevice = NULL;
+		WIFI_LOG(1, "SoftAP: No libpcap interface has been set.\n");
+	}
+
+	const bool hasBridgeDevice = (this->_bridgeDevice != NULL);
+	if(hasBridgeDevice)
+	{
+		// Start the RX packet thread.
+		this->_wifiHandler = currentWifiHandler;
+		this->_rawPacket = (RXRawPacketData*)calloc(1, sizeof(RXRawPacketData));
+		
+#ifdef DESMUME_COCOA
+		if (CommonSettings.num_cores > 1)
 		{
-			u32 packetLen;
-			u8* rpacket;
+			this->_rxTask->start(false, 43, "wifi ap");
+		}
+		else
+#endif
+		{
+			this->_rxTask->start(false, 0, "wifi ap");
+		}
+		
+		this->_isRXThreadRunning = true;
+		this->_rxTask->execute(&Infrastructure_RXPacketGetOnThread, this);
+	}
 
-			switch((frameCtl >> 4) & 0xF)
-			{
-			case 0x4:		// Probe request
+	return hasBridgeDevice;
+}
+
+void SoftAPCommInterface::Stop()
+{
+	if(this->_bridgeDevice != NULL)
+	{
+		slock_lock(this->_mutexRXThreadRunningFlag);
+
+		if(this->_isRXThreadRunning)
+		{
+			this->_isRXThreadRunning = false;
+			slock_unlock(this->_mutexRXThreadRunningFlag);
+
+			this->_pcap->breakloop(this->_bridgeDevice);
+			this->_rxTask->finish();
+			this->_rxTask->shutdown();
+		}
+		else
+		{
+			slock_unlock(this->_mutexRXThreadRunningFlag);
+		}
+
+		this->_pcap->close(this->_bridgeDevice);
+		this->_bridgeDevice = NULL;
+	}
+
+	free(this->_rawPacket);
+	this->_rawPacket = NULL;
+	this->_wifiHandler = NULL;
+}
+
+size_t SoftAPCommInterface::TXPacketSend(u8* txTargetBuffer, size_t txLength)
+{
+	size_t txPacketSize = 0;
+
+	if((this->_bridgeDevice == NULL) || (txTargetBuffer == NULL) || (txLength == 0))
+	{
+		return txPacketSize;
+	}
+
+	int result = this->_pcap->sendpacket(this->_bridgeDevice, txTargetBuffer, (int)txLength);
+	if(result == 0)
+	{
+		txPacketSize = txLength;
+	}
+
+	return txPacketSize;
+}
+
+void SoftAPCommInterface::RXPacketGet()
+{
+	if((this->_bridgeDevice == NULL) || (this->_rawPacket == NULL) || (this->_wifiHandler == NULL))
+	{
+		return;
+	}
+
+	slock_lock(this->_mutexRXThreadRunningFlag);
+
+	while(this->_isRXThreadRunning)
+	{
+		slock_unlock(this->_mutexRXThreadRunningFlag);
+
+		this->_rawPacket->writeLocation = 0;
+		this->_rawPacket->count = 0;
+
+		int result = this->_pcap->dispatch(this->_bridgeDevice, 8, (void*)&SoftAP_RXPacketGet_Callback, (u_char*)this->_rawPacket);
+		if(result <= 0)
+		{
+			this->_rawPacket->count = 0;
+		}
+		else
+		{
+			this->_wifiHandler->RXPacketRawToQueue<true>(*this->_rawPacket);
+		}
+
+		slock_lock(this->_mutexRXThreadRunningFlag);
+	}
+
+	slock_unlock(this->_mutexRXThreadRunningFlag);
+}
+
+WifiHandler::WifiHandler()
+{
+	_selectedEmulationLevel = WifiEmulationLevel_Off;
+	_currentEmulationLevel = _selectedEmulationLevel;
+
+	_adhocCommInterface = new AdhocCommInterface;
+	_softAPCommInterface = new SoftAPCommInterface;
+
+	_selectedBridgeDeviceIndex = 0;
+
+	_workingTXBuffer = NULL;
+
+	_mutexRXPacketQueue = slock_new();
+	_rxPacketQueue.clear();
+	_rxCurrentQueuedPacketPosition = 0;
+	memset(&_rxCurrentPacket, 0, sizeof(RXQueuedPacket));
+
+	_softAPStatus = APStatus_Disconnected;
+	_softAPSequenceNumber = 0;
+
+	_packetCaptureFile = NULL;
+
+	#ifndef HOST_WINDOWS
+	_pcap = new POSIXPCapInterface;
+	_isSocketsSupported = true;
+	#else
+	_pcap = &dummyPCapInterface;
+	_isSocketsSupported = false;
+	#endif
+
+	WIFI_initCRC32Table();
+	Reset();
+}
+
+WifiHandler::~WifiHandler()
+{
+	free(this->_workingTXBuffer);
+	this->_workingTXBuffer = NULL;
+
+	delete this->_adhocCommInterface;
+	delete this->_softAPCommInterface;
+
+	slock_free(this->_mutexRXPacketQueue);
+}
+
+void WifiHandler::_RXEmptyQueue()
+{
+	slock_lock(this->_mutexRXPacketQueue);
+	this->_rxPacketQueue.clear();
+	slock_unlock(this->_mutexRXPacketQueue);
+
+	this->_rxCurrentQueuedPacketPosition = 0;
+}
+
+void WifiHandler::_RXWriteOneHalfword(u16 val)
+{
+	WifiData& wifi = this->_wifi;
+	WIFI_IOREG_MAP& io = wifi.io;
+
+	*(u16*)&wifi.RAM[io.RXBUF_WRCSR.HalfwordAddress << 1] = val;
+	io.RXBUF_WRCSR.HalfwordAddress++;
+
+	// wrap around
+	if(io.RXBUF_WRCSR.HalfwordAddress >= ((io.RXBUF_END & 0x1FFE) >> 1))
+	{
+		io.RXBUF_WRCSR.HalfwordAddress = ((io.RXBUF_BEGIN & 0x1FFE) >> 1);
+	}
+
+	io.RXTX_ADDR.HalfwordAddress = io.RXBUF_WRCSR.HalfwordAddress;
+}
+
+const u8* WifiHandler::_RXPacketFilter(const u8* rxBuffer, const size_t rxBytes, RXPacketHeader& outRXHeader)
+{
+	WifiData& wifi = this->_wifi;
+	WIFI_IOREG_MAP& io = wifi.io;
+
+	const u8* packetIEEE80211HeaderPtr = NULL;
+	if(rxBuffer == NULL)
+	{
+		return packetIEEE80211HeaderPtr;
+	}
+
+	memset(&outRXHeader, 0, sizeof(RXPacketHeader));
+
+	const DesmumeFrameHeader* desmumeFrameHeader = (DesmumeFrameHeader*)rxBuffer;
+	size_t rxPacketSize = 0;
+	bool isTXRate20 = true;
+
+	if(strncmp(desmumeFrameHeader->frameID, DESMUME_EMULATOR_FRAME_ID, sizeof(desmumeFrameHeader->frameID)) == 0)
+	{
+		switch(desmumeFrameHeader->version)
+		{
+			case 0x10:
 				{
-					packetLen = sizeof(SoftAP_ProbeResponse);
-					rpacket = new u8[12 + packetLen];
-					memcpy(&rpacket[12], SoftAP_ProbeResponse, packetLen);
+					packetIEEE80211HeaderPtr = rxBuffer + sizeof(DesmumeFrameHeader);
+					isTXRate20 = (desmumeFrameHeader->packetAttributes.IsTXRate20 != 0);
 
-					// Add the timestamp
-					*(u64*)&rpacket[12 + 24] = wifiMac.GlobalUsecTimer;
+					if(desmumeFrameHeader->emuPacketSize > (rxBytes - sizeof(DesmumeFrameHeader)))
+					{
+						rxPacketSize = rxBytes - sizeof(DesmumeFrameHeader);
+					}
+					else
+					{
+						rxPacketSize = desmumeFrameHeader->emuPacketSize;
+					}
+					break;
 				}
-				break;
-
-			case 0xB:		// Authentication
-				{
-					packetLen = sizeof(SoftAP_AuthFrame);
-					rpacket = new u8[12 + packetLen];
-					memcpy(&rpacket[12], SoftAP_AuthFrame, packetLen);
-
-					SoftAP.status = APStatus_Authenticated;
-				}
-				break;
-
-			case 0x0:		// Association request
-				{
-					if (SoftAP.status != APStatus_Authenticated)
-						return;
-
-					packetLen = sizeof(SoftAP_AssocResponse);
-					rpacket = new u8[12 + packetLen];
-					memcpy(&rpacket[12], SoftAP_AssocResponse, packetLen);
-
-					SoftAP.status = APStatus_Associated;
-					WIFI_LOG(1, "SoftAP connected!\n");
-				}
-				break;
-
-			case 0xA:		// Disassociation
-				SoftAP.status = APStatus_Authenticated;
-				return;
-
-			case 0xC:		// Deauthentication
-				SoftAP.status = APStatus_Disconnected;
-				WIFI_LOG(1, "SoftAP disconnected\n");
-				return;
 
 			default:
-				WIFI_LOG(2, "SoftAP: unknown management frame type %04X\n", (frameCtl >> 4) & 0xF);
-				return;
-			}
-
-			memcpy(&rpacket[12 + 4], FW_Mac, 6); // Receiver MAC
-
-			*(u16*)&rpacket[12 + 22] = SoftAP.seqNum << 4; // Sequence number
-			SoftAP.seqNum++;
-
-			u16 rxflags = 0x0010;
-			if (WIFI_compareMAC(wifiMac.bss.bytes, &rpacket[12 + 16]))
-				rxflags |= 0x8000;
-
-			WIFI_MakeRXHeader(rpacket, rxflags, 20, packetLen, 0, 0); // make the RX header
-			WIFI_RXQueuePacket(rpacket, 12 + packetLen);
+				// No valid version found -- do nothing.
+				return packetIEEE80211HeaderPtr;
 		}
-		break;
+	}
+	else
+	{
+		return packetIEEE80211HeaderPtr; // No valid frame ID string found.
+	}
 
-	case 0x2:				// Data frame
-		{
-			// If it has a LLC/SLIP header, send it over the Ethernet
-			if (((*(u16*)&packet[24]) == 0xAAAA) && ((*(u16*)&packet[26]) == 0x0003) && ((*(u16*)&packet[28]) == 0x0000))
+	const WifiFrameControl& fc = (WifiFrameControl&)packetIEEE80211HeaderPtr[0];
+
+	size_t destMACOffset = 0xFFFFFFFF;
+	size_t sendMACOffset = 0xFFFFFFFF;
+	size_t BSSIDOffset = 0xFFFFFFFF;
+	bool willAcceptPacket = false;
+
+	switch((WifiFrameType)fc.Type)
+	{
+		case WifiFrameType_Management:
 			{
-				if (SoftAP.status != APStatus_Associated)
-					return;
+				destMACOffset = offsetof(WifiMgmtFrameHeader, destMAC[0]);
+				sendMACOffset = offsetof(WifiMgmtFrameHeader, sendMAC[0]);
+				BSSIDOffset = offsetof(WifiMgmtFrameHeader, BSSID[0]);
 
-				if (SoftAP_IsDNSRequestToWFC(*(u16*)&packet[30], &packet[32]))
+				switch((WifiFrameManagementSubtype)fc.Subtype)
 				{
-					SoftAP_Deauthenticate();
-					return;
+					case WifiFrameManagementSubtype_Beacon:
+						willAcceptPacket = true;
+						break;
+
+					default:
+						willAcceptPacket = WIFI_compareMAC(io.MACADDR, &packetIEEE80211HeaderPtr[destMACOffset]) || (WIFI_isBroadcastMAC(&packetIEEE80211HeaderPtr[destMACOffset]) && WIFI_compareMAC(io.BSSID, &packetIEEE80211HeaderPtr[BSSIDOffset]));
+						break;
 				}
-
-				u32 epacketLen = ((len - 30 - 4) + 14);
-				u8 epacket[2048];
-
-				//printf("----- SENDING ETHERNET PACKET: len=%i, ethertype=%04X -----\n",
-				//	len, *(u16*)&packet[30]);
-
-				memcpy(&epacket[0], &packet[16], 6);
-				memcpy(&epacket[6], &packet[10], 6);
-				*(u16*)&epacket[12] = *(u16*)&packet[30];
-				memcpy(&epacket[14], &packet[32], epacketLen - 14);
-
-				if(wifi_bridge != NULL)
-					CurrentWifiHandler->PCAP_sendpacket(wifi_bridge, epacket, epacketLen);
+				break;
 			}
-			else
+
+		case WifiFrameType_Control:
 			{
-				WIFI_LOG(1, "SoftAP: received non-Ethernet data frame. wtf?\n");
+				switch((WifiFrameControlSubtype)fc.Subtype)
+				{
+					case WifiFrameControlSubtype_PSPoll:
+						BSSIDOffset = offsetof(WifiCtlFrameHeaderPSPoll, BSSID[0]);
+						sendMACOffset = offsetof(WifiCtlFrameHeaderPSPoll, txMAC[0]);
+						willAcceptPacket = WIFI_compareMAC(io.BSSID, &packetIEEE80211HeaderPtr[BSSIDOffset]);
+						break;
+
+					case WifiFrameControlSubtype_RTS:
+						destMACOffset = offsetof(WifiCtlFrameHeaderRTS, rxMAC[0]);
+						sendMACOffset = offsetof(WifiCtlFrameHeaderRTS, txMAC[0]);
+						willAcceptPacket = WIFI_compareMAC(io.MACADDR, &packetIEEE80211HeaderPtr[destMACOffset]);
+						break;
+
+					case WifiFrameControlSubtype_CTS:
+						destMACOffset = offsetof(WifiCtlFrameHeaderCTS, rxMAC[0]);
+						willAcceptPacket = WIFI_compareMAC(io.MACADDR, &packetIEEE80211HeaderPtr[destMACOffset]);
+						break;
+
+					case WifiFrameControlSubtype_ACK:
+						destMACOffset = offsetof(WifiCtlFrameHeaderACK, rxMAC[0]);
+						willAcceptPacket = WIFI_compareMAC(io.MACADDR, &packetIEEE80211HeaderPtr[destMACOffset]);
+						break;
+
+					case WifiFrameControlSubtype_End:
+						destMACOffset = offsetof(WifiCtlFrameHeaderEnd, rxMAC[0]);
+						BSSIDOffset = offsetof(WifiCtlFrameHeaderEnd, BSSID[0]);
+						willAcceptPacket = WIFI_compareMAC(io.MACADDR, &packetIEEE80211HeaderPtr[destMACOffset]) || (WIFI_isBroadcastMAC(&packetIEEE80211HeaderPtr[destMACOffset]) && WIFI_compareMAC(io.BSSID, &packetIEEE80211HeaderPtr[BSSIDOffset]));
+						break;
+
+					case WifiFrameControlSubtype_EndAck:
+						destMACOffset = offsetof(WifiCtlFrameHeaderEndAck, rxMAC[0]);
+						BSSIDOffset = offsetof(WifiCtlFrameHeaderEndAck, BSSID[0]);
+						willAcceptPacket = WIFI_compareMAC(io.MACADDR, &packetIEEE80211HeaderPtr[destMACOffset]) || (WIFI_isBroadcastMAC(&packetIEEE80211HeaderPtr[destMACOffset]) && WIFI_compareMAC(io.BSSID, &packetIEEE80211HeaderPtr[BSSIDOffset]));
+						break;
+
+					default:
+						break;
+				}
+				break;
 			}
-		}
-		break;
+
+		case WifiFrameType_Data:
+			{
+				switch((WifiFCFromToState)fc.FromToState)
+				{
+					case WifiFCFromToState_STA2STA:
+						{
+							destMACOffset = offsetof(WifiDataFrameHeaderSTA2STA, destMAC[0]);
+							sendMACOffset = offsetof(WifiDataFrameHeaderSTA2STA, sendMAC[0]);
+							BSSIDOffset = offsetof(WifiDataFrameHeaderSTA2STA, BSSID[0]);
+							willAcceptPacket = WIFI_compareMAC(io.MACADDR, &packetIEEE80211HeaderPtr[destMACOffset]) || (WIFI_isBroadcastMAC(&packetIEEE80211HeaderPtr[destMACOffset]) && WIFI_compareMAC(io.BSSID, &packetIEEE80211HeaderPtr[BSSIDOffset]));
+							break;
+						}
+
+					case WifiFCFromToState_STA2DS:
+						WIFI_LOG(1, "Rejecting data packet with frame control STA-to-DS.\n");
+						packetIEEE80211HeaderPtr = NULL;
+						return packetIEEE80211HeaderPtr;
+
+					case WifiFCFromToState_DS2STA:
+						destMACOffset = offsetof(WifiDataFrameHeaderDS2STA, destMAC[0]);
+						sendMACOffset = offsetof(WifiDataFrameHeaderDS2STA, sendMAC[0]);
+						BSSIDOffset = offsetof(WifiDataFrameHeaderDS2STA, BSSID[0]);
+						willAcceptPacket = WIFI_compareMAC(io.MACADDR, &packetIEEE80211HeaderPtr[destMACOffset]) || (WIFI_isBroadcastMAC(&packetIEEE80211HeaderPtr[destMACOffset]) && WIFI_compareMAC(io.BSSID, &packetIEEE80211HeaderPtr[BSSIDOffset]));
+						break;
+
+					case WifiFCFromToState_DS2DS:
+						WIFI_LOG(1, "Rejecting data packet with frame control DS-to-DS.\n");
+						packetIEEE80211HeaderPtr = NULL;
+						return packetIEEE80211HeaderPtr;
+				}
+				break;
+			}
+	}
+
+	// Don't process packets that aren't for us.
+	if(!willAcceptPacket)
+	{
+		packetIEEE80211HeaderPtr = NULL;
+		return packetIEEE80211HeaderPtr;
+	}
+
+	// Don't process packets that we just sent.
+	const bool isReceiverSameAsSender = (sendMACOffset != 0xFFFFFFFF) && WIFI_compareMAC(io.MACADDR, &packetIEEE80211HeaderPtr[sendMACOffset]);
+	if(isReceiverSameAsSender)
+	{
+		packetIEEE80211HeaderPtr = NULL;
+		return packetIEEE80211HeaderPtr;
+	}
+
+	// Save ethernet packet into the PCAP file.
+	// Filter broadcast because of privacy. They aren't needed to study the protocol with the nintendo server
+	// and can include PC Discovery protocols
+	#if WIFI_SAVE_PCAP_TO_FILE
+	if(!WIFI_isBroadcastMAC(&packetIEEE80211HeaderPtr[destMACOffset]))
+	{
+		this->_PacketCaptureFileWrite(packetIEEE80211HeaderPtr, rxPacketSize, true, wifi.usecCounter);
+	}
+	#endif
+
+	// Generate the RX header and return the IEEE 802.11 header.
+	outRXHeader = WIFI_GenerateRXHeader(packetIEEE80211HeaderPtr, 1, isTXRate20, rxPacketSize);
+	return packetIEEE80211HeaderPtr;
+}
+
+// Create and open a PCAP file to store different Ethernet packets
+// of the current connection.
+void WifiHandler::_PacketCaptureFileOpen()
+{
+	// Create file using as name the current time and game code
+	time_t ti;
+	time(&ti);
+	tm* t = localtime(&ti);
+
+	char* gamecd = gameInfo.header.gameCode;
+	char file_name[64];
+	snprintf(
+		file_name,
+		sizeof(file_name),
+		"%c%c%c%c [%02d-%02d-%02d-%02d].pcap",
+		gamecd[0], gamecd[1], gamecd[2], gamecd[3],
+		t->tm_mday, t->tm_hour, t->tm_min, t->tm_sec
+	);
+
+	// Open as binary write
+	this->_packetCaptureFile = fopen(file_name, "wb");
+	if(this->_packetCaptureFile == NULL)
+	{
+		printf("Can't create capture log file: %s\n", file_name);
+	}
+	else
+	{
+		// Create global header of LCAP packet
+		// More info here: http://www.kroosec.com/2012/10/a-look-at-pcap-file-format.html
+		const u32 magic_header = 0xa1b2c3d4;
+		const u16 major_version = 0x02;
+		const u16 minor_version = 0x04;
+		const u32 gmt_time = 0x00000000; // usually not used
+		const u32 pre_time = 0x00000000; // usually not used
+		const u32 snapshot_len = 0x0000ffff; // Maximum length of each packet
+		const u32 ll_header_typ = 0x00000001; // For Ethernet
+
+		fwrite(&magic_header, sizeof(char), 4, this->_packetCaptureFile);
+		fwrite(&major_version, sizeof(char), 2, this->_packetCaptureFile);
+		fwrite(&minor_version, sizeof(char), 2, this->_packetCaptureFile);
+		fwrite(&gmt_time, sizeof(char), 4, this->_packetCaptureFile);
+		fwrite(&pre_time, sizeof(char), 4, this->_packetCaptureFile);
+		fwrite(&snapshot_len, sizeof(char), 4, this->_packetCaptureFile);
+		fwrite(&ll_header_typ, sizeof(char), 4, this->_packetCaptureFile);
+
+		fflush(this->_packetCaptureFile);
 	}
 }
 
-INLINE void SoftAP_SendBeacon()
+void WifiHandler::_PacketCaptureFileClose()
 {
-	u32 packetLen = sizeof(SoftAP_Beacon);
-	u8* packet = new u8[12 + packetLen];
-
-	memcpy(&packet[12], SoftAP_Beacon, packetLen);	// Copy the beacon template
-
-	*(u16*)&packet[12 + 22] = SoftAP.seqNum << 4;		// Sequence number
-	SoftAP.seqNum++;
-
-	*(u64*)&packet[12 + 24] = wifiMac.GlobalUsecTimer;	// Timestamp
-
-	u16 rxflags = 0x0011;
-	if (WIFI_compareMAC(wifiMac.bss.bytes, &packet[12 + 16]))
-		rxflags |= 0x8000;
-
-	WIFI_MakeRXHeader(packet, rxflags, 20, packetLen, 0, 0);
-	WIFI_RXQueuePacket(packet, 12 + packetLen);
+	if(this->_packetCaptureFile != NULL)
+	{
+		fclose(this->_packetCaptureFile);
+		this->_packetCaptureFile = NULL;
+	}
 }
 
-static void SoftAP_RXHandler(u_char* user, const struct pcap_pkthdr* h, const u_char* _data)
+// Save an Ethernet packet into the PCAP file of the current connection.
+void WifiHandler::_PacketCaptureFileWrite(const u8* packet, u32 len, bool isReceived, u64 timeStamp)
 {
-	// safety checks
-	if ((_data == NULL) || (h == NULL))
+	if(this->_packetCaptureFile == NULL)
+	{
+		printf("Can't save packet... %d\n", isReceived);
 		return;
+	}
 
-	u8* data = (u8*)_data;
+	const u32 seconds = (u32)(timeStamp / 1000000ULL);
+	const u32 millis = (u32)(timeStamp % 1000000ULL);
 
-	// reject the packet if it wasn't for us
-	if (!(WIFI_isBroadcastMAC(&data[0]) || WIFI_compareMAC(&data[0], wifiMac.mac.bytes)))
-		return;
+	// Add the packet
+	// more info: http://www.kroosec.com/2012/10/a-look-at-pcap-file-format.html
+	printf("WIFI: Saving packet of %04x bytes | %d\n", len, isReceived);
 
-	// reject the packet if we just sent it
-	if (WIFI_compareMAC(&data[6], wifiMac.mac.bytes))
-		return;
+	// First create the header
+	fwrite(&seconds, sizeof(char), 4, this->_packetCaptureFile); // This should be seconds since Unix Epoch, but it works :D
+	fwrite(&millis, sizeof(char), 4, this->_packetCaptureFile);
+	fwrite(&len, sizeof(char), 4, this->_packetCaptureFile);
+	fwrite(&len, sizeof(char), 4, this->_packetCaptureFile);
 
-	// The packet was for us. Let's process it then.
-	int wpacketLen = WIFI_alignedLen(26 + 6 + (h->len-14));
-	u8* wpacket = new u8[12 + wpacketLen];
+	// Then write the packet
+	fwrite(packet, sizeof(char), len, this->_packetCaptureFile);
 
-	u16 rxflags = 0x0018;
-	if (WIFI_compareMAC(wifiMac.bss.bytes, (u8*)SoftAP_MACAddr))
-		rxflags |= 0x8000;
-
-	// Make a valid 802.11 frame
-	WIFI_MakeRXHeader(wpacket, rxflags, 20, wpacketLen, 0, 0);
-	*(u16*)&wpacket[12+0] = 0x0208;
-	*(u16*)&wpacket[12+2] = 0x0000;
-	memcpy(&wpacket[12+4], &data[0], 6);
-	memcpy(&wpacket[12+10], SoftAP_MACAddr, 6);
-	memcpy(&wpacket[12+16], &data[6], 6);
-	*(u16*)&wpacket[12+22] = SoftAP.seqNum << 4;
-	*(u16*)&wpacket[12+24] = 0xAAAA;
-	*(u16*)&wpacket[12+26] = 0x0003;
-	*(u16*)&wpacket[12+28] = 0x0000;
-	*(u16*)&wpacket[12+30] = *(u16*)&data[12];
-	memcpy(&wpacket[12+32], &data[14], h->len-14);
-
-	SoftAP.seqNum++;
-
-	WIFI_RXQueuePacket(wpacket, 12 + wpacketLen);
+	// Flush the file
+	fflush(this->_packetCaptureFile);
 }
 
-void SoftAP_msTrigger()
+RXQueuedPacket WifiHandler::_GenerateSoftAPDeauthenticationFrame(u16 sequenceNumber)
 {
-	//zero sez: every 1/10 second? does it have to be precise? this is so costly..
-	// Okay for 128 ms then
-	if((wifiMac.GlobalUsecTimer & 131071) == 0)
-		SoftAP_SendBeacon();
+	RXQueuedPacket newRXPacket;
 
-	// EXTREMELY EXPERIMENTAL packet receiving code
-	// Can now receive 64 packets per millisecond. Completely arbitrary limit. Todo: tweak if needed.
-	// But due to using non-blocking mode, this shouldn't be as slow as it used to be.
-	if (wifi_bridge != NULL)
-		CurrentWifiHandler->PCAP_dispatch(wifi_bridge, 64, SoftAP_RXHandler, NULL);
+	u8* IEEE80211FrameHeaderPtr = newRXPacket.rxData;
+	WifiMgmtFrameHeader& mgmtFrameHeader = (WifiMgmtFrameHeader&)IEEE80211FrameHeaderPtr[0];
+
+	memcpy(IEEE80211FrameHeaderPtr, SoftAP_DeauthFrame, sizeof(SoftAP_DeauthFrame));
+
+	mgmtFrameHeader.destMAC[0] = FW_Mac[0];
+	mgmtFrameHeader.destMAC[1] = FW_Mac[1];
+	mgmtFrameHeader.destMAC[2] = FW_Mac[2];
+	mgmtFrameHeader.destMAC[3] = FW_Mac[3];
+	mgmtFrameHeader.destMAC[4] = FW_Mac[4];
+	mgmtFrameHeader.destMAC[5] = FW_Mac[5];
+
+	mgmtFrameHeader.seqCtl.SequenceNumber = sequenceNumber;
+
+	newRXPacket.rxHeader = WIFI_GenerateRXHeader(newRXPacket.rxData, 1, true, sizeof(SoftAP_DeauthFrame));
+
+	return newRXPacket;
 }
 
-#endif
+RXQueuedPacket WifiHandler::_GenerateSoftAPBeaconFrame(u16 sequenceNumber, u64 timeStamp)
+{
+	RXQueuedPacket newRXPacket;
 
+	u8* IEEE80211FrameHeaderPtr = newRXPacket.rxData;
+	u8* mgmtFrameBody = IEEE80211FrameHeaderPtr + sizeof(WifiMgmtFrameHeader);
+	WifiMgmtFrameHeader& mgmtFrameHeader = (WifiMgmtFrameHeader&)IEEE80211FrameHeaderPtr[0];
+
+	memcpy(IEEE80211FrameHeaderPtr, SoftAP_Beacon, sizeof(SoftAP_Beacon));
+	mgmtFrameHeader.seqCtl.SequenceNumber = sequenceNumber;
+
+	*(u64*)mgmtFrameBody = timeStamp;
+
+	newRXPacket.rxHeader = WIFI_GenerateRXHeader(IEEE80211FrameHeaderPtr, 1, true, sizeof(SoftAP_Beacon));
+
+	return newRXPacket;
+}
+
+RXQueuedPacket WifiHandler::_GenerateSoftAPMgmtResponseFrame(WifiFrameManagementSubtype mgmtFrameSubtype, u16 sequenceNumber, u64 timeStamp)
+{
+	RXQueuedPacket newRXPacket;
+
+	size_t packetLen = 0;
+	u8* IEEE80211FrameHeaderPtr = newRXPacket.rxData;
+	u8* mgmtFrameBody = IEEE80211FrameHeaderPtr + sizeof(WifiMgmtFrameHeader);
+	WifiMgmtFrameHeader& mgmtFrameHeader = (WifiMgmtFrameHeader&)IEEE80211FrameHeaderPtr[0];
+
+	switch(mgmtFrameSubtype)
+	{
+		case WifiFrameManagementSubtype_ProbeRequest:
+			{
+				packetLen = sizeof(SoftAP_ProbeResponse);
+				memcpy(IEEE80211FrameHeaderPtr, SoftAP_ProbeResponse, packetLen);
+
+				*(u64*)mgmtFrameBody = timeStamp;
+				break;
+			}
+
+		case WifiFrameManagementSubtype_Authentication:
+			{
+				packetLen = sizeof(SoftAP_AuthFrame);
+				memcpy(IEEE80211FrameHeaderPtr, SoftAP_AuthFrame, packetLen);
+				this->_softAPStatus = APStatus_Authenticated;
+				break;
+			}
+
+		case WifiFrameManagementSubtype_AssociationRequest:
+			{
+				if(this->_softAPStatus != APStatus_Authenticated)
+				{
+					memset(&newRXPacket.rxHeader, 0, sizeof(RXPacketHeader));
+					return newRXPacket;
+				}
+
+				packetLen = sizeof(SoftAP_AssocResponse);
+				memcpy(IEEE80211FrameHeaderPtr, SoftAP_AssocResponse, packetLen);
+
+				this->_softAPStatus = APStatus_Associated;
+				WIFI_LOG(1, "SoftAP connected!\n");
+				#if WIFI_SAVE_PCAP_TO_FILE
+				this->_PacketCaptureFileOpen();
+				#endif
+				break;
+			}
+
+		case WifiFrameManagementSubtype_Disassociation:
+			{
+				this->_softAPStatus = APStatus_Authenticated;
+
+				const u16 reasonCode = *(u16*)mgmtFrameBody;
+				if(reasonCode != 0)
+				{
+					WIFI_LOG(1, "SoftAP disassocation error. ReasonCode=%d\n", (int)reasonCode);
+				}
+				break;
+			}
+
+		case WifiFrameManagementSubtype_Deauthentication:
+			{
+				const u16 reasonCode = *(u16*)mgmtFrameBody;
+
+				this->_softAPStatus = APStatus_Disconnected;
+				WIFI_LOG(1, "SoftAP disconnected. ReasonCode=%d\n", (int)reasonCode);
+				this->_PacketCaptureFileClose();
+				break;
+			}
+
+		default:
+			WIFI_LOG(2, "SoftAP: unknown management frame type %04X\n", mgmtFrameSubtype);
+			break;
+	}
+
+	mgmtFrameHeader.destMAC[0] = FW_Mac[0];
+	mgmtFrameHeader.destMAC[1] = FW_Mac[1];
+	mgmtFrameHeader.destMAC[2] = FW_Mac[2];
+	mgmtFrameHeader.destMAC[3] = FW_Mac[3];
+	mgmtFrameHeader.destMAC[4] = FW_Mac[4];
+	mgmtFrameHeader.destMAC[5] = FW_Mac[5];
+
+	mgmtFrameHeader.seqCtl.SequenceNumber = sequenceNumber;
+
+	newRXPacket.rxHeader = WIFI_GenerateRXHeader(IEEE80211FrameHeaderPtr, 1, true, packetLen);
+
+	return newRXPacket;
+}
+
+RXQueuedPacket WifiHandler::_GenerateSoftAPCtlACKFrame(const WifiDataFrameHeaderSTA2DS& inIEEE80211FrameHeader, const size_t sendPacketLength)
+{
+	RXQueuedPacket newRXPacket;
+
+	u8* outIEEE80211FrameHeaderPtr = newRXPacket.rxData;
+	WifiCtlFrameHeaderACK& outCtlFrameHeader = (WifiCtlFrameHeaderACK&)outIEEE80211FrameHeaderPtr[0];
+	u32& fcs = (u32&)outIEEE80211FrameHeaderPtr[sizeof(WifiCtlFrameHeaderACK)];
+
+	outCtlFrameHeader.fc.value = 0;
+	outCtlFrameHeader.fc.Type = WifiFrameType_Control;
+	outCtlFrameHeader.fc.Subtype = WifiFrameControlSubtype_ACK;
+	outCtlFrameHeader.fc.ToDS = 0;
+	outCtlFrameHeader.fc.FromDS = 0;
+
+	outCtlFrameHeader.duration = (inIEEE80211FrameHeader.fc.MoreFragments == 0) ? 0 : sendPacketLength * 4;
+
+	outCtlFrameHeader.rxMAC[0] = inIEEE80211FrameHeader.sendMAC[0];
+	outCtlFrameHeader.rxMAC[1] = inIEEE80211FrameHeader.sendMAC[1];
+	outCtlFrameHeader.rxMAC[2] = inIEEE80211FrameHeader.sendMAC[2];
+	outCtlFrameHeader.rxMAC[3] = inIEEE80211FrameHeader.sendMAC[3];
+	outCtlFrameHeader.rxMAC[4] = inIEEE80211FrameHeader.sendMAC[4];
+	outCtlFrameHeader.rxMAC[5] = inIEEE80211FrameHeader.sendMAC[5];
+
+	fcs = WIFI_calcCRC32(outIEEE80211FrameHeaderPtr, sizeof(WifiCtlFrameHeaderACK));
+
+	newRXPacket.rxHeader = WIFI_GenerateRXHeader(outIEEE80211FrameHeaderPtr, 1, true, sizeof(WifiCtlFrameHeaderACK));
+
+	return newRXPacket;
+}
+
+bool WifiHandler::_SoftAPTrySendPacket(const TXPacketHeader& txHeader, const u8* IEEE80211PacketData)
+{
+	bool isPacketHandled = false;
+	const WifiFrameControl& fc = (WifiFrameControl&)IEEE80211PacketData[0];
+
+	switch((WifiFrameType)fc.Type)
+	{
+		case WifiFrameType_Management:
+			{
+				const WifiMgmtFrameHeader& mgmtFrameHeader = (WifiMgmtFrameHeader&)IEEE80211PacketData[0];
+
+				if(WIFI_compareMAC(mgmtFrameHeader.BSSID, SoftAP_MACAddr) ||
+					(WIFI_isBroadcastMAC(mgmtFrameHeader.BSSID) && (fc.Subtype == WifiFrameManagementSubtype_ProbeRequest)))
+				{
+					slock_lock(this->_mutexRXPacketQueue);
+
+					RXQueuedPacket newRXPacket = this->_GenerateSoftAPMgmtResponseFrame((WifiFrameManagementSubtype)fc.Subtype, this->_softAPSequenceNumber, this->_wifi.usecCounter);
+					if(newRXPacket.rxHeader.length > 0)
+					{
+						newRXPacket.latencyCount = 0;
+						this->_rxPacketQueue.push_back(newRXPacket);
+						this->_softAPSequenceNumber++;
+					}
+
+					slock_unlock(this->_mutexRXPacketQueue);
+					isPacketHandled = true;
+				}
+				break;
+			}
+
+		case WifiFrameType_Control:
+			{
+				// For control frames, SoftAP isn't going to send any replies. Instead, just
+				// assume that the packet is always handled as long as it is destined for SoftAP.
+
+				switch((WifiFrameControlSubtype)fc.Subtype)
+				{
+					case WifiFrameControlSubtype_PSPoll:
+						{
+							const WifiCtlFrameHeaderPSPoll& ctlFrameHeader = (WifiCtlFrameHeaderPSPoll&)IEEE80211PacketData[0];
+							isPacketHandled = WIFI_compareMAC(ctlFrameHeader.BSSID, SoftAP_MACAddr);
+							break;
+						}
+
+					case WifiFrameControlSubtype_RTS:
+						{
+							const WifiCtlFrameHeaderRTS& ctlFrameHeader = (WifiCtlFrameHeaderRTS&)IEEE80211PacketData[0];
+							isPacketHandled = WIFI_compareMAC(ctlFrameHeader.rxMAC, SoftAP_MACAddr);
+							break;
+						}
+
+					case WifiFrameControlSubtype_CTS:
+						{
+							const WifiCtlFrameHeaderCTS& ctlFrameHeader = (WifiCtlFrameHeaderCTS&)IEEE80211PacketData[0];
+							isPacketHandled = WIFI_compareMAC(ctlFrameHeader.rxMAC, SoftAP_MACAddr);
+							break;
+						}
+
+					case WifiFrameControlSubtype_ACK:
+						{
+							const WifiCtlFrameHeaderACK& ctlFrameHeader = (WifiCtlFrameHeaderACK&)IEEE80211PacketData[0];
+							isPacketHandled = WIFI_compareMAC(ctlFrameHeader.rxMAC, SoftAP_MACAddr);
+							break;
+						}
+
+					case WifiFrameControlSubtype_End:
+						{
+							const WifiCtlFrameHeaderEnd& ctlFrameHeader = (WifiCtlFrameHeaderEnd&)IEEE80211PacketData[0];
+							isPacketHandled = WIFI_compareMAC(ctlFrameHeader.rxMAC, SoftAP_MACAddr);
+							break;
+						}
+
+					case WifiFrameControlSubtype_EndAck:
+						{
+							const WifiCtlFrameHeaderEndAck& ctlFrameHeader = (WifiCtlFrameHeaderEndAck&)IEEE80211PacketData[0];
+							isPacketHandled = WIFI_compareMAC(ctlFrameHeader.rxMAC, SoftAP_MACAddr);
+							break;
+						}
+
+					default:
+						break;
+				}
+				break;
+			}
+
+		case WifiFrameType_Data:
+			{
+				if(fc.FromToState == WifiFCFromToState_STA2DS)
+				{
+					const WifiDataFrameHeaderSTA2DS& IEEE80211FrameHeader = (WifiDataFrameHeaderSTA2DS&)IEEE80211PacketData[0];
+
+					if(WIFI_compareMAC(IEEE80211FrameHeader.BSSID, SoftAP_MACAddr) && (this->_softAPStatus == APStatus_Associated))
+					{
+						size_t sendPacketSize = WifiHandler::ConvertDataFrame80211To8023(IEEE80211PacketData, txHeader.length, this->_workingTXBuffer);
+						if(sendPacketSize > 0)
+						{
+							sendPacketSize = this->_softAPCommInterface->TXPacketSend(this->_workingTXBuffer, sendPacketSize);
+							if(sendPacketSize > 0)
+							{
+								RXQueuedPacket newRXPacket = this->_GenerateSoftAPCtlACKFrame(IEEE80211FrameHeader, sendPacketSize);
+								newRXPacket.latencyCount = 0;
+
+								slock_lock(this->_mutexRXPacketQueue);
+								this->_rxPacketQueue.push_back(newRXPacket);
+								this->_softAPSequenceNumber++;
+								slock_unlock(this->_mutexRXPacketQueue);
+
+								#if WIFI_SAVE_PCAP_TO_FILE
+								// Store the packet in the PCAP file.
+								this->_PacketCaptureFileWrite(this->_workingTXBuffer, sendPacketSize, false, this->_wifi.usecCounter);
+								#endif
+							}
+						}
+
+						isPacketHandled = true;
+					}
+				}
+				break;
+			}
+	}
+
+	return isPacketHandled;
+}
+
+bool WifiHandler::_AdhocTrySendPacket(const TXPacketHeader& txHeader, const u8* IEEE80211PacketData)
+{
+	const size_t emulatorHeaderSize = sizeof(DesmumeFrameHeader);
+	const size_t emulatorPacketSize = emulatorHeaderSize + txHeader.length;
+
+	DesmumeFrameHeader& emulatorHeader = (DesmumeFrameHeader&)this->_workingTXBuffer[0];
+	strncpy(emulatorHeader.frameID, DESMUME_EMULATOR_FRAME_ID, 8);
+	emulatorHeader.version = DESMUME_EMULATOR_FRAME_CURRENT_VERSION;
+	emulatorHeader.timeStamp = 0;
+	emulatorHeader.emuPacketSize = txHeader.length;
+
+	emulatorHeader.packetAttributes.value = 0;
+	emulatorHeader.packetAttributes.IsTXRate20 = (txHeader.txRate == 20) ? 1 : 0;
+
+	memcpy(this->_workingTXBuffer + emulatorHeaderSize, IEEE80211PacketData, txHeader.length);
+
+	this->_adhocCommInterface->TXPacketSend(this->_workingTXBuffer, emulatorPacketSize);
+
+	return true;
+}
+
+void WifiHandler::Reset()
+{
+	memset(&legacyWifiSF, 0, sizeof(LegacyWifiSFormat));
+	memset(&_wifi, 0, sizeof(WifiData));
+	memset(_wifi.txPacketInfo, 0, sizeof(TXPacketInfo) * 6);
+
+	WIFI_resetRF(this->_wifi.rf);
+	memcpy(_wifi.bb.data, BBDefaultData, sizeof(BBDefaultData));
+
+	_wifi.io.POWER_US.Disable = 1;
+	_wifi.io.POWERSTATE.IsPowerOff = 1;
+	_wifi.io.TXREQ_READ.UNKNOWN1 = 1;
+	_wifi.io.BB_POWER.Disable = 0x0D;
+	_wifi.io.BB_POWER.DisableAllPorts = 1;
+	_wifi.io.RF_PINS.UNKNOWN1 = 1;
+
+	_wifi.io.MACADDR[0] = 0xFF;
+	_wifi.io.MACADDR[1] = 0xFF;
+	_wifi.io.MACADDR[2] = 0xFF;
+	_wifi.io.MACADDR[3] = 0xFF;
+	_wifi.io.MACADDR[4] = 0xFF;
+	_wifi.io.MACADDR[5] = 0xFF;
+
+	_wifi.io.BSSID[0] = 0xFF;
+	_wifi.io.BSSID[1] = 0xFF;
+	_wifi.io.BSSID[2] = 0xFF;
+	_wifi.io.BSSID[3] = 0xFF;
+	_wifi.io.BSSID[4] = 0xFF;
+	_wifi.io.BSSID[5] = 0xFF;
+
+	this->_didWarnWFCUser = false;
+}
+
+WifiData& WifiHandler::GetWifiData()
+{
+	return this->_wifi;
+}
+
+TXPacketInfo& WifiHandler::GetPacketInfoAtSlot(size_t txSlot)
+{
+	if(txSlot > 4)
+	{
+		return this->_wifi.txPacketInfo[0];
+	}
+
+	return this->_wifi.txPacketInfo[txSlot];
+}
+
+WifiEmulationLevel WifiHandler::GetSelectedEmulationLevel()
+{
+	return this->_selectedEmulationLevel;
+}
+
+WifiEmulationLevel WifiHandler::GetCurrentEmulationLevel()
+{
+	return this->_currentEmulationLevel;
+}
+
+void WifiHandler::SetEmulationLevel(WifiEmulationLevel emulationLevel)
+{
+	#ifdef EXPERIMENTAL_WIFI_COMM
+	this->_selectedEmulationLevel = emulationLevel;
+	#else
+	this->_selectedEmulationLevel = WifiEmulationLevel_Off;
+	#endif
+}
+
+int WifiHandler::GetBridgeDeviceList(std::vector<std::string>* deviceStringList)
+{
+	int result = -1;
+
+	if(deviceStringList == NULL)
+	{
+		return result;
+	}
+
+	char errbuf[PCAP_ERRBUF_SIZE];
+	pcap_if_t* deviceList;
+
+	result = this->GetPCapInterface()->findalldevs((void**)&deviceList, errbuf);
+	if((result == -1) || (deviceList == NULL))
+	{
+		return result;
+	}
+
+	pcap_if_t* currentDevice = deviceList;
+	for(size_t i = 0; currentDevice != NULL; i++, currentDevice = currentDevice->next)
+	{
+		if((currentDevice->description == NULL) || (currentDevice->description[0] == '\0'))
+		{
+			deviceStringList->push_back(currentDevice->name);
+		}
+		else
+		{
+			deviceStringList->push_back(currentDevice->description);
+		}
+	}
+
+	return (int)deviceStringList->size();
+}
+
+int WifiHandler::GetSelectedBridgeDeviceIndex()
+{
+	return this->_selectedBridgeDeviceIndex;
+}
+
+int WifiHandler::GetCurrentBridgeDeviceIndex()
+{
+	return this->_softAPCommInterface->GetBridgeDeviceIndex();
+}
+
+void WifiHandler::SetBridgeDeviceIndex(int deviceIndex)
+{
+	this->_selectedBridgeDeviceIndex = deviceIndex;
+}
+
+bool WifiHandler::CommStart()
+{
+	// Stop the current comm interfaces.
+	this->_adhocCommInterface->Stop();
+	this->_softAPCommInterface->Stop();
+
+	// Reset internal values.
+	this->_wifi.usecCounter = 0;
+	this->_RXEmptyQueue();
+
+	FW_Mac[0] = MMU.fw.data.wifiInfo.MACAddr[0];
+	FW_Mac[1] = MMU.fw.data.wifiInfo.MACAddr[1];
+	FW_Mac[2] = MMU.fw.data.wifiInfo.MACAddr[2];
+	FW_Mac[3] = MMU.fw.data.wifiInfo.MACAddr[3];
+	FW_Mac[4] = MMU.fw.data.wifiInfo.MACAddr[4];
+	FW_Mac[5] = MMU.fw.data.wifiInfo.MACAddr[5];
+
+	WIFI_LOG(1, "MAC Address = %02X:%02X:%02X:%02X:%02X:%02X\n",
+		FW_Mac[0], FW_Mac[1], FW_Mac[2], FW_Mac[3], FW_Mac[4], FW_Mac[5]);
+
+	// Allocate 16KB worth of memory per buffer for sending packets. Hopefully, this should be plenty.
+	this->_workingTXBuffer = (u8*)malloc(WIFI_WORKING_PACKET_BUFFER_SIZE);
+	this->_softAPStatus = APStatus_Disconnected;
+	this->_softAPSequenceNumber = 0;
+
+	// Assign the pcap interface to SoftAP if pcap is available.
+	this->_softAPCommInterface->SetPCapInterface(this->_pcap);
+	this->_softAPCommInterface->SetBridgeDeviceIndex(this->_selectedBridgeDeviceIndex);
+
+	if(this->_selectedEmulationLevel == WifiEmulationLevel_Off)
+	{
+		WIFI_LOG(1, "Emulation level is OFF.\n");
+	}
+	else
+	{
+		// Start the new comm interfaces.
+		if(this->_isSocketsSupported)
+		{
+			this->_adhocCommInterface->Start(this);
+		}
+		else
+		{
+			WIFI_LOG(1, "Ad-hoc mode requires sockets, but sockets are not supported on this system.\n");
+		}
+
+		if(this->IsPCapSupported())
+		{
+			this->_softAPCommInterface->Start(this);
+		}
+		else
+		{
+			WIFI_LOG(1, "Infrastructure mode requires libpcap for full functionality,\n      but libpcap is not available on this system. Network functions\n      will be disabled for this session.\n");
+		}
+	}
+
+	this->_currentEmulationLevel = this->_selectedEmulationLevel;
+
+	return true;
+}
+
+void WifiHandler::CommStop()
+{
+	this->_PacketCaptureFileClose();
+
+	this->_adhocCommInterface->Stop();
+	this->_softAPCommInterface->Stop();
+
+	this->_RXEmptyQueue();
+
+	free(this->_workingTXBuffer);
+	this->_workingTXBuffer = NULL;
+}
+
+void WifiHandler::CommSendPacket(const TXPacketHeader& txHeader, const u8* IEEE80211PacketData)
+{
+	bool isFrameSent = false;
+
+	// First, give SoftAP a chance at sending the frame.
+	isFrameSent = this->_SoftAPTrySendPacket(txHeader, IEEE80211PacketData);
+
+	// If the frame wasn't sent, try sending it via an ad-hoc connection.
+	if(!isFrameSent)
+	{
+		this->_AdhocTrySendPacket(txHeader, IEEE80211PacketData);
+	}
+}
+
+void WifiHandler::CommTrigger()
+{
+	WifiData& wifi = this->_wifi;
+	WIFI_IOREG_MAP& io = wifi.io;
+
+	if(io.POWER_US.Disable != 0)
+	{
+		return; // Don't do anything if WiFi isn't powered up.
+	}
+
+	wifi.usecCounter++;
+
+	// a usec has passed
+	if(io.US_COUNTCNT.EnableCounter != 0)
+	{
+		io.US_COUNT++;
+	}
+
+	// Note: the extra counter is decremented every 10 microseconds.
+	// To avoid a modulo every microsecond, we multiply the counter
+	// value by 10 and decrement it every microsecond :)
+	if(io.CMD_COUNTCNT.EnableCounter != 0)
+	{
+		if(wifi.cmdCount_u32 > 0)
+		{
+			wifi.cmdCount_u32--;
+
+			if(wifi.cmdCount_u32 == 0)
+			{
+				IOREG_W_TXBUF_LOCATION txBufCmd = io.TXBUF_CMD;
+				WIFI_TXStart(WifiTXLocIndex_CMD, txBufCmd);
+				io.TXBUF_CMD = txBufCmd;
+			}
+		}
+	}
+
+	// The beacon counters are in milliseconds
+	// GBATek says they're decremented every 1024 usecs
+	if((io.US_COUNT & 1023) == 0)
+	{
+		io.BEACONCOUNT1--;
+		if(io.BEACONCOUNT1 == (io.PRE_BEACON >> 10))
+		{
+			WIFI_triggerIRQ(WifiIRQ15_TimeslotPreBeacon);
+		}
+		else if(io.BEACONCOUNT1 == 0)
+		{
+			WIFI_triggerIRQ(WifiIRQ14_TimeslotBeacon);
+		}
+
+		if(io.BEACONCOUNT2 > 0)
+		{
+			io.BEACONCOUNT2--;
+			if(io.BEACONCOUNT2 == 0)
+			{
+				WIFI_triggerIRQ(WifiIRQ13_TimeslotPostBeacon);
+			}
+		}
+	}
+
+	if((io.US_COMPARECNT.EnableCompare != 0) && (io.US_COMPARE == io.US_COUNT))
+	{
+		//printf("ucmp irq14\n");
+		WIFI_triggerIRQ(WifiIRQ14_TimeslotBeacon);
+	}
+
+	if(io.CONTENTFREE > 0)
+	{
+		io.CONTENTFREE--;
+	}
+
+	if((io.US_COUNT & 3) == 0)
+	{
+		const WifiTXLocIndex txSlotIndex = (WifiTXLocIndex)wifi.txCurrentSlot;
+		bool isTXSlotBusy = false;
+
+		switch(txSlotIndex)
+		{
+			case WifiTXLocIndex_LOC1: isTXSlotBusy = (io.TXBUSY.Loc1 != 0); break;
+				//case WifiTXLocIndex_CMD: isTXSlotBusy = (io.TXBUSY.Cmd != 0); break;
+			case WifiTXLocIndex_LOC2: isTXSlotBusy = (io.TXBUSY.Loc2 != 0); break;
+			case WifiTXLocIndex_LOC3: isTXSlotBusy = (io.TXBUSY.Loc3 != 0); break;
+				//case WifiTXLocIndex_BEACON: isTXSlotBusy = (io.TXBUSY.Beacon != 0); break;
+
+			default:
+				break;
+		}
+
+		if(isTXSlotBusy)
+		{
+			IOREG_W_TXBUF_LOCATION* txBufLocation = NULL;
+			TXPacketInfo& txPacketInfo = this->GetPacketInfoAtSlot(txSlotIndex);
+
+			switch(txSlotIndex)
+			{
+				case WifiTXLocIndex_LOC1: txBufLocation = &io.TXBUF_LOC1; break;
+					//case WifiTXLocIndex_CMD: txBufLocation = &io.TXBUF_CMD; break;
+				case WifiTXLocIndex_LOC2: txBufLocation = &io.TXBUF_LOC2; break;
+				case WifiTXLocIndex_LOC3: txBufLocation = &io.TXBUF_LOC3; break;
+					//case WifiTXLocIndex_BEACON: txBufLocation = &io.TXBUF_BEACON; break;
+
+				default:
+					break;
+			}
+
+			txPacketInfo.remainingBytes--;
+			io.RXTX_ADDR.HalfwordAddress++;
+
+			if(txPacketInfo.remainingBytes == 0)
+			{
+				isTXSlotBusy = false;
+
+				switch(txSlotIndex)
+				{
+					case WifiTXLocIndex_LOC1: io.TXBUSY.Loc1 = 0; break;
+						//case WifiTXLocIndex_CMD: io.TXBUSY.Cmd = 0; break;
+					case WifiTXLocIndex_LOC2: io.TXBUSY.Loc2 = 0; break;
+					case WifiTXLocIndex_LOC3: io.TXBUSY.Loc3 = 0; break;
+						//case WifiTXLocIndex_BEACON: io.TXBUSY.Beacon = 0; break;
+
+					default:
+						break;
+				}
+
+				txBufLocation->TransferRequest = 0;
+
+				TXPacketHeader& txHeader = (TXPacketHeader&)wifi.RAM[txBufLocation->HalfwordAddress << 1];
+				this->CommSendPacket(txHeader, &wifi.RAM[(txBufLocation->HalfwordAddress << 1) + sizeof(TXPacketHeader)]);
+				txHeader.txStatus = 0x0001;
+				txHeader.UNKNOWN3 = 0;
+
+				switch(txSlotIndex)
+				{
+					//case WifiTXLocIndex_CMD:
+					//case WifiTXLocIndex_BEACON:
+					case WifiTXLocIndex_LOC1: io.TXSTAT.PacketUpdate = 0; break;
+					case WifiTXLocIndex_LOC2: io.TXSTAT.PacketUpdate = 1; break;
+					case WifiTXLocIndex_LOC3: io.TXSTAT.PacketUpdate = 2; break;
+
+					default:
+						break;
+				}
+
+				io.TXSTAT.PacketCompleted = 1;
+
+				WIFI_triggerIRQ(WifiIRQ01_TXComplete);
+
+				//io.RF_STATUS.RFStatus = 0x01;
+				//io.RF_PINS.RX_On = 1;
+
+				io.RF_STATUS.RFStatus = 0x09;
+				io.RF_PINS.CarrierSense = 0;
+				io.RF_PINS.TXMain = 0;
+				io.RF_PINS.UNKNOWN1 = 1;
+				io.RF_PINS.TX_On = 0;
+				io.RF_PINS.RX_On = 0;
+
+				// Switch to the next TX slot.
+				while(!isTXSlotBusy && (wifi.txCurrentSlot != WifiTXLocIndex_LOC1))
+				{
+					/*if (wifi.txCurrentSlot == WifiTXLocIndex_BEACON)
+					 {
+					 wifi.txCurrentSlot = WifiTXLocIndex_CMD;
+					 isTXSlotBusy = (io.TXBUSY.Cmd != 0);
+					 }
+					 else if (wifi.txCurrentSlot == WifiTXLocIndex_CMD)
+					 {
+					 wifi.txCurrentSlot = WifiTXLocIndex_LOC3;
+					 isTXSlotBusy = (io.TXBUSY.Loc3 != 0);
+					 }
+					 else */if(wifi.txCurrentSlot == WifiTXLocIndex_LOC3)
+					 {
+						 wifi.txCurrentSlot = WifiTXLocIndex_LOC2;
+						 isTXSlotBusy = (io.TXBUSY.Loc2 != 0);
+					 }
+					 else if(wifi.txCurrentSlot == WifiTXLocIndex_LOC2)
+					 {
+						 wifi.txCurrentSlot = WifiTXLocIndex_LOC1;
+						 isTXSlotBusy = (io.TXBUSY.Loc1 != 0);
+					 }
+				}
+
+				WIFI_LOG(3, "TX slot %i finished sending its packet. Next is slot %i. TXStat = %04X\n",
+					(int)txSlotIndex, (int)wifi.txCurrentSlot, io.TXSTAT.value);
+			}
+		}
+	}
+
+	if(io.RXCNT.EnableRXFIFOQueuing != 0)
+	{
+		this->_AddPeriodicPacketsToRXQueue(wifi.usecCounter);
+		this->_CopyFromRXQueue();
+	}
+}
+
+void WifiHandler::_AddPeriodicPacketsToRXQueue(const u64 usecCounter)
+{
+	if((usecCounter & 131071) == 0)
+	{
+		slock_lock(this->_mutexRXPacketQueue);
+
+		//zero sez: every 1/10 second? does it have to be precise? this is so costly..
+		// Okay for 128 ms then
+		RXQueuedPacket newRXPacket = this->_GenerateSoftAPBeaconFrame(this->_softAPSequenceNumber, this->_wifi.usecCounter);
+		newRXPacket.latencyCount = 0;
+
+		this->_rxPacketQueue.push_back(newRXPacket);
+		this->_softAPSequenceNumber++;
+
+		slock_unlock(this->_mutexRXPacketQueue);
+	}
+}
+
+void WifiHandler::_CopyFromRXQueue()
+{
+	WIFI_IOREG_MAP& io = this->_wifi.io;
+
+	// Retrieve a packet from the RX packet queue if we're not already working on one.
+	if(this->_rxCurrentQueuedPacketPosition == 0)
+	{
+		slock_lock(this->_mutexRXPacketQueue);
+
+		if(this->_rxPacketQueue.empty())
+		{
+			// However, if the queue is empty, then there is no packet to retrieve.
+			slock_unlock(this->_mutexRXPacketQueue);
+			return;
+		}
+
+		this->_rxCurrentPacket = this->_rxPacketQueue.front();
+		this->_rxPacketQueue.pop_front();
+
+		slock_unlock(this->_mutexRXPacketQueue);
+
+		WIFI_triggerIRQ(WifiIRQ06_RXStart);
+	}
+
+	const size_t totalPacketLength = (this->_rxCurrentPacket.rxHeader.length > MAX_PACKET_SIZE_80211) ? sizeof(RXPacketHeader) + MAX_PACKET_SIZE_80211 : sizeof(RXPacketHeader) + this->_rxCurrentPacket.rxHeader.length;
+	this->_rxCurrentPacket.latencyCount++;
+
+	// If the user selects compatibility mode, then we will emulate the transfer delays
+	// involved with copying RX packet data into WiFi RAM. Otherwise, just copy all of
+	// the RX packet data into WiFi RAM immediately.
+	if(this->_currentEmulationLevel == WifiEmulationLevel_Compatibility)
+	{
+		// Copy the RX packet data into WiFi RAM over time.
+		if((this->_rxCurrentQueuedPacketPosition == 0) || (this->_rxCurrentPacket.latencyCount >= RX_LATENCY_LIMIT))
+		{
+			this->_RXWriteOneHalfword(*(u16*)&this->_rxCurrentPacket.rawFrameData[this->_rxCurrentQueuedPacketPosition]);
+			this->_rxCurrentQueuedPacketPosition += 2;
+			this->_rxCurrentPacket.latencyCount = 0;
+		}
+	}
+	else
+	{
+		// Copy the entire RX packet data into WiFi RAM immediately.
+		while(this->_rxCurrentQueuedPacketPosition < totalPacketLength)
+		{
+			this->_RXWriteOneHalfword(*(u16*)&this->_rxCurrentPacket.rawFrameData[this->_rxCurrentQueuedPacketPosition]);
+			this->_rxCurrentQueuedPacketPosition += 2;
+		}
+	}
+
+	if(this->_rxCurrentQueuedPacketPosition >= totalPacketLength)
+	{
+		this->_rxCurrentQueuedPacketPosition = 0;
+
+		// Adjust the RX cursor address so that it is 4-byte aligned.
+		io.RXBUF_WRCSR.HalfwordAddress = ((io.RXBUF_WRCSR.HalfwordAddress + 1) & 0x0FFE);
+		if(io.RXBUF_WRCSR.HalfwordAddress >= ((io.RXBUF_END & 0x1FFE) >> 1))
+		{
+			io.RXBUF_WRCSR.HalfwordAddress = ((io.RXBUF_BEGIN & 0x1FFE) >> 1);
+		}
+
+		io.RX_COUNT.OkayCount++;
+		WIFI_triggerIRQ(WifiIRQ00_RXComplete);
+		io.RF_STATUS.RFStatus = WifiRFStatus1_TXComplete;
+		io.RF_PINS.value = RFPinsLUT[WifiRFStatus1_TXComplete];
+	}
+}
+
+void WifiHandler::CommEmptyRXQueue()
+{
+	this->_RXEmptyQueue();
+}
+
+template <bool WILLADVANCESEQNO>
+void WifiHandler::RXPacketRawToQueue(const RXRawPacketData& rawPacket)
+{
+	RXQueuedPacket newRXPacket;
+
+	slock_lock(this->_mutexRXPacketQueue);
+
+	for(size_t i = 0, readLocation = 0; i < rawPacket.count; i++)
+	{
+		const u8* currentPacket = &rawPacket.buffer[readLocation];
+		const DesmumeFrameHeader& emulatorHeader = (DesmumeFrameHeader&)*currentPacket;
+		readLocation += sizeof(DesmumeFrameHeader) + emulatorHeader.emuPacketSize;
+
+		const u8* packetIEEE80211HeaderPtr = this->_RXPacketFilter(currentPacket, sizeof(DesmumeFrameHeader) + emulatorHeader.emuPacketSize, newRXPacket.rxHeader);
+		if(packetIEEE80211HeaderPtr != NULL)
+		{
+			memset(newRXPacket.rxData, 0, sizeof(newRXPacket.rxData));
+			memcpy(newRXPacket.rxData, packetIEEE80211HeaderPtr, newRXPacket.rxHeader.length);
+			newRXPacket.latencyCount = 0;
+
+			if(WILLADVANCESEQNO)
+			{
+				// Update the sequence number.
+				WifiDataFrameHeaderDS2STA& IEEE80211Header = (WifiDataFrameHeaderDS2STA&)newRXPacket.rxData[0];
+				IEEE80211Header.seqCtl.SequenceNumber = this->_softAPSequenceNumber;
+				this->_softAPSequenceNumber++;
+
+				// Write the FCS at the end of the frame.
+				u32& fcs = (u32&)newRXPacket.rxData[newRXPacket.rxHeader.length];
+				fcs = WIFI_calcCRC32(newRXPacket.rxData, newRXPacket.rxHeader.length);
+				newRXPacket.rxHeader.length += sizeof(u32);
+			}
+
+			// Add the packet to the RX queue.
+			this->_rxPacketQueue.push_back(newRXPacket);
+		}
+	}
+
+	slock_unlock(this->_mutexRXPacketQueue);
+}
+
+bool WifiHandler::IsPCapSupported()
+{
+	return ((this->_pcap != NULL) && (this->_pcap != &dummyPCapInterface));
+}
+
+bool WifiHandler::IsSocketsSupported()
+{
+	return this->_isSocketsSupported;
+}
+
+void WifiHandler::SetSocketsSupported(bool isSupported)
+{
+	this->_isSocketsSupported = isSupported;
+}
+
+ClientPCapInterface* WifiHandler::GetPCapInterface()
+{
+	return this->_pcap;
+}
+
+void WifiHandler::SetPCapInterface(ClientPCapInterface* pcapInterface)
+{
+	this->_pcap = (pcapInterface == NULL) ? &dummyPCapInterface : pcapInterface;
+}
+
+void WifiHandler::PrepareSaveStateWrite()
+{
+	WIFI_IOREG_MAP& io = this->_wifi.io;
+	RF2958_IOREG_MAP& rf = this->_wifi.rf;
+
+	legacyWifiSF.powerOn = (u32)(io.POWERSTATE.IsPowerOff == 0);
+	legacyWifiSF.powerOnPending = (u32)(io.POWERSTATE.WillPowerOn != 0);
+
+	legacyWifiSF.rfStatus = io.RF_STATUS.value;
+	legacyWifiSF.rfPins = io.RF_PINS.value;
+
+	legacyWifiSF.IE = io.IE.value;
+	legacyWifiSF.IF = io.IF.value;
+
+	legacyWifiSF.macMode = io.MODE_RST.value;
+	legacyWifiSF.wepMode = io.MODE_WEP.value;
+	legacyWifiSF.WEP_enable = io.WEP_CNT.Enable;
+
+	legacyWifiSF.TXCnt = io.TXREQ_READ.value;
+	legacyWifiSF.TXStat = io.TXSTAT.value;
+
+	legacyWifiSF.RXCnt = io.RXCNT.value;
+	legacyWifiSF.RXCheckCounter = 0;
+
+	legacyWifiSF.macAddr[0] = io.MACADDR[0];
+	legacyWifiSF.macAddr[1] = io.MACADDR[1];
+	legacyWifiSF.macAddr[2] = io.MACADDR[2];
+	legacyWifiSF.macAddr[3] = io.MACADDR[3];
+	legacyWifiSF.macAddr[4] = io.MACADDR[4];
+	legacyWifiSF.macAddr[5] = io.MACADDR[5];
+	legacyWifiSF.bssid[0] = io.BSSID[0];
+	legacyWifiSF.bssid[1] = io.BSSID[1];
+	legacyWifiSF.bssid[2] = io.BSSID[2];
+	legacyWifiSF.bssid[3] = io.BSSID[3];
+	legacyWifiSF.bssid[4] = io.BSSID[4];
+	legacyWifiSF.bssid[5] = io.BSSID[5];
+
+	legacyWifiSF.aid = io.AID_FULL.AssociationID;
+	legacyWifiSF.pid = io.AID_LOW.PlayerID;
+	legacyWifiSF.retryLimit = io.TX_RETRYLIMIT.value;
+
+	legacyWifiSF.crystalEnabled = (u32)(io.POWER_US.Disable == 0);
+	legacyWifiSF.usec = io.US_COUNT;
+	legacyWifiSF.usecEnable = io.US_COUNTCNT.EnableCounter;
+	legacyWifiSF.ucmp = io.US_COMPARE;
+	legacyWifiSF.ucmpEnable = io.US_COMPARECNT.EnableCompare;
+	legacyWifiSF.eCount = this->_wifi.cmdCount_u32;
+	legacyWifiSF.eCountEnable = io.CMD_COUNTCNT.EnableCounter;
+
+	legacyWifiSF.rf_cfg1 = rf.CFG1.value;
+	legacyWifiSF.rf_ifpll1 = rf.IFPLL1.value;
+	legacyWifiSF.rf_ifpll2 = rf.IFPLL2.value;
+	legacyWifiSF.rf_ifpll3 = rf.IFPLL3.value;
+	legacyWifiSF.rf_rfpll1 = rf.RFPLL1.value;
+	legacyWifiSF.rf_rfpll2 = rf.RFPLL2.value;
+	legacyWifiSF.rf_rfpll3 = rf.RFPLL3.value;
+	legacyWifiSF.rf_rfpll4 = rf.RFPLL4.value;
+	legacyWifiSF.rf_cal1 = rf.CAL1.value;
+	legacyWifiSF.rf_txrx1 = rf.TXRX1.value;
+	legacyWifiSF.rf_pcnt1 = rf.PCNT1.value;
+	legacyWifiSF.rf_pcnt2 = rf.PCNT2.value;
+	legacyWifiSF.rf_vcot1 = rf.VCOT1.value;
+
+	legacyWifiSF.rfIOCnt = io.RF_CNT.value;
+	legacyWifiSF.rfIOStatus = io.RF_BUSY.Busy;
+	legacyWifiSF.rfIOData = (io.RF_DATA2.value << 16) | io.RF_DATA1.value;
+	legacyWifiSF.bbIOCnt = io.BB_CNT.value;
+
+	legacyWifiSF.rxRangeBegin = io.RXBUF_BEGIN;
+	legacyWifiSF.rxRangeEnd = io.RXBUF_END;
+	legacyWifiSF.rxWriteCursor = io.RXBUF_WRCSR.HalfwordAddress;
+	legacyWifiSF.rxReadCursor = io.RXBUF_READCSR.HalfwordAddress;
+	legacyWifiSF.rxUnits = 0;
+	legacyWifiSF.rxBufCount = io.RXBUF_COUNT.Count;
+	legacyWifiSF.circBufReadAddress = io.RXBUF_RD_ADDR.ByteAddress;
+	legacyWifiSF.circBufWriteAddress = io.TXBUF_WR_ADDR.ByteAddress;
+	legacyWifiSF.circBufReadEnd = io.RXBUF_GAP.ByteAddress;
+	legacyWifiSF.circBufReadSkip = io.RXBUF_GAPDISP.HalfwordOffset;
+	legacyWifiSF.circBufWriteEnd = io.TXBUF_GAP.ByteAddress;
+	legacyWifiSF.circBufWriteSkip = io.TXBUF_GAPDISP.HalfwordOffset;
+
+	legacyWifiSF.randomSeed = io.RANDOM.Random;
+
+	memcpy(legacyWifiSF.wifiIOPorts, &this->_wifi.io, sizeof(WIFI_IOREG_MAP));
+	memcpy(legacyWifiSF.bb_data, this->_wifi.bb.data, sizeof(this->_wifi.bb.data));
+	memcpy(legacyWifiSF.wifiRAM, this->_wifi.RAM, sizeof(this->_wifi.RAM));
+}
+
+bool WifiHandler::LoadState(EMUFILE& is, int size)
+{
+	int version;
+	if(is.read_32LE(version) != 1) return false;
+	is.fread(&_wifi, sizeof(_wifi));
+	return true;
+}
+
+void WifiHandler::SaveState(EMUFILE& f)
+{
+	f.write_32LE(1); //version
+	f.fwrite(&_wifi, sizeof(_wifi));
+}
+
+void WifiHandler::ParseSaveStateRead()
+{
+	RF2958_IOREG_MAP& rf = this->_wifi.rf;
+	rf.CFG1.value = legacyWifiSF.rf_cfg1;
+	rf.IFPLL1.value = legacyWifiSF.rf_ifpll1;
+	rf.IFPLL2.value = legacyWifiSF.rf_ifpll2;
+	rf.IFPLL3.value = legacyWifiSF.rf_ifpll3;
+	rf.RFPLL1.value = legacyWifiSF.rf_rfpll1;
+	rf.RFPLL2.value = legacyWifiSF.rf_rfpll2;
+	rf.RFPLL3.value = legacyWifiSF.rf_rfpll3;
+	rf.RFPLL4.value = legacyWifiSF.rf_rfpll4;
+	rf.CAL1.value = legacyWifiSF.rf_cal1;
+	rf.TXRX1.value = legacyWifiSF.rf_txrx1;
+	rf.PCNT1.value = legacyWifiSF.rf_pcnt1;
+	rf.PCNT2.value = legacyWifiSF.rf_pcnt2;
+	rf.VCOT1.value = legacyWifiSF.rf_vcot1;
+
+	memcpy(&this->_wifi.io, legacyWifiSF.wifiIOPorts, sizeof(WIFI_IOREG_MAP));
+	memcpy(this->_wifi.bb.data, legacyWifiSF.bb_data, sizeof(this->_wifi.bb.data));
+	memcpy(this->_wifi.RAM, legacyWifiSF.wifiRAM, sizeof(this->_wifi.RAM));
+}
+
+size_t WifiHandler::ConvertDataFrame80211To8023(const u8* inIEEE80211Frame, const size_t txLength, u8* outIEEE8023Frame)
+{
+	size_t sendPacketSize = 0;
+
+	const WifiFrameControl& fc = (WifiFrameControl&)inIEEE80211Frame[0];
+
+	// Ensure that the incoming 802.11 frame is a STA-to-DS data frame with a LLC/SNAP header.
+	if((fc.Type != WifiFrameType_Data) ||
+		(fc.FromToState != WifiFCFromToState_STA2DS) ||
+		!WIFI_IsLLCSNAPHeader(inIEEE80211Frame + sizeof(WifiDataFrameHeaderSTA2DS)))
+	{
+		return sendPacketSize;
+	}
+
+	const WifiDataFrameHeaderSTA2DS& IEEE80211FrameHeader = (WifiDataFrameHeaderSTA2DS&)inIEEE80211Frame[0];
+	const WifiLLCSNAPHeader& snapHeader = (WifiLLCSNAPHeader&)inIEEE80211Frame[sizeof(WifiDataFrameHeaderSTA2DS)];
+	const u8* inFrameBody = inIEEE80211Frame + sizeof(WifiDataFrameHeaderSTA2DS) + sizeof(WifiLLCSNAPHeader);
+
+	EthernetFrameHeader& IEEE8023FrameHeader = (EthernetFrameHeader&)outIEEE8023Frame[0];
+	u8* outFrameBody = outIEEE8023Frame + sizeof(EthernetFrameHeader);
+
+	IEEE8023FrameHeader.destMAC[0] = IEEE80211FrameHeader.destMAC[0];
+	IEEE8023FrameHeader.destMAC[1] = IEEE80211FrameHeader.destMAC[1];
+	IEEE8023FrameHeader.destMAC[2] = IEEE80211FrameHeader.destMAC[2];
+	IEEE8023FrameHeader.destMAC[3] = IEEE80211FrameHeader.destMAC[3];
+	IEEE8023FrameHeader.destMAC[4] = IEEE80211FrameHeader.destMAC[4];
+	IEEE8023FrameHeader.destMAC[5] = IEEE80211FrameHeader.destMAC[5];
+
+	IEEE8023FrameHeader.sendMAC[0] = IEEE80211FrameHeader.sendMAC[0];
+	IEEE8023FrameHeader.sendMAC[1] = IEEE80211FrameHeader.sendMAC[1];
+	IEEE8023FrameHeader.sendMAC[2] = IEEE80211FrameHeader.sendMAC[2];
+	IEEE8023FrameHeader.sendMAC[3] = IEEE80211FrameHeader.sendMAC[3];
+	IEEE8023FrameHeader.sendMAC[4] = IEEE80211FrameHeader.sendMAC[4];
+	IEEE8023FrameHeader.sendMAC[5] = IEEE80211FrameHeader.sendMAC[5];
+
+	IEEE8023FrameHeader.ethertype = snapHeader.ethertype;
+
+	sendPacketSize = txLength - sizeof(WifiDataFrameHeaderSTA2DS) - sizeof(WifiLLCSNAPHeader) - sizeof(u32) + sizeof(EthernetFrameHeader);
+	memcpy(outFrameBody, inFrameBody, sendPacketSize - sizeof(EthernetFrameHeader));
+
+	return sendPacketSize;
+}
+
+size_t WifiHandler::ConvertDataFrame8023To80211(const u8* inIEEE8023Frame, const size_t rxLength, u8* outIEEE80211Frame)
+{
+	size_t sendPacketSize = 0;
+
+	// Convert the libpcap 802.3 header into an NDS-compatible 802.11 header.
+	const EthernetFrameHeader& IEEE8023Header = (EthernetFrameHeader&)inIEEE8023Frame[0];
+	WifiDataFrameHeaderDS2STA& IEEE80211Header = (WifiDataFrameHeaderDS2STA&)outIEEE80211Frame[0];
+	IEEE80211Header.fc.value = 0;
+	IEEE80211Header.fc.Type = WifiFrameType_Data;
+	IEEE80211Header.fc.Subtype = WifiFrameDataSubtype_Data;
+	IEEE80211Header.fc.ToDS = 0;
+	IEEE80211Header.fc.FromDS = 1;
+
+	IEEE80211Header.duration = 0;
+	IEEE80211Header.destMAC[0] = IEEE8023Header.destMAC[0];
+	IEEE80211Header.destMAC[1] = IEEE8023Header.destMAC[1];
+	IEEE80211Header.destMAC[2] = IEEE8023Header.destMAC[2];
+	IEEE80211Header.destMAC[3] = IEEE8023Header.destMAC[3];
+	IEEE80211Header.destMAC[4] = IEEE8023Header.destMAC[4];
+	IEEE80211Header.destMAC[5] = IEEE8023Header.destMAC[5];
+	IEEE80211Header.BSSID[0] = SoftAP_MACAddr[0];
+	IEEE80211Header.BSSID[1] = SoftAP_MACAddr[1];
+	IEEE80211Header.BSSID[2] = SoftAP_MACAddr[2];
+	IEEE80211Header.BSSID[3] = SoftAP_MACAddr[3];
+	IEEE80211Header.BSSID[4] = SoftAP_MACAddr[4];
+	IEEE80211Header.BSSID[5] = SoftAP_MACAddr[5];
+	IEEE80211Header.sendMAC[0] = IEEE8023Header.sendMAC[0];
+	IEEE80211Header.sendMAC[1] = IEEE8023Header.sendMAC[1];
+	IEEE80211Header.sendMAC[2] = IEEE8023Header.sendMAC[2];
+	IEEE80211Header.sendMAC[3] = IEEE8023Header.sendMAC[3];
+	IEEE80211Header.sendMAC[4] = IEEE8023Header.sendMAC[4];
+	IEEE80211Header.sendMAC[5] = IEEE8023Header.sendMAC[5];
+	IEEE80211Header.seqCtl.value = 0; // This is 0 for now, but will need to be set later.
+
+	// 802.3 to 802.11 LLC/SNAP header
+	WifiLLCSNAPHeader& snapHeader = (WifiLLCSNAPHeader&)outIEEE80211Frame[sizeof(WifiDataFrameHeaderDS2STA)];
+	snapHeader = DefaultSNAPHeader;
+	snapHeader.ethertype = IEEE8023Header.ethertype;
+
+	// Packet body
+	u8* packetBody = outIEEE80211Frame + sizeof(WifiDataFrameHeaderDS2STA) + sizeof(WifiLLCSNAPHeader);
+	memcpy(packetBody, (u8*)inIEEE8023Frame + sizeof(EthernetFrameHeader), rxLength - sizeof(EthernetFrameHeader));
+
+	sendPacketSize = rxLength + sizeof(WifiDataFrameHeaderDS2STA) + sizeof(WifiLLCSNAPHeader) - sizeof(EthernetFrameHeader);
+	return sendPacketSize;
+}

@@ -1,6 +1,6 @@
 /*
 	Copyright (C) 2006 Guillaume Duhamel
-	Copyright (C) 2006-2015 DeSmuME team
+	Copyright (C) 2006-2025 DeSmuME team
 
 	This file is free software: you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
@@ -48,7 +48,7 @@ struct DebugStatistics
 extern DebugStatistics DEBUG_statistics;
 
 void DEBUG_reset();
-void DEBUG_dumpMemory(EMUFILE* fp);
+void DEBUG_dumpMemory(EMUFILE &fp);
 
 struct armcpu_t;
 
@@ -149,7 +149,7 @@ enum EDEBUG_EVENT
 	DEBUG_EVENT_WRITE=2, //write on arm9 or arm7 bus
 	DEBUG_EVENT_EXECUTE=3, //prefetch on arm9 or arm7, triggered after the read event
 	DEBUG_EVENT_ACL_EXCEPTION=4, //acl exception on arm9
-	DEBUG_EVENT_CACHE_MISS=5, //cache miss on arm9
+	DEBUG_EVENT_CACHE_MISS=5 //cache miss on arm9
 };
 
 enum EDEBUG_NOTIFY

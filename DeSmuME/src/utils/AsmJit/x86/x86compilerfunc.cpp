@@ -359,7 +359,7 @@ void X86CompilerFuncDecl::_dumpFunction(CompilerContext& cc)
         logger->logString("; ---+----------+----+----------------+\n");
       }
 
-      char* memHome = memHome = _buf;
+      char* memHome = _buf;
 
       if (a.hasRegIndex())
       {
@@ -1227,7 +1227,6 @@ CompilerItem* X86CompilerFuncRet::translate(CompilerContext& cc)
       }
       break;
 
-    case kInvalidValue:
     default:
       break;
   }

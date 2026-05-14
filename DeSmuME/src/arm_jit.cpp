@@ -1,6 +1,7 @@
-/*	Copyright (C) 2006 yopyop
+/*
+	Copyright (C) 2006 yopyop
 	Copyright (C) 2011 Loren Merritt
-	Copyright (C) 2012-2015 DeSmuME team
+	Copyright (C) 2012-2021 DeSmuME team
 
 	This file is free software: you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
@@ -30,20 +31,22 @@
 #include <errno.h>
 #include <unistd.h>
 #include <stddef.h>
-// Apple has become very strict about memory protection!
-// The static code buffer won't work anymore!
+// The static code buffer relies on write+execute privileges provided by mprotect(),
+// which isn't supported by the macOS v10.15 SDK and later, as well as Apple's other
+// modern operating systems. Therefore, we are disabling this on all Apple systems
+// for now.
 #ifndef __APPLE__
 #define HAVE_STATIC_CODE_BUFFER
 #endif
 #endif
 
+#include "utils/bits.h"
+#include "utils/AsmJit/AsmJit.h"
 #include "armcpu.h"
 #include "instructions.h"
 #include "instruction_attributes.h"
-#include "Disassembler.h"
 #include "MMU.h"
 #include "MMU_timing.h"
-#include "utils/AsmJit/AsmJit.h"
 #include "arm_jit.h"
 #include "bios.h"
 
@@ -57,6 +60,7 @@
 using namespace AsmJit;
 
 #if (LOG_JIT_LEVEL > 0)
+#include "../modules/Disassembler.h"
 #define LOG_JIT 1
 #define JIT_COMMENT(...) c.comment(__VA_ARGS__)
 #define printJIT(buf, val) { \
@@ -1526,7 +1530,7 @@ static int OP_MSR_SPSR_IMM_VAL(const u32 i) { OP_MSR_(SPSR, IMM_VAL, 0); }
 //-----------------------------------------------------------------------------
 //   LDR
 //-----------------------------------------------------------------------------
-typedef u32 (FASTCALL* OpLDR)(u32, u32*);
+typedef u32 (DESMUME_FASTCALL* OpLDR)(u32, u32*);
 
 // 98% of all memory accesses land in the same region as the first execution of
 // that instruction, so keep multiple copies with different fastpaths.
@@ -1557,7 +1561,7 @@ static u32 classify_adr(u32 adr, bool store)
 }
 
 template<int PROCNUM, int memtype>
-static u32 FASTCALL OP_LDR(u32 adr, u32 *dstreg)
+static u32 DESMUME_FASTCALL OP_LDR(u32 adr, u32 *dstreg)
 {
 	u32 data = READ32(cpu->mem_if->data, adr);
 	if(adr&3)
@@ -1567,28 +1571,28 @@ static u32 FASTCALL OP_LDR(u32 adr, u32 *dstreg)
 }
 
 template<int PROCNUM, int memtype>
-static u32 FASTCALL OP_LDRH(u32 adr, u32 *dstreg)
+static u32 DESMUME_FASTCALL OP_LDRH(u32 adr, u32 *dstreg)
 {
 	*dstreg = READ16(cpu->mem_if->data, adr);
 	return MMU_aluMemAccessCycles<PROCNUM,16,MMU_AD_READ>(3,adr);
 }
 
 template<int PROCNUM, int memtype>
-static u32 FASTCALL OP_LDRSH(u32 adr, u32 *dstreg)
+static u32 DESMUME_FASTCALL OP_LDRSH(u32 adr, u32 *dstreg)
 {
 	*dstreg = (s16)READ16(cpu->mem_if->data, adr);
 	return MMU_aluMemAccessCycles<PROCNUM,16,MMU_AD_READ>(3,adr);
 }
 
 template<int PROCNUM, int memtype>
-static u32 FASTCALL OP_LDRB(u32 adr, u32 *dstreg)
+static u32 DESMUME_FASTCALL OP_LDRB(u32 adr, u32 *dstreg)
 {
 	*dstreg = READ8(cpu->mem_if->data, adr);
 	return MMU_aluMemAccessCycles<PROCNUM,8,MMU_AD_READ>(3,adr);
 }
 
 template<int PROCNUM, int memtype>
-static u32 FASTCALL OP_LDRSB(u32 adr, u32 *dstreg)
+static u32 DESMUME_FASTCALL OP_LDRSB(u32 adr, u32 *dstreg)
 {
 	*dstreg = (s8)READ8(cpu->mem_if->data, adr);
 	return MMU_aluMemAccessCycles<PROCNUM,8,MMU_AD_READ>(3,adr);
@@ -1770,27 +1774,27 @@ static int OP_LDRSB_POS_INDE_M_REG_OFF(const u32 i) { OP_LDR_(LDRSB, REG_OFF, su
 //   STR
 //-----------------------------------------------------------------------------
 template<int PROCNUM, int memtype>
-static u32 FASTCALL OP_STR(u32 adr, u32 data)
+static u32 DESMUME_FASTCALL OP_STR(u32 adr, u32 data)
 {
 	WRITE32(cpu->mem_if->data, adr, data);
 	return MMU_aluMemAccessCycles<PROCNUM,32,MMU_AD_WRITE>(2,adr);
 }
 
 template<int PROCNUM, int memtype>
-static u32 FASTCALL OP_STRH(u32 adr, u32 data)
+static u32 DESMUME_FASTCALL OP_STRH(u32 adr, u32 data)
 {
 	WRITE16(cpu->mem_if->data, adr, data);
 	return MMU_aluMemAccessCycles<PROCNUM,16,MMU_AD_WRITE>(2,adr);
 }
 
 template<int PROCNUM, int memtype>
-static u32 FASTCALL OP_STRB(u32 adr, u32 data)
+static u32 DESMUME_FASTCALL OP_STRB(u32 adr, u32 data)
 {
 	WRITE8(cpu->mem_if->data, adr, data);
 	return MMU_aluMemAccessCycles<PROCNUM,8,MMU_AD_WRITE>(2,adr);
 }
 
-typedef u32 (FASTCALL* OpSTR)(u32, u32);
+typedef u32 (DESMUME_FASTCALL* OpSTR)(u32, u32);
 #define T(op) op<0,0>, op<0,1>, op<0,2>, op<1,0>, op<1,1>, NULL
 static const OpSTR STR_tab[2][3]   = { T(OP_STR) };
 static const OpSTR STRH_tab[2][3]  = { T(OP_STRH) };
@@ -1909,20 +1913,34 @@ static int OP_STRB_M_ROR_IMM_OFF_POSTIND(const u32 i) { OP_STR_(STRB, ROR_IMM, s
 //-----------------------------------------------------------------------------
 //   LDRD / STRD
 //-----------------------------------------------------------------------------
-typedef u32 FASTCALL (*LDRD_STRD_REG)(u32);
+typedef u32 DESMUME_FASTCALL (*LDRD_STRD_REG)(u32);
 template<int PROCNUM, u8 Rnum>
-static u32 FASTCALL OP_LDRD_REG(u32 adr)
+static u32 DESMUME_FASTCALL OP_LDRD_REG(u32 adr)
 {
 	cpu->R[Rnum] = READ32(cpu->mem_if->data, adr);
-	cpu->R[Rnum+1] = READ32(cpu->mem_if->data, adr+4);
-	return (MMU_memAccessCycles<PROCNUM,32,MMU_AD_READ>(adr) + MMU_memAccessCycles<PROCNUM,32,MMU_AD_READ>(adr+4));
+	
+	// For even-numbered registers, we'll do a double-word load. Otherwise, we'll just do a single-word load.
+	if ((Rnum & 0x01) == 0)
+	{
+		cpu->R[Rnum+1] = READ32(cpu->mem_if->data, adr+4);
+		return (MMU_memAccessCycles<PROCNUM,32,MMU_AD_READ>(adr) + MMU_memAccessCycles<PROCNUM,32,MMU_AD_READ>(adr+4));
+	}
+	
+	return MMU_memAccessCycles<PROCNUM,32,MMU_AD_READ>(adr);
 }
 template<int PROCNUM, u8 Rnum>
-static u32 FASTCALL OP_STRD_REG(u32 adr)
+static u32 DESMUME_FASTCALL OP_STRD_REG(u32 adr)
 {
 	WRITE32(cpu->mem_if->data, adr, cpu->R[Rnum]);
-	WRITE32(cpu->mem_if->data, adr + 4, cpu->R[Rnum + 1]);
-	return (MMU_memAccessCycles<PROCNUM,32,MMU_AD_WRITE>(adr) + MMU_memAccessCycles<PROCNUM,32,MMU_AD_WRITE>(adr+4));
+	
+	// For even-numbered registers, we'll do a double-word store. Otherwise, we'll just do a single-word store.
+	if ((Rnum & 0x01) == 0)
+	{
+		WRITE32(cpu->mem_if->data, adr+4, cpu->R[Rnum + 1]);
+		return (MMU_memAccessCycles<PROCNUM,32,MMU_AD_WRITE>(adr) + MMU_memAccessCycles<PROCNUM,32,MMU_AD_WRITE>(adr+4));
+	}
+	
+	return MMU_memAccessCycles<PROCNUM,32,MMU_AD_WRITE>(adr);
 }
 #define T(op, proc) op<proc,0>, op<proc,1>, op<proc,2>, op<proc,3>, op<proc,4>, op<proc,5>, op<proc,6>, op<proc,7>, op<proc,8>, op<proc,9>, op<proc,10>, op<proc,11>, op<proc,12>, op<proc,13>, op<proc,14>, op<proc,15>
 static const LDRD_STRD_REG op_ldrd_tab[2][16] = { {T(OP_LDRD_REG, 0)}, {T(OP_LDRD_REG, 1)} };
@@ -2026,7 +2044,7 @@ static int OP_LDRD_STRD_OFFSET_PRE_INDEX(const u32 i)
 //   SWP/SWPB
 //-----------------------------------------------------------------------------
 template<int PROCNUM>
-static u32 FASTCALL op_swp(u32 adr, u32 *Rd, u32 Rs)
+static u32 DESMUME_FASTCALL op_swp(u32 adr, u32 *Rd, u32 Rs)
 {
 	u32 tmp = ROR(READ32(cpu->mem_if->data, adr), (adr & 3)<<3);
 	WRITE32(cpu->mem_if->data, adr, Rs);
@@ -2034,7 +2052,7 @@ static u32 FASTCALL op_swp(u32 adr, u32 *Rd, u32 Rs)
 	return (MMU_memAccessCycles<PROCNUM,32,MMU_AD_READ>(adr) + MMU_memAccessCycles<PROCNUM,32,MMU_AD_WRITE>(adr));
 }
 template<int PROCNUM>
-static u32 FASTCALL op_swpb(u32 adr, u32 *Rd, u32 Rs)
+static u32 DESMUME_FASTCALL op_swpb(u32 adr, u32 *Rd, u32 Rs)
 {
 	u32 tmp = READ8(cpu->mem_if->data, adr);
 	WRITE8(cpu->mem_if->data, adr, Rs);
@@ -2042,7 +2060,7 @@ static u32 FASTCALL op_swpb(u32 adr, u32 *Rd, u32 Rs)
 	return (MMU_memAccessCycles<PROCNUM,8,MMU_AD_READ>(adr) + MMU_memAccessCycles<PROCNUM,8,MMU_AD_WRITE>(adr));
 }
 
-typedef u32 FASTCALL (*OP_SWP_SWPB)(u32, u32*, u32);
+typedef u32 DESMUME_FASTCALL (*OP_SWP_SWPB)(u32, u32*, u32);
 static const OP_SWP_SWPB op_swp_tab[2][2] = {{ op_swp<0>, op_swp<1> }, { op_swpb<0>, op_swpb<1> }};
 
 static int op_swp_(const u32 i, int b)
@@ -2101,7 +2119,7 @@ static u64 get_reg_list(u32 reg_mask, int dir)
 #endif
 
 template <int PROCNUM, bool store, int dir>
-static LDM_INLINE FASTCALL u32 OP_LDM_STM_generic(u32 adr, u64 regs, int n)
+static LDM_INLINE DESMUME_FASTCALL u32 OP_LDM_STM_generic(u32 adr, u64 regs, int n)
 {
 	u32 cycles = 0;
 	adr &= ~3;
@@ -2122,7 +2140,7 @@ static LDM_INLINE FASTCALL u32 OP_LDM_STM_generic(u32 adr, u64 regs, int n)
 #endif
 
 template <int PROCNUM, bool store, int dir>
-static LDM_INLINE FASTCALL u32 OP_LDM_STM_other(u32 adr, u64 regs, int n)
+static LDM_INLINE DESMUME_FASTCALL u32 OP_LDM_STM_other(u32 adr, u64 regs, int n)
 {
 	u32 cycles = 0;
 	adr &= ~3;
@@ -2144,7 +2162,7 @@ static LDM_INLINE FASTCALL u32 OP_LDM_STM_other(u32 adr, u64 regs, int n)
 }
 
 template <int PROCNUM, bool store, int dir, bool null_compiled>
-static FORCEINLINE FASTCALL u32 OP_LDM_STM_main(u32 adr, u64 regs, int n, u8 *ptr, u32 cycles)
+static FORCEINLINE DESMUME_FASTCALL u32 OP_LDM_STM_main(u32 adr, u64 regs, int n, u8 *ptr, u32 cycles)
 {
 #ifdef ENABLE_ADVANCED_TIMING
 	cycles = 0;
@@ -2183,7 +2201,7 @@ static FORCEINLINE FASTCALL u32 OP_LDM_STM_main(u32 adr, u64 regs, int n, u8 *pt
 }
 
 template <int PROCNUM, bool store, int dir>
-static u32 FASTCALL OP_LDM_STM(u32 adr, u64 regs, int n)
+static u32 DESMUME_FASTCALL OP_LDM_STM(u32 adr, u64 regs, int n)
 {
 	// TODO use classify_adr?
 	u32 cycles;
@@ -2224,7 +2242,7 @@ static u32 FASTCALL OP_LDM_STM(u32 adr, u64 regs, int n)
 	return OP_LDM_STM_main<PROCNUM, store, dir, store>(adr, regs, n, ptr, cycles);
 }
 
-typedef u32 FASTCALL (*LDMOpFunc)(u32,u64,int);
+typedef u32 DESMUME_FASTCALL (*LDMOpFunc)(u32,u64,int);
 static const LDMOpFunc op_ldm_stm_tab[2][2][2] = {{
 	{ OP_LDM_STM<0,0,-1>, OP_LDM_STM<0,0,+1> },
 	{ OP_LDM_STM<0,1,-1>, OP_LDM_STM<0,1,+1> },
@@ -2496,7 +2514,7 @@ static void maskPrecalc(u32 _num)
 			mask = 0 ; set = 0 ;   /* (x & 0) == 0  is allways true (enabled) */  \
 		} \
 	}  \
-	cp15.setSingleRegionAccess(num, mask, set) ;  \
+	armcp15_setSingleRegionAccess(&cp15, num, mask, set) ;  \
 }
 	switch(_num)
 	{
@@ -2662,15 +2680,14 @@ static int OP_MCR(const u32 i)
 			if((CRm==0)&&(opcode1==0)&&((opcode2==4)))
 			{
 				//CP15wait4IRQ;
-				c.mov(cpu_ptr(waitIRQ), true);
-				c.mov(cpu_ptr(halt_IE_and_IF), true);
+				c.mov(cpu_ptr(freeze), CPU_FREEZE_IRQ_IE_IF);
 				//IME set deliberately omitted: only SWI sets IME to 1
 				break;
 			}
 			bUnknown = true;
 			break;
 		case 9:
-			if((opcode1==0))
+			if(opcode1==0)
 			{
 				switch(CRm)
 				{
@@ -3832,7 +3849,7 @@ static const ArmOpCompiler thumb_instruction_compilers[1024] = {
 //-----------------------------------------------------------------------------
 
 template<int PROCNUM, int thumb>
-static u32 FASTCALL OP_DECODE()
+static u32 DESMUME_FASTCALL OP_DECODE()
 {
 	u32 cycles;
 	u32 adr = cpu->instruct_adr;

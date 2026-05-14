@@ -1,6 +1,6 @@
 /*
 	Copyright (C) 2005 Guillaume Duhamel
-	Copyright (C) 2008-2015 DeSmuME team
+	Copyright (C) 2008-2023 DeSmuME team
 
 	This file is free software: you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
@@ -19,20 +19,22 @@
 #ifndef TYPES_HPP
 #define TYPES_HPP
 
+#include <retro_miscellaneous.h>
+#include <retro_inline.h>
+#include <math/fxp.h>
+
+#ifdef __APPLE__
+	#include <AvailabilityMacros.h>
+#endif
+
 //analyze microsoft compilers
 #ifdef _MSC_VER
 	#define HOST_WINDOWS
-	
-	//todo - everyone will want to support this eventually, i suppose
-	#ifndef DESMUME_QT
-		#include "config.h"
-	#endif
-
 #endif //_MSC_VER
 
 // Determine CPU architecture for platforms that don't use the autoconf script
 #if defined(HOST_WINDOWS) || defined(DESMUME_COCOA)
-	#if defined(__x86_64__) || defined(__LP64) || defined(__IA64__) || defined(_M_X64) || defined(_WIN64)
+	#if defined(__x86_64__) || defined(__LP64) || defined(__IA64__) || defined(_M_X64) || defined(_WIN64) || defined(__aarch64__) || defined(_M_ARM64) || defined(__ppc64__)
 		#define HOST_64
 	#else
 		#define HOST_32
@@ -41,48 +43,92 @@
 
 //enforce a constraint: gdb stub requires developer
 #if defined(GDB_STUB) && !defined(DEVELOPER)
-#define DEVELOPER
+	#define DEVELOPER
 #endif
 
 #ifdef DEVELOPER
-#define IF_DEVELOPER(X) X
+	#define IF_DEVELOPER(X) X
 #else
-#define IF_DEVELOPER(X)
-#endif
-
-#ifdef HOST_WINDOWS
-	#define HAVE_LIBAGG
-	#define ENABLE_SSE
-	#define ENABLE_SSE2
-	#ifdef DEVELOPER
-		#define HAVE_LUA
-	#endif
-	#define HAVE_JIT
+	#define IF_DEVELOPER(X)
 #endif
 
 #ifdef __GNUC__
-#ifdef __SSE__
-#define ENABLE_SSE
-#endif
-#ifdef __SSE2__
-#define ENABLE_SSE2
-#endif
+// Our AltiVec code assumes that its being run on a big-endian system. While
+// the ppcle and ppc64le architectures do exist, our AltiVec code does not
+// support little-endian right now.
+	#if defined(__ALTIVEC__) && defined(MSB_FIRST) && (MSB_FIRST > 0)
+		#define ENABLE_ALTIVEC
+	#endif
+
+// For now, we'll be starting off with only using NEON-A64 for easier testing
+// and development. If the development for A64 goes well and if an A32 backport
+// is discovered to be feasible, then we may explore backporting the NEON code
+// to A32 at a later date.
+	#if (defined(__ARM_NEON__) || defined(__ARM_NEON)) && (defined(__aarch64__) || defined(_M_ARM64))
+		#define ENABLE_NEON_A64
+	#endif
+
+	#ifdef __SSE__
+		#define ENABLE_SSE
+	#endif
+
+	#ifdef __SSE2__
+		#define ENABLE_SSE2
+	#endif
+
+	#ifdef __SSE3__
+		#define ENABLE_SSE3
+	#endif
+
+	#ifdef __SSSE3__
+		#define ENABLE_SSSE3
+	#endif
+
+	#ifdef __SSE4_1__
+		#define ENABLE_SSE4_1
+	#endif
+
+	#ifdef __SSE4_2__
+		#define ENABLE_SSE4_2
+	#endif
+
+	#ifdef __AVX__
+		#define ENABLE_AVX
+	#endif
+
+	#ifdef __AVX2__
+		#define ENABLE_AVX2
+	#endif
+
+	// AVX-512 is special because it has multiple tiers of support.
+	//
+	// For our case, Tier-0 will be the baseline AVX-512 tier that includes the basic Foundation and
+	// Conflict Detection extensions, which should be supported on all AVX-512 CPUs. Higher tiers
+	// include more extensions, where each higher tier also assumes support for all lower tiers.
+	//
+	// For typical use cases in DeSmuME, the most practical AVX-512 tier will be Tier-1.
+	#if defined(__AVX512F__) && defined(__AVX512CD__)
+		#define ENABLE_AVX512_0
+	#endif
+
+	#if defined(ENABLE_AVX512_0) && defined(__AVX512BW__) && defined(__AVX512DQ__) && !defined(FORCE_AVX512_0)
+		#define ENABLE_AVX512_1
+	#endif
+
+	#if defined(ENABLE_AVX512_1) && defined(__AVX512IFMA__) && defined(__AVX512VBMI__)
+		#define ENABLE_AVX512_2
+	#endif
+
+	#if defined(ENABLE_AVX512_2) && defined(__AVX512VNNI__) && defined(__AVX512VBMI2__) && defined(__AVX512BITALG__)
+		#define ENABLE_AVX512_3
+	#endif
 #endif
 
-#ifdef NOSSE
-#undef ENABLE_SSE
-#endif
+#if defined(_MSC_VER) || defined(__MINGW32__)
+	#include <compat/msvc.h>
 
-#ifdef NOSSE2
-#undef ENABLE_SSE2
-#endif
-
-#ifdef _MSC_VER 
-#define strcasecmp(x,y) _stricmp(x,y)
-#define strncasecmp(x, y, l) strnicmp(x, y, l)
-#define snprintf _snprintf
 #else
-#define WINAPI
+	#define WINAPI
 #endif
 
 #if !defined(MAX_PATH)
@@ -103,62 +149,81 @@
 //------------alignment macros-------------
 //dont apply these to types without further testing. it only works portably here on declarations of variables
 //cant we find a pattern other people use more successfully?
-#if defined(_MSC_VER) || defined(__INTEL_COMPILER)
-#define DS_ALIGN(X) __declspec(align(X))
+#if _MSC_VER >= 9999 // Was 1900. The way we use DS_ALIGN doesn't jive with how alignas() wants itself to be used, so just use __declspec(align(X)) for now to avoid problems.
+	#define DS_ALIGN(X) alignas(X)
+#elif defined(_MSC_VER) || defined(__INTEL_COMPILER)
+	#define DS_ALIGN(X) __declspec(align(X))
 #elif defined(__GNUC__)
-#define DS_ALIGN(X) __attribute__ ((aligned (X)))
+	#define DS_ALIGN(X) __attribute__ ((aligned (X)))
 #else
-#define DS_ALIGN(X)
+	#define DS_ALIGN(X)
 #endif
-#define CACHE_ALIGN DS_ALIGN(32)
+
+#ifdef HOST_64
+	#define CACHE_ALIGN_SIZE 64
+#else
+	#define CACHE_ALIGN_SIZE 32
+#endif
+
+#if defined(__sparc_v9__) || defined(__sparcv9)
+	#define PAGE_ALIGN_SIZE 8192 // UltraSPARC architecture uses 8 KB pages.
+#else
+	#define PAGE_ALIGN_SIZE 4096 // Most architectures use 4 KB pages.
+#endif
+
 //use this for example when you want a byte value to be better-aligned
+#define CACHE_ALIGN DS_ALIGN(CACHE_ALIGN_SIZE)
+#define PAGE_ALIGN DS_ALIGN(PAGE_ALIGN_SIZE)
 #define FAST_ALIGN DS_ALIGN(4)
 //---------------------------------------------
 
-#ifdef __MINGW32__
-#define FASTCALL __attribute__((fastcall))
-#define ASMJIT_CALL_CONV kX86FuncConvGccFastCall
-#elif defined (__i386__) && !defined(__clang__)
-#define FASTCALL __attribute__((regparm(3)))
-#define ASMJIT_CALL_CONV kX86FuncConvGccRegParm3
+#if defined (__i386__) && !defined(__clang__)
+	#define DESMUME_FASTCALL __attribute__((regparm(3)))
+	#define ASMJIT_CALL_CONV kX86FuncConvGccRegParm3
 #elif defined(_MSC_VER) || defined(__INTEL_COMPILER)
-#define FASTCALL
-#define ASMJIT_CALL_CONV kX86FuncConvDefault
+	#define DESMUME_FASTCALL
+	#define ASMJIT_CALL_CONV kX86FuncConvDefault
 #else
-#define FASTCALL
-#define ASMJIT_CALL_CONV kX86FuncConvDefault
+	#define DESMUME_FASTCALL
+	#define ASMJIT_CALL_CONV kX86FuncConvDefault
 #endif
 
 #ifdef _MSC_VER
-#define _CDECL_ __cdecl
+	#define _CDECL_ __cdecl
 #else
-#define _CDECL_
-#endif
-
-#ifndef INLINE
-#if defined(_MSC_VER) || defined(__INTEL_COMPILER)
-#define INLINE _inline
-#else
-#define INLINE inline
-#endif
+	#define _CDECL_
 #endif
 
 #ifndef FORCEINLINE
-#if defined(_MSC_VER) || defined(__INTEL_COMPILER)
-#define FORCEINLINE __forceinline
-#define MSC_FORCEINLINE __forceinline
-#else
-#define FORCEINLINE inline __attribute__((always_inline)) 
-#define MSC_FORCEINLINE
-#endif
+	#if defined(_MSC_VER) || defined(__INTEL_COMPILER)
+		#define FORCEINLINE __forceinline
+		#define MSC_FORCEINLINE __forceinline
+	#else
+		#define FORCEINLINE inline __attribute__((always_inline))
+		#define MSC_FORCEINLINE
+	#endif
 #endif
 
 #ifndef NOINLINE
-#ifdef __GNUC__
-#define NOINLINE __attribute__((noinline))
-#else
-#define NOINLINE
+	#ifdef __GNUC__
+		#define NOINLINE __attribute__((noinline))
+	#else
+		#define NOINLINE
+	#endif
 #endif
+
+#ifndef LOOPVECTORIZE_DISABLE
+	#if defined(_MSC_VER)
+		#if _MSC_VER >= 1700
+			#define LOOPVECTORIZE_DISABLE loop(no_vector)
+		#else
+			#define LOOPVECTORIZE_DISABLE 
+		#endif
+	#elif defined(__clang__)
+		#define LOOPVECTORIZE_DISABLE clang loop vectorize(disable)
+	#else
+		#define LOOPVECTORIZE_DISABLE
+	#endif
 #endif
 
 #if defined(__LP64__)
@@ -200,12 +265,117 @@ typedef u32 uint32;
 #define uint32 u32 //uint32 is defined in Leopard somewhere, avoid conflicts
 #endif
 
+#ifdef ENABLE_ALTIVEC
+	#ifndef __APPLE_ALTIVEC__
+		#include <altivec.h>
+	#endif
+typedef __vector unsigned char v128u8;
+typedef __vector signed char v128s8;
+typedef __vector unsigned short v128u16;
+typedef __vector signed short v128s16;
+typedef __vector unsigned int v128u32;
+typedef __vector signed int v128s32;
+typedef __vector float v128f32;
+
+#define AVAILABLE_TYPE_v128u8
+#define AVAILABLE_TYPE_v128s8
+#define AVAILABLE_TYPE_v128u16
+#define AVAILABLE_TYPE_v128s16
+#define AVAILABLE_TYPE_v128u32
+#define AVAILABLE_TYPE_v128s32
+#define AVAILABLE_TYPE_v128f32
+#endif
+
+#ifdef ENABLE_NEON_A64
+#include <arm_neon.h>
+typedef uint8x16_t v128u8;
+typedef int8x16_t v128s8;
+typedef uint16x8_t v128u16;
+typedef int16x8_t v128s16;
+typedef uint32x4_t v128u32;
+typedef int32x4_t v128s32;
+typedef float32x4_t v128f32;
+
+#define AVAILABLE_TYPE_v128u8
+#define AVAILABLE_TYPE_v128s8
+#define AVAILABLE_TYPE_v128u16
+#define AVAILABLE_TYPE_v128s16
+#define AVAILABLE_TYPE_v128u32
+#define AVAILABLE_TYPE_v128s32
+#define AVAILABLE_TYPE_v128f32
+#endif
+
+#ifdef ENABLE_SSE
+#include <xmmintrin.h>
+typedef __m128 v128f32;
+#define AVAILABLE_TYPE_v128f32
+#endif
+
+#ifdef ENABLE_SSE2
+#include <emmintrin.h>
+typedef __m128i v128u8;
+typedef __m128i v128s8;
+typedef __m128i v128u16;
+typedef __m128i v128s16;
+typedef __m128i v128u32;
+typedef __m128i v128s32;
+
+#define AVAILABLE_TYPE_v128u8
+#define AVAILABLE_TYPE_v128s8
+#define AVAILABLE_TYPE_v128u16
+#define AVAILABLE_TYPE_v128s16
+#define AVAILABLE_TYPE_v128u32
+#define AVAILABLE_TYPE_v128s32
+#endif
+
+#if defined(ENABLE_AVX) || defined(ENABLE_AVX2) || defined(ENABLE_AVX512_0)
+
+#include <immintrin.h>
+typedef __m256  v256f32;
+#define AVAILABLE_TYPE_v256f32
+
+#if defined(ENABLE_AVX2) || defined(ENABLE_AVX512_0)
+typedef __m256i v256u8;
+typedef __m256i v256s8;
+typedef __m256i v256u16;
+typedef __m256i v256s16;
+typedef __m256i v256u32;
+typedef __m256i v256s32;
+
+#define AVAILABLE_TYPE_v256u8
+#define AVAILABLE_TYPE_v256s8
+#define AVAILABLE_TYPE_v256u16
+#define AVAILABLE_TYPE_v256s16
+#define AVAILABLE_TYPE_v256u32
+#define AVAILABLE_TYPE_v256s32
+#endif // defined(ENABLE_AVX2) || defined(ENABLE_AVX512_0)
+
+#if defined(ENABLE_AVX512_0)
+typedef __m512i v512u8;
+typedef __m512i v512s8;
+typedef __m512i v512u16;
+typedef __m512i v512s16;
+typedef __m512i v512u32;
+typedef __m512i v512s32;
+typedef __m512  v512f32;
+
+#define AVAILABLE_TYPE_v512u8
+#define AVAILABLE_TYPE_v512s8
+#define AVAILABLE_TYPE_v512u16
+#define AVAILABLE_TYPE_v512s16
+#define AVAILABLE_TYPE_v512u32
+#define AVAILABLE_TYPE_v512s32
+#define AVAILABLE_TYPE_v512f32
+#endif // defined(ENABLE_AVX512_0)
+
+#endif // defined(ENABLE_AVX) || defined(ENABLE_AVX2) || defined(ENABLE_AVX512_0)
+
 /*---------- GPU3D fixed-points types -----------*/
 
 typedef s32 f32;
 #define inttof32(n)          ((n) << 12)
 #define f32toint(n)          ((n) >> 12)
-#define floattof32(n)        ((int32)((n) * (1 << 12)))
+#define floattof32(n)        ((s32)((n) * (1 << 12)))
 #define f32tofloat(n)        (((float)(n)) / (float)(1<<12))
 
 typedef s16 t16;
@@ -229,6 +399,230 @@ typedef s16 v10;
 #define floattov10(n)        ((v10)((n) * (1 << 9)))
 #define v10tofloat(n)        (((float)(n)) / (float)(1<<9))
 
+union Vector2s16
+{
+	s16 vec[2];
+	s16 coord[2];
+	struct { s16 s, t; };
+	struct { s16 u, v; };
+	struct { s16 x, y; };
+	
+	u32 value;
+};
+typedef union Vector2s16 Vector2s16;
+
+union Vector3s16
+{
+	s16 vec[3];
+	s16 coord[3];
+	struct { s16 x, y, z; };
+};
+typedef union Vector3s16 Vector3s16;
+
+union Vector4s16
+{
+	s16 vec[4];
+	s16 coord[4];
+	struct { s16 x, y, z, w; };
+	
+	struct
+	{
+		Vector3s16 vec3;
+		s16 :16;
+	};
+	
+	u64 value;
+};
+typedef union Vector4s16 Vector4s16;
+
+union Vector2s32
+{
+	s32 vec[2];
+	s32 coord[2];
+	struct { s32 s, t; };
+	struct { s32 u, v; };
+	struct { s32 x, y; };
+	
+	u64 value;
+};
+typedef union Vector2s32 Vector2s32;
+
+union Vector3s32
+{
+	s32 vec[3];
+	s32 coord[3];
+	struct { s32 x, y, z; };
+};
+typedef union Vector3s32 Vector3s32;
+
+union Vector4s32
+{
+	s32 vec[4];
+	s32 coord[4];
+	struct { s32 x, y, z, w; };
+	
+	struct
+	{
+		Vector3s32 vec3;
+		s32 :32;
+	};
+};
+typedef union Vector4s32 Vector4s32;
+
+union Vector2s64
+{
+	s64 vec[2];
+	s64 coord[2];
+	struct { s64 s, t; };
+	struct { s64 u, v; };
+	struct { s64 x, y; };
+};
+typedef union Vector2s64 Vector2s64;
+
+union Vector3s64
+{
+	s64 vec[3];
+	s64 coord[3];
+	struct { s64 x, y, z; };
+};
+typedef union Vector3s64 Vector3s64;
+
+union Vector4s64
+{
+	s64 vec[4];
+	s64 coord[4];
+	struct { s64 x, y, z, w; };
+	
+	struct
+	{
+		Vector3s64 vec3;
+		s64 :64;
+	};
+};
+typedef union Vector4s64 Vector4s64;
+
+union Vector2f32
+{
+	float vec[2];
+	float coord[2];
+	struct { float s, t; };
+	struct { float u, v; };
+	struct { float x, y; };
+};
+typedef union Vector2f32 Vector2f32;
+
+union Vector3f32
+{
+	float vec[3];
+	float coord[3];
+	struct { float x, y, z; };
+};
+typedef union Vector3f32 Vector3f32;
+
+union Vector4f32
+{
+	float vec[4];
+	float coord[4];
+	struct { float x, y, z, w; };
+	
+	struct
+	{
+		Vector3f32 vec3;
+		float ignore;
+	};
+};
+typedef union Vector4f32 Vector4f32;
+
+union Color5551
+{
+	struct
+	{
+#ifdef MSB_FIRST
+		u16 a:1;
+		u16 b:5;
+		u16 g:5;
+		u16 r:5;
+#else
+		u16 r:5;
+		u16 g:5;
+		u16 b:5;
+		u16 a:1;
+#endif
+	};
+	
+	u16 value;
+};
+typedef union Color5551 Color5551;
+
+union Color4u8
+{
+	u8 component[4];
+	struct { u8 r, g, b, a; };
+	
+	u32 value;
+};
+typedef union Color4u8 Color4u8;
+
+union Color3s32
+{
+	s32 component[3];
+	struct { s32 r, g, b; };
+};
+typedef union Color3s32 Color3s32;
+
+union Color4s32
+{
+	s32 component[4];
+	struct { s32 r, g, b, a; };
+	
+	struct
+	{
+		Color3s32 color3;
+		s32 alpha;
+	};
+};
+typedef union Color4s32 Color4s32;
+
+union Color3s64
+{
+	s64 component[3];
+	struct { s64 r, g, b; };
+};
+typedef union Color3s64 Color3s64;
+
+union Color4s64
+{
+	s64 component[4];
+	struct { s64 r, g, b, a; };
+	
+	struct
+	{
+		Color3s64 color3;
+		s64 alpha;
+	};
+};
+typedef union Color4s64 Color4s64;
+
+union Color3f32
+{
+	float component[3];
+	struct { float r, g, b; };
+};
+typedef union Color3f32 Color3f32;
+
+union Color4f32
+{
+	float component[4];
+	struct { float r, g, b, a; };
+	
+	struct
+	{
+		Color3f32 color3;
+		float alpha;
+	};
+};
+typedef union Color4f32 Color4f32;
+
 /*----------------------*/
 
 #ifndef OBJ_C
@@ -247,152 +641,127 @@ typedef int desmume_BOOL;
 #define FALSE 0
 #endif
 
-#ifdef __BIG_ENDIAN__
-#ifndef WORDS_BIGENDIAN
-#define WORDS_BIGENDIAN
-#endif
+// Atomic functions
+#if defined(HOST_WINDOWS)
+#include <winnt.h>
+
+//#define atomic_add_32(V,M)					InterlockedAddNoFence((volatile LONG *)(V),(LONG)(M))			// Requires Windows 8
+inline s32 atomic_add_32(volatile s32 *V, s32 M)						{ return (s32)(InterlockedExchangeAdd((volatile LONG *)V, (LONG)M) + M); }
+inline s32 atomic_add_barrier32(volatile s32 *V, s32 M)					{ return (s32)(InterlockedExchangeAdd((volatile LONG *)V, (LONG)M) + M); }
+
+//#define atomic_inc_32(V)						InterlockedIncrementNoFence((volatile LONG *)(V))				// Requires Windows 8
+#define atomic_inc_32(V)						_InterlockedIncrement((volatile LONG *)(V))
+#define atomic_inc_barrier32(V)					_InterlockedIncrement((volatile LONG *)(V))
+//#define atomic_dec_32(V)						InterlockedDecrementNoFence((volatile LONG *)(V))				// Requires Windows 8
+#define atomic_dec_32(V)						_InterlockedDecrement((volatile LONG *)(V))
+#define atomic_dec_barrier32(V)					_InterlockedDecrement((volatile LONG *)(V))
+
+//#define atomic_or_32(V,M)						InterlockedOrNoFence((volatile LONG *)(V),(LONG)(M))			// Requires Windows 8
+#define atomic_or_32(V,M)						_InterlockedOr((volatile LONG *)(V),(LONG)(M))
+#define atomic_or_barrier32(V,M)				_InterlockedOr((volatile LONG *)(V),(LONG)(M))
+//#define atomic_and_32(V,M)					InterlockedAndNoFence((volatile LONG *)(V),(LONG)(M))			// Requires Windows 8
+#define atomic_and_32(V,M)						_InterlockedAnd((volatile LONG *)(V),(LONG)(M))
+#define atomic_and_barrier32(V,M)				_InterlockedAnd((volatile LONG *)(V),(LONG)(M))
+//#define atomic_xor_32(V,M)					InterlockedXorNoFence((volatile LONG *)(V),(LONG)(M))			// Requires Windows 8
+#define atomic_xor_32(V,M)						_InterlockedXor((volatile LONG *)(V),(LONG)(M))
+#define atomic_xor_barrier32(V,M)				_InterlockedXor((volatile LONG *)(V),(LONG)(M))
+
+inline bool atomic_test_and_set_32(volatile s32 *V, s32 M)				{ return (_interlockedbittestandset((volatile LONG *)V, (LONG)M)) ? true : false; }
+inline bool atomic_test_and_set_barrier32(volatile s32 *V, s32 M)		{ return (_interlockedbittestandset((volatile LONG *)V, (LONG)M)) ? true : false; }
+inline bool atomic_test_and_clear_32(volatile s32 *V, s32 M)			{ return (_interlockedbittestandreset((volatile LONG *)V, (LONG)M)) ? true : false; }
+inline bool atomic_test_and_clear_barrier32(volatile s32 *V, s32 M)		{ return (_interlockedbittestandreset((volatile LONG *)V, (LONG)M)) ? true : false; }
+
+#elif defined(DESMUME_COCOA) && ( !defined(__clang__) || (__clang_major__ < 9) || !defined(MAC_OS_X_VERSION_10_7) || (MAC_OS_X_VERSION_MIN_REQUIRED < MAC_OS_X_VERSION_10_7) )
+#include <libkern/OSAtomic.h>
+
+#define atomic_add_32(V,M)						OSAtomicAdd32((M),(V))
+#define atomic_add_barrier32(V,M)				OSAtomicAdd32Barrier((M),(V))
+
+#define atomic_inc_32(V)						OSAtomicIncrement32((V))
+#define atomic_inc_barrier32(V)					OSAtomicIncrement32Barrier((V))
+#define atomic_dec_32(V)						OSAtomicDecrement32((V))
+#define atomic_dec_barrier32(V)					OSAtomicDecrement32Barrier((V))
+
+#define atomic_or_32(V,M)						OSAtomicOr32((M),(volatile uint32_t *)(V))
+#define atomic_or_barrier32(V,M)				OSAtomicOr32Barrier((M),(volatile uint32_t *)(V))
+#define atomic_and_32(V,M)						OSAtomicAnd32((M),(volatile uint32_t *)(V))
+#define atomic_and_barrier32(V,M)				OSAtomicAnd32Barrier((M),(volatile uint32_t *)(V))
+#define atomic_xor_32(V,M)						OSAtomicXor32((M),(volatile uint32_t *)(V))
+#define atomic_xor_barrier32(V,M)				OSAtomicXor32Barrier((M),(volatile uint32_t *)(V))
+
+#define atomic_test_and_set_32(V,M)				OSAtomicTestAndSet((M),(V))
+#define atomic_test_and_set_barrier32(V,M)		OSAtomicTestAndSetBarrier((M),(V))
+#define atomic_test_and_clear_32(V,M)			OSAtomicTestAndClear((M),(V))
+#define atomic_test_and_clear_barrier32(V,M)	OSAtomicTestAndClearBarrier((M),(V))
+
+#else // Just use C++11 std::atomic
+#include <atomic>
+
+inline s32 atomic_add_32(volatile s32 *V, s32 M)			{ return std::atomic_fetch_add_explicit<s32>((volatile std::atomic<s32> *)V, M, std::memory_order::memory_order_relaxed) + M; }
+inline s32 atomic_add_barrier32(volatile s32 *V, s32 M)		{ return std::atomic_fetch_add_explicit<s32>((volatile std::atomic<s32> *)V, M, std::memory_order::memory_order_seq_cst) + M; }
+
+inline s32 atomic_inc_32(volatile s32 *V)					{ return atomic_add_32(V, 1); }
+inline s32 atomic_inc_barrier32(volatile s32 *V)			{ return atomic_add_barrier32(V, 1); }
+inline s32 atomic_dec_32(volatile s32 *V)					{ return atomic_add_32(V, -1); }
+inline s32 atomic_dec_barrier32(volatile s32 *V)			{ return atomic_add_barrier32(V, -1); }
+
+inline s32 atomic_or_32(volatile s32 *V, s32 M)				{ return std::atomic_fetch_or_explicit<s32>((volatile std::atomic<s32> *)V, M, std::memory_order::memory_order_relaxed) | M; }
+inline s32 atomic_or_barrier32(volatile s32 *V, s32 M)		{ return std::atomic_fetch_or_explicit<s32>((volatile std::atomic<s32> *)V, M, std::memory_order::memory_order_seq_cst) | M; }
+inline s32 atomic_and_32(volatile s32 *V, s32 M)			{ return std::atomic_fetch_and_explicit<s32>((volatile std::atomic<s32> *)V, M, std::memory_order::memory_order_relaxed) & M; }
+inline s32 atomic_and_barrier32(volatile s32 *V, s32 M)		{ return std::atomic_fetch_and_explicit<s32>((volatile std::atomic<s32> *)V, M, std::memory_order::memory_order_seq_cst) & M; }
+inline s32 atomic_xor_32(volatile s32 *V, s32 M)			{ return std::atomic_fetch_xor_explicit<s32>((volatile std::atomic<s32> *)V, M, std::memory_order::memory_order_relaxed) ^ M; }
+inline s32 atomic_xor_barrier32(volatile s32 *V, s32 M)		{ return std::atomic_fetch_xor_explicit<s32>((volatile std::atomic<s32> *)V, M, std::memory_order::memory_order_seq_cst) ^ M; }
+
+inline bool atomic_test_and_set_32(volatile s32 *V, s32 M)				{ return (std::atomic_fetch_or_explicit<s32>((volatile std::atomic<s32> *)V,(0x80>>((M)&0x07)), std::memory_order::memory_order_relaxed) & (0x80>>((M)&0x07))) ? true : false; }
+inline bool atomic_test_and_set_barrier32(volatile s32 *V, s32 M)		{ return (std::atomic_fetch_or_explicit<s32>((volatile std::atomic<s32> *)V,(0x80>>((M)&0x07)), std::memory_order::memory_order_seq_cst) & (0x80>>((M)&0x07))) ? true : false; }
+inline bool atomic_test_and_clear_32(volatile s32 *V, s32 M)			{ return (std::atomic_fetch_and_explicit<s32>((volatile std::atomic<s32> *)V,~(s32)(0x80>>((M)&0x07)), std::memory_order::memory_order_relaxed) & (0x80>>((M)&0x07))) ? true : false; }
+inline bool atomic_test_and_clear_barrier32(volatile s32 *V, s32 M)		{ return (std::atomic_fetch_and_explicit<s32>((volatile std::atomic<s32> *)V,~(s32)(0x80>>((M)&0x07)), std::memory_order::memory_order_seq_cst) & (0x80>>((M)&0x07))) ? true : false; }
+
 #endif
 
-#ifdef WORDS_BIGENDIAN
-# define LOCAL_BE
-#else
-# define LOCAL_LE
+// Flags used to determine how a conversion function swaps bytes for big-endian systems.
+// These flags should be ignored on little-endian systems.
+enum BESwapFlags
+{
+	BESwapNone    = 0x00, // No byte swapping for both incoming and outgoing data. All data is used as-is.
+	
+	BESwapIn      = 0x01, // All incoming data is byte swapped; outgoing data is used as-is.
+	BESwapPre     = 0x01, // An alternate name for "BESwapIn"
+	BESwapSrc     = 0x01, // An alternate name for "BESwapIn"
+	
+	BESwapOut     = 0x02, // All incoming data is used as-is; outgoing data is byte swapped.
+	BESwapPost    = 0x02, // An alternate name for "BESwapOut"
+	BESwapDst     = 0x02, // An alternate name for "BESwapOut"
+	
+	BESwapInOut   = 0x03, // Both incoming data and outgoing data are byte swapped.
+	BESwapPrePost = 0x03, // An alternate name for "BESwapInOut"
+	BESwapSrcDst  = 0x03  // An alternate name for "BESwapInOut"
+};
+
+// little endian (ds' endianess) to local endianess convert macros
+#ifdef MSB_FIRST // local arch is big endian
+	#define LE_TO_LOCAL_16(x) ((((x)&0xff)<<8)|(((x)>>8)&0xff))
+	#define LE_TO_LOCAL_32(x) ((((x)&0xff)<<24)|(((x)&0xff00)<<8)|(((x)>>8)&0xff00)|(((x)>>24)&0xff))
+	#define LE_TO_LOCAL_64(x) ((((x)&0xff)<<56)|(((x)&0xff00)<<40)|(((x)&0xff0000)<<24)|(((x)&0xff000000)<<8)|(((x)>>8)&0xff000000)|(((x)>>24)&0xff0000)|(((x)>>40)&0xff00)|(((x)>>56)&0xff))
+	#define LE_TO_LOCAL_WORDS_32(x) (((x)<<16)|((x)>>16))
+#else // local arch is little endian
+	#define LE_TO_LOCAL_16(x) (x)
+	#define LE_TO_LOCAL_32(x) (x)
+	#define LE_TO_LOCAL_64(x) (x)
+	#define LE_TO_LOCAL_WORDS_32(x) (x)
 #endif
 
-/* little endian (ds' endianess) to local endianess convert macros */
-#ifdef LOCAL_BE	/* local arch is big endian */
-# define LE_TO_LOCAL_16(x) ((((x)&0xff)<<8)|(((x)>>8)&0xff))
-# define LE_TO_LOCAL_32(x) ((((x)&0xff)<<24)|(((x)&0xff00)<<8)|(((x)>>8)&0xff00)|(((x)>>24)&0xff))
-# define LE_TO_LOCAL_64(x) ((((x)&0xff)<<56)|(((x)&0xff00)<<40)|(((x)&0xff0000)<<24)|(((x)&0xff000000)<<8)|(((x)>>8)&0xff000000)|(((x)>>24)&0xff0000)|(((x)>>40)&0xff00)|(((x)>>56)&0xff))
-# define LOCAL_TO_LE_16(x) ((((x)&0xff)<<8)|(((x)>>8)&0xff))
-# define LOCAL_TO_LE_32(x) ((((x)&0xff)<<24)|(((x)&0xff00)<<8)|(((x)>>8)&0xff00)|(((x)>>24)&0xff))
-# define LOCAL_TO_LE_64(x) ((((x)&0xff)<<56)|(((x)&0xff00)<<40)|(((x)&0xff0000)<<24)|(((x)&0xff000000)<<8)|(((x)>>8)&0xff000000)|(((x)>>24)&0xff0000)|(((x)>>40)&0xff00)|(((x)>>56)&0xff))
-#else		/* local arch is little endian */
-# define LE_TO_LOCAL_16(x) (x)
-# define LE_TO_LOCAL_32(x) (x)
-# define LE_TO_LOCAL_64(x) (x)
-# define LOCAL_TO_LE_16(x) (x)
-# define LOCAL_TO_LE_32(x) (x)
-# define LOCAL_TO_LE_64(x) (x)
-#endif
+#define LOCAL_TO_LE_16(x) LE_TO_LOCAL_16(x)
+#define LOCAL_TO_LE_32(x) LE_TO_LOCAL_32(x)
+#define LOCAL_TO_LE_64(x) LE_TO_LOCAL_64(x)
+#define LOCAL_WORDS_TO_LE_32(x) LE_TO_LOCAL_WORDS_32(x)
 
 // kilobytes and megabytes macro
 #define MB(x) ((x)*1024*1024)
 #define KB(x) ((x)*1024)
 
-#define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
-
-#define CPU_STR(c) ((c==ARM9)?"ARM9":"ARM7")
-typedef enum
-{
-	ARM9 = 0,
-	ARM7 = 1
-} cpu_id_t;
-
-///endian-flips count bytes.  count should be even and nonzero.
-inline void FlipByteOrder(u8 *src, u32 count)
-{
-	u8 *start=src;
-	u8 *end=src+count-1;
-
-	if((count&1) || !count)        return;         /* This shouldn't happen. */
-
-	while(count--)
-	{
-		u8 tmp;
-
-		tmp=*end;
-		*end=*start;
-		*start=tmp;
-		end--;
-		start++;
-	}
-}
-
-
-
-inline u64 double_to_u64(double d) {
-	union {
-		u64 a;
-		double b;
-	} fuxor;
-	fuxor.b = d;
-	return fuxor.a;
-}
-
-inline double u64_to_double(u64 u) {
-	union {
-		u64 a;
-		double b;
-	} fuxor;
-	fuxor.a = u;
-	return fuxor.b;
-}
-
-inline u32 float_to_u32(float f) {
-	union {
-		u32 a;
-		float b;
-	} fuxor;
-	fuxor.b = f;
-	return fuxor.a;
-}
-
-inline float u32_to_float(u32 u) {
-	union {
-		u32 a;
-		float b;
-	} fuxor;
-	fuxor.a = u;
-	return fuxor.b;
-}
-
-
-///stores a 32bit value into the provided byte array in guaranteed little endian form
-inline void en32lsb(u8 *buf, u32 morp)
-{ 
-	buf[0]=(u8)(morp);
-	buf[1]=(u8)(morp>>8);
-	buf[2]=(u8)(morp>>16);
-	buf[3]=(u8)(morp>>24);
-} 
-
-inline void en16lsb(u8* buf, u16 morp)
-{
-	buf[0]=(u8)morp;
-	buf[1]=(u8)(morp>>8);
-}
-
-///unpacks a 64bit little endian value from the provided byte array into host byte order
-inline u64 de64lsb(u8 *morp)
-{
-	return morp[0]|(morp[1]<<8)|(morp[2]<<16)|(morp[3]<<24)|((u64)morp[4]<<32)|((u64)morp[5]<<40)|((u64)morp[6]<<48)|((u64)morp[7]<<56);
-}
-
-///unpacks a 32bit little endian value from the provided byte array into host byte order
-inline u32 de32lsb(u8 *morp)
-{
-	return morp[0]|(morp[1]<<8)|(morp[2]<<16)|(morp[3]<<24);
-}
-
-///unpacks a 16bit little endian value from the provided byte array into host byte order
-inline u16 de16lsb(u8 *morp)
-{
-	return morp[0]|(morp[1]<<8);
-}
-
-#ifndef ARRAY_SIZE
-//taken from winnt.h
-extern "C++" // templates cannot be declared to have 'C' linkage
-template <typename T, size_t N>
-char (*BLAHBLAHBLAH( UNALIGNED T (&)[N] ))[N];
-
-#define ARRAY_SIZE(A) (sizeof(*BLAHBLAHBLAH(A)))
-#endif
-
-
 //fairly standard for loop macros
-#define MACRODO1(TRICK,TODO) { const int X = TRICK; TODO; }
+#define MACRODO1(TRICK,TODO) { const size_t X = TRICK; TODO; }
 #define MACRODO2(X,TODO)   { MACRODO1((X),TODO)   MACRODO1(((X)+1),TODO) }
 #define MACRODO4(X,TODO)   { MACRODO2((X),TODO)   MACRODO2(((X)+2),TODO) }
 #define MACRODO8(X,TODO)   { MACRODO4((X),TODO)   MACRODO4(((X)+4),TODO) }
@@ -456,45 +825,9 @@ char (*BLAHBLAHBLAH( UNALIGNED T (&)[N] ))[N];
 #define	CTASSERT(x)		typedef char __assert ## y[(x) ? 1 : -1]
 #endif
 
-static const char hexValid[23] = {"0123456789ABCDEFabcdef"};
-
-
 template<typename T> inline void reconstruct(T* t) { 
 	t->~T();
 	new(t) T();
-}
-
-//-------------fixed point speedup macros
-
-#ifdef _WIN32
-#include <intrin.h>
-#endif
-
-FORCEINLINE s64 fx32_mul(const s32 a, const s32 b)
-{
-#ifdef _WIN32
-	return __emul(a,b);
-#else
-	return ((s64)a)*((s64)b);
-#endif
-}
-
-FORCEINLINE s32 fx32_shiftdown(const s64 a)
-{
-#ifdef _WIN32
-	return (s32)__ll_rshift(a,12);
-#else
-	return (s32)(a>>12);
-#endif
-}
-
-FORCEINLINE s64 fx32_shiftup(const s32 a)
-{
-#ifdef _WIN32
-	return __ll_lshift(a,12);
-#else
-	return ((s64)a)<<12;
-#endif
 }
 
 #endif
