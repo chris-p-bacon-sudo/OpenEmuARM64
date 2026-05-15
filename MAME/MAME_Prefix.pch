@@ -1,0 +1,6 @@
+#include "osd_config.h"
+#include "osdcomm.h"
+
+#ifdef __OBJC__
+    #import <Cocoa/Cocoa.h>
+#endif

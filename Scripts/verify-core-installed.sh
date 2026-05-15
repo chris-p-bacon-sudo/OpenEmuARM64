@@ -70,22 +70,20 @@ if [ -f "$REPO_ROOT/.git" ]; then
   fi
 fi
 
+LOCAL_CORE_BUILD="$REPO_ROOT/${CORE}/build/XcodeDerived/Build/Products/${CONFIG}/${CORE}.oecoreplugin"
+[ -e "$LOCAL_CORE_BUILD/Contents/MacOS/${CORE}" ] || LOCAL_CORE_BUILD=""
 DERIVED_BUILD=$(ls -dt "$HOME/Library/Developer/Xcode/DerivedData/OpenEmu-metal-"*/Build/Products/${CONFIG}/"${CORE}.oecoreplugin" 2>/dev/null | head -1 || true)
 
 BUILT=""
-if [ -n "$WORKTREE_BUILD" ] && [ -n "$DERIVED_BUILD" ]; then
-  WT_MTIME=$(stat -f "%m" "$WORKTREE_BUILD/Contents/MacOS/${CORE}" 2>/dev/null || echo 0)
-  DD_MTIME=$(stat -f "%m" "$DERIVED_BUILD/Contents/MacOS/${CORE}" 2>/dev/null || echo 0)
-  if [ "$WT_MTIME" -ge "$DD_MTIME" ]; then
-    BUILT="$WORKTREE_BUILD"
-  else
-    BUILT="$DERIVED_BUILD"
+BUILT_MTIME=0
+for CANDIDATE in "$WORKTREE_BUILD" "$LOCAL_CORE_BUILD" "$DERIVED_BUILD"; do
+  [ -n "$CANDIDATE" ] || continue
+  CANDIDATE_MTIME=$(stat -f "%m" "$CANDIDATE/Contents/MacOS/${CORE}" 2>/dev/null || echo 0)
+  if [ "$CANDIDATE_MTIME" -ge "$BUILT_MTIME" ]; then
+    BUILT="$CANDIDATE"
+    BUILT_MTIME="$CANDIDATE_MTIME"
   fi
-elif [ -n "$WORKTREE_BUILD" ]; then
-  BUILT="$WORKTREE_BUILD"
-elif [ -n "$DERIVED_BUILD" ]; then
-  BUILT="$DERIVED_BUILD"
-fi
+done
 
 if [ ! -e "${INSTALLED}/Contents/MacOS/${CORE}" ]; then
   echo "FAIL — no installed plugin found for ${CORE}." >&2
@@ -95,7 +93,7 @@ if [ ! -e "${INSTALLED}/Contents/MacOS/${CORE}" ]; then
 fi
 
 if [ -z "${BUILT}" ] || [ ! -e "${BUILT}/Contents/MacOS/${CORE}" ]; then
-  echo "FAIL — no ${CONFIG} build of ${CORE} found in DerivedData." >&2
+  echo "FAIL — no ${CONFIG} build of ${CORE} found in any known build location." >&2
   echo "       Build the core scheme first:" >&2
   echo "       xcodebuild -workspace OpenEmu-metal.xcworkspace -scheme \"OpenEmu + ${CORE}\" \\" >&2
   echo "         -configuration ${CONFIG} -destination 'platform=macOS,arch=arm64' build" >&2

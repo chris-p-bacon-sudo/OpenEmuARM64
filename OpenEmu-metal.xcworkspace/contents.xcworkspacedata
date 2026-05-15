@@ -94,4 +94,7 @@
    <FileRef
       location = "group:Dolphin/Dolphin.xcodeproj">
    </FileRef>
+   <FileRef
+      location = "group:MAME/MAME.xcodeproj">
+   </FileRef>
 </Workspace>

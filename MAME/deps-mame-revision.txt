@@ -1,0 +1,3 @@
+stuartcarnie/mame commit: 4fc1f9f16b0dfba6be670367330028635613b04b
+branch: mame0225-headless
+source: https://github.com/stuartcarnie/mame.git

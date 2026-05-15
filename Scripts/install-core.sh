@@ -58,7 +58,9 @@ DEST="$HOME/Library/Application Support/OpenEmu/Cores/${CORE}.oecoreplugin"
 # Look in two places, in this order, and pick the most recently built:
 #   1. ~/Builds/openemu/<branch>/  — worktree mode build path, used by verify.sh
 #                                    when run inside a git worktree
-#   2. ~/Library/Developer/Xcode/DerivedData/OpenEmu-metal-*/  — standard build path
+#   2. <Core>/build/XcodeDerived/  — core-local build path used by heavyweight
+#                                    standalone build scripts such as MAME
+#   3. ~/Library/Developer/Xcode/DerivedData/OpenEmu-metal-*/  — standard build path
 #
 # Picking the most recent is critical: if a stale build exists in DerivedData,
 # we must not silently install it instead of the worktree build the user just
@@ -75,28 +77,27 @@ if [ -f "$REPO_ROOT/.git" ]; then
   fi
 fi
 
+LOCAL_CORE_BUILD="$REPO_ROOT/${CORE}/build/XcodeDerived/Build/Products/${CONFIG}/${CORE}.oecoreplugin"
+[ -e "$LOCAL_CORE_BUILD/Contents/MacOS/${CORE}" ] || LOCAL_CORE_BUILD=""
 DERIVED_BUILD=$(ls -dt "$HOME/Library/Developer/Xcode/DerivedData/OpenEmu-metal-"*/Build/Products/${CONFIG}/"${CORE}.oecoreplugin" 2>/dev/null | head -1 || true)
 
 # Choose whichever candidate has the more recently modified binary.
 DERIVED=""
-if [ -n "$WORKTREE_BUILD" ] && [ -n "$DERIVED_BUILD" ]; then
-  WT_MTIME=$(stat -f "%m" "$WORKTREE_BUILD/Contents/MacOS/${CORE}" 2>/dev/null || echo 0)
-  DD_MTIME=$(stat -f "%m" "$DERIVED_BUILD/Contents/MacOS/${CORE}" 2>/dev/null || echo 0)
-  if [ "$WT_MTIME" -ge "$DD_MTIME" ]; then
-    DERIVED="$WORKTREE_BUILD"
-  else
-    DERIVED="$DERIVED_BUILD"
+DERIVED_MTIME=0
+for CANDIDATE in "$WORKTREE_BUILD" "$LOCAL_CORE_BUILD" "$DERIVED_BUILD"; do
+  [ -n "$CANDIDATE" ] || continue
+  CANDIDATE_MTIME=$(stat -f "%m" "$CANDIDATE/Contents/MacOS/${CORE}" 2>/dev/null || echo 0)
+  if [ "$CANDIDATE_MTIME" -ge "$DERIVED_MTIME" ]; then
+    DERIVED="$CANDIDATE"
+    DERIVED_MTIME="$CANDIDATE_MTIME"
   fi
-elif [ -n "$WORKTREE_BUILD" ]; then
-  DERIVED="$WORKTREE_BUILD"
-elif [ -n "$DERIVED_BUILD" ]; then
-  DERIVED="$DERIVED_BUILD"
-fi
+done
 
 if [ -z "$DERIVED" ]; then
   echo "error: ${CORE}.oecoreplugin not found in any known build location (${CONFIG})."
   echo "       Looked in:"
   echo "         ~/Builds/openemu/<branch>/Build/Products/${CONFIG}/"
+  echo "         <Core>/build/XcodeDerived/Build/Products/${CONFIG}/"
   echo "         ~/Library/Developer/Xcode/DerivedData/OpenEmu-metal-*/Build/Products/${CONFIG}/"
   echo "       Build the '${CORE}' scheme first:"
   echo "       xcodebuild -workspace OpenEmu-metal.xcworkspace -scheme \"OpenEmu + ${CORE}\" \\"
