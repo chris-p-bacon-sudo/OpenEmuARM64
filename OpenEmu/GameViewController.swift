@@ -573,11 +573,12 @@ final class RetroAchievementsGameViewController: NSViewController {
         let sets = info?[OERetroAchievementsSetsKey] as? [[String: Any]] ?? []
         let achievements = info?[OERetroAchievementsAchievementsKey] as? [[String: Any]] ?? []
         let setOrder = orderedSetIDs(from: sets, achievements: achievements)
-        if selectedSetID == nil || !(selectedSetID.map { setOrder.contains($0) } ?? false) {
-            selectedSetID = setOrder.first
-        }
         let selectableSetIDs = setOrder.filter { setID in
             achievements.contains { (($0[OERetroAchievementsSetIDKey] as? NSNumber)?.intValue ?? -1) == setID }
+        }
+        let validSelectionIDs = selectableSetIDs.isEmpty ? setOrder : selectableSetIDs
+        if selectedSetID == nil || !(selectedSetID.map { validSelectionIDs.contains($0) } ?? false) {
+            selectedSetID = validSelectionIDs.first
         }
         if selectableSetIDs.count > 1 {
             contentStack.addArrangedSubview(makeSetSelector(sets: sets, achievements: achievements, setOrder: selectableSetIDs))
