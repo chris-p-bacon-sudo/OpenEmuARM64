@@ -62,6 +62,12 @@ static NSString * const OERAAchievementCountKey = @"achievementCount";
 static NSString * const OERAUnlockedPointsKey = @"unlockedPoints";
 static NSString * const OERATotalPointsKey = @"totalPoints";
 static NSString * const OERAAchievementsKey = @"achievements";
+static NSString * const OERASetsKey = @"sets";
+static NSString * const OERASetIDKey = @"setID";
+static NSString * const OERASetTitleKey = @"setTitle";
+static NSString * const OERASetBadgeURLKey = @"setBadgeURL";
+static NSString * const OERASetAchievementCountKey = @"setAchievementCount";
+static NSString * const OERASetLeaderboardCountKey = @"setLeaderboardCount";
 static NSString * const OERABucketTitleKey = @"bucketTitle";
 static NSString * const OERABucketTypeKey = @"bucketType";
 static NSString * const OERAStateKey = @"state";
@@ -228,6 +234,40 @@ static struct mLogger logger = { .log = _log };
         payload[OERAGameBadgeURLKey] = [NSString stringWithUTF8String:gameImageURL];
     }
 
+    NSMutableArray *sets = [NSMutableArray array];
+    NSMutableDictionary<NSNumber *, NSString *> *setTitlesByID = [NSMutableDictionary dictionary];
+    setTitlesByID[@0] = [NSString stringWithUTF8String:game->title ?: "Base Set"];
+    [sets addObject:@{
+        OERASetIDKey: @0,
+        OERASetTitleKey: setTitlesByID[@0],
+        OERASetAchievementCountKey: @(summary.num_core_achievements),
+        OERASetLeaderboardCountKey: @0,
+    }];
+
+    rc_client_subset_list_t *subsetList = rc_client_create_subset_list(_rcClient);
+    if (subsetList) {
+        for (uint32_t subsetIndex = 0; subsetIndex < subsetList->num_subsets; subsetIndex++) {
+            const rc_client_subset_t *subset = subsetList->subsets[subsetIndex];
+            if (!subset) { continue; }
+
+            NSString *subsetTitle = [NSString stringWithUTF8String:subset->title ?: "Subset"];
+            NSNumber *subsetID = @(subset->id);
+            setTitlesByID[subsetID] = subsetTitle;
+
+            NSMutableDictionary *setInfo = [NSMutableDictionary dictionary];
+            setInfo[OERASetIDKey] = subsetID;
+            setInfo[OERASetTitleKey] = subsetTitle;
+            setInfo[OERASetAchievementCountKey] = @(subset->num_achievements);
+            setInfo[OERASetLeaderboardCountKey] = @(subset->num_leaderboards);
+            if (subset->badge_url) {
+                setInfo[OERASetBadgeURLKey] = [NSString stringWithUTF8String:subset->badge_url];
+            }
+            [sets addObject:setInfo];
+        }
+        rc_client_destroy_subset_list(subsetList);
+    }
+    payload[OERASetsKey] = sets;
+
     NSMutableArray *achievements = [NSMutableArray array];
     rc_client_achievement_list_t *list = rc_client_create_achievement_list(_rcClient,
                                                                            RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE,
@@ -241,6 +281,9 @@ static struct mLogger logger = { .log = _log };
                 if (!ach) { continue; }
 
                 NSMutableDictionary *entry = [NSMutableDictionary dictionary];
+                NSNumber *subsetID = @(bucket.subset_id);
+                entry[OERASetIDKey] = subsetID;
+                entry[OERASetTitleKey] = setTitlesByID[subsetID] ?: setTitlesByID[@0];
                 entry[OERABucketTitleKey] = bucketTitle;
                 entry[OERABucketTypeKey] = @(bucket.bucket_type);
                 entry[OEAchievementIDKey] = @(ach->id);

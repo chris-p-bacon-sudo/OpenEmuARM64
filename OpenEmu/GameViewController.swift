@@ -562,6 +562,11 @@ final class RetroAchievementsGameViewController: NSViewController {
         let info = document.retroAchievementsSessionInfo
         contentStack.addArrangedSubview(makeHeader(info: info, document: document))
 
+        let sets = info?[OERetroAchievementsSetsKey] as? [[String: Any]] ?? []
+        if sets.count > 1 {
+            contentStack.addArrangedSubview(makeSetSummaryView(sets))
+        }
+
         let achievements = info?[OERetroAchievementsAchievementsKey] as? [[String: Any]] ?? []
         if achievements.isEmpty {
             let message = info == nil
@@ -572,8 +577,17 @@ final class RetroAchievementsGameViewController: NSViewController {
             return
         }
 
+        var lastSetID: Int?
         var lastBucket: String?
         for achievement in achievements {
+            let setID = (achievement[OERetroAchievementsSetIDKey] as? NSNumber)?.intValue ?? 0
+            if setID != lastSetID {
+                let setTitle = achievement[OERetroAchievementsSetTitleKey] as? String ?? NSLocalizedString("Base Set", comment: "RetroAchievements base set title")
+                contentStack.addArrangedSubview(makeSetHeader(setTitle, isBaseSet: setID == 0))
+                lastSetID = setID
+                lastBucket = nil
+            }
+
             let bucket = achievement[OERetroAchievementsBucketTitleKey] as? String ?? NSLocalizedString("Achievements", comment: "RetroAchievements default bucket")
             if bucket != lastBucket {
                 contentStack.addArrangedSubview(makeBucketLabel(bucket))
@@ -641,6 +655,31 @@ final class RetroAchievementsGameViewController: NSViewController {
         }
 
         return header
+    }
+
+    private func makeSetSummaryView(_ sets: [[String: Any]]) -> NSView {
+        let container = NSStackView()
+        container.orientation = .horizontal
+        container.alignment = .centerY
+        container.spacing = 8
+
+        let label = makeBodyLabel(NSLocalizedString("Active achievement sets:", comment: "RetroAchievements active sets label"), color: .secondaryLabelColor)
+        container.addArrangedSubview(label)
+
+        for set in sets {
+            let title = set[OERetroAchievementsSetTitleKey] as? String ?? NSLocalizedString("Set", comment: "RetroAchievements set fallback title")
+            let count = (set[OERetroAchievementsSetAchievementCountKey] as? NSNumber)?.intValue ?? 0
+            container.addArrangedSubview(makePill("\(title) (\(count))", color: .labelColor))
+        }
+
+        return container
+    }
+
+    private func makeSetHeader(_ title: String, isBaseSet: Bool) -> NSView {
+        let label = NSTextField(labelWithString: isBaseSet ? NSLocalizedString("Base Set", comment: "RetroAchievements base set header") : title)
+        label.font = .systemFont(ofSize: 18, weight: .bold)
+        label.textColor = .labelColor
+        return label
     }
 
     private func makeAchievementRow(_ info: [String: Any]) -> NSView {
