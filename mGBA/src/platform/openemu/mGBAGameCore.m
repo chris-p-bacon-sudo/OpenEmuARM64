@@ -236,13 +236,6 @@ static struct mLogger logger = { .log = _log };
 
     NSMutableArray *sets = [NSMutableArray array];
     NSMutableDictionary<NSNumber *, NSString *> *setTitlesByID = [NSMutableDictionary dictionary];
-    setTitlesByID[@0] = [NSString stringWithUTF8String:game->title ?: "Base Set"];
-    [sets addObject:@{
-        OERASetIDKey: @0,
-        OERASetTitleKey: setTitlesByID[@0],
-        OERASetAchievementCountKey: @(summary.num_core_achievements),
-        OERASetLeaderboardCountKey: @0,
-    }];
 
     rc_client_subset_list_t *subsetList = rc_client_create_subset_list(_rcClient);
     if (subsetList) {
@@ -250,7 +243,7 @@ static struct mLogger logger = { .log = _log };
             const rc_client_subset_t *subset = subsetList->subsets[subsetIndex];
             if (!subset) { continue; }
 
-            NSString *subsetTitle = [NSString stringWithUTF8String:subset->title ?: "Subset"];
+            NSString *subsetTitle = [NSString stringWithUTF8String:subset->title ?: "Achievement Set"];
             NSNumber *subsetID = @(subset->id);
             setTitlesByID[subsetID] = subsetTitle;
 
@@ -265,6 +258,18 @@ static struct mLogger logger = { .log = _log };
             [sets addObject:setInfo];
         }
         rc_client_destroy_subset_list(subsetList);
+    }
+
+    if (sets.count == 0) {
+        NSNumber *gameID = @(game->id);
+        NSString *gameTitle = [NSString stringWithUTF8String:game->title ?: "Achievement Set"];
+        setTitlesByID[gameID] = gameTitle;
+        [sets addObject:@{
+            OERASetIDKey: gameID,
+            OERASetTitleKey: gameTitle,
+            OERASetAchievementCountKey: @(summary.num_core_achievements),
+            OERASetLeaderboardCountKey: @0,
+        }];
     }
     payload[OERASetsKey] = sets;
 
@@ -283,7 +288,7 @@ static struct mLogger logger = { .log = _log };
                 NSMutableDictionary *entry = [NSMutableDictionary dictionary];
                 NSNumber *subsetID = @(bucket.subset_id);
                 entry[OERASetIDKey] = subsetID;
-                entry[OERASetTitleKey] = setTitlesByID[subsetID] ?: setTitlesByID[@0];
+                entry[OERASetTitleKey] = setTitlesByID[subsetID] ?: [NSString stringWithUTF8String:game->title ?: "Achievement Set"];
                 entry[OERABucketTitleKey] = bucketTitle;
                 entry[OERABucketTypeKey] = @(bucket.bucket_type);
                 entry[OEAchievementIDKey] = @(ach->id);

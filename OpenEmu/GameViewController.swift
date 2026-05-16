@@ -482,6 +482,13 @@ private final class OEFlippedDocumentView: NSView {
     override var isFlipped: Bool { true }
 }
 
+private extension Array where Element: Hashable {
+    func uniqued() -> [Element] {
+        var seen = Set<Element>()
+        return filter { seen.insert($0).inserted }
+    }
+}
+
 final class RetroAchievementsGameViewController: NSViewController {
 
     private static let imageCache = NSCache<NSURL, NSImage>()
@@ -577,23 +584,27 @@ final class RetroAchievementsGameViewController: NSViewController {
             return
         }
 
-        var lastSetID: Int?
-        var lastBucket: String?
-        for achievement in achievements {
-            let setID = (achievement[OERetroAchievementsSetIDKey] as? NSNumber)?.intValue ?? 0
-            if setID != lastSetID {
-                let setTitle = achievement[OERetroAchievementsSetTitleKey] as? String ?? NSLocalizedString("Base Set", comment: "RetroAchievements base set title")
-                contentStack.addArrangedSubview(makeSetHeader(setTitle, isBaseSet: setID == 0))
-                lastSetID = setID
-                lastBucket = nil
-            }
+        let groupedAchievements = Dictionary(grouping: achievements) { achievement in
+            (achievement[OERetroAchievementsSetIDKey] as? NSNumber)?.intValue ?? -1
+        }
+        let setOrder = orderedSetIDs(from: sets, achievements: achievements)
 
-            let bucket = achievement[OERetroAchievementsBucketTitleKey] as? String ?? NSLocalizedString("Achievements", comment: "RetroAchievements default bucket")
-            if bucket != lastBucket {
-                contentStack.addArrangedSubview(makeBucketLabel(bucket))
-                lastBucket = bucket
+        for setID in setOrder {
+            let setAchievements = groupedAchievements[setID] ?? []
+            guard !setAchievements.isEmpty else { continue }
+            let setTitle = setTitle(for: setID, sets: sets, achievements: setAchievements)
+            contentStack.addArrangedSubview(makeSetHeader(setTitle))
+
+            let bucketGroups = Dictionary(grouping: setAchievements) { achievement in
+                achievement[OERetroAchievementsBucketTitleKey] as? String ?? NSLocalizedString("Achievements", comment: "RetroAchievements default bucket")
             }
-            contentStack.addArrangedSubview(makeAchievementRow(achievement))
+            let bucketOrder = setAchievements.compactMap { $0[OERetroAchievementsBucketTitleKey] as? String }.uniqued()
+            for bucket in bucketOrder {
+                contentStack.addArrangedSubview(makeBucketLabel(bucket))
+                for achievement in bucketGroups[bucket] ?? [] {
+                    contentStack.addArrangedSubview(makeAchievementRow(achievement))
+                }
+            }
         }
         scrollToTop()
     }
@@ -675,8 +686,25 @@ final class RetroAchievementsGameViewController: NSViewController {
         return container
     }
 
-    private func makeSetHeader(_ title: String, isBaseSet: Bool) -> NSView {
-        let label = NSTextField(labelWithString: isBaseSet ? NSLocalizedString("Base Set", comment: "RetroAchievements base set header") : title)
+    private func orderedSetIDs(from sets: [[String: Any]], achievements: [[String: Any]]) -> [Int] {
+        let explicitSetIDs = sets.compactMap { ($0[OERetroAchievementsSetIDKey] as? NSNumber)?.intValue }
+        let achievementSetIDs = achievements.compactMap { ($0[OERetroAchievementsSetIDKey] as? NSNumber)?.intValue }
+        return (explicitSetIDs + achievementSetIDs).uniqued()
+    }
+
+    private func setTitle(for setID: Int, sets: [[String: Any]], achievements: [[String: Any]]) -> String {
+        if let set = sets.first(where: { ($0[OERetroAchievementsSetIDKey] as? NSNumber)?.intValue == setID }),
+           let title = set[OERetroAchievementsSetTitleKey] as? String {
+            return title
+        }
+        if let title = achievements.compactMap({ $0[OERetroAchievementsSetTitleKey] as? String }).first {
+            return title
+        }
+        return NSLocalizedString("Achievement Set", comment: "RetroAchievements set fallback title")
+    }
+
+    private func makeSetHeader(_ title: String) -> NSView {
+        let label = NSTextField(labelWithString: title)
         label.font = .systemFont(ofSize: 18, weight: .bold)
         label.textColor = .labelColor
         return label
