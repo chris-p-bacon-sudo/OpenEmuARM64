@@ -670,27 +670,32 @@ final class OEGameDocument: NSDocument {
                 self.rom.incrementPlayCount()
                 self.rom.markAsPlayedNow()
                 self.lastPlayStartDate = Date()
-                
+
+                // set initial volume
+                self.setVolume(self.volume, asDefault: false)
+
+                // set initial image adjustments
+                self.imageSaturation = Self.clampedSaturation((UserDefaults.standard.object(forKey: OEGameSaturationKey) as? Float) ?? 1.0)
+                self.imageGamma = Self.clampedGamma((UserDefaults.standard.object(forKey: OEGameGammaKey) as? Float) ?? 1.0)
+
+                self.gameCoreHelper?.setGlobalShaderParameters(gamma: CGFloat(self.imageGamma), saturation: CGFloat(self.imageSaturation))
+
+                OEBindingsController.default.systemBindings(for: self.systemPlugin.controller).add(self)
+
+                self.gameCoreManager?.setHandleEvents(self.handleEvents)
+                self.gameCoreManager?.setHandleKeyboardEvents(self.handleKeyboardEvents)
+
+                // Push the effective hardcore state to the helper before any startup save-state
+                // decision. The helper defaults to hardcore=true; without this early push a
+                // softcore/non-RA startup restore would be blocked by the stale default (#438).
+                self.gameCoreManager?.setHardcoreEnabled(self.isHardcoreModeEnabled)
+
                 if let saveStateForGameStart = self.saveStateForGameStart {
                     self.saveStateForGameStart = nil
                     DispatchQueue.main.async {
                         self.loadState(state: saveStateForGameStart)
                     }
                 }
-                
-                // set initial volume
-                self.setVolume(self.volume, asDefault: false)
-                
-                // set initial image adjustments
-                self.imageSaturation = Self.clampedSaturation((UserDefaults.standard.object(forKey: OEGameSaturationKey) as? Float) ?? 1.0)
-                self.imageGamma = Self.clampedGamma((UserDefaults.standard.object(forKey: OEGameGammaKey) as? Float) ?? 1.0)
-                
-                self.gameCoreHelper?.setGlobalShaderParameters(gamma: CGFloat(self.imageGamma), saturation: CGFloat(self.imageSaturation))
-                
-                OEBindingsController.default.systemBindings(for: self.systemPlugin.controller).add(self)
-                
-                self.gameCoreManager?.setHandleEvents(self.handleEvents)
-                self.gameCoreManager?.setHandleKeyboardEvents(self.handleKeyboardEvents)
 
                 // Pass stored RA credentials so the core can log in at launch
                 let raUsername = UserDefaults.standard.string(forKey: "RAUsername")
@@ -717,11 +722,6 @@ final class OEGameDocument: NSDocument {
                     // flip that would let RA track an already-mutated session (#447).
                     self.handleHardcoreToggle(enabled: self.isHardcoreModePreferenceEnabled)
                 }
-
-                // Push the effective hardcore state to the helper at game start.
-                // Without an RA session this stays false even if the preference is on,
-                // so non-RA users keep save states, rewind, cheats, etc. (#445).
-                self.gameCoreManager?.setHardcoreEnabled(self.isHardcoreModeEnabled)
 
                 // Forward mid-session hardcore toggles. soft→hard requires a reset
                 // (RA spec: switching into hardcore must restart the run).

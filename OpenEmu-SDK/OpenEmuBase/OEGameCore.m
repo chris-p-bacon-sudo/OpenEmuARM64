@@ -629,17 +629,20 @@ static Class GameCoreClass = Nil;
 
 - (void)fastForwardAtSpeed:(CGFloat)fastForwardSpeed;
 {
+    if (self.hardcoreEnabled) return;
     [self setRate:fastForwardSpeed];
 }
 
 - (void)rewindAtSpeed:(CGFloat)rewindSpeed;
 {
+    if (self.hardcoreEnabled) { isRewinding = NO; return; }
     isRewinding = (rewindSpeed > 0);
     [self setRate:rewindSpeed];
 }
 
 - (void)slowMotionAtSpeed:(CGFloat)slowMotionSpeed;
 {
+    if (self.hardcoreEnabled) return;
     [self setRate:slowMotionSpeed];
 }
 

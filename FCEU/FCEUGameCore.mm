@@ -84,6 +84,7 @@ static uint32_t palette[256];
 
 - (void)loadDisplayModeOptions;
 - (void)_beginLoadGame;
+- (void)_postRetroAchievementsSessionSnapshot;
 
 @end
 
@@ -114,8 +115,12 @@ static void fceu_rc_log(const char *message, const rc_client_t *client)
 static void fceu_rc_load_game_callback(int result, const char *error_message,
                                         rc_client_t *client, void *userdata)
 {
-    if (result != RC_OK)
+    FCEUGameCore *self = (__bridge FCEUGameCore *)userdata;
+    if (result != RC_OK) {
         NSLog(@"[RA-FCEU] game load failed — result=%d error=%s", result, error_message ?: "(none)");
+        return;
+    }
+    [self _postRetroAchievementsSessionSnapshot];
 }
 
 static void fceu_rc_login_callback(int result, const char *error_message,
@@ -146,6 +151,8 @@ static void fceu_rc_event_handler(const rc_client_event_t *event, rc_client_t *c
         postNotificationName:OEAchievementUnlockedNotification
                       object:nil
                     userInfo:info];
+    FCEUGameCore *core = (__bridge FCEUGameCore *)rc_client_get_userdata(client);
+    [core _postRetroAchievementsSessionSnapshot];
 }
 
 @implementation FCEUGameCore
@@ -173,6 +180,105 @@ static __weak FCEUGameCore *_current;
                                            NULL, 0,
                                            fceu_rc_load_game_callback,
                                            (__bridge void *)self);
+}
+
+- (void)_postRetroAchievementsSessionSnapshot
+{
+    if (!_rcClient || !rc_client_is_game_loaded(_rcClient)) { return; }
+    const rc_client_game_t *game = rc_client_get_game_info(_rcClient);
+    if (!game || game->id == 0) { return; }
+
+    rc_client_user_game_summary_t summary;
+    memset(&summary, 0, sizeof(summary));
+    rc_client_get_user_game_summary(_rcClient, &summary);
+
+    NSMutableDictionary *payload = [NSMutableDictionary dictionary];
+    payload[OERAGameIDKey] = @(game->id);
+    payload[OERAGameTitleKey] = [NSString stringWithUTF8String:game->title ?: ""];
+    payload[OERAGameHashKey] = [NSString stringWithUTF8String:game->hash ?: ""];
+    payload[OERAUnlockedCountKey] = @(summary.num_unlocked_achievements);
+    payload[OERAAchievementCountKey] = @(summary.num_core_achievements);
+    payload[OERAUnlockedPointsKey] = @(summary.points_unlocked);
+    payload[OERATotalPointsKey] = @(summary.points_core);
+
+    char gameImageURL[512];
+    if (rc_client_game_get_image_url(game, gameImageURL, sizeof(gameImageURL)) == RC_OK)
+        payload[OERAGameBadgeURLKey] = [NSString stringWithUTF8String:gameImageURL];
+
+    NSMutableArray *sets = [NSMutableArray array];
+    NSMutableDictionary<NSNumber *, NSString *> *setTitlesByID = [NSMutableDictionary dictionary];
+    rc_client_subset_list_t *subsetList = rc_client_create_subset_list(_rcClient);
+    if (subsetList) {
+        for (uint32_t i = 0; i < subsetList->num_subsets; i++) {
+            const rc_client_subset_t *subset = subsetList->subsets[i];
+            if (!subset) { continue; }
+            NSString *subsetTitle = [NSString stringWithUTF8String:subset->title ?: "Achievement Set"];
+            NSNumber *subsetID = @(subset->id);
+            setTitlesByID[subsetID] = subsetTitle;
+            NSMutableDictionary *setInfo = [NSMutableDictionary dictionary];
+            setInfo[OERASetIDKey] = subsetID;
+            setInfo[OERASetTitleKey] = subsetTitle;
+            setInfo[OERASetAchievementCountKey] = @(subset->num_achievements);
+            setInfo[OERASetLeaderboardCountKey] = @(subset->num_leaderboards);
+            if (subset->badge_url)
+                setInfo[OERASetBadgeURLKey] = [NSString stringWithUTF8String:subset->badge_url];
+            [sets addObject:setInfo];
+        }
+        rc_client_destroy_subset_list(subsetList);
+    }
+    if (sets.count == 0) {
+        NSNumber *gameID = @(game->id);
+        NSString *gameTitle = [NSString stringWithUTF8String:game->title ?: "Achievement Set"];
+        setTitlesByID[gameID] = gameTitle;
+        [sets addObject:@{
+            OERASetIDKey: gameID, OERASetTitleKey: gameTitle,
+            OERASetAchievementCountKey: @(summary.num_core_achievements),
+            OERASetLeaderboardCountKey: @0,
+        }];
+    }
+    payload[OERASetsKey] = sets;
+
+    NSMutableArray *achievements = [NSMutableArray array];
+    rc_client_achievement_list_t *list = rc_client_create_achievement_list(
+        _rcClient, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE,
+        RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_LOCK_STATE);
+    if (list) {
+        for (uint32_t b = 0; b < list->num_buckets; b++) {
+            const rc_client_achievement_bucket_t bucket = list->buckets[b];
+            NSString *bucketTitle = [NSString stringWithUTF8String:bucket.label ?: "Achievements"];
+            for (uint32_t a = 0; a < bucket.num_achievements; a++) {
+                const rc_client_achievement_t *ach = bucket.achievements[a];
+                if (!ach) { continue; }
+                NSNumber *subsetID = @(bucket.subset_id);
+                NSMutableDictionary *entry = [NSMutableDictionary dictionary];
+                entry[OERASetIDKey] = subsetID;
+                entry[OERASetTitleKey] = setTitlesByID[subsetID] ?: [NSString stringWithUTF8String:game->title ?: "Achievement Set"];
+                entry[OERABucketTitleKey] = bucketTitle;
+                entry[OERABucketTypeKey] = @(bucket.bucket_type);
+                entry[OEAchievementIDKey] = @(ach->id);
+                entry[OEAchievementTitleKey] = [NSString stringWithUTF8String:ach->title ?: ""];
+                entry[OEAchievementDescriptionKey] = [NSString stringWithUTF8String:ach->description ?: ""];
+                entry[OEAchievementPointsKey] = @(ach->points);
+                entry[OERAStateKey] = @(ach->state);
+                entry[OERATypeKey] = @(ach->type);
+                entry[OERAUnlockedKey] = @(ach->unlocked);
+                entry[OERARarityKey] = @(ach->rarity);
+                entry[OERAHardcoreRarityKey] = @(ach->rarity_hardcore);
+                entry[OERAMeasuredPercentKey] = @(ach->measured_percent);
+                entry[OERAMeasuredProgressKey] = [NSString stringWithUTF8String:ach->measured_progress];
+                if (ach->badge_url)
+                    entry[OEAchievementBadgeURLKey] = [NSString stringWithUTF8String:ach->badge_url];
+                if (ach->badge_locked_url)
+                    entry[OERABadgeLockedURLKey] = [NSString stringWithUTF8String:ach->badge_locked_url];
+                [achievements addObject:entry];
+            }
+        }
+        rc_client_destroy_achievement_list(list);
+    }
+    payload[OERAAchievementsKey] = achievements;
+    [[NSNotificationCenter defaultCenter] postNotificationName:OERASessionUpdatedNotification
+                                                        object:nil
+                                                      userInfo:payload];
 }
 
 - (void)dealloc

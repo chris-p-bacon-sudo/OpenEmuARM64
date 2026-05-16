@@ -50,35 +50,7 @@
 
 #define SAMPLES 1024
 
-// Keep these payload keys in sync with OERetroAchievementsConstants.swift.
-// Swift global constants are not exported to Objective-C core sources, so the
-// mGBA bridge mirrors the string values when posting the session snapshot.
-static NSString * const OERAGameIDKey = @"gameID";
-static NSString * const OERAGameTitleKey = @"gameTitle";
-static NSString * const OERAGameHashKey = @"gameHash";
-static NSString * const OERAGameBadgeURLKey = @"gameBadgeURL";
-static NSString * const OERAUnlockedCountKey = @"unlockedCount";
-static NSString * const OERAAchievementCountKey = @"achievementCount";
-static NSString * const OERAUnlockedPointsKey = @"unlockedPoints";
-static NSString * const OERATotalPointsKey = @"totalPoints";
-static NSString * const OERAAchievementsKey = @"achievements";
-static NSString * const OERASetsKey = @"sets";
-static NSString * const OERASetIDKey = @"setID";
-static NSString * const OERASetTitleKey = @"setTitle";
-static NSString * const OERASetBadgeURLKey = @"setBadgeURL";
-static NSString * const OERASetAchievementCountKey = @"setAchievementCount";
-static NSString * const OERASetLeaderboardCountKey = @"setLeaderboardCount";
-static NSString * const OERABucketTitleKey = @"bucketTitle";
-static NSString * const OERABucketTypeKey = @"bucketType";
-static NSString * const OERAStateKey = @"state";
-static NSString * const OERATypeKey = @"type";
-static NSString * const OERAMeasuredProgressKey = @"measuredProgress";
-static NSString * const OERAMeasuredPercentKey = @"measuredPercent";
-static NSString * const OERABadgeLockedURLKey = @"badgeLockedURL";
-static NSString * const OERARarityKey = @"rarity";
-static NSString * const OERAHardcoreRarityKey = @"rarityHardcore";
-static NSString * const OERAUnlockedKey = @"unlocked";
-static NSNotificationName const OERASessionUpdatedNotification = @"OERetroAchievementsSessionUpdated";
+// Session payload keys and notification name are defined in OERetroAchievementsTransport.h.
 
 #ifdef DEBUG
     #error "Cores should not be compiled in DEBUG! Follow the guide https://github.com/OpenEmu/OpenEmu/wiki/Compiling-From-Source-Guide"

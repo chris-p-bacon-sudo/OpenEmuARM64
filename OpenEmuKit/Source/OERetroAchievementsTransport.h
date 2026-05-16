@@ -51,6 +51,38 @@
 #define OEAchievementBadgeURLKey            @"badgeURL"
 #define OEAchievementPointsKey              @"points"
 
+/// NSNotificationCenter name posted by a core plugin when RA session metadata changes.
+/// Fired after game load succeeds and after each achievement trigger. The helper app
+/// observes this and forwards the payload to the host via OEGameCoreOwner.
+#define OERASessionUpdatedNotification      @"OERetroAchievementsSessionUpdated"
+
+// Session payload keys — userInfo dictionary for OERASessionUpdatedNotification
+#define OERAGameIDKey                @"gameID"
+#define OERAGameTitleKey             @"gameTitle"
+#define OERAGameHashKey              @"gameHash"
+#define OERAGameBadgeURLKey          @"gameBadgeURL"
+#define OERAUnlockedCountKey         @"unlockedCount"
+#define OERAAchievementCountKey      @"achievementCount"
+#define OERAUnlockedPointsKey        @"unlockedPoints"
+#define OERATotalPointsKey           @"totalPoints"
+#define OERAAchievementsKey          @"achievements"
+#define OERASetsKey                  @"sets"
+#define OERASetIDKey                 @"setID"
+#define OERASetTitleKey              @"setTitle"
+#define OERASetBadgeURLKey           @"setBadgeURL"
+#define OERASetAchievementCountKey   @"setAchievementCount"
+#define OERASetLeaderboardCountKey   @"setLeaderboardCount"
+#define OERABucketTitleKey           @"bucketTitle"
+#define OERABucketTypeKey            @"bucketType"
+#define OERAStateKey                 @"state"
+#define OERATypeKey                  @"type"
+#define OERAMeasuredProgressKey      @"measuredProgress"
+#define OERAMeasuredPercentKey       @"measuredPercent"
+#define OERABadgeLockedURLKey        @"badgeLockedURL"
+#define OERARarityKey                @"rarity"
+#define OERAHardcoreRarityKey        @"rarityHardcore"
+#define OERAUnlockedKey              @"unlocked"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
