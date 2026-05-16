@@ -576,8 +576,11 @@ final class RetroAchievementsGameViewController: NSViewController {
         if selectedSetID == nil || !(selectedSetID.map { setOrder.contains($0) } ?? false) {
             selectedSetID = setOrder.first
         }
-        if setOrder.count > 1 {
-            contentStack.addArrangedSubview(makeSetSelector(sets: sets, achievements: achievements, setOrder: setOrder))
+        let selectableSetIDs = setOrder.filter { setID in
+            achievements.contains { (($0[OERetroAchievementsSetIDKey] as? NSNumber)?.intValue ?? -1) == setID }
+        }
+        if selectableSetIDs.count > 1 {
+            contentStack.addArrangedSubview(makeSetSelector(sets: sets, achievements: achievements, setOrder: selectableSetIDs))
         }
 
         if achievements.isEmpty {
@@ -593,9 +596,6 @@ final class RetroAchievementsGameViewController: NSViewController {
         let setAchievements = achievements.filter {
             (($0[OERetroAchievementsSetIDKey] as? NSNumber)?.intValue ?? -1) == selectedID
         }
-        let setTitle = setTitle(for: selectedID, sets: sets, achievements: setAchievements)
-        contentStack.addArrangedSubview(makeSetHeader(setTitle))
-
         let bucketGroups = Dictionary(grouping: setAchievements) { achievement in
             achievement[OERetroAchievementsBucketTitleKey] as? String ?? NSLocalizedString("Achievements", comment: "RetroAchievements default bucket")
         }
@@ -728,13 +728,6 @@ final class RetroAchievementsGameViewController: NSViewController {
             return count
         }
         return achievements.count
-    }
-
-    private func makeSetHeader(_ title: String) -> NSView {
-        let label = NSTextField(labelWithString: title)
-        label.font = .systemFont(ofSize: 18, weight: .bold)
-        label.textColor = .labelColor
-        return label
     }
 
     private func makeAchievementRow(_ info: [String: Any]) -> NSView {
