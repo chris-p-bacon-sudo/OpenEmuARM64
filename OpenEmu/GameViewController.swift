@@ -496,6 +496,7 @@ final class RetroAchievementsGameViewController: NSViewController {
     private weak var document: OEGameDocument?
     private var sessionObserver: NSObjectProtocol?
     private let contentStack = NSStackView()
+    private var selectedSetID: Int?
 
     init(document: OEGameDocument) {
         self.document = document
@@ -570,11 +571,15 @@ final class RetroAchievementsGameViewController: NSViewController {
         contentStack.addArrangedSubview(makeHeader(info: info, document: document))
 
         let sets = info?[OERetroAchievementsSetsKey] as? [[String: Any]] ?? []
-        if sets.count > 1 {
-            contentStack.addArrangedSubview(makeSetSummaryView(sets))
+        let achievements = info?[OERetroAchievementsAchievementsKey] as? [[String: Any]] ?? []
+        let setOrder = orderedSetIDs(from: sets, achievements: achievements)
+        if selectedSetID == nil || !(selectedSetID.map { setOrder.contains($0) } ?? false) {
+            selectedSetID = setOrder.first
+        }
+        if setOrder.count > 1 {
+            contentStack.addArrangedSubview(makeSetSelector(sets: sets, achievements: achievements, setOrder: setOrder))
         }
 
-        let achievements = info?[OERetroAchievementsAchievementsKey] as? [[String: Any]] ?? []
         if achievements.isEmpty {
             let message = info == nil
                 ? NSLocalizedString("Waiting for RetroAchievements game metadata from the emulator core. If this stays empty, confirm you are signed in and the active core/game supports RetroAchievements.", comment: "RetroAchievements waiting message")
@@ -584,26 +589,21 @@ final class RetroAchievementsGameViewController: NSViewController {
             return
         }
 
-        let groupedAchievements = Dictionary(grouping: achievements) { achievement in
-            (achievement[OERetroAchievementsSetIDKey] as? NSNumber)?.intValue ?? -1
+        let selectedID = selectedSetID ?? setOrder.first ?? -1
+        let setAchievements = achievements.filter {
+            (($0[OERetroAchievementsSetIDKey] as? NSNumber)?.intValue ?? -1) == selectedID
         }
-        let setOrder = orderedSetIDs(from: sets, achievements: achievements)
+        let setTitle = setTitle(for: selectedID, sets: sets, achievements: setAchievements)
+        contentStack.addArrangedSubview(makeSetHeader(setTitle))
 
-        for setID in setOrder {
-            let setAchievements = groupedAchievements[setID] ?? []
-            guard !setAchievements.isEmpty else { continue }
-            let setTitle = setTitle(for: setID, sets: sets, achievements: setAchievements)
-            contentStack.addArrangedSubview(makeSetHeader(setTitle))
-
-            let bucketGroups = Dictionary(grouping: setAchievements) { achievement in
-                achievement[OERetroAchievementsBucketTitleKey] as? String ?? NSLocalizedString("Achievements", comment: "RetroAchievements default bucket")
-            }
-            let bucketOrder = setAchievements.compactMap { $0[OERetroAchievementsBucketTitleKey] as? String }.uniqued()
-            for bucket in bucketOrder {
-                contentStack.addArrangedSubview(makeBucketLabel(bucket))
-                for achievement in bucketGroups[bucket] ?? [] {
-                    contentStack.addArrangedSubview(makeAchievementRow(achievement))
-                }
+        let bucketGroups = Dictionary(grouping: setAchievements) { achievement in
+            achievement[OERetroAchievementsBucketTitleKey] as? String ?? NSLocalizedString("Achievements", comment: "RetroAchievements default bucket")
+        }
+        let bucketOrder = setAchievements.compactMap { $0[OERetroAchievementsBucketTitleKey] as? String }.uniqued()
+        for bucket in bucketOrder {
+            contentStack.addArrangedSubview(makeBucketLabel(bucket))
+            for achievement in bucketGroups[bucket] ?? [] {
+                contentStack.addArrangedSubview(makeAchievementRow(achievement))
             }
         }
         scrollToTop()
@@ -668,22 +668,41 @@ final class RetroAchievementsGameViewController: NSViewController {
         return header
     }
 
-    private func makeSetSummaryView(_ sets: [[String: Any]]) -> NSView {
+    private func makeSetSelector(sets: [[String: Any]], achievements: [[String: Any]], setOrder: [Int]) -> NSView {
         let container = NSStackView()
         container.orientation = .horizontal
         container.alignment = .centerY
-        container.spacing = 8
+        container.spacing = 10
 
-        let label = makeBodyLabel(NSLocalizedString("Active achievement sets:", comment: "RetroAchievements active sets label"), color: .secondaryLabelColor)
+        let label = makeBodyLabel(NSLocalizedString("Achievement Set:", comment: "RetroAchievements set selector label"), color: .secondaryLabelColor)
         container.addArrangedSubview(label)
 
-        for set in sets {
-            let title = set[OERetroAchievementsSetTitleKey] as? String ?? NSLocalizedString("Set", comment: "RetroAchievements set fallback title")
-            let count = (set[OERetroAchievementsSetAchievementCountKey] as? NSNumber)?.intValue ?? 0
-            container.addArrangedSubview(makePill("\(title) (\(count))", color: .labelColor))
+        let popup = NSPopUpButton(frame: .zero, pullsDown: false)
+        popup.target = self
+        popup.action = #selector(selectAchievementSet(_:))
+        popup.translatesAutoresizingMaskIntoConstraints = false
+        popup.widthAnchor.constraint(greaterThanOrEqualToConstant: 260).isActive = true
+
+        for setID in setOrder {
+            let setAchievements = achievements.filter { (($0[OERetroAchievementsSetIDKey] as? NSNumber)?.intValue ?? -1) == setID }
+            let title = setTitle(for: setID, sets: sets, achievements: setAchievements)
+            let count = setAchievementCount(for: setID, sets: sets, achievements: setAchievements)
+            let itemTitle = count > 0 ? "\(title) (\(count))" : title
+            popup.addItem(withTitle: itemTitle)
+            popup.lastItem?.representedObject = setID
+            if setID == selectedSetID {
+                popup.select(popup.lastItem)
+            }
         }
 
+        container.addArrangedSubview(popup)
         return container
+    }
+
+    @objc private func selectAchievementSet(_ sender: NSPopUpButton) {
+        selectedSetID = sender.selectedItem?.representedObject as? Int
+        reloadContent()
+        scrollToTop()
     }
 
     private func orderedSetIDs(from sets: [[String: Any]], achievements: [[String: Any]]) -> [Int] {
@@ -701,6 +720,14 @@ final class RetroAchievementsGameViewController: NSViewController {
             return title
         }
         return NSLocalizedString("Achievement Set", comment: "RetroAchievements set fallback title")
+    }
+
+    private func setAchievementCount(for setID: Int, sets: [[String: Any]], achievements: [[String: Any]]) -> Int {
+        if let set = sets.first(where: { ($0[OERetroAchievementsSetIDKey] as? NSNumber)?.intValue == setID }),
+           let count = (set[OERetroAchievementsSetAchievementCountKey] as? NSNumber)?.intValue {
+            return count
+        }
+        return achievements.count
     }
 
     private func makeSetHeader(_ title: String) -> NSView {
