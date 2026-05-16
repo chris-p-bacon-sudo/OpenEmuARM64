@@ -159,6 +159,9 @@ final class OEGameDocument: NSDocument {
     private(set) var displayModes: [[String: Any]] = []
     
     private var gameCoreManager: GameCoreManager?
+    private var retroAchievementsWindowController: NSWindowController?
+    @objc dynamic private(set) var retroAchievementsSessionInfo: [String: Any]?
+    private var didShowRetroAchievementsBootPlacard = false
     private var raCredentialObserver: Any?
     private var raHardcoreObserver: Any?
 
@@ -614,6 +617,8 @@ final class OEGameDocument: NSDocument {
                 }
 
                 self.emulationStatus = .notSetup
+                self.retroAchievementsSessionInfo = nil
+                self.didShowRetroAchievementsBootPlacard = false
                 
                 self.gameCoreManager = nil
                 
@@ -760,6 +765,8 @@ final class OEGameDocument: NSDocument {
         assert(core != corePlugin, "Do not attempt to run a new core using the same plug-in as the current one.")
         
         emulationStatus = .notSetup
+        retroAchievementsSessionInfo = nil
+        didShowRetroAchievementsBootPlacard = false
         gameCoreManager?.stopEmulation() {
             OEBindingsController.default.systemBindings(for: self.systemPlugin.controller).remove(self)
             
@@ -1277,6 +1284,22 @@ final class OEGameDocument: NSDocument {
         ]
         
         NotificationCenter.default.post(Notification(name: PreferencesWindowController.openPaneNotificationName, userInfo: userInfo))
+    }
+
+    @IBAction func showRetroAchievements(_ sender: Any?) {
+        if retroAchievementsWindowController == nil {
+            let viewController = RetroAchievementsGameViewController(document: self)
+            let window = NSWindow(contentViewController: viewController)
+            window.title = NSLocalizedString("Achievements", comment: "RetroAchievements game window title")
+            window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
+            window.isReleasedWhenClosed = false
+            window.setContentSize(NSSize(width: 680, height: 520))
+            window.minSize = NSSize(width: 520, height: 360)
+            retroAchievementsWindowController = NSWindowController(window: window)
+        }
+
+        retroAchievementsWindowController?.showWindow(sender)
+        retroAchievementsWindowController?.window?.makeKeyAndOrderFront(sender)
     }
     
     /// expects `sender` or `sender.representedObject` to be an `OECorePlugin` object and prompts the user for confirmation
@@ -2114,6 +2137,9 @@ extension OEGameDocument {
         case #selector(nextDisplayMode(_:)),
              #selector(lastDisplayMode(_:)):
             return supportsDisplayModeChange
+        case #selector(showRetroAchievements(_:)):
+            menuItem.title = NSLocalizedString("Achievements…", comment: "RetroAchievements menu item title")
+            return true
         default:
             return true
         }
@@ -2271,6 +2297,21 @@ extension OEGameDocument: OESystemBindingsObserver {
         }
         coreDidTerminateSuddenly = true
         stopEmulation(self)
+    }
+
+    func retroAchievementsSessionUpdated(_ info: [String: Any]) {
+        DispatchQueue.main.async {
+            self.retroAchievementsSessionInfo = info
+            NotificationCenter.default.post(name: .OERetroAchievementsSessionUpdated, object: self, userInfo: info)
+            if !self.didShowRetroAchievementsBootPlacard {
+                self.didShowRetroAchievementsBootPlacard = true
+                self.gameViewController?.showRetroAchievementsPlacard(
+                    info: info,
+                    hardcore: self.isHardcoreModeEnabled,
+                    signedIn: OECredentialStore.shared.get(.retroAchievementsToken) != nil
+                )
+            }
+        }
     }
 
     func achievementUnlocked(id: UInt32, title: String, description: String, badgeURL: String, points: UInt32) {

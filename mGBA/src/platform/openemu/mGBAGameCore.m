@@ -50,6 +50,30 @@
 
 #define SAMPLES 1024
 
+// Keep these payload keys in sync with OERetroAchievementsConstants.swift.
+// Swift global constants are not exported to Objective-C core sources, so the
+// mGBA bridge mirrors the string values when posting the session snapshot.
+static NSString * const OERAGameIDKey = @"gameID";
+static NSString * const OERAGameTitleKey = @"gameTitle";
+static NSString * const OERAGameHashKey = @"gameHash";
+static NSString * const OERAGameBadgeURLKey = @"gameBadgeURL";
+static NSString * const OERAUnlockedCountKey = @"unlockedCount";
+static NSString * const OERAAchievementCountKey = @"achievementCount";
+static NSString * const OERAUnlockedPointsKey = @"unlockedPoints";
+static NSString * const OERATotalPointsKey = @"totalPoints";
+static NSString * const OERAAchievementsKey = @"achievements";
+static NSString * const OERABucketTitleKey = @"bucketTitle";
+static NSString * const OERABucketTypeKey = @"bucketType";
+static NSString * const OERAStateKey = @"state";
+static NSString * const OERATypeKey = @"type";
+static NSString * const OERAMeasuredProgressKey = @"measuredProgress";
+static NSString * const OERAMeasuredPercentKey = @"measuredPercent";
+static NSString * const OERABadgeLockedURLKey = @"badgeLockedURL";
+static NSString * const OERARarityKey = @"rarity";
+static NSString * const OERAHardcoreRarityKey = @"rarityHardcore";
+static NSString * const OERAUnlockedKey = @"unlocked";
+static NSNotificationName const OERASessionUpdatedNotification = @"OERetroAchievementsSessionUpdated";
+
 #ifdef DEBUG
     #error "Cores should not be compiled in DEBUG! Follow the guide https://github.com/OpenEmu/OpenEmu/wiki/Compiling-From-Source-Guide"
 #endif
@@ -71,6 +95,7 @@ const char* projectVersion;
 }
 - (struct mCore *)mCore;
 - (void)_beginLoadGame;
+- (void)_postRetroAchievementsSessionSnapshot;
 @end
 
 // rcheevos GBA address space → hardware bus address:
@@ -108,8 +133,9 @@ static void mGBA_rc_load_game_callback(int result, const char *error_message,
     mGBAGameCore *self = (__bridge mGBAGameCore *)userdata;
     if (result != RC_OK) {
         NSLog(@"[RA-mGBA] game load failed — result=%d error=%s", result, error_message ?: "(none)");
+        return;
     }
-    (void)self;
+    [self _postRetroAchievementsSessionSnapshot];
 }
 
 static void mGBA_rc_login_callback(int result, const char *error_message,
@@ -148,6 +174,9 @@ static void mGBA_rc_event_handler(const rc_client_event_t *event, rc_client_t *c
         postNotificationName:OEAchievementUnlockedNotification
                       object:nil
                     userInfo:info];
+
+    mGBAGameCore *core = (__bridge mGBAGameCore *)rc_client_get_userdata(client);
+    [core _postRetroAchievementsSessionSnapshot];
 }
 
 static void _log(struct mLogger* log,
@@ -172,6 +201,75 @@ static struct mLogger logger = { .log = _log };
                                            NULL, 0,
                                            mGBA_rc_load_game_callback,
                                            (__bridge void *)self);
+}
+
+- (void)_postRetroAchievementsSessionSnapshot
+{
+    if (!_rcClient || !rc_client_is_game_loaded(_rcClient)) { return; }
+
+    const rc_client_game_t *game = rc_client_get_game_info(_rcClient);
+    if (!game || game->id == 0) { return; }
+
+    rc_client_user_game_summary_t summary;
+    memset(&summary, 0, sizeof(summary));
+    rc_client_get_user_game_summary(_rcClient, &summary);
+
+    NSMutableDictionary *payload = [NSMutableDictionary dictionary];
+    payload[OERAGameIDKey] = @(game->id);
+    payload[OERAGameTitleKey] = [NSString stringWithUTF8String:game->title ?: ""];
+    payload[OERAGameHashKey] = [NSString stringWithUTF8String:game->hash ?: ""];
+    payload[OERAUnlockedCountKey] = @(summary.num_unlocked_achievements);
+    payload[OERAAchievementCountKey] = @(summary.num_core_achievements);
+    payload[OERAUnlockedPointsKey] = @(summary.points_unlocked);
+    payload[OERATotalPointsKey] = @(summary.points_core);
+
+    char gameImageURL[512];
+    if (rc_client_game_get_image_url(game, gameImageURL, sizeof(gameImageURL)) == RC_OK) {
+        payload[OERAGameBadgeURLKey] = [NSString stringWithUTF8String:gameImageURL];
+    }
+
+    NSMutableArray *achievements = [NSMutableArray array];
+    rc_client_achievement_list_t *list = rc_client_create_achievement_list(_rcClient,
+                                                                           RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE,
+                                                                           RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_LOCK_STATE);
+    if (list) {
+        for (uint32_t bucketIndex = 0; bucketIndex < list->num_buckets; bucketIndex++) {
+            const rc_client_achievement_bucket_t bucket = list->buckets[bucketIndex];
+            NSString *bucketTitle = [NSString stringWithUTF8String:bucket.label ?: "Achievements"];
+            for (uint32_t achievementIndex = 0; achievementIndex < bucket.num_achievements; achievementIndex++) {
+                const rc_client_achievement_t *ach = bucket.achievements[achievementIndex];
+                if (!ach) { continue; }
+
+                NSMutableDictionary *entry = [NSMutableDictionary dictionary];
+                entry[OERABucketTitleKey] = bucketTitle;
+                entry[OERABucketTypeKey] = @(bucket.bucket_type);
+                entry[OEAchievementIDKey] = @(ach->id);
+                entry[OEAchievementTitleKey] = [NSString stringWithUTF8String:ach->title ?: ""];
+                entry[OEAchievementDescriptionKey] = [NSString stringWithUTF8String:ach->description ?: ""];
+                entry[OEAchievementPointsKey] = @(ach->points);
+                entry[OERAStateKey] = @(ach->state);
+                entry[OERATypeKey] = @(ach->type);
+                entry[OERAUnlockedKey] = @(ach->unlocked);
+                entry[OERARarityKey] = @(ach->rarity);
+                entry[OERAHardcoreRarityKey] = @(ach->rarity_hardcore);
+                entry[OERAMeasuredPercentKey] = @(ach->measured_percent);
+                entry[OERAMeasuredProgressKey] = [NSString stringWithUTF8String:ach->measured_progress];
+                if (ach->badge_url) {
+                    entry[OEAchievementBadgeURLKey] = [NSString stringWithUTF8String:ach->badge_url];
+                }
+                if (ach->badge_locked_url) {
+                    entry[OERABadgeLockedURLKey] = [NSString stringWithUTF8String:ach->badge_locked_url];
+                }
+                [achievements addObject:entry];
+            }
+        }
+        rc_client_destroy_achievement_list(list);
+    }
+
+    payload[OERAAchievementsKey] = achievements;
+    [[NSNotificationCenter defaultCenter] postNotificationName:OERASessionUpdatedNotification
+                                                        object:nil
+                                                      userInfo:payload];
 }
 
 

@@ -70,7 +70,14 @@ import OpenEmuKitPrivate
 
             let proxy = OEThreadProxy(target: self.gameCoreOwner, thread: .main)
 
-            cn.exportedInterface = .init(with: OEGameCoreOwner.self)
+            let ownerInterface = NSXPCInterface(with: OEGameCoreOwner.self)
+            let propertyListClasses: NSSet = [NSDictionary.self, NSArray.self, NSString.self, NSNumber.self, NSNull.self]
+            // swiftlint:disable:next force_cast
+            ownerInterface.setClasses(propertyListClasses as! Set<AnyHashable>,
+                                      for: #selector(OEGameCoreOwner.retroAchievementsSessionUpdated(_:)),
+                                      argumentIndex: 0,
+                                      ofReply: false)
+            cn.exportedInterface = ownerInterface
             cn.exportedObject = proxy
 
             let intf = NSXPCInterface(with: OEXPCGameCoreHelper.self)

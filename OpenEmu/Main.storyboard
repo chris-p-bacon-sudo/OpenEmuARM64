@@ -741,6 +741,15 @@ DQ
                                                 <action selector="takeScreenshot:" target="-1" id="e5O-a4-uMv"/>
                                             </connections>
                                         </menuItem>
+                                        <menuItem title="Achievements…" id="ra-achievements-menu-item">
+                                            <modifierMask key="keyEquivalentModifierMask"/>
+                                            <userDefinedRuntimeAttributes>
+                                                <userDefinedRuntimeAttribute type="boolean" keyPath="localizeTitle" value="YES"/>
+                                            </userDefinedRuntimeAttributes>
+                                            <connections>
+                                                <action selector="showRetroAchievements:" target="-1" id="ra-achievements-action"/>
+                                            </connections>
+                                        </menuItem>
                                         <menuItem isSeparatorItem="YES" id="1051"/>
                                         <menuItem title="Next Display Mode" enabled="NO" keyEquivalent="]" id="VVR-iO-axh">
                                             <userDefinedRuntimeAttributes>

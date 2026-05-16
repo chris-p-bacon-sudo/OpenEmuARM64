@@ -49,6 +49,7 @@ final class GameViewController: NSViewController {
     private(set) var gameView: OEGameLayerView!
     private var notificationView: OEGameLayerNotificationView!
     private var achievementBannerView: OEAchievementBannerView!
+    private var retroAchievementsPlacardView: OERetroAchievementsPlacardView!
 
     // Save Sync status badge
     private var syncStatusOverlay: OESyncStatusOverlayView!
@@ -113,11 +114,19 @@ final class GameViewController: NSViewController {
         achievementBannerView.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(achievementBannerView)
 
+        retroAchievementsPlacardView = OERetroAchievementsPlacardView(frame: .zero)
+        retroAchievementsPlacardView.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(retroAchievementsPlacardView)
+
         NSLayoutConstraint.activate([
             achievementBannerView.widthAnchor.constraint(equalToConstant: OEAchievementBannerView.bannerWidth),
             achievementBannerView.heightAnchor.constraint(equalToConstant: OEAchievementBannerView.bannerHeight),
             achievementBannerView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             achievementBannerView.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -24),
+
+            retroAchievementsPlacardView.widthAnchor.constraint(lessThanOrEqualTo: view.widthAnchor, multiplier: 0.82),
+            retroAchievementsPlacardView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            retroAchievementsPlacardView.topAnchor.constraint(equalTo: view.topAnchor, constant: 20),
         ])
 
         syncStatusToken = NotificationCenter.default.addObserver(forName: .OESaveSyncStatusDidChange, object: nil, queue: .main) { [weak self] notification in
@@ -351,5 +360,384 @@ extension GameViewController {
 
     func showAchievementUnlocked(title: String, points: UInt32) {
         achievementBannerView.show(title: title, points: points)
+    }
+
+    func showRetroAchievementsPlacard(info: [String: Any], hardcore: Bool, signedIn: Bool) {
+        retroAchievementsPlacardView.show(info: info, hardcore: hardcore, signedIn: signedIn)
+    }
+}
+
+// MARK: - RetroAchievements Boot Placard
+
+private final class OERetroAchievementsPlacardView: NSVisualEffectView {
+
+    private let imageView = NSImageView()
+    private let titleLabel = NSTextField(labelWithString: "")
+    private let summaryLabel = NSTextField(labelWithString: "")
+    private let modeLabel = NSTextField(labelWithString: "")
+    private var hideWorkItem: DispatchWorkItem?
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        material = .hudWindow
+        blendingMode = .withinWindow
+        state = .active
+        wantsLayer = true
+        layer?.cornerRadius = 10
+        layer?.masksToBounds = true
+        alphaValue = 0
+        isHidden = true
+
+        imageView.imageScaling = .scaleProportionallyUpOrDown
+        imageView.translatesAutoresizingMaskIntoConstraints = false
+        imageView.wantsLayer = true
+        imageView.layer?.cornerRadius = 6
+        imageView.layer?.masksToBounds = true
+
+        titleLabel.font = .systemFont(ofSize: 20, weight: .semibold)
+        titleLabel.lineBreakMode = .byTruncatingTail
+        titleLabel.textColor = .labelColor
+        titleLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        summaryLabel.font = .systemFont(ofSize: 14, weight: .medium)
+        summaryLabel.textColor = .labelColor
+        summaryLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        modeLabel.font = .systemFont(ofSize: 14, weight: .bold)
+        modeLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        let textStack = NSStackView(views: [titleLabel, summaryLabel, modeLabel])
+        textStack.orientation = .vertical
+        textStack.alignment = .leading
+        textStack.spacing = 4
+        textStack.translatesAutoresizingMaskIntoConstraints = false
+
+        addSubview(imageView)
+        addSubview(textStack)
+
+        NSLayoutConstraint.activate([
+            imageView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 12),
+            imageView.topAnchor.constraint(equalTo: topAnchor, constant: 12),
+            imageView.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -12),
+            imageView.widthAnchor.constraint(equalToConstant: 72),
+            imageView.heightAnchor.constraint(equalToConstant: 72),
+
+            textStack.leadingAnchor.constraint(equalTo: imageView.trailingAnchor, constant: 12),
+            textStack.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -14),
+            textStack.centerYAnchor.constraint(equalTo: imageView.centerYAnchor),
+            textStack.topAnchor.constraint(greaterThanOrEqualTo: topAnchor, constant: 12),
+            textStack.bottomAnchor.constraint(lessThanOrEqualTo: bottomAnchor, constant: -12),
+        ])
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    func show(info: [String: Any], hardcore: Bool, signedIn: Bool) {
+        hideWorkItem?.cancel()
+        isHidden = false
+
+        titleLabel.stringValue = info[OERetroAchievementsGameTitleKey] as? String ?? NSLocalizedString("RetroAchievements", comment: "RetroAchievements placard fallback title")
+
+        let unlocked = (info[OERetroAchievementsUnlockedCountKey] as? NSNumber)?.intValue ?? 0
+        let total = (info[OERetroAchievementsAchievementCountKey] as? NSNumber)?.intValue ?? 0
+        let points = (info[OERetroAchievementsUnlockedPointsKey] as? NSNumber)?.intValue ?? 0
+        let totalPoints = (info[OERetroAchievementsTotalPointsKey] as? NSNumber)?.intValue ?? 0
+        let account = signedIn ? NSLocalizedString("Logged in", comment: "RetroAchievements placard signed in") : NSLocalizedString("Not logged in", comment: "RetroAchievements placard signed out")
+        summaryLabel.stringValue = String(format: NSLocalizedString("%@ · Recognized · %d of %d achievements · %d of %d points", comment: "RetroAchievements boot placard summary"), account, unlocked, total, points, totalPoints)
+
+        modeLabel.stringValue = hardcore ? NSLocalizedString("Hardcore Mode", comment: "RetroAchievements hardcore mode") : NSLocalizedString("Softcore Mode", comment: "RetroAchievements softcore mode")
+        modeLabel.textColor = .labelColor
+
+        imageView.image = nil
+        if let urlString = info[OERetroAchievementsGameBadgeURLKey] as? String, let url = URL(string: urlString) {
+            URLSession.shared.dataTask(with: url) { [weak self] data, _, _ in
+                guard let data, let image = NSImage(data: data) else { return }
+                DispatchQueue.main.async { self?.imageView.image = image }
+            }.resume()
+        }
+
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.18
+            animator().alphaValue = 1
+        }
+
+        let workItem = DispatchWorkItem { [weak self] in
+            NSAnimationContext.runAnimationGroup { context in
+                context.duration = 0.25
+                self?.animator().alphaValue = 0
+            } completionHandler: {
+                self?.isHidden = true
+            }
+        }
+        hideWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5.0, execute: workItem)
+    }
+}
+
+// MARK: - RetroAchievements Game Window
+
+private final class OEFlippedDocumentView: NSView {
+    override var isFlipped: Bool { true }
+}
+
+final class RetroAchievementsGameViewController: NSViewController {
+
+    private weak var document: OEGameDocument?
+    private var sessionObserver: NSObjectProtocol?
+    private let contentStack = NSStackView()
+
+    init(document: OEGameDocument) {
+        self.document = document
+        super.init(nibName: nil, bundle: nil)
+        sessionObserver = NotificationCenter.default.addObserver(forName: .OERetroAchievementsSessionUpdated, object: document, queue: .main) { [weak self] _ in
+            self?.reloadContent()
+            self?.scrollToTop()
+        }
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    deinit {
+        if let sessionObserver { NotificationCenter.default.removeObserver(sessionObserver) }
+    }
+
+    override func loadView() {
+        let container = NSView(frame: NSRect(x: 0, y: 0, width: 760, height: 560))
+        container.wantsLayer = true
+        container.layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
+
+        let scrollView = NSScrollView()
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+        scrollView.hasVerticalScroller = true
+        scrollView.borderType = .noBorder
+        container.addSubview(scrollView)
+
+        contentStack.orientation = .vertical
+        contentStack.alignment = .leading
+        contentStack.spacing = 14
+        contentStack.edgeInsets = NSEdgeInsets(top: 24, left: 24, bottom: 24, right: 24)
+        contentStack.translatesAutoresizingMaskIntoConstraints = false
+
+        let documentView = OEFlippedDocumentView()
+        documentView.translatesAutoresizingMaskIntoConstraints = false
+        documentView.addSubview(contentStack)
+        scrollView.documentView = documentView
+
+        NSLayoutConstraint.activate([
+            scrollView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            scrollView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            scrollView.topAnchor.constraint(equalTo: container.topAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+            documentView.widthAnchor.constraint(equalTo: scrollView.contentView.widthAnchor),
+            contentStack.leadingAnchor.constraint(equalTo: documentView.leadingAnchor),
+            contentStack.trailingAnchor.constraint(equalTo: documentView.trailingAnchor),
+            contentStack.topAnchor.constraint(equalTo: documentView.topAnchor),
+            contentStack.bottomAnchor.constraint(equalTo: documentView.bottomAnchor),
+        ])
+
+        view = container
+        reloadContent()
+        scrollToTop()
+    }
+
+    override func viewDidAppear() {
+        super.viewDidAppear()
+        scrollToTop()
+    }
+
+    private func reloadContent() {
+        guard isViewLoaded else { return }
+        contentStack.arrangedSubviews.forEach { view in
+            contentStack.removeArrangedSubview(view)
+            view.removeFromSuperview()
+        }
+
+        guard let document else { return }
+        let info = document.retroAchievementsSessionInfo
+        contentStack.addArrangedSubview(makeHeader(info: info, document: document))
+
+        let achievements = info?[OERetroAchievementsAchievementsKey] as? [[String: Any]] ?? []
+        if achievements.isEmpty {
+            let message = info == nil
+                ? NSLocalizedString("Waiting for RetroAchievements game metadata from the emulator core. If this stays empty, confirm you are signed in and the active core/game supports RetroAchievements.", comment: "RetroAchievements waiting message")
+                : NSLocalizedString("No achievements were reported for this game.", comment: "RetroAchievements empty list message")
+            contentStack.addArrangedSubview(makeBodyLabel(message, color: .secondaryLabelColor))
+            scrollToTop()
+            return
+        }
+
+        var lastBucket: String?
+        for achievement in achievements {
+            let bucket = achievement[OERetroAchievementsBucketTitleKey] as? String ?? NSLocalizedString("Achievements", comment: "RetroAchievements default bucket")
+            if bucket != lastBucket {
+                contentStack.addArrangedSubview(makeBucketLabel(bucket))
+                lastBucket = bucket
+            }
+            contentStack.addArrangedSubview(makeAchievementRow(achievement))
+        }
+        scrollToTop()
+    }
+
+    private func scrollToTop() {
+        guard let scrollView = view.subviews.compactMap({ $0 as? NSScrollView }).first,
+              let documentView = scrollView.documentView else { return }
+        documentView.layoutSubtreeIfNeeded()
+        DispatchQueue.main.async {
+            documentView.layoutSubtreeIfNeeded()
+            scrollView.contentView.scroll(to: .zero)
+            scrollView.reflectScrolledClipView(scrollView.contentView)
+        }
+    }
+
+    private func makeHeader(info: [String: Any]?, document: OEGameDocument) -> NSView {
+        let header = NSStackView()
+        header.orientation = .horizontal
+        header.alignment = .top
+        header.spacing = 16
+
+        let imageView = NSImageView(frame: NSRect(x: 0, y: 0, width: 96, height: 96))
+        imageView.imageScaling = .scaleProportionallyUpOrDown
+        imageView.wantsLayer = true
+        imageView.layer?.cornerRadius = 8
+        imageView.layer?.masksToBounds = true
+        imageView.widthAnchor.constraint(equalToConstant: 96).isActive = true
+        imageView.heightAnchor.constraint(equalToConstant: 96).isActive = true
+        if let urlString = info?[OERetroAchievementsGameBadgeURLKey] as? String { loadImage(urlString, into: imageView) }
+        header.addArrangedSubview(imageView)
+
+        let textStack = NSStackView()
+        textStack.orientation = .vertical
+        textStack.alignment = .leading
+        textStack.spacing = 6
+        header.addArrangedSubview(textStack)
+
+        let title = info?[OERetroAchievementsGameTitleKey] as? String ?? document.rom.game?.displayName ?? NSLocalizedString("Achievements", comment: "RetroAchievements window fallback title")
+        let titleLabel = NSTextField(labelWithString: title)
+        titleLabel.font = .systemFont(ofSize: 24, weight: .semibold)
+        titleLabel.lineBreakMode = .byTruncatingTail
+        textStack.addArrangedSubview(titleLabel)
+
+        let unlocked = (info?[OERetroAchievementsUnlockedCountKey] as? NSNumber)?.intValue
+        let total = (info?[OERetroAchievementsAchievementCountKey] as? NSNumber)?.intValue
+        let points = (info?[OERetroAchievementsUnlockedPointsKey] as? NSNumber)?.intValue
+        let totalPoints = (info?[OERetroAchievementsTotalPointsKey] as? NSNumber)?.intValue
+        let progress = unlocked != nil && total != nil && points != nil && totalPoints != nil
+            ? String(format: NSLocalizedString("Unlocked %d of %d achievements · %d of %d points", comment: "RetroAchievements summary"), unlocked!, total!, points!, totalPoints!)
+            : summaryText(document: document)
+        textStack.addArrangedSubview(makeBodyLabel(progress, color: .labelColor))
+
+        let mode = document.isHardcoreModeEnabled ? NSLocalizedString("Hardcore Mode", comment: "RetroAchievements hardcore mode") : NSLocalizedString("Softcore Mode", comment: "RetroAchievements softcore mode")
+        let modeLabel = makePill(mode, color: document.isHardcoreModeEnabled ? .systemRed : .systemBlue)
+        textStack.addArrangedSubview(modeLabel)
+
+        if let hash = info?[OERetroAchievementsGameHashKey] as? String, !hash.isEmpty {
+            textStack.addArrangedSubview(makeBodyLabel(String(format: NSLocalizedString("Hash: %@", comment: "RetroAchievements hash label"), hash), color: .secondaryLabelColor))
+        }
+
+        return header
+    }
+
+    private func makeAchievementRow(_ info: [String: Any]) -> NSView {
+        let row = NSStackView()
+        row.orientation = .horizontal
+        row.alignment = .top
+        row.spacing = 12
+        row.wantsLayer = true
+        row.layer?.backgroundColor = NSColor.controlBackgroundColor.cgColor
+        row.layer?.cornerRadius = 8
+        row.edgeInsets = NSEdgeInsets(top: 10, left: 10, bottom: 10, right: 10)
+
+        let imageView = NSImageView(frame: NSRect(x: 0, y: 0, width: 56, height: 56))
+        imageView.imageScaling = .scaleProportionallyUpOrDown
+        imageView.widthAnchor.constraint(equalToConstant: 56).isActive = true
+        imageView.heightAnchor.constraint(equalToConstant: 56).isActive = true
+        let state = (info[OERetroAchievementsStateKey] as? NSNumber)?.intValue ?? 0
+        let imageURL = (state == 2 ? info[OEAchievementBadgeURLKey] : info[OERetroAchievementsBadgeLockedURLKey]) as? String
+        if let imageURL { loadImage(imageURL, into: imageView) }
+        row.addArrangedSubview(imageView)
+
+        let textStack = NSStackView()
+        textStack.orientation = .vertical
+        textStack.alignment = .leading
+        textStack.spacing = 3
+        row.addArrangedSubview(textStack)
+
+        let title = info[OEAchievementTitleKey] as? String ?? NSLocalizedString("Untitled Achievement", comment: "RetroAchievements missing title")
+        let titleLabel = NSTextField(labelWithString: title)
+        titleLabel.font = .systemFont(ofSize: 15, weight: .semibold)
+        textStack.addArrangedSubview(titleLabel)
+
+        if let description = info[OEAchievementDescriptionKey] as? String, !description.isEmpty {
+            textStack.addArrangedSubview(makeBodyLabel(description, color: .secondaryLabelColor))
+        }
+
+        let points = (info[OEAchievementPointsKey] as? NSNumber)?.intValue ?? 0
+        var details = [String(format: NSLocalizedString("%d points", comment: "RetroAchievements points label"), points)]
+        if let typeLabel = achievementTypeLabel(info[OERetroAchievementsTypeKey] as? NSNumber) {
+            details.append(typeLabel)
+        }
+        if let measured = info[OERetroAchievementsMeasuredProgressKey] as? String, !measured.isEmpty {
+            details.append(measured)
+        }
+        if let rarity = info["rarity"] as? NSNumber, rarity.floatValue > 0 {
+            details.append(String(format: NSLocalizedString("%.1f%% unlocked", comment: "RetroAchievements rarity label"), rarity.floatValue))
+        }
+        textStack.addArrangedSubview(makeBodyLabel(details.joined(separator: " · "), color: .tertiaryLabelColor))
+
+        return row
+    }
+
+    private func achievementTypeLabel(_ number: NSNumber?) -> String? {
+        guard let type = number?.intValue else { return nil }
+        switch type {
+        case 1:
+            return NSLocalizedString("Missable", comment: "RetroAchievements achievement type")
+        case 2:
+            return NSLocalizedString("Progression", comment: "RetroAchievements achievement type")
+        case 3:
+            return NSLocalizedString("Win Condition", comment: "RetroAchievements achievement type")
+        default:
+            return nil
+        }
+    }
+
+    private func makeBucketLabel(_ text: String) -> NSTextField {
+        let label = NSTextField(labelWithString: text)
+        label.font = .systemFont(ofSize: 16, weight: .semibold)
+        return label
+    }
+
+    private func makeBodyLabel(_ text: String, color: NSColor) -> NSTextField {
+        let label = NSTextField(wrappingLabelWithString: text)
+        label.font = .systemFont(ofSize: 13)
+        label.textColor = color
+        return label
+    }
+
+    private func makePill(_ text: String, color: NSColor) -> NSTextField {
+        let label = NSTextField(labelWithString: text)
+        label.font = .systemFont(ofSize: 12, weight: .semibold)
+        label.textColor = color
+        return label
+    }
+
+    private func summaryText(document: OEGameDocument) -> String {
+        let signedIn = OECredentialStore.shared.get(.retroAchievementsToken) != nil
+        let account = signedIn ? NSLocalizedString("Signed in", comment: "RetroAchievements signed in state") : NSLocalizedString("Not signed in", comment: "RetroAchievements signed out state")
+        let supported = document.corePlugin.supportsRetroAchievements(forSystemIdentifier: document.systemIdentifier)
+        let support = supported ? NSLocalizedString("Core supports RetroAchievements", comment: "RetroAchievements core supported state") : NSLocalizedString("This core has not declared RetroAchievements support", comment: "RetroAchievements core unsupported state")
+        return "\(account) · \(support)"
+    }
+
+    private func loadImage(_ urlString: String, into imageView: NSImageView) {
+        guard let url = URL(string: urlString) else { return }
+        URLSession.shared.dataTask(with: url) { data, _, _ in
+            guard let data, let image = NSImage(data: data) else { return }
+            DispatchQueue.main.async { imageView.image = image }
+        }.resume()
     }
 }

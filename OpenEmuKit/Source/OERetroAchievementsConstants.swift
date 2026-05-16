@@ -54,3 +54,29 @@ public let OEAchievementTitleKey       = "title"
 public let OEAchievementDescriptionKey = "description"
 public let OEAchievementBadgeURLKey    = "badgeURL"
 public let OEAchievementPointsKey      = "points"
+
+/// Posted by a core plugin when the loaded game's RetroAchievements metadata changes.
+public extension Notification.Name {
+    static let OERetroAchievementsSessionUpdated = Notification.Name("OERetroAchievementsSessionUpdated")
+}
+
+/// Keys in the `OERetroAchievementsSessionUpdated` notification's `userInfo` dictionary.
+public let OERetroAchievementsGameIDKey              = "gameID"
+public let OERetroAchievementsGameTitleKey           = "gameTitle"
+public let OERetroAchievementsGameHashKey            = "gameHash"
+public let OERetroAchievementsGameBadgeURLKey        = "gameBadgeURL"
+public let OERetroAchievementsUnlockedCountKey       = "unlockedCount"
+public let OERetroAchievementsAchievementCountKey    = "achievementCount"
+public let OERetroAchievementsUnlockedPointsKey      = "unlockedPoints"
+public let OERetroAchievementsTotalPointsKey         = "totalPoints"
+public let OERetroAchievementsAchievementsKey        = "achievements"
+public let OERetroAchievementsBucketTitleKey         = "bucketTitle"
+public let OERetroAchievementsBucketTypeKey          = "bucketType"
+public let OERetroAchievementsStateKey               = "state"
+public let OERetroAchievementsTypeKey                = "type"
+public let OERetroAchievementsMeasuredProgressKey    = "measuredProgress"
+public let OERetroAchievementsMeasuredPercentKey     = "measuredPercent"
+public let OERetroAchievementsBadgeLockedURLKey      = "badgeLockedURL"
+public let OERetroAchievementsRarityKey              = "rarity"
+public let OERetroAchievementsHardcoreRarityKey      = "rarityHardcore"
+public let OERetroAchievementsUnlockedKey            = "unlocked"
