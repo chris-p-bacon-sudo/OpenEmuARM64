@@ -2302,7 +2302,7 @@ extension OEGameDocument: OESystemBindingsObserver {
     func retroAchievementsSessionUpdated(_ info: [String: Any]) {
         DispatchQueue.main.async {
             self.retroAchievementsSessionInfo = info
-            NotificationCenter.default.post(name: .OERetroAchievementsSessionUpdated, object: self, userInfo: info)
+            NotificationCenter.default.post(name: .OERetroAchievementsSessionDidChange, object: self, userInfo: info)
             if !self.didShowRetroAchievementsBootPlacard {
                 self.didShowRetroAchievementsBootPlacard = true
                 self.gameViewController?.showRetroAchievementsPlacard(

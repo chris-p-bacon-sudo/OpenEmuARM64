@@ -484,6 +484,8 @@ private final class OEFlippedDocumentView: NSView {
 
 final class RetroAchievementsGameViewController: NSViewController {
 
+    private static let imageCache = NSCache<NSURL, NSImage>()
+
     private weak var document: OEGameDocument?
     private var sessionObserver: NSObjectProtocol?
     private let contentStack = NSStackView()
@@ -491,7 +493,7 @@ final class RetroAchievementsGameViewController: NSViewController {
     init(document: OEGameDocument) {
         self.document = document
         super.init(nibName: nil, bundle: nil)
-        sessionObserver = NotificationCenter.default.addObserver(forName: .OERetroAchievementsSessionUpdated, object: document, queue: .main) { [weak self] _ in
+        sessionObserver = NotificationCenter.default.addObserver(forName: .OERetroAchievementsSessionDidChange, object: document, queue: .main) { [weak self] _ in
             self?.reloadContent()
             self?.scrollToTop()
         }
@@ -683,7 +685,7 @@ final class RetroAchievementsGameViewController: NSViewController {
         if let measured = info[OERetroAchievementsMeasuredProgressKey] as? String, !measured.isEmpty {
             details.append(measured)
         }
-        if let rarity = info["rarity"] as? NSNumber, rarity.floatValue > 0 {
+        if let rarity = info[OERetroAchievementsRarityKey] as? NSNumber, rarity.floatValue > 0 {
             details.append(String(format: NSLocalizedString("%.1f%% unlocked", comment: "RetroAchievements rarity label"), rarity.floatValue))
         }
         textStack.addArrangedSubview(makeBodyLabel(details.joined(separator: " · "), color: .tertiaryLabelColor))
@@ -735,8 +737,15 @@ final class RetroAchievementsGameViewController: NSViewController {
 
     private func loadImage(_ urlString: String, into imageView: NSImageView) {
         guard let url = URL(string: urlString) else { return }
+        let cacheKey = url as NSURL
+        if let image = Self.imageCache.object(forKey: cacheKey) {
+            imageView.image = image
+            return
+        }
+
         URLSession.shared.dataTask(with: url) { data, _, _ in
             guard let data, let image = NSImage(data: data) else { return }
+            Self.imageCache.setObject(image, forKey: cacheKey)
             DispatchQueue.main.async { imageView.image = image }
         }.resume()
     }
