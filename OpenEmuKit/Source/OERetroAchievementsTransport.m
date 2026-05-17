@@ -195,11 +195,11 @@ void oeRetroAchievementsServerCall(const rc_api_request_t *request,
     rc_client_get_user_agent_clause(client, rcClause, sizeof(rcClause));
 
     // RA expects an identifying User-Agent so they can correlate traffic to the host app.
-    // Format: OpenEmu/<host-version> (macOS <os-version>) rcheevos/<...>
+    // Format: OpenEmu-Silicon/<host-version> (macOS <os-version>) rcheevos/<...>
     NSString *hostVersion = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleShortVersionString"] ?: @"unknown";
     NSOperatingSystemVersion osv = [[NSProcessInfo processInfo] operatingSystemVersion];
     NSString *osVersion = [NSString stringWithFormat:@"%ld.%ld.%ld", (long)osv.majorVersion, (long)osv.minorVersion, (long)osv.patchVersion];
-    NSString *userAgent = [NSString stringWithFormat:@"OpenEmu/%@ (macOS %@) %@",
+    NSString *userAgent = [NSString stringWithFormat:@"OpenEmu-Silicon/%@ (macOS %@) %@",
                             hostVersion, osVersion, [NSString stringWithUTF8String:rcClause]];
     [urlRequest setValue:userAgent forHTTPHeaderField:@"User-Agent"];
 

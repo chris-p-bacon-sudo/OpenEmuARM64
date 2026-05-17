@@ -161,6 +161,8 @@ final class OEGameDocument: NSDocument {
     private var gameCoreManager: GameCoreManager?
     private var retroAchievementsWindowController: NSWindowController?
     @objc dynamic private(set) var retroAchievementsSessionInfo: [String: Any]?
+    private var retroAchievementsSuppressedUnlockIDs = Set<UInt32>()
+    private var retroAchievementsSuppressedUnlockTitles = Set<String>()
     private var didShowRetroAchievementsBootPlacard = false
     private var raCredentialObserver: Any?
     private var raHardcoreObserver: Any?
@@ -625,6 +627,8 @@ final class OEGameDocument: NSDocument {
 
                 self.emulationStatus = .notSetup
                 self.retroAchievementsSessionInfo = nil
+                self.retroAchievementsSuppressedUnlockIDs.removeAll()
+                self.retroAchievementsSuppressedUnlockTitles.removeAll()
                 self.gameViewController?.clearRetroAchievementsIndicators()
                 self.didShowRetroAchievementsBootPlacard = false
                 
@@ -774,6 +778,8 @@ final class OEGameDocument: NSDocument {
         
         emulationStatus = .notSetup
         retroAchievementsSessionInfo = nil
+        retroAchievementsSuppressedUnlockIDs.removeAll()
+        retroAchievementsSuppressedUnlockTitles.removeAll()
         gameViewController?.clearRetroAchievementsIndicators()
         didShowRetroAchievementsBootPlacard = false
         gameCoreManager?.stopEmulation() {
@@ -2316,6 +2322,7 @@ extension OEGameDocument: OESystemBindingsObserver {
                 self.gameViewController?.clearRetroAchievementsIndicators()
             }
             self.retroAchievementsSessionInfo = info
+            self.updateRetroAchievementsSuppressedUnlockIDs(from: info)
             NotificationCenter.default.post(name: .OERetroAchievementsSessionDidChange, object: self, userInfo: info)
             if !self.didShowRetroAchievementsBootPlacard {
                 self.didShowRetroAchievementsBootPlacard = true
@@ -2330,6 +2337,17 @@ extension OEGameDocument: OESystemBindingsObserver {
 
     func achievementUnlocked(id: UInt32, title: String, description: String, badgeURL: String, points: UInt32) {
         DispatchQueue.main.async {
+            if self.isRetroAchievementsUnknownEmulatorWarning(title: title) {
+                self.gameViewController?.showRetroAchievementsUnknownEmulatorNotice()
+                return
+            }
+            let normalizedTitle = self.normalizedRetroAchievementsUnlockTitle(title)
+            if self.retroAchievementsSuppressedUnlockIDs.contains(id) || self.retroAchievementsSuppressedUnlockTitles.contains(normalizedTitle) {
+                return
+            }
+            self.retroAchievementsSuppressedUnlockIDs.insert(id)
+            self.retroAchievementsSuppressedUnlockTitles.insert(normalizedTitle)
+
             // In-app banner — always visible regardless of Focus mode or notification settings
             self.gameViewController?.showAchievementUnlocked(title: title, description: description, badgeURL: badgeURL, points: points)
 
@@ -2345,6 +2363,31 @@ extension OEGameDocument: OESystemBindingsObserver {
                 trigger: nil
             )
             UNUserNotificationCenter.current().add(request)
+        }
+    }
+
+    private func isRetroAchievementsUnknownEmulatorWarning(title: String) -> Bool {
+        let foldedTitle = title.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current)
+        return foldedTitle.contains("unknown emulator") || foldedTitle.contains("unknown emu")
+    }
+
+    private func normalizedRetroAchievementsUnlockTitle(_ title: String) -> String {
+        title.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func updateRetroAchievementsSuppressedUnlockIDs(from info: [String: Any]) {
+        let requiredUnlockFlag = isHardcoreModeEnabled ? 2 : 1
+        let achievements = info[OERetroAchievementsAchievementsKey] as? [[String: Any]] ?? []
+        for achievement in achievements {
+            guard let id = (achievement[OEAchievementIDKey] as? NSNumber)?.uint32Value else { continue }
+            let unlocked = (achievement[OERetroAchievementsUnlockedKey] as? NSNumber)?.intValue ?? 0
+            if (unlocked & requiredUnlockFlag) != 0 {
+                retroAchievementsSuppressedUnlockIDs.insert(id)
+                if let title = achievement[OEAchievementTitleKey] as? String {
+                    retroAchievementsSuppressedUnlockTitles.insert(normalizedRetroAchievementsUnlockTitle(title))
+                }
+            }
         }
     }
 
@@ -2379,14 +2422,19 @@ extension OEGameDocument: OESystemBindingsObserver {
         case "leaderboardStarted":
             gameViewController?.showRetroAchievementsEventToast(title: NSLocalizedString("Leaderboard Started", comment: "RA leaderboard started"), subtitle: title, symbolName: "flag.checkered")
         case "leaderboardFailed":
+            gameViewController?.hideAllRetroAchievementsLeaderboards()
             gameViewController?.showRetroAchievementsEventToast(title: NSLocalizedString("Leaderboard Failed", comment: "RA leaderboard failed"), subtitle: title, symbolName: "xmark.circle.fill")
         case "leaderboardSubmitted":
+            gameViewController?.hideAllRetroAchievementsLeaderboards()
             gameViewController?.showRetroAchievementsEventToast(title: NSLocalizedString("Leaderboard Submitted", comment: "RA leaderboard submitted"), subtitle: title, symbolName: "checkmark.seal.fill")
-        case "leaderboardTrackerShow", "leaderboardTrackerUpdate":
+        case "leaderboardTrackerShow":
             gameViewController?.showRetroAchievementsLeaderboard(id: id, display: display)
+        case "leaderboardTrackerUpdate":
+            gameViewController?.updateRetroAchievementsLeaderboard(id: id, display: display)
         case "leaderboardTrackerHide":
             gameViewController?.hideRetroAchievementsLeaderboard(id: id)
         case "leaderboardScoreboard":
+            gameViewController?.hideAllRetroAchievementsLeaderboards()
             let submitted = info[OERetroAchievementsEventSubmittedScoreKey] as? String ?? ""
             let rank = (info[OERetroAchievementsEventRankKey] as? NSNumber)?.intValue ?? 0
             let subtitle = rank > 0

@@ -292,6 +292,43 @@ private final class OERetroAchievementsChipLabel: NSView {
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 }
 
+final class OERetroAchievementsNoticeView: NSStackView {
+    private let noticeLabel = OERetroAchievementsChipLabel(labelWithString: "")
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        orientation = .horizontal
+        alignment = .leading
+        spacing = 0
+        isHidden = true
+        configureChip(noticeLabel)
+        addArrangedSubview(noticeLabel)
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    func showUnknownEmulatorWarning() {
+        noticeLabel.stringValue = NSLocalizedString("RA: Unknown emulator", comment: "RetroAchievements unknown emulator compact notice")
+        isHidden = false
+    }
+
+    func clear() {
+        isHidden = true
+    }
+
+    private func configureChip(_ label: OERetroAchievementsChipLabel) {
+        label.font = .monospacedDigitSystemFont(ofSize: 12, weight: .semibold)
+        label.textColor = .white
+        label.wantsLayer = true
+        label.layer?.backgroundColor = NSColor.systemYellow.withAlphaComponent(0.82).cgColor
+        label.layer?.cornerRadius = 8
+        label.lineBreakMode = .byTruncatingTail
+        label.maximumNumberOfLines = 1
+        label.translatesAutoresizingMaskIntoConstraints = false
+        label.widthAnchor.constraint(lessThanOrEqualToConstant: 240).isActive = true
+    }
+}
+
 final class OERetroAchievementsIndicatorStackView: NSStackView {
     private var challengeViews: [UInt32: OERetroAchievementsChipLabel] = [:]
     private var leaderboardViews: [UInt32: OERetroAchievementsChipLabel] = [:]
@@ -336,10 +373,25 @@ final class OERetroAchievementsIndicatorStackView: NSStackView {
         updateVisibility()
     }
 
+    func updateLeaderboard(id: UInt32, display: String) {
+        guard let label = leaderboardViews[id] else { return }
+        label.stringValue = "Leaderboard: \(display)"
+        updateVisibility()
+    }
+
     func hideLeaderboard(id: UInt32) {
         guard let label = leaderboardViews.removeValue(forKey: id) else { return }
         removeArrangedSubview(label)
         label.removeFromSuperview()
+        updateVisibility()
+    }
+
+    func hideAllLeaderboards() {
+        for label in leaderboardViews.values {
+            removeArrangedSubview(label)
+            label.removeFromSuperview()
+        }
+        leaderboardViews.removeAll()
         updateVisibility()
     }
 
