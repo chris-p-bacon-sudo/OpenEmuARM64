@@ -96,6 +96,12 @@ public let OERetroAchievementsBadgeLockedURLKey      = "badgeLockedURL"
 public let OERetroAchievementsRarityKey              = "rarity"
 public let OERetroAchievementsHardcoreRarityKey      = "rarityHardcore"
 public let OERetroAchievementsUnlockedKey            = "unlocked"
+public let OERetroAchievementsSessionStatusKey       = "sessionStatus"
+public let OERetroAchievementsSessionErrorCodeKey    = "sessionErrorCode"
+public let OERetroAchievementsSessionErrorMessageKey = "sessionErrorMessage"
+public let OERetroAchievementsSessionStatusUnrecognized = "unrecognized"
+public let OERetroAchievementsSessionStatusLoginFailed  = "loginFailed"
+public let OERetroAchievementsSessionStatusLoadFailed   = "loadFailed"
 
 /// Posted inside the helper process by a core plugin when rcheevos emits a
 /// gameplay UI event. The helper forwards this to the host via `OEGameCoreOwner`.

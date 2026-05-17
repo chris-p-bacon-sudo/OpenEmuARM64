@@ -509,24 +509,33 @@ private final class OERetroAchievementsPlacardView: NSVisualEffectView {
         hideWorkItem?.cancel()
         isHidden = false
 
-        titleLabel.stringValue = info[OERetroAchievementsGameTitleKey] as? String ?? NSLocalizedString("RetroAchievements", comment: "RetroAchievements placard fallback title")
-
-        let unlocked = (info[OERetroAchievementsUnlockedCountKey] as? NSNumber)?.intValue ?? 0
-        let total = (info[OERetroAchievementsAchievementCountKey] as? NSNumber)?.intValue ?? 0
-        let points = (info[OERetroAchievementsUnlockedPointsKey] as? NSNumber)?.intValue ?? 0
-        let totalPoints = (info[OERetroAchievementsTotalPointsKey] as? NSNumber)?.intValue ?? 0
-        let account = signedIn ? NSLocalizedString("Logged in", comment: "RetroAchievements placard signed in") : NSLocalizedString("Not logged in", comment: "RetroAchievements placard signed out")
-        summaryLabel.stringValue = String(format: NSLocalizedString("%@ · %d of %d achievements · %d of %d points", comment: "RetroAchievements boot placard summary"), account, unlocked, total, points, totalPoints)
-
-        modeLabel.stringValue = hardcore ? NSLocalizedString("Hardcore Mode", comment: "RetroAchievements hardcore mode") : NSLocalizedString("Softcore Mode", comment: "RetroAchievements softcore mode")
-        modeLabel.textColor = .labelColor
-
         imageView.image = nil
-        if let urlString = info[OERetroAchievementsGameBadgeURLKey] as? String, let url = URL(string: urlString) {
-            URLSession.shared.dataTask(with: url) { [weak self] data, _, _ in
-                guard let data, let image = NSImage(data: data) else { return }
-                DispatchQueue.main.async { self?.imageView.image = image }
-            }.resume()
+
+        if let status = info[OERetroAchievementsSessionStatusKey] as? String {
+            titleLabel.stringValue = sessionStatusTitle(status)
+            summaryLabel.stringValue = sessionStatusMessage(status, info: info)
+            modeLabel.stringValue = NSLocalizedString("Achievements unavailable", comment: "RetroAchievements placard unavailable mode")
+            modeLabel.textColor = .systemYellow
+            imageView.image = NSImage(systemSymbolName: "exclamationmark.triangle.fill", accessibilityDescription: nil)
+        } else {
+            titleLabel.stringValue = info[OERetroAchievementsGameTitleKey] as? String ?? NSLocalizedString("RetroAchievements", comment: "RetroAchievements placard fallback title")
+
+            let unlocked = (info[OERetroAchievementsUnlockedCountKey] as? NSNumber)?.intValue ?? 0
+            let total = (info[OERetroAchievementsAchievementCountKey] as? NSNumber)?.intValue ?? 0
+            let points = (info[OERetroAchievementsUnlockedPointsKey] as? NSNumber)?.intValue ?? 0
+            let totalPoints = (info[OERetroAchievementsTotalPointsKey] as? NSNumber)?.intValue ?? 0
+            let account = signedIn ? NSLocalizedString("Logged in", comment: "RetroAchievements placard signed in") : NSLocalizedString("Not logged in", comment: "RetroAchievements placard signed out")
+            summaryLabel.stringValue = String(format: NSLocalizedString("%@ · %d of %d achievements · %d of %d points", comment: "RetroAchievements boot placard summary"), account, unlocked, total, points, totalPoints)
+
+            modeLabel.stringValue = hardcore ? NSLocalizedString("Hardcore Mode", comment: "RetroAchievements hardcore mode") : NSLocalizedString("Softcore Mode", comment: "RetroAchievements softcore mode")
+            modeLabel.textColor = .labelColor
+
+            if let urlString = info[OERetroAchievementsGameBadgeURLKey] as? String, let url = URL(string: urlString) {
+                URLSession.shared.dataTask(with: url) { [weak self] data, _, _ in
+                    guard let data, let image = NSImage(data: data) else { return }
+                    DispatchQueue.main.async { self?.imageView.image = image }
+                }.resume()
+            }
         }
 
         NSAnimationContext.runAnimationGroup { context in
@@ -544,6 +553,34 @@ private final class OERetroAchievementsPlacardView: NSVisualEffectView {
         }
         hideWorkItem = workItem
         DispatchQueue.main.asyncAfter(deadline: .now() + 5.0, execute: workItem)
+    }
+
+    private func sessionStatusTitle(_ status: String) -> String {
+        switch status {
+        case OERetroAchievementsSessionStatusUnrecognized:
+            return NSLocalizedString("RetroAchievements: Game Not Recognized", comment: "RetroAchievements unrecognized game placard title")
+        case OERetroAchievementsSessionStatusLoginFailed:
+            return NSLocalizedString("RetroAchievements Sign-In Failed", comment: "RetroAchievements login failed placard title")
+        default:
+            return NSLocalizedString("RetroAchievements Unavailable", comment: "RetroAchievements unavailable placard title")
+        }
+    }
+
+    private func sessionStatusMessage(_ status: String, info: [String: Any]) -> String {
+        switch status {
+        case OERetroAchievementsSessionStatusUnrecognized:
+            return NSLocalizedString("No achievement set was found for this game/hash.", comment: "RetroAchievements unrecognized game placard message")
+        case OERetroAchievementsSessionStatusLoginFailed:
+            if let message = info[OERetroAchievementsSessionErrorMessageKey] as? String, !message.isEmpty {
+                return message
+            }
+            return NSLocalizedString("Please sign in again from Preferences → Achievements.", comment: "RetroAchievements login failed placard message")
+        default:
+            if let message = info[OERetroAchievementsSessionErrorMessageKey] as? String, !message.isEmpty {
+                return message
+            }
+            return NSLocalizedString("RetroAchievements could not load for this session.", comment: "RetroAchievements unavailable placard message")
+        }
     }
 }
 
@@ -656,9 +693,10 @@ final class RetroAchievementsGameViewController: NSViewController {
         }
 
         if achievements.isEmpty {
-            let message = info == nil
-                ? NSLocalizedString("Waiting for RetroAchievements game metadata from the emulator core. If this stays empty, confirm you are signed in and the active core/game supports RetroAchievements.", comment: "RetroAchievements waiting message")
-                : NSLocalizedString("No achievements were reported for this game.", comment: "RetroAchievements empty list message")
+            let message = sessionStatusMessage(info: info, document: document)
+                ?? (info == nil
+                    ? NSLocalizedString("Waiting for RetroAchievements game metadata from the emulator core. If this stays empty, confirm you are signed in and the active core/game supports RetroAchievements.", comment: "RetroAchievements waiting message")
+                    : NSLocalizedString("No achievements were reported for this game.", comment: "RetroAchievements empty list message"))
             contentStack.addArrangedSubview(makeBodyLabel(message, color: .secondaryLabelColor))
             scrollToTop()
             return
@@ -724,9 +762,10 @@ final class RetroAchievementsGameViewController: NSViewController {
         let total = (info?[OERetroAchievementsAchievementCountKey] as? NSNumber)?.intValue
         let points = (info?[OERetroAchievementsUnlockedPointsKey] as? NSNumber)?.intValue
         let totalPoints = (info?[OERetroAchievementsTotalPointsKey] as? NSNumber)?.intValue
-        let progress = unlocked != nil && total != nil && points != nil && totalPoints != nil
-            ? String(format: NSLocalizedString("Unlocked %d of %d achievements · %d of %d points", comment: "RetroAchievements summary"), unlocked!, total!, points!, totalPoints!)
-            : summaryText(document: document)
+        let progress = sessionStatusMessage(info: info, document: document)
+            ?? (unlocked != nil && total != nil && points != nil && totalPoints != nil
+                ? String(format: NSLocalizedString("Unlocked %d of %d achievements · %d of %d points", comment: "RetroAchievements summary"), unlocked!, total!, points!, totalPoints!)
+                : summaryText(document: document))
         textStack.addArrangedSubview(makeBodyLabel(progress, color: .labelColor))
 
         let mode = document.isHardcoreModeEnabled ? NSLocalizedString("Hardcore Mode", comment: "RetroAchievements hardcore mode") : NSLocalizedString("Softcore Mode", comment: "RetroAchievements softcore mode")
@@ -884,6 +923,24 @@ final class RetroAchievementsGameViewController: NSViewController {
         label.font = .systemFont(ofSize: 12, weight: .semibold)
         label.textColor = color
         return label
+    }
+
+    private func sessionStatusMessage(info: [String: Any]?, document: OEGameDocument) -> String? {
+        guard let status = info?[OERetroAchievementsSessionStatusKey] as? String else { return nil }
+        switch status {
+        case OERetroAchievementsSessionStatusUnrecognized:
+            return NSLocalizedString("RetroAchievements is enabled, but no achievement set was found for this game/hash.", comment: "RetroAchievements unrecognized game window message")
+        case OERetroAchievementsSessionStatusLoginFailed:
+            if let message = info?[OERetroAchievementsSessionErrorMessageKey] as? String, !message.isEmpty {
+                return message
+            }
+            return NSLocalizedString("RetroAchievements sign-in failed. Please sign in again from Preferences → Achievements.", comment: "RetroAchievements login failed window message")
+        default:
+            if let message = info?[OERetroAchievementsSessionErrorMessageKey] as? String, !message.isEmpty {
+                return message
+            }
+            return NSLocalizedString("RetroAchievements could not load for this session.", comment: "RetroAchievements generic load failure window message")
+        }
     }
 
     private func summaryText(document: OEGameDocument) -> String {

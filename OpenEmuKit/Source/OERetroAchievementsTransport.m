@@ -34,6 +34,41 @@ static NSString *OEStringFromCString(const char *string)
     return value ?: @"";
 }
 
+static void OEPostSessionStatus(NSString *status, int result, const char *error_message)
+{
+    NSMutableDictionary *payload = [NSMutableDictionary dictionary];
+    payload[OERASessionStatusKey] = status;
+    payload[OERASessionErrorCodeKey] = @(result);
+
+    NSString *message = OEStringFromCString(error_message);
+    if (message.length > 0) { payload[OERASessionErrorMessageKey] = message; }
+
+    [[NSNotificationCenter defaultCenter] postNotificationName:OERASessionUpdatedNotification
+                                                        object:nil
+                                                      userInfo:payload];
+}
+
+static BOOL OEIsUnrecognizedGameResult(int result)
+{
+    // rcheevos currently reports unknown/no-set hashes through these two
+    // results. Keep this classification centralized so new upstream result
+    // codes can be added in one place if needed.
+    return result == RC_NO_GAME_LOADED || result == RC_NOT_FOUND;
+}
+
+void oeRetroAchievementsPostSessionLoadFailure(int result, const char *error_message)
+{
+    NSString *status = OEIsUnrecognizedGameResult(result)
+        ? OERASessionStatusUnrecognized
+        : OERASessionStatusLoadFailed;
+    OEPostSessionStatus(status, result, error_message);
+}
+
+void oeRetroAchievementsPostLoginFailure(int result, const char *error_message)
+{
+    OEPostSessionStatus(OERASessionStatusLoginFailed, result, error_message);
+}
+
 static void OEAddAchievementPayload(NSMutableDictionary *payload, const rc_client_achievement_t *achievement)
 {
     if (!achievement) { return; }
