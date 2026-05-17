@@ -127,7 +127,7 @@ The fix is `memcpy` with no address manipulation, as shown above.
 
 **Fix:** Call `rc_client_set_allow_background_memory_reads(_rcClient, 0)` during `rc_client` initialization. This defers address validation to the `rc_client_do_frame()` call in the frame loop, where emulated RAM is guaranteed live.
 
-**Affected cores fixed:** Mupen64Plus (PR #345), Mednafen (PR #346).
+**Affected cores fixed:** Mupen64Plus (PR #345), Mednafen (PR #346), and the remaining native RA cores in the #438 compliance follow-up (Nestopia, FCEU, BSNES, SNES9x, Gambatte, GenesisPlus, and mGBA).
 
 **Every new integration must include this call.** It is easy to omit because achievements appear to load (no error) and the game runs normally — the failure is silent.
 

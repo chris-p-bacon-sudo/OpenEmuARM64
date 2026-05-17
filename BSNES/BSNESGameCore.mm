@@ -425,6 +425,7 @@ static void bsnes_rc_event_handler(const rc_client_event_t *event, rc_client_t *
         rc_client_set_event_handler(_rcClient, bsnes_rc_event_handler);
         _raHardcoreEnabled = YES;
         rc_client_set_hardcore_enabled(_rcClient, _raHardcoreEnabled ? 1 : 0);
+        rc_client_set_allow_background_memory_reads(_rcClient, 0);
         rc_client_enable_logging(_rcClient, RC_CLIENT_LOG_LEVEL_INFO, bsnes_rc_log);
 
         __weak BSNESGameCore *weakSelf = self;

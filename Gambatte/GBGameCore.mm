@@ -335,6 +335,7 @@ static void gambatte_rc_event_handler(const rc_client_event_t *event, rc_client_
         rc_client_set_event_handler(_rcClient, gambatte_rc_event_handler);
         _raHardcoreEnabled = YES;
         rc_client_set_hardcore_enabled(_rcClient, _raHardcoreEnabled ? 1 : 0);
+        rc_client_set_allow_background_memory_reads(_rcClient, 0);
         rc_client_enable_logging(_rcClient, RC_CLIENT_LOG_LEVEL_INFO, gambatte_rc_log);
 
         __weak GBGameCore *weakSelf = self;

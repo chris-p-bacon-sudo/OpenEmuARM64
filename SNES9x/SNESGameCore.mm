@@ -728,6 +728,7 @@ static __weak SNESGameCore *_current;
             rc_client_set_event_handler(_rcClient, snes9x_rc_event_handler);
             _raHardcoreEnabled = YES;
             rc_client_set_hardcore_enabled(_rcClient, _raHardcoreEnabled ? 1 : 0);
+            rc_client_set_allow_background_memory_reads(_rcClient, 0);
             rc_client_enable_logging(_rcClient, RC_CLIENT_LOG_LEVEL_INFO, snes9x_rc_log);
 
             __weak SNESGameCore *weakSelf = self;
