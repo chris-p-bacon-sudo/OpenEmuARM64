@@ -176,13 +176,16 @@ final class OEGameDocument: NSDocument {
     }
 
     /// Whether hardcore restrictions should actually be enforced right now.
-    /// True only when the user has the preference on **and** an RA session is
-    /// active (a token is stored). Without a token, no achievements are being
-    /// tracked, so blocking save states, cheats, rewind, etc. would just take
-    /// existing OpenEmu functionality away from non-RA users.
+    /// True only when the user has the preference on, a token is stored, and
+    /// the selected core advertises RetroAchievements support for this system.
+    /// Without all three, no hardcore achievements are being tracked, so blocking
+    /// save states, cheats, rewind, etc. would just take existing OpenEmu
+    /// functionality away from non-RA or unsupported games.
     @objc var isHardcoreModeEnabled: Bool {
         guard isHardcoreModePreferenceEnabled else { return false }
-        return OECredentialStore.shared.get(.retroAchievementsToken) != nil
+        guard OECredentialStore.shared.get(.retroAchievementsToken) != nil else { return false }
+        guard let corePlugin, let systemPlugin else { return false }
+        return corePlugin.supportsRetroAchievements(forSystemIdentifier: systemPlugin.systemIdentifier)
     }
 
     private var displaySleepAssertionID: IOPMAssertionID = 0
@@ -687,7 +690,7 @@ final class OEGameDocument: NSDocument {
 
                 // Push the effective hardcore state to the helper before any startup save-state
                 // decision. The helper defaults to hardcore=true; without this early push a
-                // softcore/non-RA startup restore would be blocked by the stale default (#438).
+                // softcore/non-RA/unsupported startup restore would be blocked by the stale default (#438).
                 self.gameCoreManager?.setHardcoreEnabled(self.isHardcoreModeEnabled)
 
                 if let saveStateForGameStart = self.saveStateForGameStart {
