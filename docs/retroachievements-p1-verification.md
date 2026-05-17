@@ -2,6 +2,8 @@
 
 This document is the manual verification and submission-evidence checklist for issue #438. It is based on the upstream [`rc_client` integration guide](https://github.com/RetroAchievements/rcheevos/wiki/rc_client-integration) and the current OpenEmu-Silicon native `rc_client` implementation.
 
+Use [`retroachievements-p1-evidence-log.md`](retroachievements-p1-evidence-log.md) for manual runtime evidence and [`retroachievements-submission-evidence.md`](retroachievements-submission-evidence.md) for legal/privacy/submission evidence.
+
 Scope: native RetroAchievements cores only. Libretro/RetroArch cores are tracked separately in #360 and the libretro architecture docs.
 
 ## Native RA cores in scope

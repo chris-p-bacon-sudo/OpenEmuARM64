@@ -2,7 +2,7 @@
 
 This document records manual verification evidence for issue #438 before resubmitting OpenEmu-Silicon for RetroAchievements review.
 
-Use this alongside [`retroachievements-p1-verification.md`](retroachievements-p1-verification.md). That file describes what to test; this file records what was actually tested, with enough detail for reviewers to reproduce or audit the result.
+Use this alongside [`retroachievements-p1-verification.md`](retroachievements-p1-verification.md). That file describes what to test; this file records what was actually tested, with enough detail for reviewers to reproduce or audit the result. Legal/privacy/submission notes live in [`retroachievements-submission-evidence.md`](retroachievements-submission-evidence.md).
 
 Scope: native RetroAchievements cores only. Libretro/RetroArch cores are tracked separately in #360.
 
