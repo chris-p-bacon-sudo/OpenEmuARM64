@@ -24,11 +24,14 @@
 // THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #import <Foundation/Foundation.h>
+#import <string.h>
 #import "OERetroAchievementsTransport.h"
 
 static NSString *OEStringFromCString(const char *string)
 {
-    return string ? [NSString stringWithUTF8String:string] : @"";
+    if (!string) { return @""; }
+    NSString *value = [NSString stringWithCString:string encoding:NSUTF8StringEncoding];
+    return value ?: @"";
 }
 
 static void OEAddAchievementPayload(NSMutableDictionary *payload, const rc_client_achievement_t *achievement)
@@ -50,7 +53,9 @@ static void OEAddLeaderboardPayload(NSMutableDictionary *payload, const rc_clien
     payload[OERAEventIDKey] = @(leaderboard->id);
     payload[OERAEventTitleKey] = OEStringFromCString(leaderboard->title);
     payload[OERAEventDescriptionKey] = OEStringFromCString(leaderboard->description);
-    payload[OERAEventDisplayKey] = OEStringFromCString(leaderboard->tracker_value);
+    if (leaderboard->tracker_value) {
+        payload[OERAEventDisplayKey] = OEStringFromCString(leaderboard->tracker_value);
+    }
 }
 
 void oeRetroAchievementsPostEventNotification(const rc_client_event_t *event,
@@ -125,6 +130,9 @@ void oeRetroAchievementsPostEventNotification(const rc_client_event_t *event,
                 payload[OERAEventRankKey] = @(event->leaderboard_scoreboard->new_rank);
                 payload[OERAEventTotalEntriesKey] = @(event->leaderboard_scoreboard->num_entries);
             }
+            break;
+        case RC_CLIENT_EVENT_RESET:
+            payload[OERAEventKindKey] = @"resetRequested";
             break;
         case RC_CLIENT_EVENT_GAME_COMPLETED:
             payload[OERAEventKindKey] = @"gameCompleted";
@@ -215,10 +223,11 @@ void oeRetroAchievementsServerCall(const rc_api_request_t *request,
             dataTaskWithRequest:urlRequest
               completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
             if (error || !data) {
+                const char *message = error ? error.localizedDescription.UTF8String : "";
                 rc_api_server_response_t err = {
-                    .body             = error ? error.localizedDescription.UTF8String : "",
-                    .body_length      = 0,
-                    .http_status_code = RC_API_SERVER_RESPONSE_CLIENT_ERROR
+                    .body             = message,
+                    .body_length      = strlen(message),
+                    .http_status_code = RC_API_SERVER_RESPONSE_RETRYABLE_CLIENT_ERROR
                 };
                 callback(&err, callback_data);
                 return;

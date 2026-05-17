@@ -244,10 +244,58 @@ final class OERetroAchievementsEventToastView: NSVisualEffectView {
     }
 }
 
+private final class OERetroAchievementsChipLabel: NSView {
+    private let label = NSTextField(labelWithString: "")
+
+    var stringValue: String {
+        get { label.stringValue }
+        set { label.stringValue = newValue; invalidateIntrinsicContentSize() }
+    }
+
+    var font: NSFont? {
+        get { label.font }
+        set { label.font = newValue; invalidateIntrinsicContentSize() }
+    }
+
+    var textColor: NSColor? {
+        get { label.textColor }
+        set { label.textColor = newValue }
+    }
+
+    var lineBreakMode: NSLineBreakMode {
+        get { label.lineBreakMode }
+        set { label.lineBreakMode = newValue }
+    }
+
+    var maximumNumberOfLines: Int {
+        get { label.maximumNumberOfLines }
+        set { label.maximumNumberOfLines = newValue }
+    }
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        label.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(label)
+        NSLayoutConstraint.activate([
+            label.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 10),
+            label.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -10),
+            label.topAnchor.constraint(equalTo: topAnchor, constant: 5),
+            label.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -5),
+        ])
+    }
+
+    convenience init(labelWithString string: String) {
+        self.init(frame: .zero)
+        stringValue = string
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+}
+
 final class OERetroAchievementsIndicatorStackView: NSStackView {
-    private var challengeViews: [UInt32: NSTextField] = [:]
-    private var leaderboardViews: [UInt32: NSTextField] = [:]
-    private let progressLabel = NSTextField(labelWithString: "")
+    private var challengeViews: [UInt32: OERetroAchievementsChipLabel] = [:]
+    private var leaderboardViews: [UInt32: OERetroAchievementsChipLabel] = [:]
+    private let progressLabel = OERetroAchievementsChipLabel(labelWithString: "")
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -255,6 +303,7 @@ final class OERetroAchievementsIndicatorStackView: NSStackView {
         alignment = .trailing
         spacing = 6
         isHidden = true
+        configureChip(progressLabel, color: .systemGreen)
         progressLabel.isHidden = true
     }
 
@@ -306,8 +355,23 @@ final class OERetroAchievementsIndicatorStackView: NSStackView {
         updateVisibility()
     }
 
-    private func makeChip(color: NSColor) -> NSTextField {
-        let label = NSTextField(labelWithString: "")
+    func clear() {
+        for label in Array(challengeViews.values) + Array(leaderboardViews.values) {
+            removeArrangedSubview(label)
+            label.removeFromSuperview()
+        }
+        challengeViews.removeAll()
+        leaderboardViews.removeAll()
+        hideProgress()
+    }
+
+    private func makeChip(color: NSColor) -> OERetroAchievementsChipLabel {
+        let label = OERetroAchievementsChipLabel(labelWithString: "")
+        configureChip(label, color: color)
+        return label
+    }
+
+    private func configureChip(_ label: OERetroAchievementsChipLabel, color: NSColor) {
         label.font = .monospacedDigitSystemFont(ofSize: 12, weight: .semibold)
         label.textColor = .white
         label.wantsLayer = true
@@ -316,8 +380,7 @@ final class OERetroAchievementsIndicatorStackView: NSStackView {
         label.lineBreakMode = .byTruncatingTail
         label.maximumNumberOfLines = 1
         label.translatesAutoresizingMaskIntoConstraints = false
-        label.widthAnchor.constraint(lessThanOrEqualToConstant: 320).isActive = true
-        return label
+        label.widthAnchor.constraint(lessThanOrEqualToConstant: 340).isActive = true
     }
 
     private func updateVisibility() {

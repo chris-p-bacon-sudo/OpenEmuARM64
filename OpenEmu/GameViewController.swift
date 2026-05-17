@@ -408,6 +408,10 @@ extension GameViewController {
         retroAchievementsIndicatorStackView.hideProgress()
     }
 
+    func clearRetroAchievementsIndicators() {
+        retroAchievementsIndicatorStackView.clear()
+    }
+
     func showRetroAchievementsPlacard(info: [String: Any], hardcore: Bool, signedIn: Bool) {
         retroAchievementsPlacardView.show(info: info, hardcore: hardcore, signedIn: signedIn)
     }

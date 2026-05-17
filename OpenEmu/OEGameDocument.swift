@@ -625,6 +625,7 @@ final class OEGameDocument: NSDocument {
 
                 self.emulationStatus = .notSetup
                 self.retroAchievementsSessionInfo = nil
+                self.gameViewController?.clearRetroAchievementsIndicators()
                 self.didShowRetroAchievementsBootPlacard = false
                 
                 self.gameCoreManager = nil
@@ -773,6 +774,7 @@ final class OEGameDocument: NSDocument {
         
         emulationStatus = .notSetup
         retroAchievementsSessionInfo = nil
+        gameViewController?.clearRetroAchievementsIndicators()
         didShowRetroAchievementsBootPlacard = false
         gameCoreManager?.stopEmulation() {
             OEBindingsController.default.systemBindings(for: self.systemPlugin.controller).remove(self)
@@ -2310,6 +2312,9 @@ extension OEGameDocument: OESystemBindingsObserver {
 
     func retroAchievementsSessionUpdated(_ info: [String: Any]) {
         DispatchQueue.main.async {
+            if self.retroAchievementsSessionInfo == nil {
+                self.gameViewController?.clearRetroAchievementsIndicators()
+            }
             self.retroAchievementsSessionInfo = info
             NotificationCenter.default.post(name: .OERetroAchievementsSessionDidChange, object: self, userInfo: info)
             if !self.didShowRetroAchievementsBootPlacard {
@@ -2376,8 +2381,7 @@ extension OEGameDocument: OESystemBindingsObserver {
         case "leaderboardFailed":
             gameViewController?.showRetroAchievementsEventToast(title: NSLocalizedString("Leaderboard Failed", comment: "RA leaderboard failed"), subtitle: title, symbolName: "xmark.circle.fill")
         case "leaderboardSubmitted":
-            let subtitle = display.isEmpty ? title : String(format: NSLocalizedString("%@ — %@", comment: "RA leaderboard submitted subtitle"), display, title)
-            gameViewController?.showRetroAchievementsEventToast(title: NSLocalizedString("Leaderboard Submitted", comment: "RA leaderboard submitted"), subtitle: subtitle, symbolName: "checkmark.seal.fill")
+            gameViewController?.showRetroAchievementsEventToast(title: NSLocalizedString("Leaderboard Submitted", comment: "RA leaderboard submitted"), subtitle: title, symbolName: "checkmark.seal.fill")
         case "leaderboardTrackerShow", "leaderboardTrackerUpdate":
             gameViewController?.showRetroAchievementsLeaderboard(id: id, display: display)
         case "leaderboardTrackerHide":
@@ -2396,13 +2400,18 @@ extension OEGameDocument: OESystemBindingsObserver {
         case "subsetCompleted":
             let verb = isHardcoreModeEnabled ? NSLocalizedString("Mastered", comment: "RA mastered subset") : NSLocalizedString("Completed", comment: "RA completed subset")
             gameViewController?.showRetroAchievementsEventToast(title: "\(verb) \(title)", subtitle: NSLocalizedString("Achievement set complete", comment: "RA subset completed subtitle"), badgeURL: badgeURL, symbolName: "crown.fill")
+        case "resetRequested":
+            gameCoreManager?.resetEmulation { [weak self] in
+                self?.isEmulationPaused = false
+            }
+            gameViewController?.showRetroAchievementsEventToast(title: NSLocalizedString("Hardcore Reset", comment: "RA reset requested"), subtitle: NSLocalizedString("Restarting to apply hardcore mode.", comment: "RA reset requested subtitle"), symbolName: "arrow.clockwise.circle.fill")
         case "serverError":
             let message = info[OERetroAchievementsEventErrorMessageKey] as? String ?? description
             gameViewController?.showRetroAchievementsEventToast(title: NSLocalizedString("RetroAchievements Error", comment: "RA server error"), subtitle: message, symbolName: "exclamationmark.triangle.fill")
         case "disconnected":
-            gameViewController?.showRetroAchievementsEventToast(title: NSLocalizedString("RetroAchievements Offline", comment: "RA disconnected"), subtitle: NSLocalizedString("Unlocks will retry when reconnected.", comment: "RA disconnected subtitle"), symbolName: "wifi.slash")
+            gameViewController?.showRetroAchievementsEventToast(title: NSLocalizedString("RetroAchievements Offline", comment: "RA disconnected"), subtitle: NSLocalizedString("Some submissions are pending retry.", comment: "RA disconnected subtitle"), symbolName: "wifi.slash")
         case "reconnected":
-            gameViewController?.showRetroAchievementsEventToast(title: NSLocalizedString("RetroAchievements Reconnected", comment: "RA reconnected"), subtitle: NSLocalizedString("Pending unlocks synced.", comment: "RA reconnected subtitle"), symbolName: "wifi")
+            gameViewController?.showRetroAchievementsEventToast(title: NSLocalizedString("RetroAchievements Reconnected", comment: "RA reconnected"), subtitle: NSLocalizedString("Pending submissions completed.", comment: "RA reconnected subtitle"), symbolName: "wifi")
         default:
             return
         }
