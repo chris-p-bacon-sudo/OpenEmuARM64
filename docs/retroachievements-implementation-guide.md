@@ -6,6 +6,10 @@ The canonical reference implementations are:
 - **Mednafen** — `Mednafen/MednafenGameCore.mm` (multi-system: PSX, PCE, Lynx, NGP)
 - **Mupen64Plus** — `Mupen64Plus/MupenGameCore.m` (N64)
 
+Primary upstream references:
+- [`rc_client` integration guide](https://github.com/RetroAchievements/rcheevos/wiki/rc_client-integration) — runtime integration, event handling, hardcore behavior, save-state progress, media change, and transport expectations.
+- [RetroAchievements API docs](https://api-docs.retroachievements.org/) — public read API for profile/game/community data. Do not use the public API in place of `rc_client` for runtime login, game sessions, unlocks, leaderboards, or rich presence.
+
 ---
 
 ## Required call sequence during `loadFileAtPath:`
@@ -40,9 +44,43 @@ if (_rcClient) {
 | Event | Call |
 |---|---|
 | Game loading | `rc_client_begin_identify_and_load_game()` |
-| Save state load | `rc_client_reset()` |
+| Save state load | `rc_client_reset()` today; long term, deserialize RA progress from the save state (see below) |
 | Emulation reset | `rc_client_reset()` |
 | Stop / dealloc | `rc_client_unload_game()` then `rc_client_destroy()` |
+| Disc / media change | `rc_client_begin_change_media()` for systems that can swap discs/disks |
+
+If `rc_client_set_hardcore_enabled(_rcClient, 1)` is called while a game is loaded, rcheevos may raise `RC_CLIENT_EVENT_RESET`. The emulator must reset the game and then call `rc_client_reset()` before achievement processing resumes. Do not silently drop this event.
+
+---
+
+## Transport requirements
+
+All native RA cores must use the shared `oeRetroAchievementsServerCall` transport so traffic identifies as OpenEmu-Silicon instead of another emulator.
+
+Transport requirements from the upstream `rc_client` guide:
+
+- Always send a `User-Agent` in this shape: `<product>/<product-version> (<system-information>) <extensions>`.
+- Include `rc_client_get_user_agent_clause()` in the extensions so the server can see the rcheevos version.
+- The product/version must be numeric enough for RA to parse. If RA cannot parse or recognize the client version, hardcore unlocks may be demoted to softcore server-side.
+- For transient client/network failures, pass `RC_API_SERVER_RESPONSE_RETRYABLE_CLIENT_ERROR` so rcheevos can queue and retry non-client-initiated updates such as unlocks.
+- Use `RC_API_SERVER_RESPONSE_CLIENT_ERROR` only for errors that should not be retried.
+
+---
+
+## Public API vs `rc_client`
+
+The public RetroAchievements API uses a user's **web API key**, not the `rc_client` login token. It is useful for optional out-of-game surfaces such as profile stats, game metadata, hash/debug tools, ticket/community workflows, or richer library views.
+
+Do **not** use the public API for runtime features that `rc_client` already owns:
+
+- login/session runtime
+- game identification and loading during play
+- achievement unlock submission
+- leaderboard submission
+- rich presence updates
+- retry/offline queue behavior
+
+Runtime behavior should flow through `rc_client` so hashing, server payloads, hardcore mode, retry semantics, leaderboards, and rich presence stay aligned with RA's emulator integration contract.
 
 ---
 
@@ -117,14 +155,57 @@ The fix is `memcpy` with no address manipulation, as shown above.
 
 ---
 
+## Hardcore mode requirements
+
+OpenEmu-Silicon supports a user-facing hardcore preference, but RA's upstream recommendation is that hardcore be enabled by default for opted-in RA users. If the user starts in softcore and switches to hardcore mid-session, reset the game before allowing hardcore unlocks.
+
+Hardcore-restricted features include:
+
+- loading save states
+- rewind
+- slowdown / frame advance
+- cheats or gameplay-modifying hacks
+- debugger/memory inspection windows
+- input playback
+
+The upstream `rc_client` integration guide says fast-forward is allowed in hardcore. OpenEmu-Silicon may choose to be stricter, but if fast-forward remains blocked, keep that as an explicit product/compliance decision rather than an accidental interpretation of RA's baseline rules.
+
+### Pause and idle behavior
+
+When emulation is paused, stop calling `rc_client_do_frame()` and call `rc_client_idle()` at least once per second instead. This keeps routine server communication alive while gameplay is stopped.
+
+In hardcore mode, call `rc_client_can_pause()` immediately before honoring a user pause request. If it returns false, do not pause and show a short user-facing message. This prevents pause-spam from becoming a slow-motion workaround.
+
+### Save-state progress
+
+Blocking save-state loads in hardcore is required, but softcore still needs correct RA runtime progress when save states are used. When save states are written, include the RA progress blob:
+
+- `rc_client_progress_size()`
+- `rc_client_serialize_progress()` or `rc_client_serialize_progress_sized()`
+
+When save states are loaded, restore the blob with:
+
+- `rc_client_deserialize_progress()` or `rc_client_deserialize_progress_sized()`
+
+If a save state does not contain RA progress data, call `rc_client_deserialize_progress(_rcClient, NULL)` to reset runtime progress cleanly.
+
+---
+
 ## Checklist for a new rc_client integration
 
 - [ ] `rc_client_set_allow_background_memory_reads(_rcClient, 0)` called before logging setup
-- [ ] `rc_client_do_frame()` called every emulated frame
-- [ ] `rc_client_reset()` called on save state load and emulation reset
+- [ ] `rc_client_do_frame()` called every emulated frame, including frames not displayed during frame skip or performance catch-up
+- [ ] `rc_client_idle()` called while emulation is paused and `do_frame` is not running
+- [ ] `rc_client_can_pause()` checked before allowing a user pause in hardcore mode
+- [ ] `rc_client_reset()` called on emulation reset and after a hardcore reset request
+- [ ] `RC_CLIENT_EVENT_RESET` handled instead of silently ignored
+- [ ] Save states serialize/deserialize RA progress for softcore correctness, or explicitly document why the core does not support save-state progress yet
+- [ ] Disc/media changes call `rc_client_begin_change_media()` where applicable
 - [ ] `rc_client_unload_game()` + `rc_client_destroy()` called on stop/dealloc
 - [ ] `rc_read_memory` returns 0 (not garbage) when RAM pointer is null
 - [ ] `rc_read_memory` returns partial count when request exceeds RAM size
 - [ ] No byte-swap unless the system's achievement set was explicitly authored against byte-swapped addresses
 - [ ] `RC_CLIENT_EVENT_ACHIEVEMENT_TRIGGERED` posts `OEAchievementUnlockedNotification`
+- [ ] Gameplay UI events are bridged: challenge indicators, progress, leaderboard start/fail/submit/trackers/scoreboards, completion/mastery, server error, disconnected, reconnected
+- [ ] Shared transport sends OpenEmu's User-Agent and uses retryable client errors for transient network failures
 - [ ] Tested with a real game and achievement that fires in RetroArch — confirm it fires in OE too
