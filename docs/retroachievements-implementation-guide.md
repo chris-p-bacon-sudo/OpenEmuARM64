@@ -10,6 +10,10 @@ Primary upstream references:
 - [`rc_client` integration guide](https://github.com/RetroAchievements/rcheevos/wiki/rc_client-integration) — runtime integration, event handling, hardcore behavior, save-state progress, media change, and transport expectations.
 - [RetroAchievements API docs](https://api-docs.retroachievements.org/) — public read API for profile/game/community data. Do not use the public API in place of `rc_client` for runtime login, game sessions, unlocks, leaderboards, or rich presence.
 
+Related repo-local docs:
+- `docs/retroachievements-hardcore-p0-audit.md` — native hardcore enforcement audit for #438.
+- `docs/retroachievements-p1-verification.md` — verification plan and submission-evidence checklist mapped to the upstream `rc_client` guide.
+
 ---
 
 ## Required call sequence during `loadFileAtPath:`
@@ -175,6 +179,12 @@ The upstream `rc_client` integration guide says fast-forward is allowed in hardc
 When emulation is paused, stop calling `rc_client_do_frame()` and call `rc_client_idle()` at least once per second instead. This keeps routine server communication alive while gameplay is stopped.
 
 In hardcore mode, call `rc_client_can_pause()` immediately before honoring a user pause request. If it returns false, do not pause and show a short user-facing message. This prevents pause-spam from becoming a slow-motion workaround.
+
+### Automatically disabling hardcore when no RA processing is required
+
+The upstream `rc_client` guide recommends optionally disabling hardcore for games that have no RA functionality by checking `rc_client_is_processing_required()`. OpenEmu-Silicon does **not** currently do this per game. Instead, enforcement is scoped to signed-in sessions whose selected core/system advertises RA support, and #438 tracks clear unrecognized/no-set feedback for games without a valid RA set/hash.
+
+If we later auto-disable hardcore per game, re-enable it when unloading the game or before loading the next game.
 
 ### Save-state progress
 
