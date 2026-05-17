@@ -257,6 +257,20 @@ static void bsnes_rc_event_handler(const rc_client_event_t *event, rc_client_t *
                                                       userInfo:payload];
 }
 
+
+- (void)retroAchievementsIdle
+{
+    if (_rcClient) {
+        rc_client_idle(_rcClient);
+    }
+}
+
+- (BOOL)canPauseRetroAchievementsHardcoreWithFramesRemaining:(uint32_t *)framesRemaining
+{
+    if (!_rcClient) { return YES; }
+    return rc_client_can_pause(_rcClient, framesRemaining) != 0;
+}
+
 - (void)dealloc
 {
     delete emulator;

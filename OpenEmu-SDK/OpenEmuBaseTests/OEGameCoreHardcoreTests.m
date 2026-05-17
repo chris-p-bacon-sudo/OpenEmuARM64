@@ -76,6 +76,24 @@
                    @"OEGameCore.hardcoreEnabled default must remain OFF; the helper sets it true at session start.");
 }
 
+- (void)testRetroAchievementsPauseDefaultsAllowPause
+{
+    OEGameCore *core = [[OEGameCore alloc] init];
+    uint32_t framesRemaining = UINT32_MAX;
+
+    XCTAssertTrue([core canPauseRetroAchievementsHardcoreWithFramesRemaining:&framesRemaining],
+                  @"Base OEGameCore must allow pause by default so non-RA cores keep existing pause behavior.");
+    XCTAssertEqual(framesRemaining, 0u,
+                   @"Base OEGameCore should report no retry delay when pause is allowed by default.");
+}
+
+- (void)testRetroAchievementsIdleDefaultIsNoOp
+{
+    OEGameCore *core = [[OEGameCore alloc] init];
+    XCTAssertNoThrow([core retroAchievementsIdle],
+                     @"Base OEGameCore idle hook must be safe for non-RA cores.");
+}
+
 #pragma mark - fastForward:
 
 - (void)testFastForwardBlockedWhenHardcoreEnabled

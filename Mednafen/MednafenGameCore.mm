@@ -3358,6 +3358,20 @@ static void mednafen_rc_event_handler(const rc_client_event_t *event, rc_client_
     return self;
 }
 
+
+- (void)retroAchievementsIdle
+{
+    if (_rcClient) {
+        rc_client_idle(_rcClient);
+    }
+}
+
+- (BOOL)canPauseRetroAchievementsHardcoreWithFramesRemaining:(uint32_t *)framesRemaining
+{
+    if (!_rcClient) { return YES; }
+    return rc_client_can_pause(_rcClient, framesRemaining) != 0;
+}
+
 - (void)dealloc
 {
     for(unsigned i = 0; i < 13; i++)

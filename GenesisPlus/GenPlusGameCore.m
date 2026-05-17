@@ -341,6 +341,20 @@ static __weak GenPlusGameCore *_current;
 	return self;
 }
 
+
+- (void)retroAchievementsIdle
+{
+    if (_rcClient) {
+        rc_client_idle(_rcClient);
+    }
+}
+
+- (BOOL)canPauseRetroAchievementsHardcoreWithFramesRemaining:(uint32_t *)framesRemaining
+{
+    if (!_rcClient) { return YES; }
+    return rc_client_can_pause(_rcClient, framesRemaining) != 0;
+}
+
 - (void)dealloc
 {
     free(_videoBuffer);

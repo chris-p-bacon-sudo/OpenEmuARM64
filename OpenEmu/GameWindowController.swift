@@ -667,7 +667,7 @@ extension GameWindowController: NSWindowDelegate {
         windowedFrame = window.frame
         
         resumePlayingAfterFullScreenTransition = !gameDocument.isEmulationPaused
-        gameDocument.isEmulationPaused = true
+        gameDocument.requestEmulationPauseRespectingRetroAchievementsHardcore()
         
         // move the screenshot window to the same screen as the game window
         // otherwise it will be shown in the system full-screen animation
@@ -777,7 +777,7 @@ extension GameWindowController: NSWindowDelegate {
         fullScreenStatus = .exiting
         resumePlayingAfterFullScreenTransition = !gameDocument.isEmulationPaused
         
-        gameDocument.isEmulationPaused = true
+        gameDocument.requestEmulationPauseRespectingRetroAchievementsHardcore()
         
         let gameViewController = gameDocument.gameViewController
         gameViewController?.controlsWindow.canShow = false

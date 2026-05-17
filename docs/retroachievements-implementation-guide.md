@@ -176,9 +176,9 @@ The upstream `rc_client` integration guide says fast-forward is allowed in hardc
 
 ### Pause and idle behavior
 
-When emulation is paused, stop calling `rc_client_do_frame()` and call `rc_client_idle()` at least once per second instead. This keeps routine server communication alive while gameplay is stopped.
+When emulation is paused, stop calling `rc_client_do_frame()` and call `rc_client_idle()` at least once per second instead. This keeps routine server communication alive while gameplay is stopped. OpenEmu-Silicon implements this through a helper-side idle timer that calls each native RA core's `retroAchievementsIdle` hook while paused.
 
-In hardcore mode, call `rc_client_can_pause()` immediately before honoring a user pause request. If it returns false, do not pause and show a short user-facing message. This prevents pause-spam from becoming a slow-motion workaround.
+In hardcore mode, call `rc_client_can_pause()` immediately before honoring a user pause request. If it returns false, do not pause and show a short user-facing message. This prevents pause-spam from becoming a slow-motion workaround. OpenEmu-Silicon implements this for user-initiated pause toggles through `canPauseRetroAchievementsHardcoreWithFramesRemaining:`.
 
 ### Automatically disabling hardcore when no RA processing is required
 
@@ -205,8 +205,8 @@ If a save state does not contain RA progress data, call `rc_client_deserialize_p
 
 - [ ] `rc_client_set_allow_background_memory_reads(_rcClient, 0)` called before logging setup
 - [ ] `rc_client_do_frame()` called every emulated frame, including frames not displayed during frame skip or performance catch-up
-- [ ] `rc_client_idle()` called while emulation is paused and `do_frame` is not running
-- [ ] `rc_client_can_pause()` checked before allowing a user pause in hardcore mode
+- [x] `rc_client_idle()` called while emulation is paused and `do_frame` is not running
+- [x] `rc_client_can_pause()` checked before allowing a user pause in hardcore mode
 - [ ] `rc_client_reset()` called on emulation reset and after a hardcore reset request
 - [ ] `RC_CLIENT_EVENT_RESET` handled instead of silently ignored
 - [ ] Save states serialize/deserialize RA progress for softcore correctness, or explicitly document why the core does not support save-state progress yet

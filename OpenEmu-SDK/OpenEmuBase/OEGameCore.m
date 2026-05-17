@@ -646,6 +646,18 @@ static Class GameCoreClass = Nil;
     return _rate == 0;
 }
 
+- (void)retroAchievementsIdle
+{
+}
+
+- (BOOL)canPauseRetroAchievementsHardcoreWithFramesRemaining:(uint32_t *)framesRemaining
+{
+    if (framesRemaining != NULL) {
+        *framesRemaining = 0;
+    }
+    return YES;
+}
+
 - (void)fastForwardAtSpeed:(CGFloat)fastForwardSpeed;
 {
     if (self.hardcoreEnabled) return;

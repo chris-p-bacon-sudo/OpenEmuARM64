@@ -102,6 +102,7 @@ extension OSLog {
     var _achievementObserver: Any?
     var _raSessionObserver: Any?
     var _raEventObserver: Any?
+    var _raIdleTimer: DispatchSourceTimer?
 
     // frame rate debugging
     var previous    = CFTimeInterval()
@@ -406,6 +407,38 @@ extension OSLog {
         gameCore.perform {
             self.gameCore.setPauseEmulation(paused)
         }
+        if paused {
+            startRetroAchievementsIdleTimer()
+        } else {
+            stopRetroAchievementsIdleTimer()
+        }
+    }
+
+    public func canPauseRetroAchievementsHardcore(completionHandler block: @escaping (Bool, UInt32) -> Void) {
+        gameCore.perform {
+            var framesRemaining: UInt32 = 0
+            let allowed = self.gameCore.canPauseRetroAchievementsHardcore(withFramesRemaining: &framesRemaining)
+            block(allowed, framesRemaining)
+        }
+    }
+
+    private func startRetroAchievementsIdleTimer() {
+        stopRetroAchievementsIdleTimer()
+        let timer = DispatchSource.makeTimerSource(queue: DispatchQueue.global(qos: .utility))
+        timer.schedule(deadline: .now(), repeating: 1.0)
+        timer.setEventHandler { [weak self] in
+            guard let self, let gameCore = self.gameCore else { return }
+            gameCore.perform {
+                gameCore.retroAchievementsIdle()
+            }
+        }
+        _raIdleTimer = timer
+        timer.resume()
+    }
+
+    private func stopRetroAchievementsIdleTimer() {
+        _raIdleTimer?.cancel()
+        _raIdleTimer = nil
     }
     
     public func setEffectsMode(_ mode: OEGameCoreEffectsMode) {
@@ -498,6 +531,8 @@ extension OSLog {
     
     public func stopEmulation(completionHandler handler: @escaping () -> Void) {
         guard let gameCore = gameCore else { return }
+
+        stopRetroAchievementsIdleTimer()
 
         if let observer = _achievementObserver {
             NotificationCenter.default.removeObserver(observer)

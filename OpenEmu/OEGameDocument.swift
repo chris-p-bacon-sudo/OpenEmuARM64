@@ -1041,8 +1041,11 @@ final class OEGameDocument: NSDocument {
     @objc private func windowDidResignMain(_ notification: Notification) {
         let backgroundPause = UserDefaults.standard.bool(forKey: OEBackgroundPauseKey)
         if backgroundPause && emulationStatus == .playing {
-            isEmulationPaused = true
-            pausedByGoingToBackground = true
+            requestEmulationPauseRespectingRetroAchievementsHardcore { [weak self] paused in
+                if paused {
+                    self?.pausedByGoingToBackground = true
+                }
+            }
         }
     }
     
@@ -1069,35 +1072,53 @@ final class OEGameDocument: NSDocument {
     
     @objc private func didReceiveLowBatteryWarning(_ notification: Notification) {
         let isRunning = !isEmulationPaused
-        isEmulationPaused = true
-        
-        let devHandler = notification.object as? OEDeviceHandler
-        let message = String(format: NSLocalizedString("The battery in device number %lu, %@, is low. Please charge or replace the battery.", comment: "Low battery alert detail message."), devHandler?.deviceNumber ?? 0, devHandler?.deviceDescription?.name ?? "")
-        let alert = OEAlert()
-        alert.messageText = NSLocalizedString("Low Controller Battery", comment: "Device battery level is low.")
-        alert.informativeText = message
-        alert.defaultButtonTitle = NSLocalizedString("Resume", comment: "")
-        alert.runModal()
-        
+        let showAlert = { [weak self] in
+            guard let self else { return }
+            let devHandler = notification.object as? OEDeviceHandler
+            let message = String(format: NSLocalizedString("The battery in device number %lu, %@, is low. Please charge or replace the battery.", comment: "Low battery alert detail message."), devHandler?.deviceNumber ?? 0, devHandler?.deviceDescription?.name ?? "")
+            let alert = OEAlert()
+            alert.messageText = NSLocalizedString("Low Controller Battery", comment: "Device battery level is low.")
+            alert.informativeText = message
+            alert.defaultButtonTitle = NSLocalizedString("Resume", comment: "")
+            alert.runModal()
+
+            if isRunning && self.isEmulationPaused {
+                self.isEmulationPaused = false
+            }
+        }
+
         if isRunning {
-            isEmulationPaused = false
+            requestEmulationPauseRespectingRetroAchievementsHardcore { _ in
+                showAlert()
+            }
+        } else {
+            showAlert()
         }
     }
     
     @objc private func deviceDidDisconnect(_ notification: Notification) {
         let isRunning = !isEmulationPaused
-        isEmulationPaused = true
-        
-        let devHandler = notification.userInfo?[OEDeviceManagerDeviceHandlerUserInfoKey] as? OEDeviceHandler
-        let message = String(format: NSLocalizedString("Device number %lu, %@, has disconnected.", comment: "Device disconnection detail message."), devHandler?.deviceNumber ?? 0, devHandler?.deviceDescription?.name ?? "")
-        let alert = OEAlert()
-        alert.messageText = NSLocalizedString("Device Disconnected", comment: "A controller device has disconnected.")
-        alert.informativeText = message
-        alert.defaultButtonTitle = NSLocalizedString("Resume", comment: "Resume game after battery warning button label")
-        alert.runModal()
-        
+        let showAlert = { [weak self] in
+            guard let self else { return }
+            let devHandler = notification.userInfo?[OEDeviceManagerDeviceHandlerUserInfoKey] as? OEDeviceHandler
+            let message = String(format: NSLocalizedString("Device number %lu, %@, has disconnected.", comment: "Device disconnection detail message."), devHandler?.deviceNumber ?? 0, devHandler?.deviceDescription?.name ?? "")
+            let alert = OEAlert()
+            alert.messageText = NSLocalizedString("Device Disconnected", comment: "A controller device has disconnected.")
+            alert.informativeText = message
+            alert.defaultButtonTitle = NSLocalizedString("Resume", comment: "Resume game after battery warning button label")
+            alert.runModal()
+
+            if isRunning && self.isEmulationPaused {
+                self.isEmulationPaused = false
+            }
+        }
+
         if isRunning {
-            isEmulationPaused = false
+            requestEmulationPauseRespectingRetroAchievementsHardcore { _ in
+                showAlert()
+            }
+        } else {
+            showAlert()
         }
     }
     
@@ -1135,6 +1156,8 @@ final class OEGameDocument: NSDocument {
         gameViewController.showHardcoreNotification(isHardcoreModeEnabled)
     }
     
+    private var retroAchievementsHardcorePausePreflightSatisfied = false
+
     var isEmulationPaused: Bool {
         get {
             return emulationStatus != .playing
@@ -1147,6 +1170,10 @@ final class OEGameDocument: NSDocument {
                 return
             }
             if pauseEmulation {
+                if emulationStatus == .playing && isHardcoreModeEnabled && !retroAchievementsHardcorePausePreflightSatisfied {
+                    showRetroAchievementsPauseBlockedToast(framesRemaining: 0)
+                    return
+                }
                 SentryService.addBreadcrumb(message: "Emulation paused", category: "emulation")
                 enableOSSleep()
                 emulationStatus = .paused
@@ -1178,7 +1205,59 @@ final class OEGameDocument: NSDocument {
     }
     
     @objc func toggleEmulationPaused(_ sender: Any?) {
-        isEmulationPaused.toggle()
+        if isEmulationPaused {
+            isEmulationPaused = false
+            return
+        }
+
+        requestEmulationPauseRespectingRetroAchievementsHardcore()
+    }
+
+    func requestEmulationPauseRespectingRetroAchievementsHardcore(showBlockedToast: Bool = true, completion: ((Bool) -> Void)? = nil) {
+        guard emulationStatus == .playing else {
+            completion?(false)
+            return
+        }
+
+        guard isHardcoreModeEnabled else {
+            isEmulationPaused = true
+            completion?(true)
+            return
+        }
+
+        guard let gameCoreManager else {
+            completion?(false)
+            return
+        }
+
+        gameCoreManager.canPauseRetroAchievementsHardcore { [weak self] allowed, framesRemaining in
+            guard let self else { return }
+            guard self.emulationStatus == .playing else {
+                completion?(false)
+                return
+            }
+
+            if allowed {
+                self.retroAchievementsHardcorePausePreflightSatisfied = true
+                defer { self.retroAchievementsHardcorePausePreflightSatisfied = false }
+                self.isEmulationPaused = true
+                completion?(self.isEmulationPaused)
+            } else {
+                if showBlockedToast {
+                    self.showRetroAchievementsPauseBlockedToast(framesRemaining: framesRemaining)
+                }
+                completion?(false)
+            }
+        }
+    }
+
+    private func showRetroAchievementsPauseBlockedToast(framesRemaining: UInt32) {
+        let seconds = max(1, Int(ceil(Double(framesRemaining) / 60.0)))
+        gameViewController?.showRetroAchievementsEventToast(
+            title: NSLocalizedString("Pause Blocked in Hardcore", comment: "RetroAchievements pause blocked title"),
+            subtitle: String(format: NSLocalizedString("Try again in about %d seconds.", comment: "RetroAchievements pause blocked subtitle"), seconds),
+            symbolName: "pause.slash"
+        )
     }
     
     @objc func resetEmulation(_ sender: Any?) {
@@ -1200,47 +1279,58 @@ final class OEGameDocument: NSDocument {
             && OECredentialStore.shared.get(.retroAchievementsToken) != nil
 
         if willEnforce && HardcoreModePolicy.requiresResetWhenEnabling {
-            isEmulationPaused = true
-            let alert = OEAlert()
-            alert.messageText = NSLocalizedString("Switching to hardcore mode requires restarting the game.", comment: "")
-            alert.informativeText = NSLocalizedString("Save states, rewind, frame advance, and cheats will be disabled.", comment: "")
-            alert.defaultButtonTitle = NSLocalizedString("Restart Game", comment: "")
-            alert.alternateButtonTitle = NSLocalizedString("Cancel", comment: "")
-
-            let handleResponse: (NSApplication.ModalResponse) -> Void = { [weak self] response in
-                guard let self else { return }
-                if response == .alertFirstButtonReturn {
-                    // Flush active cheats from the core before engaging hardcore.
-                    // setHardcoreEnabled(true) blocks the document's setCheat guard,
-                    // but core cheat lists persist across a reset — they must be
-                    // cleared first so the restarted session is clean (#447).
-                    self.cheats.filter(\.isEnabled).forEach {
-                        self.gameCoreManager?.setCheat($0.code, withType: $0.type, enabled: false)
-                    }
-                    self.gameCoreManager?.setHardcoreEnabled(true)
-                    self.gameCoreManager?.resetEmulation { [weak self] in
-                        self?.isEmulationPaused = false
-                    }
-                    self.gameViewController.showHardcoreNotification(true)
-                } else {
-                    // User cancelled — revert the preference so UI and state agree.
-                    // Post the change so the prefs checkbox can resync (#446); if we
-                    // only write UserDefaults, the imperatively-set checkbox stays
-                    // visually checked until the pane is rebuilt.
-                    UserDefaults.standard.set(false, forKey: RAHardcoreEnabledKey)
-                    NotificationCenter.default.post(
-                        name: .OERAHardcoreDidChange,
-                        object: nil,
-                        userInfo: [OEHardcoreEnabledKey: false]
-                    )
-                    self.isEmulationPaused = false
-                }
+            let revertHardcorePreference = {
+                UserDefaults.standard.set(false, forKey: RAHardcoreEnabledKey)
+                NotificationCenter.default.post(
+                    name: .OERAHardcoreDidChange,
+                    object: nil,
+                    userInfo: [OEHardcoreEnabledKey: false]
+                )
             }
 
-            if let win = gameWindowController?.window {
-                alert.beginSheetModal(for: win, completionHandler: handleResponse)
-            } else {
-                handleResponse(alert.runModal())
+            requestEmulationPauseRespectingRetroAchievementsHardcore { [weak self] paused in
+                guard let self else { return }
+                guard paused else {
+                    revertHardcorePreference()
+                    return
+                }
+
+                let alert = OEAlert()
+                alert.messageText = NSLocalizedString("Switching to hardcore mode requires restarting the game.", comment: "")
+                alert.informativeText = NSLocalizedString("Save states, rewind, frame advance, and cheats will be disabled.", comment: "")
+                alert.defaultButtonTitle = NSLocalizedString("Restart Game", comment: "")
+                alert.alternateButtonTitle = NSLocalizedString("Cancel", comment: "")
+
+                let handleResponse: (NSApplication.ModalResponse) -> Void = { [weak self] response in
+                    guard let self else { return }
+                    if response == .alertFirstButtonReturn {
+                        // Flush active cheats from the core before engaging hardcore.
+                        // setHardcoreEnabled(true) blocks the document's setCheat guard,
+                        // but core cheat lists persist across a reset — they must be
+                        // cleared first so the restarted session is clean (#447).
+                        self.cheats.filter(\.isEnabled).forEach {
+                            self.gameCoreManager?.setCheat($0.code, withType: $0.type, enabled: false)
+                        }
+                        self.gameCoreManager?.setHardcoreEnabled(true)
+                        self.gameCoreManager?.resetEmulation { [weak self] in
+                            self?.isEmulationPaused = false
+                        }
+                        self.gameViewController.showHardcoreNotification(true)
+                    } else {
+                        // User cancelled — revert the preference so UI and state agree.
+                        // Post the change so the prefs checkbox can resync (#446); if we
+                        // only write UserDefaults, the imperatively-set checkbox stays
+                        // visually checked until the pane is rebuilt.
+                        revertHardcorePreference()
+                        self.isEmulationPaused = false
+                    }
+                }
+
+                if let win = self.gameWindowController?.window {
+                    alert.beginSheetModal(for: win, completionHandler: handleResponse)
+                } else {
+                    handleResponse(alert.runModal())
+                }
             }
         } else if !enabled && HardcoreModePolicy.requiresResetWhenDisabling {
             // Reserved branch for future spec changes — currently unreachable.
@@ -1286,7 +1376,7 @@ final class OEGameDocument: NSDocument {
             isEmulationPaused = true
         }
         
-        return pauseNeeded
+        return pauseNeeded && isEmulationPaused
     }
     
     // MARK: - Actions
@@ -1333,6 +1423,7 @@ final class OEGameDocument: NSDocument {
         }
         
         isEmulationPaused = true
+        guard isEmulationPaused else { return }
         
         let alert = OEAlert()
         alert.messageText = NSLocalizedString("If you change the core you current progress will be lost and save states will not work anymore.", comment: "")

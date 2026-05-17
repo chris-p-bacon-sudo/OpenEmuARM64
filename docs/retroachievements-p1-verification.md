@@ -37,7 +37,7 @@ Scope: native RetroAchievements cores only. Libretro/RetroArch cores are tracked
 | Multiple media changes | Gap / follow-up | No current native-core call to `rc_client_begin_change_media()` was found. Needs design for disc/disk swap systems, especially Mednafen PSX/PCE-CD/Saturn. |
 | Hardcore default / mode switching | Implemented | User-facing hardcore preference defaults on for signed-in RA users; softcore→hardcore reset path is implemented and documented in P0 audit. |
 | Disable hardcore when no RA processing required | Not implemented / product decision needed | Upstream recommends optionally disabling hardcore for games with no RA functionality via `rc_client_is_processing_required()`. OpenEmu currently scopes enforcement by core/system support and token, not by per-game processing state. |
-| Pause / idle | Gap / compliance-adjacent | `rc_client_idle()` while paused and `rc_client_can_pause()` before hardcore pause are documented but not implemented. |
+| Pause / idle | Implemented; verification needed | `rc_client_idle()` is called once per second while the helper is paused, and user-initiated hardcore pause attempts call `rc_client_can_pause()` before pausing. Needs manual verification with a real RA session. |
 | Server errors | Implemented; verification needed | PR #519 surfaces `RC_CLIENT_EVENT_SERVER_ERROR`, disconnected, and reconnected events. Transport marks transient network failures retryable. |
 | Offline retry queue | Implementation delegated to `rc_client`; verification needed | Shared transport uses `RC_API_SERVER_RESPONSE_RETRYABLE_CLIENT_ERROR` for transient client/network failures, enabling rcheevos retry behavior. Must verify unlock queue/sync/purge behavior manually. |
 | Rich Presence | Expected via `rc_client_do_frame()`; verification needed | Upstream says `rc_client_do_frame()` sends rich presence updates after initial delay and periodically thereafter. No OpenEmu toggle exists to disable it. Must verify on RA profile/API. |
@@ -89,7 +89,7 @@ Upstream behavior: `rc_client_do_frame()` sends rich presence after the first up
 | Launch known RA game with rich presence and wait at least 30 seconds while playing | RA profile/activity shows current game/rich presence for OpenEmu-Silicon session. | Not yet verified. |
 | Continue playing for several minutes | Rich presence continues updating periodically. | Not yet verified. |
 | Hardcore mode enabled | No OpenEmu UI exists to disable rich presence; behavior should remain active. | Not yet verified. |
-| Pause emulation for >60 seconds | Known gap: `rc_client_idle()` while paused is not implemented, so active-player/rich-presence continuity may degrade. | Follow-up required. |
+| Pause emulation for >60 seconds | `rc_client_idle()` should keep routine server communication alive while paused. | Not yet verified after implementation. |
 
 ### Leaderboards
 
@@ -121,14 +121,23 @@ Upstream behavior: transient non-client-initiated request failures can be queued
 | Close game while offline after queued unlock | Queue/cache should be session-scoped and purged on close if required by RA compliance. Need confirm actual rcheevos behavior. | Not yet verified; potential reviewer question. |
 | Force server error response | Server-error toast appears with API/error context; non-retryable server errors are not silently queued. | Not yet verified. |
 
-### Pause / idle follow-up
+### Pause / idle verification
 
 The upstream guide explicitly calls for:
 
 - `rc_client_idle()` while emulation is paused and `rc_client_do_frame()` is not running.
 - `rc_client_can_pause()` immediately before honoring pause in hardcore mode.
 
-Current status: documented gap. This should be a focused follow-up PR because it needs host/core/helper API design and user-facing messaging if pause is denied.
+Current status: implemented for native RA cores. The helper starts a once-per-second RA idle timer while paused and stops it on resume/stop. User-initiated pause attempts in hardcore ask the active core whether pause is allowed before changing host pause state; denied pauses show a short in-game message.
+
+Manual verification still needed:
+
+| Test | Expected result | Status |
+| --- | --- | --- |
+| Softcore pause | Pause/resume still works normally. | Not yet verified. |
+| Hardcore pause after enough gameplay frames | Pause succeeds. | Not yet verified. |
+| Hardcore pause spam | Some pause attempts are denied with a user-facing message. | Not yet verified. |
+| Pause for >60 seconds in an RA session | Routine server communication/rich presence remains active. | Not yet verified. |
 
 ### Save-state progress follow-up
 
@@ -160,8 +169,7 @@ Current status: no native call found. This matters most for Mednafen PSX/PCE-CD/
 
 ## Follow-up implementation candidates
 
-1. Pause/idle compliance: `rc_client_idle()` while paused and `rc_client_can_pause()` guard for hardcore pause attempts.
-2. Rich Presence/leaderboard/offline manual verification evidence pass.
-3. Save-state progress serialization for softcore correctness.
-4. Media-change handling for multi-disc/disk systems.
-5. Achievements window live-state polish for active challenge/progress state.
+1. Rich Presence/leaderboard/offline manual verification evidence pass.
+2. Save-state progress serialization for softcore correctness.
+3. Media-change handling for multi-disc/disk systems.
+4. Achievements window live-state polish for active challenge/progress state.

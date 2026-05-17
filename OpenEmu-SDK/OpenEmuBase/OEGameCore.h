@@ -602,6 +602,12 @@ OE_EXPORTED_CLASS
 @property(nonatomic, getter=isEmulationPaused) BOOL pauseEmulation;
 - (void)setPauseEmulation:(BOOL)pauseEmulation NS_REQUIRES_SUPER;
 
+/// Called while emulation is paused so RetroAchievements can continue routine server communication.
+- (void)retroAchievementsIdle;
+
+/// Returns whether a RetroAchievements hardcore session may pause right now.
+- (BOOL)canPauseRetroAchievementsHardcoreWithFramesRemaining:(uint32_t *_Nullable)framesRemaining;
+
 /// When didExecute is called, will be the next wakeup time.
 @property (nonatomic, readonly) NSTimeInterval nextFrameTime;
 
