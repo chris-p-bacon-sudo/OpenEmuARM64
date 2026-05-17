@@ -606,8 +606,10 @@ final class OELibraryDatabase: NSObject {
         request.fetchLimit = Self.openVGDBSyncBatchSize
         request.predicate = predicate
         
-        let context = mainThreadContext
-        
+        // Use a private-queue child context so all performAndWait calls in this
+        // loop run on a background queue, not the main thread.
+        let context = makeChildContext()
+
         var count = 0
         context.performAndWait {
             count = (try? context.count(for: request)) ?? 0
@@ -715,6 +717,12 @@ final class OELibraryDatabase: NSObject {
                 count = (try? context.count(for: request)) ?? 0
             }
             
+            // Child-context save only pushes changes into mainThreadContext in memory.
+            // managedObjectContextDidSave triggers writerContext.save() only when
+            // mainThreadContext saves, so we must flush it explicitly after each batch.
+            let mainCtx = mainThreadContext
+            mainCtx.perform { try? mainCtx.save() }
+
             context.perform {
                 for objectID in previousBoxImages {
                     if let item = OEDBImage.object(with: objectID, in: context) {
@@ -722,6 +730,7 @@ final class OELibraryDatabase: NSObject {
                     }
                 }
                 try? context.save()
+                mainCtx.perform { try? mainCtx.save() }
             }
         }
     }
