@@ -13,7 +13,7 @@ Scope: native RetroAchievements cores only. Libretro/RetroArch cores are tracked
 | Area | Status | Evidence |
 | --- | --- | --- |
 | Recognized-game boot placard | Pending fresh capture | Needs screenshot/video from current `main`. |
-| Achievements window | Pending fresh capture | Needs screenshot/video from current `main`. |
+| Achievements window | Implementation updated; live capture pending | List shows static measured progress and now reflects active challenge/progress event state; needs screenshot/video from current build. |
 | Unrecognized/no-set feedback | Pending fresh capture | Needs screenshot from current `main`. |
 | Rich Presence works | Pending | Verify on RA profile/activity after 30s+ of play. |
 | Rich Presence remains active in hardcore | Static code audit complete; live RA verification pending | No OpenEmu setting/API usage was found that disables Rich Presence. Verify RA profile/activity continues updating in hardcore. |
@@ -216,8 +216,8 @@ Use one entry per tested behavior. Keep raw notes factual: what was tested, what
 
 | Test | Status | Evidence | Notes |
 | --- | --- | --- | --- |
-| Trigger challenge indicator | Pending | TBD | Prior Nestopia smoke test noted in #438; capture current evidence. |
-| Trigger measured achievement progress | Pending | TBD | Progress chip should show/update/hide with rcheevos text. |
+| Trigger challenge indicator | Pending | TBD | Prior Nestopia smoke test noted in #438; capture current evidence. Achievements window should mark the related achievement as challenge-active while active. |
+| Trigger measured achievement progress | Pending | TBD | Progress chip should show/update/hide with rcheevos text. Achievements window should show active measured progress for the related achievement while active. |
 | Complete/master game or subset | Pending | TBD | Completion/mastery toast should appear with correct softcore/hardcore wording. |
 
 ---

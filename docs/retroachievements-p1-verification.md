@@ -25,7 +25,7 @@ Scope: native RetroAchievements cores only. Libretro/RetroArch cores are tracked
 | Login with token | Implemented; failure UI in PR #521 | Cores use `rc_client_begin_login_with_token()`. PR #521 surfaces login failure to the host UI. |
 | Start game session | Implemented; failure UI in PR #521 | Cores use `rc_client_begin_identify_and_load_game()`. PR #521 surfaces unrecognized/no-set hash failures. |
 | Game boot placard | Implemented | PR #514 added recognized-game boot placard with title, mode, achievement count, and point summary. PR #521 adds failure placards. |
-| Achievement list | Implemented; polish remaining | PR #514 added native Achievements window. Static measured progress is shown when present. Active challenge/progress state in the window remains a #438 follow-up. |
+| Achievement list | Implemented; live-state verification needed | PR #514 added native Achievements window. Static measured progress is shown when present. Active challenge/progress state is now reflected in the window from gameplay events; needs live RA verification. |
 | `rc_client_do_frame()` | Implemented | All native RA cores call `rc_client_do_frame()` in their emulation frame loop. Needs representative runtime verification per core. |
 | Achievement unlock notification | Implemented | `RC_CLIENT_EVENT_ACHIEVEMENT_TRIGGERED` posts in-app unlock banner and macOS notification with unlock sound. |
 | Leaderboard events | Implemented; verification needed | PR #519 bridges start/fail/submit/scoreboard and tracker show/update/hide to native toasts/chips. Needs representative game verification. |
@@ -107,8 +107,8 @@ Upstream behavior: `rc_client_do_frame()` sends rich presence after the first up
 
 | Test | Expected result | Status |
 | --- | --- | --- |
-| Trigger challenge indicator | Challenge chip appears, then hides when condition fails/completes. | Nestopia/SMB smoke test confirmed show/hide once. Needs evidence. |
-| Trigger measured achievement progress | Progress chip appears/updates/hides with rcheevos measured progress text. | Not yet verified. |
+| Trigger challenge indicator | Challenge chip appears, then hides when condition fails/completes. Achievements window marks the related achievement as challenge-active while the event is active. | Nestopia/SMB smoke test confirmed show/hide once. Needs fresh evidence. |
+| Trigger measured achievement progress | Progress chip appears/updates/hides with rcheevos measured progress text. Achievements window shows the active measured progress for the related achievement while the event is active. | Not yet verified. |
 | Complete/master game or subset | Completion/mastery toast appears with correct softcore/hardcore verb. | Not yet verified. |
 
 ### Offline / reconnect / server errors

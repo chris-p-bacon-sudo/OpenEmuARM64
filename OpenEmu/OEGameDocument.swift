@@ -162,6 +162,8 @@ final class OEGameDocument: NSDocument {
     private var retroAchievementsWindowController: NSWindowController?
     @objc dynamic private(set) var retroAchievementsSessionInfo: [String: Any]?
     private var retroAchievementsSuppressedUnlockIDs = Set<UInt32>()
+    private var retroAchievementsActiveChallengeIDs = Set<UInt32>()
+    private var retroAchievementsActiveProgressByAchievementID: [UInt32: String] = [:]
     private var didShowRetroAchievementsBootPlacard = false
     private var raCredentialObserver: Any?
     private var raHardcoreObserver: Any?
@@ -627,6 +629,8 @@ final class OEGameDocument: NSDocument {
                 self.emulationStatus = .notSetup
                 self.retroAchievementsSessionInfo = nil
                 self.retroAchievementsSuppressedUnlockIDs.removeAll()
+                self.retroAchievementsActiveChallengeIDs.removeAll()
+                self.retroAchievementsActiveProgressByAchievementID.removeAll()
                 self.gameViewController?.clearRetroAchievementsIndicators()
                 self.didShowRetroAchievementsBootPlacard = false
                 
@@ -777,6 +781,8 @@ final class OEGameDocument: NSDocument {
         emulationStatus = .notSetup
         retroAchievementsSessionInfo = nil
         retroAchievementsSuppressedUnlockIDs.removeAll()
+        retroAchievementsActiveChallengeIDs.removeAll()
+        retroAchievementsActiveProgressByAchievementID.removeAll()
         gameViewController?.clearRetroAchievementsIndicators()
         didShowRetroAchievementsBootPlacard = false
         gameCoreManager?.stopEmulation() {
@@ -2409,13 +2415,14 @@ extension OEGameDocument: OESystemBindingsObserver {
             if self.retroAchievementsSessionInfo == nil {
                 self.gameViewController?.clearRetroAchievementsIndicators()
             }
-            self.retroAchievementsSessionInfo = info
-            self.updateRetroAchievementsSuppressedUnlockIDs(from: info)
-            NotificationCenter.default.post(name: .OERetroAchievementsSessionDidChange, object: self, userInfo: info)
+            let enrichedInfo = self.retroAchievementsInfoWithLiveStates(info)
+            self.retroAchievementsSessionInfo = enrichedInfo
+            self.updateRetroAchievementsSuppressedUnlockIDs(from: enrichedInfo)
+            NotificationCenter.default.post(name: .OERetroAchievementsSessionDidChange, object: self, userInfo: enrichedInfo)
             if !self.didShowRetroAchievementsBootPlacard {
                 self.didShowRetroAchievementsBootPlacard = true
                 self.gameViewController?.showRetroAchievementsPlacard(
-                    info: info,
+                    info: enrichedInfo,
                     hardcore: self.isHardcoreModeEnabled,
                     signedIn: OECredentialStore.shared.get(.retroAchievementsToken) != nil
                 )
@@ -2469,6 +2476,35 @@ extension OEGameDocument: OESystemBindingsObserver {
         }
     }
 
+    private func retroAchievementsInfoWithLiveStates(_ info: [String: Any]) -> [String: Any] {
+        let achievements = info[OERetroAchievementsAchievementsKey] as? [[String: Any]] ?? []
+        guard !achievements.isEmpty else { return info }
+
+        var updatedInfo = info
+        updatedInfo[OERetroAchievementsAchievementsKey] = achievements.map { achievement in
+            var updatedAchievement = achievement
+            updatedAchievement.removeValue(forKey: OERetroAchievementsActiveChallengeKey)
+            updatedAchievement.removeValue(forKey: OERetroAchievementsActiveProgressKey)
+
+            guard let id = (achievement[OEAchievementIDKey] as? NSNumber)?.uint32Value else { return updatedAchievement }
+            if retroAchievementsActiveChallengeIDs.contains(id) {
+                updatedAchievement[OERetroAchievementsActiveChallengeKey] = true
+            }
+            if let progress = retroAchievementsActiveProgressByAchievementID[id], !progress.isEmpty {
+                updatedAchievement[OERetroAchievementsActiveProgressKey] = progress
+            }
+            return updatedAchievement
+        }
+        return updatedInfo
+    }
+
+    private func refreshRetroAchievementsSessionLiveStates() {
+        guard let info = retroAchievementsSessionInfo else { return }
+        let updatedInfo = retroAchievementsInfoWithLiveStates(info)
+        retroAchievementsSessionInfo = updatedInfo
+        NotificationCenter.default.post(name: .OERetroAchievementsSessionDidChange, object: self, userInfo: updatedInfo)
+    }
+
     func retroAchievementsEvent(_ info: [String: Any]) {
         DispatchQueue.main.async {
             self.handleRetroAchievementsEvent(info)
@@ -2489,13 +2525,21 @@ extension OEGameDocument: OESystemBindingsObserver {
             // banner and macOS notification. Keep this event for future routing only.
             return
         case "challengeShow":
+            if id != 0 { retroAchievementsActiveChallengeIDs.insert(id) }
+            refreshRetroAchievementsSessionLiveStates()
             gameViewController?.showRetroAchievementsChallenge(id: id, title: title)
         case "challengeHide":
+            if id != 0 { retroAchievementsActiveChallengeIDs.remove(id) }
+            refreshRetroAchievementsSessionLiveStates()
             gameViewController?.hideRetroAchievementsChallenge(id: id)
         case "progressShow", "progressUpdate":
             let progress = info[OERetroAchievementsMeasuredProgressKey] as? String ?? display
+            if id != 0 { retroAchievementsActiveProgressByAchievementID[id] = progress }
+            refreshRetroAchievementsSessionLiveStates()
             gameViewController?.showRetroAchievementsProgress(title: title, progress: progress)
         case "progressHide":
+            retroAchievementsActiveProgressByAchievementID.removeAll()
+            refreshRetroAchievementsSessionLiveStates()
             gameViewController?.hideRetroAchievementsProgress()
         case "leaderboardStarted":
             gameViewController?.showRetroAchievementsEventToast(title: NSLocalizedString("Leaderboard Started", comment: "RA leaderboard started"), subtitle: title, symbolName: "flag.checkered")

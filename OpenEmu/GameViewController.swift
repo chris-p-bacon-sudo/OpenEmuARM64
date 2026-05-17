@@ -880,7 +880,12 @@ final class RetroAchievementsGameViewController: NSViewController {
         if let typeLabel = achievementTypeLabel(info[OERetroAchievementsTypeKey] as? NSNumber) {
             details.append(typeLabel)
         }
-        if let measured = info[OERetroAchievementsMeasuredProgressKey] as? String, !measured.isEmpty {
+        if (info[OERetroAchievementsActiveChallengeKey] as? Bool) == true {
+            details.append(NSLocalizedString("Challenge Active", comment: "RetroAchievements active challenge label"))
+        }
+        if let activeProgress = info[OERetroAchievementsActiveProgressKey] as? String, !activeProgress.isEmpty {
+            details.append(String(format: NSLocalizedString("Active: %@", comment: "RetroAchievements active progress label"), activeProgress))
+        } else if let measured = info[OERetroAchievementsMeasuredProgressKey] as? String, !measured.isEmpty {
             details.append(measured)
         }
         if let rarity = info[OERetroAchievementsRarityKey] as? NSNumber, rarity.floatValue > 0 {
