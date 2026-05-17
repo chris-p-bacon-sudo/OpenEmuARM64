@@ -34,6 +34,33 @@ static NSString *OEStringFromCString(const char *string)
     return value ?: @"";
 }
 
+static void OEPostSessionStatus(NSString *status, int result, const char *error_message)
+{
+    NSMutableDictionary *payload = [NSMutableDictionary dictionary];
+    payload[OERASessionStatusKey] = status;
+    payload[OERASessionErrorCodeKey] = @(result);
+
+    NSString *message = OEStringFromCString(error_message);
+    if (message.length > 0) { payload[OERASessionErrorMessageKey] = message; }
+
+    [[NSNotificationCenter defaultCenter] postNotificationName:OERASessionUpdatedNotification
+                                                        object:nil
+                                                      userInfo:payload];
+}
+
+void oeRetroAchievementsPostSessionLoadFailure(int result, const char *error_message)
+{
+    NSString *status = (result == RC_NO_GAME_LOADED || result == RC_NOT_FOUND)
+        ? @"unrecognized"
+        : @"loadFailed";
+    OEPostSessionStatus(status, result, error_message);
+}
+
+void oeRetroAchievementsPostLoginFailure(int result, const char *error_message)
+{
+    OEPostSessionStatus(@"loginFailed", result, error_message);
+}
+
 static void OEAddAchievementPayload(NSMutableDictionary *payload, const rc_client_achievement_t *achievement)
 {
     if (!achievement) { return; }

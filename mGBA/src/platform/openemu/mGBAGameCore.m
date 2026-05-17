@@ -111,6 +111,7 @@ static void mGBA_rc_load_game_callback(int result, const char *error_message,
     mGBAGameCore *self = (__bridge mGBAGameCore *)userdata;
     if (result != RC_OK) {
         NSLog(@"[RA-mGBA] game load failed — result=%d error=%s", result, error_message ?: "(none)");
+        oeRetroAchievementsPostSessionLoadFailure(result, error_message);
         return;
     }
     [self _postRetroAchievementsSessionSnapshot];
@@ -123,6 +124,7 @@ static void mGBA_rc_login_callback(int result, const char *error_message,
     if (result == RC_OK) {
         [self _beginLoadGame];
     } else {
+        oeRetroAchievementsPostLoginFailure(result, error_message);
         NSLog(@"[RA-mGBA] login failed — result=%d error=%s", result, error_message ?: "(none)");
     }
 }

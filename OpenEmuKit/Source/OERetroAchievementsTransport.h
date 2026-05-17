@@ -82,6 +82,9 @@
 #define OERARarityKey                @"rarity"
 #define OERAHardcoreRarityKey        @"rarityHardcore"
 #define OERAUnlockedKey              @"unlocked"
+#define OERASessionStatusKey         @"sessionStatus"
+#define OERASessionErrorCodeKey      @"sessionErrorCode"
+#define OERASessionErrorMessageKey   @"sessionErrorMessage"
 
 /// NSNotificationCenter name posted by a core plugin when rcheevos emits a gameplay UI event.
 /// The helper app observes this and forwards the payload to the host via OEGameCoreOwner.
@@ -121,6 +124,13 @@ void oeRetroAchievementsServerCall(const rc_api_request_t *request,
  */
 void oeRetroAchievementsPostEventNotification(const rc_client_event_t *event,
                                                rc_client_t *client);
+
+/**
+ * Posts property-list-safe OERASessionUpdatedNotification payloads when
+ * login or game identification fails before a normal session snapshot exists.
+ */
+void oeRetroAchievementsPostSessionLoadFailure(int result, const char *error_message);
+void oeRetroAchievementsPostLoginFailure(int result, const char *error_message);
 
 #ifdef __cplusplus
 }

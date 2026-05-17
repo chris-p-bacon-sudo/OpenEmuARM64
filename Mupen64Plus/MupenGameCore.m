@@ -160,6 +160,7 @@ static void mupen_rc_load_game_callback(int result, const char *error_message,
     MupenGameCore *self = (__bridge MupenGameCore *)userdata;
     if (result != RC_OK) {
         NSLog(@"[RA-Mupen64Plus] game load failed — result=%d error=%s", result, error_message ?: "(none)");
+        oeRetroAchievementsPostSessionLoadFailure(result, error_message);
         return;
     }
     [self _postRetroAchievementsSessionSnapshot];
@@ -172,6 +173,7 @@ static void mupen_rc_login_callback(int result, const char *error_message,
     if (result == RC_OK) {
         [s _beginLoadGame];
     } else {
+        oeRetroAchievementsPostLoginFailure(result, error_message);
         NSLog(@"[RA-Mupen64Plus] login failed — result=%d error=%s", result, error_message ?: "(none)");
     }
 }
