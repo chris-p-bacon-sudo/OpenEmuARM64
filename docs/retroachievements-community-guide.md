@@ -49,7 +49,7 @@ RA integration is rolling out in phases. See [issue #258](https://github.com/nic
 - 🔄 In Progress — actively being worked on
 - 🔲 Planned — tracked in the rollout issue; contributors welcome
 
-> **Note:** Hardcore mode compliance is still in progress (#438). Hardcore mode is not currently enforced across all cores. This is being addressed before the official RetroAchievements listing.
+> **Note:** The native-core hardcore compliance rollout is tracked in #438. The main P0 enforcement work is complete for supported native RA cores; remaining work is focused on manual verification evidence, submission-readiness documentation, and follow-up polish before the official RetroAchievements listing.
 
 ---
 

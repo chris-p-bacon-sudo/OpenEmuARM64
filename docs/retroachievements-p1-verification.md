@@ -84,7 +84,7 @@ xcodebuild \
 
 ### Rich Presence
 
-Upstream behavior: `rc_client_do_frame()` sends rich presence after the first update delay, then periodically while the session is active. `rc_client_idle()` should maintain routine communication while paused, but that pause path is not implemented yet.
+Upstream behavior: `rc_client_do_frame()` sends rich presence after the first update delay, then periodically while the session is active. `rc_client_idle()` should maintain routine communication while paused.
 
 | Test | Expected result | Status |
 | --- | --- | --- |

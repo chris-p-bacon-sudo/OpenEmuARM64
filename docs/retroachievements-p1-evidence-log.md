@@ -16,9 +16,9 @@ Scope: native RetroAchievements cores only. Libretro/RetroArch cores are tracked
 | Achievements window | Pending fresh capture | Needs screenshot/video from current `main`. |
 | Unrecognized/no-set feedback | Pending fresh capture | Needs screenshot from current `main`. |
 | Rich Presence works | Pending | Verify on RA profile/activity after 30s+ of play. |
-| Rich Presence remains active in hardcore | Pending | Verify no OpenEmu bypass and RA profile/activity continues updating. |
+| Rich Presence remains active in hardcore | Static code audit complete; live RA verification pending | No OpenEmu setting/API usage was found that disables Rich Presence. Verify RA profile/activity continues updating in hardcore. |
 | Leaderboards work | Pending broader evidence | Prior Nestopia smoke test was noted in #438; capture fresh screenshot/video. |
-| Leaderboards cannot be disabled in hardcore | Pending | Verify no OpenEmu bypass while hardcore is active. |
+| Leaderboards cannot be disabled in hardcore | Static code audit complete; live RA verification pending | No OpenEmu setting/API usage was found that disables leaderboard functionality or spectator mode. Verify runtime events in hardcore. |
 | Offline unlock queue syncs after reconnect | Pending | Needs controlled offline/reconnect test. |
 | Offline queue/cache is session-scoped/purged on close | Pending | Needs controlled close-while-offline test or RA maintainer confirmation. |
 | Server error/offline/reconnect UI | Pending fresh capture | UI implemented; capture runtime evidence. |
@@ -34,11 +34,11 @@ Fill this in once per verification pass.
 
 | Field | Value |
 | --- | --- |
-| Date | TBD |
-| Tester | TBD |
-| OpenEmu-Silicon commit | TBD |
-| macOS version | TBD |
-| Mac model / chip | TBD |
+| Date | 2026-05-17 |
+| Tester | AI-assisted static/local verification |
+| OpenEmu-Silicon commit | `9e701cd3` |
+| macOS version | macOS 26.4.1 (25E253) |
+| Mac model / chip | Apple M4 Max |
 | Build configuration | TBD |
 | RetroAchievements username | TBD |
 | Hardcore default setting | TBD |
@@ -77,7 +77,8 @@ xcodebuild \
 
 | Date | Commit | Result | Notes |
 | --- | --- | --- | --- |
-| TBD | TBD | TBD | TBD |
+| 2026-05-17 | `9e701cd3` | Pass | `xcodebuild -workspace OpenEmu-metal.xcworkspace -scheme OpenEmu -configuration Debug -destination 'platform=macOS,arch=arm64' build` ended with `** BUILD SUCCEEDED **`. |
+| 2026-05-17 | `9e701cd3` | Pass | `xcodebuild -workspace OpenEmu-metal.xcworkspace -scheme OpenEmuBase -configuration Debug -destination 'platform=macOS,arch=arm64' test` ended with `** TEST SUCCEEDED **`; 39 tests passed, including 22 hardcore-gate tests. |
 
 ### Core builds / installs
 
@@ -97,12 +98,46 @@ xcodebuild \
 
 | Core | Scheme | Configuration | Date | Commit | Install verification | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
-| Nestopia | `OpenEmu + Nestopia` | Release | TBD | TBD | TBD | Recommended first pass. |
+| Nestopia | `OpenEmu + Nestopia` | Release | 2026-05-17 | `9e701cd3` | Pass — `install-core.sh --release Nestopia` and `verify-core-installed.sh --release Nestopia`; md5 `33f139bc26f6247eac62cba91a0fd326` | Ready for first live RA manual verification pass. |
 | mGBA | `OpenEmu + mGBA` | Release | TBD | TBD | TBD | Good for cross-core RA sanity check. |
 | GenesisPlus | `OpenEmu + GenesisPlus` | Release | TBD | TBD | TBD | Good for measured/progress and leaderboard coverage if using known set. |
 | Mednafen | `OpenEmu + Mednafen` | Release | TBD | TBD | TBD | Useful before later media-change follow-up. |
 
 ---
+
+## Static/local evidence entries
+
+These checks do not replace live RA profile/gameplay verification, but they document what the current code can prove without credentials, ROMs, or RA server observation.
+
+### 2026-05-17 — Native RA cores — rc_client runtime hooks static audit
+
+- **Commit:** `9e701cd3`
+- **Scope:** Nestopia, FCEU, BSNES, SNES9x, Gambatte, GenesisPlus, mGBA, Mupen64Plus, Mednafen
+- **Test steps:** searched native RA core source for required `rc_client` runtime hooks.
+- **Expected:** every native RA core has per-frame processing, paused idle handling, hardcore pause preflight, background-memory-read disabling, and reset handling.
+- **Actual:** all nine native RA cores contain the expected calls.
+- **Result:** Pass for static implementation presence; live gameplay behavior still needs verification.
+
+| Core | `rc_client_do_frame` | `rc_client_idle` | `rc_client_can_pause` | `rc_client_set_allow_background_memory_reads` | `rc_client_reset` |
+| --- | --- | --- | --- | --- | --- |
+| Nestopia | Yes | Yes | Yes | Yes | Yes |
+| FCEU | Yes | Yes | Yes | Yes | Yes |
+| BSNES | Yes | Yes | Yes | Yes | Yes |
+| SNES9x | Yes | Yes | Yes | Yes | Yes |
+| Gambatte | Yes | Yes | Yes | Yes | Yes |
+| GenesisPlus | Yes | Yes | Yes | Yes | Yes |
+| mGBA | Yes | Yes | Yes | Yes | Yes |
+| Mupen64Plus | Yes | Yes | Yes | Yes | Yes |
+| Mednafen | Yes | Yes | Yes | Yes | Yes |
+
+### 2026-05-17 — OpenEmu app — Rich Presence / leaderboard disable-path static audit
+
+- **Commit:** `9e701cd3`
+- **Scope:** OpenEmu app, native RA transport, native RA cores
+- **Test steps:** searched for OpenEmu-side settings or code paths that disable Rich Presence, disable leaderboards, enable rcheevos spectator mode, or toggle rcheevos leaderboard submission.
+- **Expected:** no user-facing or hidden OpenEmu setting should disable Rich Presence or leaderboard functionality in hardcore. Overlay popups may be hideable later only if runtime functionality remains active.
+- **Actual:** no OpenEmu usage was found for `rc_client_set_spectator_mode_enabled`; no OpenEmu Rich Presence toggle was found; no OpenEmu leaderboard-disable toggle was found. Leaderboard rcheevos events are bridged through `OERetroAchievementsTransport.m` and displayed by `OEGameDocument.swift` / `GameViewController.swift`.
+- **Result:** Pass for static no-disable-path audit; live RA profile/activity and hardcore leaderboard behavior still need verification.
 
 ## Evidence entries
 
