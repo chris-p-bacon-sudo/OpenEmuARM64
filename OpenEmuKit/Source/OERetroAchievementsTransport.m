@@ -48,17 +48,25 @@ static void OEPostSessionStatus(NSString *status, int result, const char *error_
                                                       userInfo:payload];
 }
 
+static BOOL OEIsUnrecognizedGameResult(int result)
+{
+    // rcheevos currently reports unknown/no-set hashes through these two
+    // results. Keep this classification centralized so new upstream result
+    // codes can be added in one place if needed.
+    return result == RC_NO_GAME_LOADED || result == RC_NOT_FOUND;
+}
+
 void oeRetroAchievementsPostSessionLoadFailure(int result, const char *error_message)
 {
-    NSString *status = (result == RC_NO_GAME_LOADED || result == RC_NOT_FOUND)
-        ? @"unrecognized"
-        : @"loadFailed";
+    NSString *status = OEIsUnrecognizedGameResult(result)
+        ? OERASessionStatusUnrecognized
+        : OERASessionStatusLoadFailed;
     OEPostSessionStatus(status, result, error_message);
 }
 
 void oeRetroAchievementsPostLoginFailure(int result, const char *error_message)
 {
-    OEPostSessionStatus(@"loginFailed", result, error_message);
+    OEPostSessionStatus(OERASessionStatusLoginFailed, result, error_message);
 }
 
 static void OEAddAchievementPayload(NSMutableDictionary *payload, const rc_client_achievement_t *achievement)

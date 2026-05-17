@@ -85,6 +85,9 @@
 #define OERASessionStatusKey         @"sessionStatus"
 #define OERASessionErrorCodeKey      @"sessionErrorCode"
 #define OERASessionErrorMessageKey   @"sessionErrorMessage"
+#define OERASessionStatusUnrecognized @"unrecognized"
+#define OERASessionStatusLoginFailed  @"loginFailed"
+#define OERASessionStatusLoadFailed   @"loadFailed"
 
 /// NSNotificationCenter name posted by a core plugin when rcheevos emits a gameplay UI event.
 /// The helper app observes this and forwards the payload to the host via OEGameCoreOwner.

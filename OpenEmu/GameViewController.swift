@@ -557,9 +557,9 @@ private final class OERetroAchievementsPlacardView: NSVisualEffectView {
 
     private func sessionStatusTitle(_ status: String) -> String {
         switch status {
-        case "unrecognized":
+        case OERetroAchievementsSessionStatusUnrecognized:
             return NSLocalizedString("RetroAchievements: Game Not Recognized", comment: "RetroAchievements unrecognized game placard title")
-        case "loginFailed":
+        case OERetroAchievementsSessionStatusLoginFailed:
             return NSLocalizedString("RetroAchievements Sign-In Failed", comment: "RetroAchievements login failed placard title")
         default:
             return NSLocalizedString("RetroAchievements Unavailable", comment: "RetroAchievements unavailable placard title")
@@ -567,15 +567,18 @@ private final class OERetroAchievementsPlacardView: NSVisualEffectView {
     }
 
     private func sessionStatusMessage(_ status: String, info: [String: Any]) -> String {
-        if let message = info[OERetroAchievementsSessionErrorMessageKey] as? String, !message.isEmpty {
-            return message
-        }
         switch status {
-        case "unrecognized":
+        case OERetroAchievementsSessionStatusUnrecognized:
             return NSLocalizedString("No achievement set was found for this game/hash.", comment: "RetroAchievements unrecognized game placard message")
-        case "loginFailed":
+        case OERetroAchievementsSessionStatusLoginFailed:
+            if let message = info[OERetroAchievementsSessionErrorMessageKey] as? String, !message.isEmpty {
+                return message
+            }
             return NSLocalizedString("Please sign in again from Preferences → Achievements.", comment: "RetroAchievements login failed placard message")
         default:
+            if let message = info[OERetroAchievementsSessionErrorMessageKey] as? String, !message.isEmpty {
+                return message
+            }
             return NSLocalizedString("RetroAchievements could not load for this session.", comment: "RetroAchievements unavailable placard message")
         }
     }
@@ -924,15 +927,18 @@ final class RetroAchievementsGameViewController: NSViewController {
 
     private func sessionStatusMessage(info: [String: Any]?, document: OEGameDocument) -> String? {
         guard let status = info?[OERetroAchievementsSessionStatusKey] as? String else { return nil }
-        if let message = info?[OERetroAchievementsSessionErrorMessageKey] as? String, !message.isEmpty {
-            return message
-        }
         switch status {
-        case "unrecognized":
+        case OERetroAchievementsSessionStatusUnrecognized:
             return NSLocalizedString("RetroAchievements is enabled, but no achievement set was found for this game/hash.", comment: "RetroAchievements unrecognized game window message")
-        case "loginFailed":
+        case OERetroAchievementsSessionStatusLoginFailed:
+            if let message = info?[OERetroAchievementsSessionErrorMessageKey] as? String, !message.isEmpty {
+                return message
+            }
             return NSLocalizedString("RetroAchievements sign-in failed. Please sign in again from Preferences → Achievements.", comment: "RetroAchievements login failed window message")
         default:
+            if let message = info?[OERetroAchievementsSessionErrorMessageKey] as? String, !message.isEmpty {
+                return message
+            }
             return NSLocalizedString("RetroAchievements could not load for this session.", comment: "RetroAchievements generic load failure window message")
         }
     }
