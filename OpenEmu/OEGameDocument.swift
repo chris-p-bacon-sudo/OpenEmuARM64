@@ -162,7 +162,6 @@ final class OEGameDocument: NSDocument {
     private var retroAchievementsWindowController: NSWindowController?
     @objc dynamic private(set) var retroAchievementsSessionInfo: [String: Any]?
     private var retroAchievementsSuppressedUnlockIDs = Set<UInt32>()
-    private var retroAchievementsSuppressedUnlockTitles = Set<String>()
     private var didShowRetroAchievementsBootPlacard = false
     private var raCredentialObserver: Any?
     private var raHardcoreObserver: Any?
@@ -628,7 +627,6 @@ final class OEGameDocument: NSDocument {
                 self.emulationStatus = .notSetup
                 self.retroAchievementsSessionInfo = nil
                 self.retroAchievementsSuppressedUnlockIDs.removeAll()
-                self.retroAchievementsSuppressedUnlockTitles.removeAll()
                 self.gameViewController?.clearRetroAchievementsIndicators()
                 self.didShowRetroAchievementsBootPlacard = false
                 
@@ -779,7 +777,6 @@ final class OEGameDocument: NSDocument {
         emulationStatus = .notSetup
         retroAchievementsSessionInfo = nil
         retroAchievementsSuppressedUnlockIDs.removeAll()
-        retroAchievementsSuppressedUnlockTitles.removeAll()
         gameViewController?.clearRetroAchievementsIndicators()
         didShowRetroAchievementsBootPlacard = false
         gameCoreManager?.stopEmulation() {
@@ -2341,12 +2338,10 @@ extension OEGameDocument: OESystemBindingsObserver {
                 self.gameViewController?.showRetroAchievementsUnknownEmulatorNotice()
                 return
             }
-            let normalizedTitle = self.normalizedRetroAchievementsUnlockTitle(title)
-            if self.retroAchievementsSuppressedUnlockIDs.contains(id) || self.retroAchievementsSuppressedUnlockTitles.contains(normalizedTitle) {
+            if self.retroAchievementsSuppressedUnlockIDs.contains(id) {
                 return
             }
             self.retroAchievementsSuppressedUnlockIDs.insert(id)
-            self.retroAchievementsSuppressedUnlockTitles.insert(normalizedTitle)
 
             // In-app banner — always visible regardless of Focus mode or notification settings
             self.gameViewController?.showAchievementUnlocked(title: title, description: description, badgeURL: badgeURL, points: points)
@@ -2371,11 +2366,6 @@ extension OEGameDocument: OESystemBindingsObserver {
         return foldedTitle.contains("unknown emulator") || foldedTitle.contains("unknown emu")
     }
 
-    private func normalizedRetroAchievementsUnlockTitle(_ title: String) -> String {
-        title.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current)
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-
     private func updateRetroAchievementsSuppressedUnlockIDs(from info: [String: Any]) {
         let requiredUnlockFlag = isHardcoreModeEnabled ? 2 : 1
         let achievements = info[OERetroAchievementsAchievementsKey] as? [[String: Any]] ?? []
@@ -2384,9 +2374,6 @@ extension OEGameDocument: OESystemBindingsObserver {
             let unlocked = (achievement[OERetroAchievementsUnlockedKey] as? NSNumber)?.intValue ?? 0
             if (unlocked & requiredUnlockFlag) != 0 {
                 retroAchievementsSuppressedUnlockIDs.insert(id)
-                if let title = achievement[OEAchievementTitleKey] as? String {
-                    retroAchievementsSuppressedUnlockTitles.insert(normalizedRetroAchievementsUnlockTitle(title))
-                }
             }
         }
     }

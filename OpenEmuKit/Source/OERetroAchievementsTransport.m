@@ -233,6 +233,17 @@ void oeRetroAchievementsServerCall(const rc_api_request_t *request,
                 return;
             }
 
+            if (![response isKindOfClass:NSHTTPURLResponse.class]) {
+                const char *message = "Invalid HTTP response";
+                rc_api_server_response_t err = {
+                    .body             = message,
+                    .body_length      = strlen(message),
+                    .http_status_code = RC_API_SERVER_RESPONSE_RETRYABLE_CLIENT_ERROR
+                };
+                callback(&err, callback_data);
+                return;
+            }
+
             NSHTTPURLResponse *http = (NSHTTPURLResponse *)response;
             rc_api_server_response_t server_response = {
                 .body             = (const char *)data.bytes,

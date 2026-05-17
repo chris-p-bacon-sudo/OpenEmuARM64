@@ -37,6 +37,7 @@ final class OEAchievementBannerView: NSView {
     private let ptsLabel    = NSTextField(labelWithString: "")
     private let iconView    = NSImageView()
     private var imageTask: URLSessionDataTask?
+    private var currentBadgeURL: URL?
 
     private var hideWorkItem: DispatchWorkItem?
 
@@ -120,13 +121,18 @@ final class OEAchievementBannerView: NSView {
         ptsLabel.stringValue   = points > 0 ? "+\(points) pts" : ""
 
         imageTask?.cancel()
+        currentBadgeURL = nil
         let iconConfig = NSImage.SymbolConfiguration(pointSize: 26, weight: .semibold)
         iconView.image = NSImage(systemSymbolName: "trophy.fill", accessibilityDescription: nil)?
             .withSymbolConfiguration(iconConfig)
         if let url = URL(string: badgeURL), !badgeURL.isEmpty {
+            currentBadgeURL = url
             imageTask = URLSession.shared.dataTask(with: url) { [weak self] data, _, _ in
                 guard let data, let image = NSImage(data: data) else { return }
-                DispatchQueue.main.async { self?.iconView.image = image }
+                DispatchQueue.main.async {
+                    guard self?.currentBadgeURL == url else { return }
+                    self?.iconView.image = image
+                }
             }
             imageTask?.resume()
         }
@@ -159,6 +165,7 @@ final class OERetroAchievementsEventToastView: NSVisualEffectView {
     private let imageView = NSImageView()
     private var hideWorkItem: DispatchWorkItem?
     private var imageTask: URLSessionDataTask?
+    private var currentBadgeURL: URL?
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -214,15 +221,20 @@ final class OERetroAchievementsEventToastView: NSVisualEffectView {
         subtitleLabel.stringValue = subtitle
         hideWorkItem?.cancel()
         imageTask?.cancel()
+        currentBadgeURL = nil
         isHidden = false
 
         let config = NSImage.SymbolConfiguration(pointSize: 24, weight: .semibold)
         imageView.image = NSImage(systemSymbolName: symbolName, accessibilityDescription: nil)?.withSymbolConfiguration(config)
         imageView.contentTintColor = .systemYellow
         if let badgeURL, let url = URL(string: badgeURL), !badgeURL.isEmpty {
+            currentBadgeURL = url
             imageTask = URLSession.shared.dataTask(with: url) { [weak self] data, _, _ in
                 guard let data, let image = NSImage(data: data) else { return }
-                DispatchQueue.main.async { self?.imageView.image = image }
+                DispatchQueue.main.async {
+                    guard self?.currentBadgeURL == url else { return }
+                    self?.imageView.image = image
+                }
             }
             imageTask?.resume()
         }
