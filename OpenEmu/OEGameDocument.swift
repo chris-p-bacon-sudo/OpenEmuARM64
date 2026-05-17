@@ -184,6 +184,10 @@ final class OEGameDocument: NSDocument {
     @objc var isHardcoreModeEnabled: Bool {
         guard isHardcoreModePreferenceEnabled else { return false }
         guard OECredentialStore.shared.get(.retroAchievementsToken) != nil else { return false }
+        return isRetroAchievementsSessionSupported
+    }
+
+    private var isRetroAchievementsSessionSupported: Bool {
         guard let corePlugin, let systemPlugin else { return false }
         return corePlugin.supportsRetroAchievements(forSystemIdentifier: systemPlugin.systemIdentifier)
     }
@@ -1181,12 +1185,14 @@ final class OEGameDocument: NSDocument {
     }
 
     /// Handle a mid-session hardcore toggle. Soft→hard requires confirming a reset
-    /// (RA spec) — but only when an RA session is actually active; without a
-    /// signed-in session, hardcore wouldn't be enforced anyway, so we skip the
-    /// reset prompt and just record the preference. Hard→soft drops to softcore
-    /// immediately with no prompt.
+    /// (RA spec) — but only when an RA session can actually be active for the
+    /// current core/system; without a signed-in RA-supported session, hardcore
+    /// wouldn't be enforced anyway, so we skip the reset prompt and just record
+    /// the preference. Hard→soft drops to softcore immediately with no prompt.
     private func handleHardcoreToggle(enabled: Bool) {
-        let willEnforce = enabled && OECredentialStore.shared.get(.retroAchievementsToken) != nil
+        let willEnforce = enabled
+            && isRetroAchievementsSessionSupported
+            && OECredentialStore.shared.get(.retroAchievementsToken) != nil
 
         if willEnforce && HardcoreModePolicy.requiresResetWhenEnabling {
             isEmulationPaused = true

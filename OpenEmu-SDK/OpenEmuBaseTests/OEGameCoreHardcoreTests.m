@@ -250,6 +250,34 @@
 
 #pragma mark - Toggle behavior
 
+- (void)testEnablingHardcoreClearsActiveRewind
+{
+    OEGameCore *core = [[OEGameCore alloc] init];
+    core.hardcoreEnabled = NO;
+    [core rewindAtSpeed:1.0f];
+    XCTAssertTrue([self isRewindingForCore:core],
+                  @"precondition: rewind must be active before hardcore is enabled.");
+
+    core.hardcoreEnabled = YES;
+
+    XCTAssertFalse([self isRewindingForCore:core],
+                   @"setHardcoreEnabled: must clear active rewind immediately, even before the next rewind event arrives.");
+}
+
+- (void)testEnablingHardcoreClearsPendingFrameStep
+{
+    OEGameCore *core = [[OEGameCore alloc] init];
+    core.hardcoreEnabled = NO;
+    [core stepFrameForward];
+    XCTAssertTrue([self singleFrameStepForCore:core],
+                  @"precondition: frame-step must be pending before hardcore is enabled.");
+
+    core.hardcoreEnabled = YES;
+
+    XCTAssertFalse([self singleFrameStepForCore:core],
+                   @"setHardcoreEnabled: must clear pending frame-step immediately.");
+}
+
 - (void)testToggleReEnablesAffordances
 {
     // Hardcore on → block. Hardcore off → allow. Catches regressions where the
