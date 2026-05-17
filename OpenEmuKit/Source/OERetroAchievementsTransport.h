@@ -83,6 +83,24 @@
 #define OERAHardcoreRarityKey        @"rarityHardcore"
 #define OERAUnlockedKey              @"unlocked"
 
+/// NSNotificationCenter name posted by a core plugin when rcheevos emits a gameplay UI event.
+/// The helper app observes this and forwards the payload to the host via OEGameCoreOwner.
+#define OERAEventNotification        @"OERetroAchievementsEvent"
+#define OERAEventTypeKey             @"eventType"
+#define OERAEventKindKey             @"eventKind"
+#define OERAEventIDKey               @"eventID"
+#define OERAEventTitleKey            @"eventTitle"
+#define OERAEventDescriptionKey      @"eventDescription"
+#define OERAEventBadgeURLKey         @"eventBadgeURL"
+#define OERAEventPointsKey           @"eventPoints"
+#define OERAEventDisplayKey          @"eventDisplay"
+#define OERAEventSubmittedScoreKey   @"eventSubmittedScore"
+#define OERAEventBestScoreKey        @"eventBestScore"
+#define OERAEventRankKey             @"eventRank"
+#define OERAEventTotalEntriesKey     @"eventTotalEntries"
+#define OERAEventErrorMessageKey     @"eventErrorMessage"
+#define OERAEventAPIKey              @"eventAPI"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -95,6 +113,14 @@ void oeRetroAchievementsServerCall(const rc_api_request_t *request,
                                     rc_client_server_callback_t callback,
                                     void *callback_data,
                                     rc_client_t *client);
+
+/**
+ * Posts a property-list-safe OERAEventNotification for rcheevos gameplay UI
+ * events. Core event handlers should call this before handling achievement
+ * unlocks or refreshing session snapshots.
+ */
+void oeRetroAchievementsPostEventNotification(const rc_client_event_t *event,
+                                               rc_client_t *client);
 
 #ifdef __cplusplus
 }

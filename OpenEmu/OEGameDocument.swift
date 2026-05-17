@@ -2326,7 +2326,7 @@ extension OEGameDocument: OESystemBindingsObserver {
     func achievementUnlocked(id: UInt32, title: String, description: String, badgeURL: String, points: UInt32) {
         DispatchQueue.main.async {
             // In-app banner — always visible regardless of Focus mode or notification settings
-            self.gameViewController?.showAchievementUnlocked(title: title, points: points)
+            self.gameViewController?.showAchievementUnlocked(title: title, description: description, badgeURL: badgeURL, points: points)
 
             // macOS system notification — timeSensitive breaks through Focus/DND
             let content = UNMutableNotificationContent()
@@ -2340,6 +2340,71 @@ extension OEGameDocument: OESystemBindingsObserver {
                 trigger: nil
             )
             UNUserNotificationCenter.current().add(request)
+        }
+    }
+
+    func retroAchievementsEvent(_ info: [String: Any]) {
+        DispatchQueue.main.async {
+            self.handleRetroAchievementsEvent(info)
+        }
+    }
+
+    private func handleRetroAchievementsEvent(_ info: [String: Any]) {
+        guard let kind = info[OERetroAchievementsEventKindKey] as? String else { return }
+        let id = (info[OERetroAchievementsEventIDKey] as? NSNumber)?.uint32Value ?? 0
+        let title = info[OERetroAchievementsEventTitleKey] as? String ?? NSLocalizedString("RetroAchievements", comment: "RetroAchievements event fallback title")
+        let description = info[OERetroAchievementsEventDescriptionKey] as? String ?? ""
+        let badgeURL = info[OERetroAchievementsEventBadgeURLKey] as? String
+        let display = info[OERetroAchievementsEventDisplayKey] as? String ?? ""
+
+        switch kind {
+        case "achievementUnlocked":
+            // The dedicated achievement unlock path already shows the richer unlock
+            // banner and macOS notification. Keep this event for future routing only.
+            return
+        case "challengeShow":
+            gameViewController?.showRetroAchievementsChallenge(id: id, title: title)
+        case "challengeHide":
+            gameViewController?.hideRetroAchievementsChallenge(id: id)
+        case "progressShow", "progressUpdate":
+            let progress = info[OERetroAchievementsMeasuredProgressKey] as? String ?? display
+            gameViewController?.showRetroAchievementsProgress(title: title, progress: progress)
+        case "progressHide":
+            gameViewController?.hideRetroAchievementsProgress()
+        case "leaderboardStarted":
+            gameViewController?.showRetroAchievementsEventToast(title: NSLocalizedString("Leaderboard Started", comment: "RA leaderboard started"), subtitle: title, symbolName: "flag.checkered")
+        case "leaderboardFailed":
+            gameViewController?.showRetroAchievementsEventToast(title: NSLocalizedString("Leaderboard Failed", comment: "RA leaderboard failed"), subtitle: title, symbolName: "xmark.circle.fill")
+        case "leaderboardSubmitted":
+            let subtitle = display.isEmpty ? title : String(format: NSLocalizedString("%@ — %@", comment: "RA leaderboard submitted subtitle"), display, title)
+            gameViewController?.showRetroAchievementsEventToast(title: NSLocalizedString("Leaderboard Submitted", comment: "RA leaderboard submitted"), subtitle: subtitle, symbolName: "checkmark.seal.fill")
+        case "leaderboardTrackerShow", "leaderboardTrackerUpdate":
+            gameViewController?.showRetroAchievementsLeaderboard(id: id, display: display)
+        case "leaderboardTrackerHide":
+            gameViewController?.hideRetroAchievementsLeaderboard(id: id)
+        case "leaderboardScoreboard":
+            let submitted = info[OERetroAchievementsEventSubmittedScoreKey] as? String ?? ""
+            let rank = (info[OERetroAchievementsEventRankKey] as? NSNumber)?.intValue ?? 0
+            let subtitle = rank > 0
+                ? String(format: NSLocalizedString("%@ · Rank #%d", comment: "RA leaderboard scoreboard"), submitted, rank)
+                : submitted
+            gameViewController?.showRetroAchievementsEventToast(title: NSLocalizedString("Leaderboard Result", comment: "RA leaderboard result"), subtitle: subtitle, symbolName: "list.number")
+        case "gameCompleted":
+            let gameTitle = retroAchievementsSessionInfo?[OERetroAchievementsGameTitleKey] as? String ?? rom.game?.displayName ?? title
+            let verb = isHardcoreModeEnabled ? NSLocalizedString("Mastered", comment: "RA mastered game") : NSLocalizedString("Completed", comment: "RA completed game")
+            gameViewController?.showRetroAchievementsEventToast(title: "\(verb) \(gameTitle)", subtitle: NSLocalizedString("All achievements earned", comment: "RA game completed subtitle"), badgeURL: retroAchievementsSessionInfo?[OERetroAchievementsGameBadgeURLKey] as? String, symbolName: "crown.fill")
+        case "subsetCompleted":
+            let verb = isHardcoreModeEnabled ? NSLocalizedString("Mastered", comment: "RA mastered subset") : NSLocalizedString("Completed", comment: "RA completed subset")
+            gameViewController?.showRetroAchievementsEventToast(title: "\(verb) \(title)", subtitle: NSLocalizedString("Achievement set complete", comment: "RA subset completed subtitle"), badgeURL: badgeURL, symbolName: "crown.fill")
+        case "serverError":
+            let message = info[OERetroAchievementsEventErrorMessageKey] as? String ?? description
+            gameViewController?.showRetroAchievementsEventToast(title: NSLocalizedString("RetroAchievements Error", comment: "RA server error"), subtitle: message, symbolName: "exclamationmark.triangle.fill")
+        case "disconnected":
+            gameViewController?.showRetroAchievementsEventToast(title: NSLocalizedString("RetroAchievements Offline", comment: "RA disconnected"), subtitle: NSLocalizedString("Unlocks will retry when reconnected.", comment: "RA disconnected subtitle"), symbolName: "wifi.slash")
+        case "reconnected":
+            gameViewController?.showRetroAchievementsEventToast(title: NSLocalizedString("RetroAchievements Reconnected", comment: "RA reconnected"), subtitle: NSLocalizedString("Pending unlocks synced.", comment: "RA reconnected subtitle"), symbolName: "wifi")
+        default:
+            return
         }
     }
 }

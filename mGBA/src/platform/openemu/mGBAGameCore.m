@@ -129,6 +129,7 @@ static void mGBA_rc_login_callback(int result, const char *error_message,
 
 static void mGBA_rc_event_handler(const rc_client_event_t *event, rc_client_t *client)
 {
+    oeRetroAchievementsPostEventNotification(event, client);
     if (event->type != RC_CLIENT_EVENT_ACHIEVEMENT_TRIGGERED) { return; }
     const rc_client_achievement_t *ach = event->achievement;
     if (!ach) { return; }

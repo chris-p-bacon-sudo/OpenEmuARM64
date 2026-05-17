@@ -77,6 +77,11 @@ import OpenEmuKitPrivate
                                       for: #selector(OEGameCoreOwner.retroAchievementsSessionUpdated(_:)),
                                       argumentIndex: 0,
                                       ofReply: false)
+            // swiftlint:disable:next force_cast
+            ownerInterface.setClasses(propertyListClasses as! Set<AnyHashable>,
+                                      for: #selector(OEGameCoreOwner.retroAchievementsEvent(_:)),
+                                      argumentIndex: 0,
+                                      ofReply: false)
             cn.exportedInterface = ownerInterface
             cn.exportedObject = proxy
 

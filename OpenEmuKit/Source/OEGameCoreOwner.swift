@@ -90,4 +90,9 @@ public typealias OEContextID = UInt32
     /// Called when the helper receives updated RetroAchievements metadata for the active game.
     /// The payload contains property-list-safe values using `OERetroAchievements*Key` constants.
     @objc optional func retroAchievementsSessionUpdated(_ info: [String: Any])
+
+    /// Called when rcheevos emits a gameplay UI event such as challenge/progress
+    /// indicator changes, leaderboard tracker updates, mastery, or server state.
+    /// The payload contains property-list-safe values using `OERetroAchievementsEvent*Key` constants.
+    @objc optional func retroAchievementsEvent(_ info: [String: Any])
 }

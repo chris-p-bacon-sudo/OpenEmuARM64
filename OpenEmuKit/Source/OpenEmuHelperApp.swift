@@ -101,6 +101,7 @@ extension OSLog {
     // Observer for achievement unlock notifications posted by the active core plugin.
     var _achievementObserver: Any?
     var _raSessionObserver: Any?
+    var _raEventObserver: Any?
 
     // frame rate debugging
     var previous    = CFTimeInterval()
@@ -367,6 +368,17 @@ extension OSLog {
                   let info = note.userInfo as? [String: Any] else { return }
             owner.retroAchievementsSessionUpdated?(info)
         }
+
+        _raEventObserver = NotificationCenter.default.addObserver(
+            forName: .OERetroAchievementsEvent,
+            object: nil,
+            queue: nil
+        ) { [weak self] note in
+            guard let self = self,
+                  let owner = self.gameCoreOwner,
+                  let info = note.userInfo as? [String: Any] else { return }
+            owner.retroAchievementsEvent?(info)
+        }
     }
     
     // MARK: - OEGameCoreOwner subclass handles
@@ -494,6 +506,10 @@ extension OSLog {
         if let observer = _raSessionObserver {
             NotificationCenter.default.removeObserver(observer)
             _raSessionObserver = nil
+        }
+        if let observer = _raEventObserver {
+            NotificationCenter.default.removeObserver(observer)
+            _raEventObserver = nil
         }
 
         gameCore.stopEmulation {

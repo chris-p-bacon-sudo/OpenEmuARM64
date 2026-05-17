@@ -96,3 +96,25 @@ public let OERetroAchievementsBadgeLockedURLKey      = "badgeLockedURL"
 public let OERetroAchievementsRarityKey              = "rarity"
 public let OERetroAchievementsHardcoreRarityKey      = "rarityHardcore"
 public let OERetroAchievementsUnlockedKey            = "unlocked"
+
+/// Posted inside the helper process by a core plugin when rcheevos emits a
+/// gameplay UI event. The helper forwards this to the host via `OEGameCoreOwner`.
+public extension Notification.Name {
+    static let OERetroAchievementsEvent = Notification.Name("OERetroAchievementsEvent")
+}
+
+/// Keys in the RetroAchievements gameplay event `userInfo` dictionary.
+public let OERetroAchievementsEventTypeKey       = "eventType"
+public let OERetroAchievementsEventKindKey       = "eventKind"
+public let OERetroAchievementsEventIDKey         = "eventID"
+public let OERetroAchievementsEventTitleKey      = "eventTitle"
+public let OERetroAchievementsEventDescriptionKey = "eventDescription"
+public let OERetroAchievementsEventBadgeURLKey   = "eventBadgeURL"
+public let OERetroAchievementsEventPointsKey     = "eventPoints"
+public let OERetroAchievementsEventDisplayKey    = "eventDisplay"
+public let OERetroAchievementsEventSubmittedScoreKey = "eventSubmittedScore"
+public let OERetroAchievementsEventBestScoreKey  = "eventBestScore"
+public let OERetroAchievementsEventRankKey       = "eventRank"
+public let OERetroAchievementsEventTotalEntriesKey = "eventTotalEntries"
+public let OERetroAchievementsEventErrorMessageKey = "eventErrorMessage"
+public let OERetroAchievementsEventAPIKey        = "eventAPI"

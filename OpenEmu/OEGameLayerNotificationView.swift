@@ -28,13 +28,15 @@ import Cocoa
 
 final class OEAchievementBannerView: NSView {
 
-    static let bannerWidth:  CGFloat = 310
-    static let bannerHeight: CGFloat = 66
+    static let bannerWidth:  CGFloat = 430
+    static let bannerHeight: CGFloat = 82
 
     private let headerLabel = NSTextField(labelWithString: "Achievement Unlocked!")
     private let titleLabel  = NSTextField(labelWithString: "")
+    private let descriptionLabel = NSTextField(labelWithString: "")
     private let ptsLabel    = NSTextField(labelWithString: "")
     private let iconView    = NSImageView()
+    private var imageTask: URLSessionDataTask?
 
     private var hideWorkItem: DispatchWorkItem?
 
@@ -58,7 +60,11 @@ final class OEAchievementBannerView: NSView {
         iconView.image = NSImage(systemSymbolName: "trophy.fill", accessibilityDescription: nil)?
             .withSymbolConfiguration(iconConfig)
         iconView.contentTintColor = .systemYellow
+        iconView.imageScaling = .scaleProportionallyUpOrDown
         iconView.translatesAutoresizingMaskIntoConstraints = false
+        iconView.wantsLayer = true
+        iconView.layer?.cornerRadius = 6
+        iconView.layer?.masksToBounds = true
         addSubview(iconView)
 
         headerLabel.font = .systemFont(ofSize: 10, weight: .semibold)
@@ -66,11 +72,17 @@ final class OEAchievementBannerView: NSView {
         headerLabel.translatesAutoresizingMaskIntoConstraints = false
         addSubview(headerLabel)
 
-        titleLabel.font = .systemFont(ofSize: 13, weight: .bold)
+        titleLabel.font = .systemFont(ofSize: 14, weight: .bold)
         titleLabel.textColor = .white
         titleLabel.lineBreakMode = .byTruncatingTail
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
         addSubview(titleLabel)
+
+        descriptionLabel.font = .systemFont(ofSize: 11, weight: .regular)
+        descriptionLabel.textColor = NSColor(white: 0.82, alpha: 1)
+        descriptionLabel.lineBreakMode = .byTruncatingTail
+        descriptionLabel.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(descriptionLabel)
 
         ptsLabel.font = .monospacedDigitSystemFont(ofSize: 11, weight: .regular)
         ptsLabel.textColor = NSColor(white: 0.75, alpha: 1)
@@ -81,8 +93,8 @@ final class OEAchievementBannerView: NSView {
         NSLayoutConstraint.activate([
             iconView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 14),
             iconView.centerYAnchor.constraint(equalTo: centerYAnchor),
-            iconView.widthAnchor.constraint(equalToConstant: 30),
-            iconView.heightAnchor.constraint(equalToConstant: 30),
+            iconView.widthAnchor.constraint(equalToConstant: 52),
+            iconView.heightAnchor.constraint(equalToConstant: 52),
 
             ptsLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -14),
             ptsLabel.centerYAnchor.constraint(equalTo: centerYAnchor),
@@ -95,12 +107,29 @@ final class OEAchievementBannerView: NSView {
             titleLabel.leadingAnchor.constraint(equalTo: headerLabel.leadingAnchor),
             titleLabel.trailingAnchor.constraint(lessThanOrEqualTo: ptsLabel.leadingAnchor, constant: -8),
             titleLabel.topAnchor.constraint(equalTo: headerLabel.bottomAnchor, constant: 3),
+
+            descriptionLabel.leadingAnchor.constraint(equalTo: headerLabel.leadingAnchor),
+            descriptionLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -14),
+            descriptionLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 3),
         ])
     }
 
-    func show(title: String, points: UInt32) {
+    func show(title: String, description: String, badgeURL: String, points: UInt32) {
         titleLabel.stringValue = title
+        descriptionLabel.stringValue = description
         ptsLabel.stringValue   = points > 0 ? "+\(points) pts" : ""
+
+        imageTask?.cancel()
+        let iconConfig = NSImage.SymbolConfiguration(pointSize: 26, weight: .semibold)
+        iconView.image = NSImage(systemSymbolName: "trophy.fill", accessibilityDescription: nil)?
+            .withSymbolConfiguration(iconConfig)
+        if let url = URL(string: badgeURL), !badgeURL.isEmpty {
+            imageTask = URLSession.shared.dataTask(with: url) { [weak self] data, _, _ in
+                guard let data, let image = NSImage(data: data) else { return }
+                DispatchQueue.main.async { self?.iconView.image = image }
+            }
+            imageTask?.resume()
+        }
 
         hideWorkItem?.cancel()
 
@@ -119,6 +148,180 @@ final class OEAchievementBannerView: NSView {
         }
         hideWorkItem = item
         DispatchQueue.main.asyncAfter(deadline: .now() + 4.5, execute: item)
+    }
+}
+
+// MARK: - RetroAchievements Event Views
+
+final class OERetroAchievementsEventToastView: NSVisualEffectView {
+    private let titleLabel = NSTextField(labelWithString: "")
+    private let subtitleLabel = NSTextField(labelWithString: "")
+    private let imageView = NSImageView()
+    private var hideWorkItem: DispatchWorkItem?
+    private var imageTask: URLSessionDataTask?
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        material = .hudWindow
+        blendingMode = .withinWindow
+        state = .active
+        wantsLayer = true
+        layer?.cornerRadius = 10
+        layer?.masksToBounds = true
+        alphaValue = 0
+        isHidden = true
+
+        imageView.imageScaling = .scaleProportionallyUpOrDown
+        imageView.translatesAutoresizingMaskIntoConstraints = false
+        imageView.wantsLayer = true
+        imageView.layer?.cornerRadius = 5
+        imageView.layer?.masksToBounds = true
+        addSubview(imageView)
+
+        titleLabel.font = .systemFont(ofSize: 13, weight: .semibold)
+        titleLabel.textColor = .labelColor
+        titleLabel.lineBreakMode = .byTruncatingTail
+        titleLabel.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(titleLabel)
+
+        subtitleLabel.font = .systemFont(ofSize: 11, weight: .regular)
+        subtitleLabel.textColor = .secondaryLabelColor
+        subtitleLabel.lineBreakMode = .byTruncatingTail
+        subtitleLabel.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(subtitleLabel)
+
+        NSLayoutConstraint.activate([
+            imageView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 10),
+            imageView.centerYAnchor.constraint(equalTo: centerYAnchor),
+            imageView.widthAnchor.constraint(equalToConstant: 38),
+            imageView.heightAnchor.constraint(equalToConstant: 38),
+
+            titleLabel.leadingAnchor.constraint(equalTo: imageView.trailingAnchor, constant: 10),
+            titleLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -12),
+            titleLabel.topAnchor.constraint(equalTo: topAnchor, constant: 10),
+
+            subtitleLabel.leadingAnchor.constraint(equalTo: titleLabel.leadingAnchor),
+            subtitleLabel.trailingAnchor.constraint(equalTo: titleLabel.trailingAnchor),
+            subtitleLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 3),
+            subtitleLabel.bottomAnchor.constraint(lessThanOrEqualTo: bottomAnchor, constant: -10),
+        ])
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    func show(title: String, subtitle: String, badgeURL: String? = nil, symbolName: String = "trophy.fill") {
+        titleLabel.stringValue = title
+        subtitleLabel.stringValue = subtitle
+        hideWorkItem?.cancel()
+        imageTask?.cancel()
+        isHidden = false
+
+        let config = NSImage.SymbolConfiguration(pointSize: 24, weight: .semibold)
+        imageView.image = NSImage(systemSymbolName: symbolName, accessibilityDescription: nil)?.withSymbolConfiguration(config)
+        imageView.contentTintColor = .systemYellow
+        if let badgeURL, let url = URL(string: badgeURL), !badgeURL.isEmpty {
+            imageTask = URLSession.shared.dataTask(with: url) { [weak self] data, _, _ in
+                guard let data, let image = NSImage(data: data) else { return }
+                DispatchQueue.main.async { self?.imageView.image = image }
+            }
+            imageTask?.resume()
+        }
+
+        NSAnimationContext.runAnimationGroup { ctx in
+            ctx.duration = 0.2
+            ctx.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            animator().alphaValue = 1
+        }
+        let item = DispatchWorkItem { [weak self] in
+            NSAnimationContext.runAnimationGroup { ctx in
+                ctx.duration = 0.35
+                ctx.timingFunction = CAMediaTimingFunction(name: .easeIn)
+                self?.animator().alphaValue = 0
+            } completionHandler: { self?.isHidden = true }
+        }
+        hideWorkItem = item
+        DispatchQueue.main.asyncAfter(deadline: .now() + 4.0, execute: item)
+    }
+}
+
+final class OERetroAchievementsIndicatorStackView: NSStackView {
+    private var challengeViews: [UInt32: NSTextField] = [:]
+    private var leaderboardViews: [UInt32: NSTextField] = [:]
+    private let progressLabel = NSTextField(labelWithString: "")
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        orientation = .vertical
+        alignment = .trailing
+        spacing = 6
+        isHidden = true
+        progressLabel.isHidden = true
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    func showChallenge(id: UInt32, title: String) {
+        let label = challengeViews[id] ?? makeChip(color: .systemOrange)
+        label.stringValue = "Challenge: \(title)"
+        if challengeViews[id] == nil {
+            challengeViews[id] = label
+            addArrangedSubview(label)
+        }
+        updateVisibility()
+    }
+
+    func hideChallenge(id: UInt32) {
+        guard let label = challengeViews.removeValue(forKey: id) else { return }
+        removeArrangedSubview(label)
+        label.removeFromSuperview()
+        updateVisibility()
+    }
+
+    func showLeaderboard(id: UInt32, display: String) {
+        let label = leaderboardViews[id] ?? makeChip(color: .systemBlue)
+        label.stringValue = "Leaderboard: \(display)"
+        if leaderboardViews[id] == nil {
+            leaderboardViews[id] = label
+            addArrangedSubview(label)
+        }
+        updateVisibility()
+    }
+
+    func hideLeaderboard(id: UInt32) {
+        guard let label = leaderboardViews.removeValue(forKey: id) else { return }
+        removeArrangedSubview(label)
+        label.removeFromSuperview()
+        updateVisibility()
+    }
+
+    func showProgress(title: String, progress: String) {
+        if progressLabel.superview == nil { addArrangedSubview(progressLabel) }
+        progressLabel.stringValue = progress.isEmpty ? title : "\(title): \(progress)"
+        progressLabel.isHidden = false
+        updateVisibility()
+    }
+
+    func hideProgress() {
+        progressLabel.isHidden = true
+        updateVisibility()
+    }
+
+    private func makeChip(color: NSColor) -> NSTextField {
+        let label = NSTextField(labelWithString: "")
+        label.font = .monospacedDigitSystemFont(ofSize: 12, weight: .semibold)
+        label.textColor = .white
+        label.wantsLayer = true
+        label.layer?.backgroundColor = color.withAlphaComponent(0.82).cgColor
+        label.layer?.cornerRadius = 8
+        label.lineBreakMode = .byTruncatingTail
+        label.maximumNumberOfLines = 1
+        label.translatesAutoresizingMaskIntoConstraints = false
+        label.widthAnchor.constraint(lessThanOrEqualToConstant: 320).isActive = true
+        return label
+    }
+
+    private func updateVisibility() {
+        isHidden = challengeViews.isEmpty && leaderboardViews.isEmpty && progressLabel.isHidden
     }
 }
 

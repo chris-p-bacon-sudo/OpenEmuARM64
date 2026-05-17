@@ -126,6 +126,11 @@ internal import os.log
                                   for: #selector(OEGameCoreOwner.retroAchievementsSessionUpdated(_:)),
                                   argumentIndex: 0,
                                   ofReply: false)
+        // swiftlint:disable:next force_cast
+        ownerInterface.setClasses(propertyListClasses as! Set<AnyHashable>,
+                                  for: #selector(OEGameCoreOwner.retroAchievementsEvent(_:)),
+                                  argumentIndex: 0,
+                                  ofReply: false)
         newConnection.remoteObjectInterface = ownerInterface
         newConnection.invalidationHandler = {
             os_log(.debug, log: .helper, "Connection was invalidated; exiting.")
