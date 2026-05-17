@@ -42,7 +42,7 @@ This avoids disabling save states, rewind, cheats, or speed controls for non-RA 
 | Cheats | Pass | Saved cheat autoload is skipped in hardcore, document-level cheat actions return early, and helper-side `setCheat` rejects calls in hardcore. |
 | Mode switch: softcore → hardcore | Pass | Mid-session switch to enforced hardcore prompts for a full game reset before enabling the helper/core hardcore flag. |
 | Mode switch: hardcore → softcore | Pass | Disabling hardcore pushes softcore mode without requiring reset. |
-| User-Agent | Pass for native RA path | Native RA HTTP requests are centralized through `oeRetroAchievementsServerCall`, which sends `OpenEmu/<app-version> (macOS <os-version>) <rcheevos-clause>`. |
+| User-Agent | Pass for native RA path | Native RA HTTP requests are centralized through `oeRetroAchievementsServerCall`, which sends `OpenEmu-Silicon/<app-version> (macOS <os-version>) <rcheevos-clause>`. RA still reports this as an unknown emulator until OpenEmu-Silicon receives RA-side recognition/approval. |
 
 ## User-Agent disclosure
 
@@ -55,10 +55,10 @@ rc_client_create(<core>_rc_read_memory, oeRetroAchievementsServerCall)
 The shared transport builds the HTTP `User-Agent` as:
 
 ```text
-OpenEmu/<host-version> (macOS <os-version>) <rcheevos user-agent clause>
+OpenEmu-Silicon/<host-version> (macOS <os-version>) <rcheevos user-agent clause>
 ```
 
-No current native RA core overrides this with a core-specific or upstream-emulator identity.
+No current native RA core overrides this with a core-specific or upstream-emulator identity. During manual testing, RetroAchievements still displayed an "unknown emulator" warning for OpenEmu-Silicon, so hardcore credit depends on RA-side client recognition/approval.
 
 ## Known non-P0 follow-ups
 
