@@ -278,6 +278,50 @@
                    @"setHardcoreEnabled: must clear pending frame-step immediately.");
 }
 
+- (void)testEnablingHardcoreClearsActiveFastForwardRate
+{
+    OEGameCore *core = [[OEGameCore alloc] init];
+    core.hardcoreEnabled = NO;
+    [core fastForwardAtSpeed:4.0f];
+    XCTAssertEqualWithAccuracy(core.rate, 4.0f, 0.0001f,
+                               @"precondition: fast-forward rate must be active before hardcore is enabled.");
+
+    core.hardcoreEnabled = YES;
+
+    XCTAssertEqualWithAccuracy(core.rate, 1.0f, 0.0001f,
+                               @"setHardcoreEnabled: must return active fast-forward to normal speed immediately.");
+}
+
+- (void)testEnablingHardcoreClearsActiveSlowMotionRate
+{
+    OEGameCore *core = [[OEGameCore alloc] init];
+    core.hardcoreEnabled = NO;
+    [core slowMotionAtSpeed:0.5f];
+    XCTAssertEqualWithAccuracy(core.rate, 0.5f, 0.0001f,
+                               @"precondition: slow-motion rate must be active before hardcore is enabled.");
+
+    core.hardcoreEnabled = YES;
+
+    XCTAssertEqualWithAccuracy(core.rate, 1.0f, 0.0001f,
+                               @"setHardcoreEnabled: must return active slow motion to normal speed immediately.");
+}
+
+- (void)testEnablingHardcoreClearsPausedFastForwardResumeRate
+{
+    OEGameCore *core = [[OEGameCore alloc] init];
+    core.hardcoreEnabled = NO;
+    [core fastForwardAtSpeed:4.0f];
+    [core setPauseEmulation:YES];
+    XCTAssertTrue(core.isEmulationPaused,
+                  @"precondition: core must be paused before testing lastRate normalization.");
+
+    core.hardcoreEnabled = YES;
+    [core setPauseEmulation:NO];
+
+    XCTAssertEqualWithAccuracy(core.rate, 1.0f, 0.0001f,
+                               @"setHardcoreEnabled: must clear paused fast-forward resume rate before unpausing.");
+}
+
 - (void)testToggleReEnablesAffordances
 {
     // Hardcore on → block. Hardcore off → allow. Catches regressions where the

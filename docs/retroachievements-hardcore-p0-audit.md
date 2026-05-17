@@ -37,8 +37,8 @@ This avoids disabling save states, rewind, cheats, or speed controls for non-RA 
 | Helper load-state path | Pass | `OpenEmuHelperApp.loadStateFromFile(at:)` rejects load requests when helper-side `_hardcoreEnabled` is true. |
 | Rewind | Pass | Host, helper, and base `OEGameCore` paths block rewind while hardcore is active. Enabling hardcore also clears any already-active rewind flag. |
 | Frame advance | Pass | Host, helper, and base `OEGameCore` paths block frame advance while hardcore is active. Enabling hardcore also clears any pending frame-step flag. |
-| Fast-forward / analog speed | Pass | `OEGameCore.fastForward(_:)` and `fastForwardAtSpeed(_:)` return without changing rate when hardcore is active. |
-| Slow motion | Pass | `OEGameCore.slowMotionAtSpeed(_:)` returns without changing rate when hardcore is active. |
+| Fast-forward / analog speed | Pass | `OEGameCore.fastForward(_:)` and `fastForwardAtSpeed(_:)` return without changing rate when hardcore is active. Enabling hardcore also normalizes active and paused-resume fast-forward state back to 1x. |
+| Slow motion | Pass | `OEGameCore.slowMotionAtSpeed(_:)` returns without changing rate when hardcore is active. Enabling hardcore also normalizes active slow-motion state back to 1x. |
 | Cheats | Pass | Saved cheat autoload is skipped in hardcore, document-level cheat actions return early, and helper-side `setCheat` rejects calls in hardcore. |
 | Mode switch: softcore → hardcore | Pass | Mid-session switch to enforced hardcore prompts for a full game reset before enabling the helper/core hardcore flag. |
 | Mode switch: hardcore → softcore | Pass | Disabling hardcore pushes softcore mode without requiring reset. |

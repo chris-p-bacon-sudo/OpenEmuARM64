@@ -89,6 +89,10 @@ static Class GameCoreClass = Nil;
     if (hardcoreEnabled) {
         isRewinding = NO;
         singleFrameStep = NO;
+        lastRate = 1.0;
+        if (_rate != 0) {
+            self.rate = 1.0;
+        }
     }
 }
 
