@@ -46,6 +46,8 @@ Scope: native RetroAchievements cores only. Libretro/RetroArch cores are tracked
 
 Use real RA credentials and games known to have active achievements, rich presence, measured achievements, challenges, and leaderboards. Build and install the specific core before testing; OpenEmu loads installed core plugins from `~/Library/Application Support/OpenEmu/Cores/`.
 
+Record manual results in [`retroachievements-p1-evidence-log.md`](retroachievements-p1-evidence-log.md) so issue #438 can be updated with reviewer-ready evidence instead of scattered notes.
+
 ### Common setup
 
 ```bash
@@ -156,6 +158,8 @@ The upstream guide calls for `rc_client_begin_change_media()` when switching dis
 Current status: no native call found. This matters most for Mednafen PSX/PCE-CD/Saturn and any other multi-disc/disk native RA systems. Needs design before implementation because OpenEmu's disc-change pathways differ by core/system.
 
 ## Submission evidence to gather
+
+Record these results in [`retroachievements-p1-evidence-log.md`](retroachievements-p1-evidence-log.md).
 
 - Boot placard screenshot for recognized game.
 - Achievements window screenshot showing locked/unlocked achievements, points, badges, and progress where available.
