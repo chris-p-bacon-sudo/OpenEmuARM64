@@ -12,19 +12,19 @@ Scope: native RetroAchievements cores only. Libretro/RetroArch cores are tracked
 
 | Area | Status | Evidence |
 | --- | --- | --- |
-| Recognized-game boot placard | Pending fresh capture | Needs screenshot/video from current `main`. |
-| Achievements window | Implementation updated; live capture pending | List shows static measured progress and now reflects active challenge/progress event state; needs screenshot/video from current build. |
+| Recognized-game boot placard | Passed on Nestopia / Super Mario Bros. | Tester observed boot placard on game start in live RA session. Capture still useful for submission package. |
+| Achievements window | Passed basic list/set behavior on Nestopia / Super Mario Bros.; live challenge/progress row state still needs targeted capture | Achievements window showed Hardcore Mode, 4/775 points, unlocked state, percentage metadata, and set switching. |
 | Unrecognized/no-set feedback | Pending fresh capture | Needs screenshot from current `main`. |
-| Rich Presence works | Pending | Verify on RA profile/activity after 30s+ of play. |
-| Rich Presence remains active in hardcore | Static code audit complete; live RA verification pending | No OpenEmu setting/API usage was found that disables Rich Presence. Verify RA profile/activity continues updating in hardcore. |
-| Leaderboards work | Pending broader evidence | Prior Nestopia smoke test was noted in #438; capture fresh screenshot/video. |
-| Leaderboards cannot be disabled in hardcore | Static code audit complete; live RA verification pending | No OpenEmu setting/API usage was found that disables leaderboard functionality or spectator mode. Verify runtime events in hardcore. |
-| Offline unlock queue syncs after reconnect | Pending | Needs controlled offline/reconnect test. |
+| Rich Presence works | Passed on RA profile/activity for Nestopia / Super Mario Bros. | RA profile screenshot showed Super Mario Bros. as Most Recently Played with live text `Super Mario in 1-1, 🏃:3, 1st Quest`. |
+| Rich Presence remains active in hardcore | Passed for basic hardcore session visibility; longer pause/idle continuity still pending | Tester reported OpenEmu Achievements pane in Hardcore Mode while RA profile/activity showed the current SMB session. |
+| Leaderboards work | Passed on Nestopia / Super Mario Bros. | Tester observed leaderboard start, tracker activity, stop/result, and achievement unlock. |
+| Leaderboards cannot be disabled in hardcore | Passed on Nestopia / Super Mario Bros. | Leaderboard flow worked while the OpenEmu Achievements pane reported Hardcore Mode. |
+| Offline unlock queue syncs after reconnect | Inconclusive | Offline and reconnect UI fired, but RA-side queued unlock sync was not confirmed. |
 | Offline queue/cache is session-scoped/purged on close | Pending | Needs controlled close-while-offline test or RA maintainer confirmation. |
-| Server error/offline/reconnect UI | Pending fresh capture | UI implemented; capture runtime evidence. |
-| Pause/idle softcore behavior after #523 | Pending | Verify pause/resume still works. |
-| Pause/idle hardcore behavior after #523 | Pending | Verify `rc_client_can_pause()` behavior and denied-pause toast if reproducible. |
-| Pause for 60s+ keeps RA state healthy | Pending | Verify Rich Presence/activity remains healthy during pause. |
+| Server error/offline/reconnect UI | Passed for offline/reconnect toasts | Tester observed “RetroAchievements Offline. Some submissions are pending retry.” and “RetroAchievements Reconnected.” |
+| Pause/idle softcore behavior after #523 | Pending | Verify pause/resume still works in softcore. |
+| Pause/idle hardcore behavior after #523 | Passed denied-pause path | Tester observed pause blocked in Hardcore Mode. Allowed-pause path still needs confirmation if rcheevos allows it. |
+| Pause for 60s+ keeps RA state healthy | Pending | Verify Rich Presence/activity remains healthy during a 60s+ pause. |
 
 ---
 
@@ -39,11 +39,11 @@ Fill this in once per verification pass.
 | OpenEmu-Silicon commit | `9e701cd3` |
 | macOS version | macOS 26.4.1 (25E253) |
 | Mac model / chip | Apple M4 Max |
-| Build configuration | TBD |
-| RetroAchievements username | TBD |
-| Hardcore default setting | TBD |
-| Network manipulation method | TBD |
-| Evidence folder / links | TBD |
+| Build configuration | Debug host app; Release Nestopia core installed |
+| RetroAchievements username | nickybmon |
+| Hardcore default setting | Hardcore enabled for live Nestopia / Super Mario Bros. pass |
+| Network manipulation method | Wi-Fi disabled/re-enabled for offline/reconnect UI pass |
+| Evidence folder / links | Local CleanShot screenshot: `/Users/nickblackmon/Library/Application Support/CleanShot/media/media_3t5qIGd8AG/CleanShot 2026-05-17 at 20.11.24@2x.png` |
 
 Recommended commit command:
 
@@ -143,6 +143,23 @@ These checks do not replace live RA profile/gameplay verification, but they docu
 
 Use one entry per tested behavior. Keep raw notes factual: what was tested, what happened, and where the evidence lives.
 
+### 2026-05-17 — Nestopia — Super Mario Bros. — live P1 RA verification pass
+
+- **Commit:** `767e717f`
+- **Core / scheme:** Nestopia / `OpenEmu + Nestopia`
+- **Installed plugin verified:** Yes — `verify-core-installed.sh --release Nestopia` reported the installed Release plugin matched the latest build before testing.
+- **System:** NES/Famicom
+- **Game:** Super Mario Bros.
+- **Region / hash:** Not recorded during this pass.
+- **RA mode:** Hardcore Mode shown in the OpenEmu Achievements pane.
+- **RA username:** nickybmon
+- **Test steps:** launched SMB, played a live RA session, watched boot/session UI, challenge and leaderboard overlays, achievement unlocks, Achievements window, RA profile/activity page, hardcore pause behavior, and Wi-Fi offline/reconnect UI.
+- **Expected:** recognized-game placard appears; challenge/leaderboard/progress UI routes from rcheevos events; achievements window shows session data; RA profile/activity updates; hardcore pause preflight blocks when rcheevos denies pause; offline/reconnect toasts appear.
+- **Actual:** boot placard appeared; challenge triggered and later turned off after disqualification; leaderboard started, tracker activity appeared, leaderboard stopped with result, and achievements unlocked; Achievements window showed Hardcore Mode, 4/775 points, set switching, and achievement metadata; RA profile showed Super Mario Bros. as Most Recently Played with rich activity text `Super Mario in 1-1, 🏃:3, 1st Quest`; hardcore pause was blocked; Wi-Fi disconnect produced “RetroAchievements Offline. Some submissions are pending retry.” and reconnect produced “RetroAchievements Reconnected.”
+- **Result:** Pass for recognized placard, challenge indicator lifecycle, leaderboard start/tracker/result flow, achievement unlocks, Achievements window basic session data/set switching, Rich Presence/activity visibility, hardcore pause-denied behavior, and offline/reconnect UI. Inconclusive for actual offline queued unlock sync because the tester could not confirm whether a queued offline achievement reached RA after reconnect.
+- **Evidence:** Local CleanShot screenshot of RA profile/activity page: `/Users/nickblackmon/Library/Application Support/CleanShot/media/media_3t5qIGd8AG/CleanShot 2026-05-17 at 20.11.24@2x.png`. Screenshot showed `nickybmon`, Last Activity 1 second ago, Most Recently Played Super Mario Bros., and activity text `Super Mario in 1-1, 🏃:3, 1st Quest`.
+- **Follow-up:** Capture a portable screenshot/video bundle for submission; run a targeted offline queue test where an unlock is known to occur only while offline and then verify RA-side sync after reconnect; run 60s+ pause/idle continuity check.
+
 ### Entry template
 
 ```markdown
@@ -193,10 +210,10 @@ Use one entry per tested behavior. Keep raw notes factual: what was tested, what
 
 | Test | Status | Evidence | Notes |
 | --- | --- | --- | --- |
-| Launch known RA game and wait at least 30 seconds while playing | Pending | TBD | Verify on RA profile/activity. |
-| Continue playing for several minutes | Pending | TBD | Confirm periodic update continues. |
-| Hardcore mode enabled | Pending | TBD | No OpenEmu UI exists to disable Rich Presence; verify activity remains active. |
-| Pause emulation for >60 seconds | Pending | TBD | After #523, `rc_client_idle()` should keep routine communication alive. |
+| Launch known RA game and wait at least 30 seconds while playing | Pass | 2026-05-17 Nestopia / Super Mario Bros. entry | RA profile showed Super Mario Bros. as Most Recently Played with live activity text. |
+| Continue playing for several minutes | Partial pass | 2026-05-17 Nestopia / Super Mario Bros. entry | Activity was visible during the session; longer periodic-update capture still useful. |
+| Hardcore mode enabled | Pass | 2026-05-17 Nestopia / Super Mario Bros. entry | OpenEmu Achievements pane showed Hardcore Mode while RA profile/activity updated. |
+| Pause emulation for >60 seconds | Pending | TBD | After #523, `rc_client_idle()` should keep routine server communication alive. |
 
 ---
 
@@ -204,11 +221,11 @@ Use one entry per tested behavior. Keep raw notes factual: what was tested, what
 
 | Test | Status | Evidence | Notes |
 | --- | --- | --- | --- |
-| Start known leaderboard attempt | Pending | TBD | Started toast should appear. |
-| Continue attempt | Pending | TBD | Tracker chip should appear/update. |
-| Fail attempt | Pending | TBD | Tracker clears and failure toast appears. |
-| Submit attempt | Pending | TBD | Tracker clears and submit/result toast appears. |
-| Hardcore mode enabled | Pending | TBD | No OpenEmu UI exists to disable leaderboards; functionality should remain active. |
+| Start known leaderboard attempt | Pass | 2026-05-17 Nestopia / Super Mario Bros. entry | Tester observed leaderboard start. |
+| Continue attempt | Pass | 2026-05-17 Nestopia / Super Mario Bros. entry | Tester observed different tracker activity during play. |
+| Fail attempt | Pass | 2026-05-17 Nestopia / Super Mario Bros. entry | Challenge/leaderboard state cleared when disqualified/stopped. |
+| Submit attempt | Pass | 2026-05-17 Nestopia / Super Mario Bros. entry | Tester observed leaderboard stopped and gave a result. |
+| Hardcore mode enabled | Pass | 2026-05-17 Nestopia / Super Mario Bros. entry | Leaderboard flow worked while Achievements pane showed Hardcore Mode. |
 
 ---
 
@@ -216,7 +233,7 @@ Use one entry per tested behavior. Keep raw notes factual: what was tested, what
 
 | Test | Status | Evidence | Notes |
 | --- | --- | --- | --- |
-| Trigger challenge indicator | Pending | TBD | Prior Nestopia smoke test noted in #438; capture current evidence. Achievements window should mark the related achievement as challenge-active while active. |
+| Trigger challenge indicator | Pass | 2026-05-17 Nestopia / Super Mario Bros. entry | Tester observed challenge trigger and hide after disqualification. Achievements-window `Challenge Active` row state still needs targeted screenshot/video. |
 | Trigger measured achievement progress | Pending | TBD | Progress chip should show/update/hide with rcheevos text. Achievements window should show active measured progress for the related achievement while active. |
 | Complete/master game or subset | Pending | TBD | Completion/mastery toast should appear with correct softcore/hardcore wording. |
 
@@ -228,9 +245,9 @@ Use a fresh RA-supported game or a test account/game state where an early achiev
 
 | Test | Status | Evidence | Notes |
 | --- | --- | --- | --- |
-| Disconnect network during active RA session | Pending | TBD | Offline/disconnected toast should appear. |
-| Unlock achievement while offline | Pending | TBD | rcheevos should queue retryable unlock submission. |
-| Reconnect before closing game | Pending | TBD | Reconnected/sync toast appears and unlock reaches RA profile. |
+| Disconnect network during active RA session | Pass | 2026-05-17 Nestopia / Super Mario Bros. entry | Tester observed offline toast after Wi-Fi was disabled. |
+| Unlock achievement while offline | Inconclusive | 2026-05-17 Nestopia / Super Mario Bros. entry | Tester still saw the achievement listed, but could not confirm whether this represented queued offline unlock submission. |
+| Reconnect before closing game | UI pass; sync inconclusive | 2026-05-17 Nestopia / Super Mario Bros. entry | Reconnect toast appeared; RA-side queued unlock sync was not confirmed. |
 | Close game while offline after queued unlock | Pending | TBD | Need verify queue/cache behavior on session close. |
 | Force server error response | Pending | TBD | Server-error toast should show API/error context. |
 
@@ -247,8 +264,8 @@ Suggested network methods:
 | Test | Status | Evidence | Notes |
 | --- | --- | --- | --- |
 | Softcore pause/resume | Pending | TBD | Pause and resume should still work normally. |
-| Hardcore pause after normal gameplay | Pending | TBD | Pause should succeed when rcheevos allows it. |
-| Hardcore pause spam | Pending | TBD | Denied pause attempts should show “Pause Blocked in Hardcore” toast if rcheevos denies. |
+| Hardcore pause after normal gameplay | Partial pass | 2026-05-17 Nestopia / Super Mario Bros. entry | Tester saw rcheevos deny pause; allowed-pause path still needs a case where rcheevos permits pause. |
+| Hardcore pause spam | Pass | 2026-05-17 Nestopia / Super Mario Bros. entry | Tester observed pause blocked in Hardcore Mode. |
 | Pause for >60 seconds in RA session | Pending | TBD | Rich Presence/activity should remain healthy through `rc_client_idle()`. |
 
 ---
