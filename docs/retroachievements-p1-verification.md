@@ -27,7 +27,7 @@ Scope: native RetroAchievements cores only. Libretro/RetroArch cores are tracked
 | Login with token | Implemented; failure UI in PR #521 | Cores use `rc_client_begin_login_with_token()`. PR #521 surfaces login failure to the host UI. |
 | Start game session | Implemented; failure UI in PR #521 | Cores use `rc_client_begin_identify_and_load_game()`. PR #521 surfaces unrecognized/no-set hash failures. |
 | Game boot placard | Implemented | PR #514 added recognized-game boot placard with title, mode, achievement count, and point summary. PR #521 adds failure placards. |
-| Achievement list | Implemented; live-state verification needed | PR #514 added native Achievements window. Static measured progress is shown when present. Active challenge/progress state is now reflected in the window from gameplay events; needs live RA verification. |
+| Achievement list | Implemented; live-state verification needed | PR #514 added native Achievements window. Static measured progress is shown when present. Active challenge/progress state is reflected in the window from gameplay events, pinned under Active Now, and highlighted for visibility; needs final live RA verification after polish. |
 | `rc_client_do_frame()` | Implemented | All native RA cores call `rc_client_do_frame()` in their emulation frame loop. Needs representative runtime verification per core. |
 | Achievement unlock notification | Implemented | `RC_CLIENT_EVENT_ACHIEVEMENT_TRIGGERED` posts in-app unlock banner and macOS notification with unlock sound. |
 | Leaderboard events | Implemented; verification needed | PR #519 bridges start/fail/submit/scoreboard and tracker show/update/hide to native toasts/chips. Needs representative game verification. |
@@ -40,7 +40,7 @@ Scope: native RetroAchievements cores only. Libretro/RetroArch cores are tracked
 | Hardcore default / mode switching | Implemented | User-facing hardcore preference defaults on for signed-in RA users; softcore→hardcore reset path is implemented and documented in P0 audit. |
 | Disable hardcore when no RA processing required | Not implemented / product decision needed | Upstream recommends optionally disabling hardcore for games with no RA functionality via `rc_client_is_processing_required()`. OpenEmu currently scopes enforcement by core/system support and token, not by per-game processing state. |
 | Pause / idle | Implemented; verification needed | `rc_client_idle()` is called once per second while the helper is paused, and user-initiated hardcore pause attempts call `rc_client_can_pause()` before pausing. Needs manual verification with a real RA session. |
-| Server errors | Implemented; verification needed | PR #519 surfaces `RC_CLIENT_EVENT_SERVER_ERROR`, disconnected, and reconnected events. Transport marks transient network failures retryable. |
+| Server errors | Implemented; verification needed | PR #519 surfaces `RC_CLIENT_EVENT_SERVER_ERROR`, disconnected, and reconnected events. Disconnected sessions now also show a persistent `RA: Offline` chip until reconnect. Transport marks transient network failures retryable. |
 | Offline retry queue | Implementation delegated to `rc_client`; verification needed | Shared transport uses `RC_API_SERVER_RESPONSE_RETRYABLE_CLIENT_ERROR` for transient client/network failures, enabling rcheevos retry behavior. Must verify unlock queue/sync/purge behavior manually. |
 | Rich Presence | Expected via `rc_client_do_frame()`; verification needed | Upstream says `rc_client_do_frame()` sends rich presence updates after initial delay and periodically thereafter. No OpenEmu toggle exists to disable it. Must verify on RA profile/API. |
 
@@ -109,8 +109,8 @@ Upstream behavior: `rc_client_do_frame()` sends rich presence after the first up
 
 | Test | Expected result | Status |
 | --- | --- | --- |
-| Trigger challenge indicator | Challenge chip appears, then hides when condition fails/completes. Achievements window marks the related achievement as challenge-active while the event is active. | Nestopia/SMB smoke test confirmed show/hide once. Needs fresh evidence. |
-| Trigger measured achievement progress | Progress chip appears/updates/hides with rcheevos measured progress text. Achievements window shows the active measured progress for the related achievement while the event is active. | Not yet verified. |
+| Trigger challenge indicator | Challenge chip appears, then hides when condition fails/completes. Achievements window pins the related achievement under Active Now and marks it as challenge-active while the event is active. | Nestopia/SMB smoke test confirmed show/hide once. Needs fresh evidence after polish. |
+| Trigger measured achievement progress | Progress chip appears/updates/hides with rcheevos measured progress text. Achievements window pins the related achievement under Active Now and shows the active measured progress while the event is active. | Not yet verified after polish. |
 | Complete/master game or subset | Completion/mastery toast appears with correct softcore/hardcore verb. | Not yet verified. |
 
 ### Offline / reconnect / server errors
@@ -119,7 +119,7 @@ Upstream behavior: transient non-client-initiated request failures can be queued
 
 | Test | Expected result | Status |
 | --- | --- | --- |
-| Disconnect network during active RA session | Offline/disconnected toast appears. | UI implemented; not yet verified. |
+| Disconnect network during active RA session | Offline/disconnected toast appears and a persistent `RA: Offline` chip stays visible until reconnect. | Toast verified in Nestopia/SMB; persistent chip needs fresh evidence after polish. |
 | Unlock achievement while offline | rcheevos queues the unlock for retry rather than losing it. | Not yet verified. |
 | Reconnect network before closing game | Reconnected/sync toast appears and unlock appears on RA profile. | Not yet verified. |
 | Close game while offline after queued unlock | Queue/cache should be session-scoped and purged on close if required by RA compliance. Need confirm actual rcheevos behavior. | Not yet verified; potential reviewer question. |

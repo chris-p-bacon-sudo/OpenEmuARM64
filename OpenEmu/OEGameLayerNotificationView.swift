@@ -305,39 +305,62 @@ private final class OERetroAchievementsChipLabel: NSView {
 }
 
 final class OERetroAchievementsNoticeView: NSStackView {
-    private let noticeLabel = OERetroAchievementsChipLabel(labelWithString: "")
+    private let unknownEmulatorLabel = OERetroAchievementsChipLabel(labelWithString: "")
+    private let offlineLabel = OERetroAchievementsChipLabel(labelWithString: "")
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
         orientation = .horizontal
-        alignment = .leading
-        spacing = 0
+        alignment = .centerY
+        spacing = 6
         isHidden = true
-        configureChip(noticeLabel)
-        addArrangedSubview(noticeLabel)
+        configureChip(unknownEmulatorLabel, color: .systemYellow)
+        configureChip(offlineLabel, color: .systemRed)
+        unknownEmulatorLabel.isHidden = true
+        offlineLabel.isHidden = true
+        addArrangedSubview(unknownEmulatorLabel)
+        addArrangedSubview(offlineLabel)
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
     func showUnknownEmulatorWarning() {
-        noticeLabel.stringValue = NSLocalizedString("RA: Unknown emulator", comment: "RetroAchievements unknown emulator compact notice")
-        isHidden = false
+        unknownEmulatorLabel.stringValue = NSLocalizedString("RA: Unknown emulator", comment: "RetroAchievements unknown emulator compact notice")
+        unknownEmulatorLabel.isHidden = false
+        updateVisibility()
+    }
+
+    func showOfflineWarning() {
+        offlineLabel.stringValue = NSLocalizedString("RA: Offline", comment: "RetroAchievements offline compact notice")
+        offlineLabel.isHidden = false
+        updateVisibility()
+    }
+
+    func hideOfflineWarning() {
+        offlineLabel.isHidden = true
+        updateVisibility()
     }
 
     func clear() {
-        isHidden = true
+        unknownEmulatorLabel.isHidden = true
+        offlineLabel.isHidden = true
+        updateVisibility()
     }
 
-    private func configureChip(_ label: OERetroAchievementsChipLabel) {
+    private func configureChip(_ label: OERetroAchievementsChipLabel, color: NSColor) {
         label.font = .monospacedDigitSystemFont(ofSize: 12, weight: .semibold)
         label.textColor = .white
         label.wantsLayer = true
-        label.layer?.backgroundColor = NSColor.systemYellow.withAlphaComponent(0.82).cgColor
+        label.layer?.backgroundColor = color.withAlphaComponent(0.82).cgColor
         label.layer?.cornerRadius = 8
         label.lineBreakMode = .byTruncatingTail
         label.maximumNumberOfLines = 1
         label.translatesAutoresizingMaskIntoConstraints = false
         label.widthAnchor.constraint(lessThanOrEqualToConstant: 240).isActive = true
+    }
+
+    private func updateVisibility() {
+        isHidden = unknownEmulatorLabel.isHidden && offlineLabel.isHidden
     }
 }
 

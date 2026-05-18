@@ -2579,8 +2579,10 @@ extension OEGameDocument: OESystemBindingsObserver {
             let message = info[OERetroAchievementsEventErrorMessageKey] as? String ?? description
             gameViewController?.showRetroAchievementsEventToast(title: NSLocalizedString("RetroAchievements Error", comment: "RA server error"), subtitle: message, symbolName: "exclamationmark.triangle.fill")
         case "disconnected":
+            gameViewController?.showRetroAchievementsOfflineNotice()
             gameViewController?.showRetroAchievementsEventToast(title: NSLocalizedString("RetroAchievements Offline", comment: "RA disconnected"), subtitle: NSLocalizedString("Some submissions are pending retry.", comment: "RA disconnected subtitle"), symbolName: "wifi.slash")
         case "reconnected":
+            gameViewController?.hideRetroAchievementsOfflineNotice()
             gameViewController?.showRetroAchievementsEventToast(title: NSLocalizedString("RetroAchievements Reconnected", comment: "RA reconnected"), subtitle: NSLocalizedString("Pending submissions completed.", comment: "RA reconnected subtitle"), symbolName: "wifi")
         default:
             return

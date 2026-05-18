@@ -23,6 +23,7 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import Cocoa
+import Network
 import OpenEmuBase.OEGeometry
 import OpenEmuSystem
 import OpenEmuKit
@@ -53,6 +54,10 @@ final class GameViewController: NSViewController {
     private var retroAchievementsEventToastView: OERetroAchievementsEventToastView!
     private var retroAchievementsIndicatorStackView: OERetroAchievementsIndicatorStackView!
     private var retroAchievementsNoticeView: OERetroAchievementsNoticeView!
+    private let networkMonitor = NWPathMonitor()
+    private let networkMonitorQueue = DispatchQueue(label: "org.openemu.ra-network-monitor")
+    private var isNetworkOffline = false
+    private var isRetroAchievementsTransportOffline = false
 
     // Save Sync status badge
     private var syncStatusOverlay: OESyncStatusOverlayView!
@@ -149,7 +154,7 @@ final class GameViewController: NSViewController {
             retroAchievementsEventToastView.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -24),
 
             retroAchievementsIndicatorStackView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24),
-            retroAchievementsIndicatorStackView.topAnchor.constraint(equalTo: view.topAnchor, constant: 20),
+            retroAchievementsIndicatorStackView.topAnchor.constraint(equalTo: view.topAnchor, constant: 10),
 
             retroAchievementsNoticeView.leadingAnchor.constraint(equalTo: notificationView.trailingAnchor, constant: 10),
             retroAchievementsNoticeView.centerYAnchor.constraint(equalTo: notificationView.centerYAnchor),
@@ -159,6 +164,15 @@ final class GameViewController: NSViewController {
             guard let self = self, let obj = notification.object as? OESaveSyncManager else { return }
             self.syncStatusOverlay.show(status: obj.syncStatus, message: obj.syncStatusMessage)
         }
+
+        networkMonitor.pathUpdateHandler = { [weak self] path in
+            DispatchQueue.main.async {
+                guard let self else { return }
+                self.isNetworkOffline = path.status != .satisfied
+                self.updateRetroAchievementsOfflineNotice()
+            }
+        }
+        networkMonitor.start(queue: networkMonitorQueue)
         
         token = NotificationCenter.default.addObserver(forName: NSView.frameDidChangeNotification, object: gameView, queue: .main) { [weak self] _ in
             guard let self = self else { return }
@@ -177,6 +191,8 @@ final class GameViewController: NSViewController {
             NotificationCenter.default.removeObserver(syncToken)
             self.syncStatusToken = nil
         }
+
+        networkMonitor.cancel()
 
         shaderWindowController.close()
         shaderWindowController = nil
@@ -428,13 +444,34 @@ extension GameViewController {
         retroAchievementsNoticeView.showUnknownEmulatorWarning()
     }
 
+    func showRetroAchievementsOfflineNotice() {
+        isRetroAchievementsTransportOffline = true
+        updateRetroAchievementsOfflineNotice()
+    }
+
+    func hideRetroAchievementsOfflineNotice() {
+        isRetroAchievementsTransportOffline = false
+        updateRetroAchievementsOfflineNotice()
+    }
+
+    private func updateRetroAchievementsOfflineNotice() {
+        let shouldShowOffline = isRetroAchievementsTransportOffline || (isNetworkOffline && document?.retroAchievementsSessionInfo != nil)
+        if shouldShowOffline {
+            retroAchievementsNoticeView.showOfflineWarning()
+        } else {
+            retroAchievementsNoticeView.hideOfflineWarning()
+        }
+    }
+
     func clearRetroAchievementsIndicators() {
         retroAchievementsIndicatorStackView.clear()
+        isRetroAchievementsTransportOffline = false
         retroAchievementsNoticeView.clear()
     }
 
     func showRetroAchievementsPlacard(info: [String: Any], hardcore: Bool, signedIn: Bool) {
         retroAchievementsPlacardView.show(info: info, hardcore: hardcore, signedIn: signedIn)
+        updateRetroAchievementsOfflineNotice()
     }
 }
 
@@ -706,10 +743,19 @@ final class RetroAchievementsGameViewController: NSViewController {
         let setAchievements = achievements.filter {
             (($0[OERetroAchievementsSetIDKey] as? NSNumber)?.intValue ?? -1) == selectedID
         }
-        let bucketGroups = Dictionary(grouping: setAchievements) { achievement in
+        let activeAchievements = setAchievements.filter(isActiveAchievement)
+        if !activeAchievements.isEmpty {
+            contentStack.addArrangedSubview(makeBucketLabel(NSLocalizedString("Active Now", comment: "RetroAchievements active achievements section title")))
+            for achievement in activeAchievements {
+                contentStack.addArrangedSubview(makeAchievementRow(achievement))
+            }
+        }
+
+        let inactiveAchievements = setAchievements.filter { !isActiveAchievement($0) }
+        let bucketGroups = Dictionary(grouping: inactiveAchievements) { achievement in
             achievement[OERetroAchievementsBucketTitleKey] as? String ?? NSLocalizedString("Achievements", comment: "RetroAchievements default bucket")
         }
-        let bucketOrder = setAchievements.compactMap { $0[OERetroAchievementsBucketTitleKey] as? String }.uniqued()
+        let bucketOrder = inactiveAchievements.compactMap { $0[OERetroAchievementsBucketTitleKey] as? String }.uniqued()
         for bucket in bucketOrder {
             contentStack.addArrangedSubview(makeBucketLabel(bucket))
             for achievement in bucketGroups[bucket] ?? [] {
@@ -842,6 +888,7 @@ final class RetroAchievementsGameViewController: NSViewController {
     }
 
     private func makeAchievementRow(_ info: [String: Any]) -> NSView {
+        let isActive = isActiveAchievement(info)
         let row = NSStackView()
         row.orientation = .horizontal
         row.alignment = .top
@@ -869,6 +916,7 @@ final class RetroAchievementsGameViewController: NSViewController {
         let title = info[OEAchievementTitleKey] as? String ?? NSLocalizedString("Untitled Achievement", comment: "RetroAchievements missing title")
         let titleLabel = NSTextField(labelWithString: title)
         titleLabel.font = .systemFont(ofSize: 15, weight: .semibold)
+        if isActive { titleLabel.textColor = .systemOrange }
         textStack.addArrangedSubview(titleLabel)
 
         if let description = info[OEAchievementDescriptionKey] as? String, !description.isEmpty {
@@ -891,9 +939,15 @@ final class RetroAchievementsGameViewController: NSViewController {
         if let rarity = info[OERetroAchievementsRarityKey] as? NSNumber, rarity.floatValue > 0 {
             details.append(String(format: NSLocalizedString("%.1f%% unlocked", comment: "RetroAchievements rarity label"), rarity.floatValue))
         }
-        textStack.addArrangedSubview(makeBodyLabel(details.joined(separator: " · "), color: .tertiaryLabelColor))
+        textStack.addArrangedSubview(makeBodyLabel(details.joined(separator: " · "), color: isActive ? .labelColor : .tertiaryLabelColor))
 
         return row
+    }
+
+    private func isActiveAchievement(_ info: [String: Any]) -> Bool {
+        if (info[OERetroAchievementsActiveChallengeKey] as? Bool) == true { return true }
+        if let activeProgress = info[OERetroAchievementsActiveProgressKey] as? String, !activeProgress.isEmpty { return true }
+        return false
     }
 
     private func achievementTypeLabel(_ number: NSNumber?) -> String? {
