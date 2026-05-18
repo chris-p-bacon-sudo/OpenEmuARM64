@@ -171,6 +171,8 @@ Record these results in [`retroachievements-p1-evidence-log.md`](retroachievemen
 - Offline/reconnect test notes, including whether queued unlock synced or was purged on close.
 - User-Agent sample from transport logs or packet capture:
   - `OpenEmu-Silicon/<version> (macOS <version>) rcheevos/<version>`
+- Legal/privacy/submission notes from [`retroachievements-submission-evidence.md`](retroachievements-submission-evidence.md).
+- Core/license status from [`core-license-matrix.md`](core-license-matrix.md).
 - Explicit RA-side approval question: what client registration step is required so OpenEmu-Silicon is no longer treated as an unknown emulator for hardcore credit?
 
 ## Follow-up implementation candidates
