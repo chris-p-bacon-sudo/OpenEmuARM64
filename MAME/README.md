@@ -14,6 +14,8 @@ The MAME headless source is intentionally not committed here because it is very 
 
 That clones `stuartcarnie/mame` at the pinned commit in `deps-mame-revision.txt` into `MAME/deps/mame` and applies `patches/mame-headless-clang21-apple.patch`.
 
+The patch also backports MAME commit `b5fafba307ba7acc2aea90681c71a3d43aa9cac3`, which fixes a V60 float-to-integer conversion issue reported upstream as causing glitched Virtua Racing / Sega Model 1 graphics on aarch64.
+
 ## Build
 
 To reproduce the full local build:

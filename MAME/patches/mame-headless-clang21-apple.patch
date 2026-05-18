@@ -26,3 +26,24 @@ index d9a20ae1..0489e840 100644
  #  define OS_CODE  7
  #  ifndef Z_SOLO
  #    if defined(__MWERKS__) && __dest_os != __be_os && __dest_os != __win32_os
+
+diff --git a/src/devices/cpu/v60/op2.hxx b/src/devices/cpu/v60/op2.hxx
+index eee5d7f..5f83a3e 100644
+--- a/src/devices/cpu/v60/op2.hxx
++++ b/src/devices/cpu/v60/op2.hxx
+@@ -71,12 +71,11 @@ uint32_t v60_device::opCVTSW()
+ 
+ 	// Convert to uint32_t
+ 	val = u2f(m_op1);
+-	m_modwritevalw = (uint32_t)val;
++	m_modwritevalw = (uint32_t)(int64_t)val;
+ 
+-	_OV = 0;
+-	_CY =(val < 0.0f);
+ 	_S = ((m_modwritevalw & 0x80000000) != 0);
+-	_Z = (val == 0.0f);
++	_OV = (_S && val >= 0.0f) || (!_S && val <= -1.0f);
++	_Z = (m_modwritevalw == 0);
+ 
+ 	F2WriteSecondOperand(2);
+ 	F2END();
