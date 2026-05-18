@@ -6,7 +6,7 @@ Use this command when:
 - A bug fix has been merged to main that affects a specific core (plist data, game core code, BIOS registry)
 - You want to ship that fix to users without a full app release
 
-This command covers **in-repo built cores** (Flycast, Dolphin, 4DO, etc.) — cores whose source code lives in this repository and are built from Xcode. For buildbot-sourced core updates, see `docs/core-update-process.md` instead.
+This command covers **in-repo built cores** (Flycast, Dolphin, 4DO, etc.) — cores whose source code lives in this repository and are built from Xcode. The old buildbot-sourced process doc has been removed because it no longer reflects the current release path. If a future core update depends on an externally sourced binary, document that as a separate, explicit plan before shipping it.
 
 ---
 
