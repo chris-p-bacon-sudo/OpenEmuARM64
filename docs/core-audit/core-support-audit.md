@@ -112,8 +112,8 @@ OpenEmu org repos worth knowing about:
 | Repo | Why it matters |
 |---|---|
 | `OpenEmu/UME-Core` | Main historical lead for native Arcade/MAME support. |
-| `OpenEmu/VICE-Core` | Possible native C64 lead, but WIP/not-working status needs confirmation. |
-| `OpenEmu/VirtualC64-Core` | Possible C64 reference, not obviously release-ready. |
+| `OpenEmu/VICE-Core` | Best native C64 lead. Investigation in `docs/core-audit/vice-core-investigation.md` found the VICE 3.4 headless library builds on Apple Silicon, but the plugin project still needs porting. |
+| `OpenEmu/VirtualC64-Core` | Older WIP/not-working C64 reference; do not prioritize unless VICE-Core proves unusable. |
 | `OpenEmu/PCSX2-Core` / `OpenEmu/Play-Core` | PS2 research leads, not near-term release candidates. |
 | `OpenEmu/Reicast-Core` | Historical Dreamcast lead; Flycast is the better current path. |
 
@@ -164,7 +164,7 @@ Do next:
 4. Populate `Appcasts/desmume.xml` after a tested release zip exists.
 5. Update the Supported Systems wiki after release validation passes.
 
-### 3. Commodore 64: decide native vs RetroArch-only
+### 3. Commodore 64: port native VICE-Core if prioritized
 
 Why this matters:
 
@@ -172,13 +172,19 @@ Why this matters:
 - No native C64 core currently ships.
 - Historical leads exist, but none look obviously ready.
 
+Investigation result:
+
+- `OpenEmu/VICE-Core` is viable enough to continue as a native porting project.
+- The VICE 3.4 headless library built successfully on Apple Silicon with CMake.
+- The OpenEmu plugin project is still x86_64-only and uses stale framework/appcast settings.
+- Keyboard/modifier handling is unfinished and should be treated as a major runtime validation area.
+
 Do next:
 
-1. Investigate `https://github.com/OpenEmu/VICE-Core` as the primary native candidate.
-2. Determine how far along the wrapper is: project structure, buildability, OpenEmu SDK/API compatibility, input/keyboard model, and BIOS/runtime requirements.
+1. Open a focused implementation issue for porting native VICE-Core to Apple Silicon.
+2. Use `docs/core-audit/vice-core-investigation.md` as the handoff.
 3. Treat `VirtualC64-Core` as fallback/reference only because it is older and marked WIP/not working.
 4. Do not prioritize Frodo unless a concrete maintained OpenEmu repo/path is found.
-5. If VICE-Core is viable, open a focused native integration issue with build and runtime acceptance criteria.
 
 ### 4. PS2 and VMU: keep out of normal release planning
 
@@ -207,7 +213,7 @@ The audit found a few mismatches that should be fixed or intentionally documente
 
 1. **Arcade — finish native MAME/UME-Core integration and updater path** — #500
 2. **Nintendo DS — publish DeSmuME native core release metadata** — #541
-3. **Commodore 64 — investigate native VICE-Core integration** — #542
+3. **Commodore 64 — investigate native VICE-Core integration** — #542; follow-up port issue #546
 4. **Core metadata — reconcile `oecores.xml`, appcasts, and core plists** — #543
 5. **System plugins — classify UI-visible systems without native cores** — #544
 
