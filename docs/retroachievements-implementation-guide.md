@@ -11,8 +11,8 @@ Primary upstream references:
 - [RetroAchievements API docs](https://api-docs.retroachievements.org/) — public read API for profile/game/community data. Do not use the public API in place of `rc_client` for runtime login, game sessions, unlocks, leaderboards, or rich presence.
 
 Related repo-local docs:
-- `docs/retroachievements-hardcore-p0-audit.md` — native hardcore enforcement audit for #438.
-- `docs/retroachievements-p1-verification.md` — verification plan and submission-evidence checklist mapped to the upstream `rc_client` guide.
+- `docs/retroachievements-compliance-evidence.md` — canonical native #438 compliance evidence, verification results, submission notes, and follow-up tracking.
+- `docs/retroachievements-community-guide.md` — user/contributor testing and reporting guide.
 
 ---
 

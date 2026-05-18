@@ -2,7 +2,7 @@
 
 [RetroAchievements](https://retroachievements.org) is a community platform that adds an achievement system to classic games played through emulators. OpenEmu-Silicon integrates RA support through [rcheevos](https://github.com/RetroAchievements/rcheevos), the same client library used by RetroArch and other supported emulators.
 
-This guide is for **users and contributors** — people who want to earn achievements, test RA behavior, or report issues. If you're a developer looking to integrate rcheevos into a new core, see [retroachievements-implementation-guide.md](retroachievements-implementation-guide.md) instead.
+This guide is for **users and contributors** — people who want to earn achievements, test RA behavior, or report issues. If you're a developer looking to integrate rcheevos into a new core, see [retroachievements-implementation-guide.md](retroachievements-implementation-guide.md) instead. For native compliance evidence and #438 verification results, see [retroachievements-compliance-evidence.md](retroachievements-compliance-evidence.md).
 
 ---
 
