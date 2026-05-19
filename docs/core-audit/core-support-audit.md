@@ -19,10 +19,9 @@ OpenEmu-Silicon is **not missing many classic OpenEmu cores**. Most of the old O
 The important gaps are narrower:
 
 1. **Arcade / MAME** — user-provided Apple Silicon port exists and has been tested, but it still needs first-class repo/release integration.
-2. **Nintendo DS / DeSmuME** — migrated from the original OpenEmu/TASEmulators path and tested as working; remaining work is release polish/appcast/wiki state.
-3. **Commodore 64** — UI/system plugin exists, but this fork currently relies on RetroArch/VICE rather than a native core; `OpenEmu/VICE-Core` is the best native lead to investigate.
-4. **PlayStation 2 / VMU** — system plugins exist, but these should not be treated as near-term native-core work.
-5. **Metadata drift** — a few appcast / plist / `oecores.xml` mismatches should be cleaned up or intentionally documented.
+2. **Commodore 64** — UI/system plugin exists, but this fork currently relies on RetroArch/VICE rather than a native core; `OpenEmu/VICE-Core` is the best native lead to investigate.
+3. **PlayStation 2 / VMU** — system plugins exist, but these should not be treated as near-term native-core work.
+4. **Metadata drift** — a few appcast / plist / `oecores.xml` mismatches should be cleaned up or intentionally documented.
 
 ## The mental model
 
@@ -40,7 +39,7 @@ For example:
 
 | System | UI/system plugin? | Core source? | Released to users? | Meaning |
 |---|---:|---:|---:|---|
-| Nintendo DS | Yes | Yes, DeSmuME | Not yet | Tested as working; needs release/appcast/wiki finish. |
+| Nintendo DS | Yes | Yes, DeSmuME | Yes | Released through the native DeSmuME appcast/update path. |
 | Arcade | Yes | Yes, local MAME project from user-provided OpenEmu/UME-Core guidance | Not yet | Tested as working; needs repo/release integration and remaining fixes. |
 | Commodore 64 | Yes | Not yet | No | Currently external/RetroArch path only; investigate native `VICE-Core`. |
 | PlayStation 2 | Yes | No local release-ready core | No | Research/out-of-scope for now. |
@@ -71,6 +70,7 @@ These systems have local native core coverage and appcast/update metadata:
 | Neo Geo Pocket | Mednafen |
 | NES | Nestopia, FCEU |
 | Nintendo 64 | Mupen64Plus |
+| Nintendo DS | DeSmuME |
 | Odyssey² | O2EM |
 | PC Engine / PC Engine CD / PC-FX | Mednafen |
 | PlayStation / Saturn / Virtual Boy / WonderSwan | Mednafen |
@@ -85,7 +85,6 @@ These systems have local native core coverage and appcast/update metadata:
 
 | System | Core | State |
 |---|---|---|
-| Nintendo DS | DeSmuME | Source and workspace reference exist. The migrated core has been tested as working. `Appcasts/desmume.xml` exists but has no release item, so remaining work is release/appcast/wiki polish. |
 | Arcade | MAME / UME-Core lineage | User-provided Apple Silicon port has been tested as working. Local `MAME/MAME.xcodeproj` exists, but it is not wired into `OpenEmu-metal.xcworkspace`, `oecores.xml`, or `Appcasts/`. Remaining work is first-class integration, updater support, and known graphics fixes. |
 
 ### UI-visible but no native shipped core
@@ -103,7 +102,7 @@ Most old OpenEmu submodule cores are already present locally:
 | Upstream core family | Local state |
 |---|---|
 | 4DO, Atari800, Bliss, blueMSX, BSNES, CrabEmu, FCEU, Gambatte, GenesisPlus, JollyCV, Mednafen, mGBA, Mupen64Plus, Nestopia, O2EM, Picodrive, PokeMini, Potator, ProSystem, SNES9x, Stella, VecXGL, VirtualJaguar | Present |
-| DeSmuME | Present but in progress |
+| DeSmuME | Present and released |
 | Reicast | Not carried forward; superseded by Flycast |
 | Frodo-Core / VirtualC64-Core | Stale/local-historical references only; not recommended as the first C64 path. `OpenEmu/VICE-Core` is the better native candidate to investigate. |
 
@@ -146,23 +145,17 @@ Do next:
 4. Add `Appcasts/mame.xml` and an `oecores.xml` entry only after there is a tested distributable plugin.
 5. Validate real Arcade ROM loading, controls, save states, polygon rendering, and rotated/TATE games.
 
-### 2. Nintendo DS / DeSmuME: finish release path
+### 2. Nintendo DS / DeSmuME: released
 
-Why this matters:
+Current state:
 
-- DeSmuME has already been migrated from the original OpenEmu/TASEmulators path.
+- DeSmuME has been migrated from the original OpenEmu/TASEmulators path.
 - NDS system plugin exists.
-- The migrated core has been tested as working.
-- `oecores.xml` already lists DeSmuME.
-- Appcast exists but is intentionally empty until a release is ready.
+- `oecores.xml` lists DeSmuME.
+- `Appcasts/desmume.xml` now points at a signed DeSmuME 0.9.14 release asset.
+- Release verification passed with `./Scripts/verify.sh --core DeSmuME --release`.
 
-Do next:
-
-1. Re-run the repo's current build/install verification so the release has fresh evidence.
-2. Run `./Scripts/verify-core-installed.sh DeSmuME` before claiming release readiness.
-3. Capture basic runtime checks: ROM boot, video, audio, input, save state, and dual-screen behavior.
-4. Populate `Appcasts/desmume.xml` after a tested release zip exists.
-5. Update the Supported Systems wiki after release validation passes.
+Remaining validation before broadly advertising the core should focus on runtime coverage: ROM boot, video, audio, input, save state save/load, and dual-screen display.
 
 ### 3. Commodore 64: port native VICE-Core if prioritized
 
@@ -212,10 +205,9 @@ The audit found a few mismatches that should be fixed or intentionally documente
 ## Suggested issues
 
 1. **Arcade — finish native MAME/UME-Core integration and updater path** — #500
-2. **Nintendo DS — publish DeSmuME native core release metadata** — #541
-3. **Commodore 64 — investigate native VICE-Core integration** — #542; follow-up port issue #546
-4. **Core metadata — reconcile `oecores.xml`, appcasts, and core plists** — #543
-5. **System plugins — classify UI-visible systems without native cores** — #544
+2. **Commodore 64 — investigate native VICE-Core integration** — #542; follow-up port issue #546
+3. **Core metadata — reconcile `oecores.xml`, appcasts, and core plists** — #543
+4. **System plugins — classify UI-visible systems without native cores** — #544
 
 ## Bottom line
 
@@ -223,8 +215,7 @@ The project does **not** need a broad “port every old OpenEmu core” effort. 
 
 The real plan should be:
 
-1. Finish DeSmuME's release/appcast/wiki path now that the migrated core has been tested.
-2. Finish MAME's first-class integration/updater path from the tested user-provided port.
-3. Investigate native C64 through `OpenEmu/VICE-Core` first.
-4. Keep PS2/VMU out of near-term scope unless deliberately prioritized.
-5. Clean up metadata drift so the UI, source tree, updater, and wiki tell the same story.
+1. Finish MAME's first-class integration/updater path from the tested user-provided port.
+2. Investigate native C64 through `OpenEmu/VICE-Core` first.
+3. Keep PS2/VMU out of near-term scope unless deliberately prioritized.
+4. Clean up metadata drift so the UI, source tree, updater, and wiki tell the same story.

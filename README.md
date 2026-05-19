@@ -87,7 +87,7 @@ If you've seen "Update Available" loop without anything changing, or cores felt 
 
 > **Full details — working status, known issues, in-progress cores, and what's planned — are on the [Supported Systems](https://github.com/nickybmon/OpenEmu-Silicon/wiki/Supported-Systems) wiki page.**
 
-Quick summary: 30+ systems work today, including NES, SNES, Game Boy, GBA, N64, PlayStation, Dreamcast, and more. A handful have known issues (PSP, Saturn, Game Boy Color categorization). GameCube/Wii (Dolphin) and Nintendo DS (melonDS) are actively in progress. PS2 has no core yet.
+Quick summary: 30+ systems work today, including NES, SNES, Game Boy, GBA, N64, Nintendo DS, PlayStation, Dreamcast, GameCube/Wii, and more. A handful have known issues (PSP, Saturn, Game Boy Color categorization). PS2 has no core yet.
 
 ---
 
