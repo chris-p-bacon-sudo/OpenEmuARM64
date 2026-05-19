@@ -35,6 +35,8 @@
 #include "libcue.h"
 #include "cd.h"
 
+extern int HightResMode;
+
 #define TEMP_BUFFER_SIZE 5512
 #define ROM1_SIZE 1 * 1024 * 1024
 #define ROM2_SIZE 933636 //was 1 * 1024 * 1024,
@@ -472,6 +474,11 @@ static void writeSaveFile(const char* path)
     return OEIntSizeMake(videoWidth, videoHeight);
 }
 
+- (OEIntSize)aspectSize
+{
+    return OEIntSizeMake(4, 3);
+}
+
 - (GLenum)pixelFormat
 {
     return GL_BGRA;
@@ -691,9 +698,12 @@ char CalculateDeviceHighByte(int deviceNumber)
 
 - (void)initVideo
 {
-    //HightResMode = 1;
-    videoWidth = 320;
-    videoHeight = 240;
+    // Enable libfreedo's high-resolution path so 3D CEL output and the VDL
+    // frame extractor agree on a 640x480 canvas. Leaving this at 320x240
+    // clips/scales some 3D games into the upper-left quarter of the screen.
+    HightResMode = 1;
+    videoWidth = 640;
+    videoHeight = 480;
     frame = (VDLFrame*)malloc(sizeof(VDLFrame));
     memset(frame, 0, sizeof(VDLFrame));
 }
