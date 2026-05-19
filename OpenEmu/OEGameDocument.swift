@@ -454,7 +454,12 @@ final class OEGameDocument: NSDocument {
     }
     
     deinit {
-        if let url = romFileURL, url != rom.url {
+        // rom is a Core Data object — its context may already be torn down during quit.
+        // Guard against a faulted/invalidated object before accessing the URL.
+        if let url = romFileURL,
+           rom.managedObjectContext != nil,
+           !rom.isDeleted,
+           url != rom.url {
             try? FileManager.default.removeItem(at: url)
         }
     }
