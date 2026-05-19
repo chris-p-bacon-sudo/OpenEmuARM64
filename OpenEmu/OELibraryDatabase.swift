@@ -686,7 +686,11 @@ final class OELibraryDatabase: NSObject {
                     gameInfo.removeValue(forKey: "boxImageURL")
                     
                     let game = OEDBGame.object(with: objectID, in: context)
-                    game?.setValuesForKeys(gameInfo)
+                    if let game = game {
+                        let allowedAttributeKeys = Set(game.entity.attributesByName.keys)
+                        let safeGameInfo = gameInfo.filter { allowedAttributeKeys.contains($0.key) }
+                        game.setValuesForKeys(safeGameInfo)
+                    }
                     
                     if let imageDictionary = imageDictionary,
                        let game = game {

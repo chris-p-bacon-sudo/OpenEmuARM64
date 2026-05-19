@@ -46,8 +46,9 @@ class GameDocumentController: NSDocumentController {
     
     override func removeDocument(_ document: NSDocument) {
         
-        if let document = document as? OEGameDocument {
-            gameDocuments.remove(at: gameDocuments.firstIndex(of: document)!)
+        if let document = document as? OEGameDocument,
+           let index = gameDocuments.firstIndex(of: document) {
+            gameDocuments.remove(at: index)
         }
         
         super.removeDocument(document)
