@@ -234,7 +234,7 @@ BOOL driverIsNotWorking(GameDriverOptions o)
     opts.unevenStretch = NO;
     opts.keepAspect = YES;
     
-    _osd.verboseOutput = NO; // TODO: debug only; remove later
+    _osd.verboseOutput = NO;
 
     NSString *rom = [[path lastPathComponent] stringByDeletingPathExtension];
     os_log_info(OE_CORE_LOG, "loading MAME driver %{public}@ from %{public}@", rom, romDir);
@@ -404,8 +404,8 @@ BOOL driverIsNotWorking(GameDriverOptions o)
 
 - (void)stopEmulation
 {
-    [_osd unload];
     _osd.delegate = nil;
+    [_osd unload];
     [super stopEmulation];
 }
 
@@ -430,9 +430,16 @@ BOOL driverIsNotWorking(GameDriverOptions o)
 
 - (void)setState:(BOOL)pressed ofButton:(OEArcadeButton)button forPlayer:(NSUInteger)player
 {
-    _buttons[player-1][button] = pressed ? 1 : 0;
-    _axes[player-1][0] = _buttons[player-1][OEArcadeButtonLeft] ? InputAbsoluteMin : (_buttons[player-1][OEArcadeButtonRight] ? InputAbsoluteMax : 0);
-    _axes[player-1][1] = _buttons[player-1][OEArcadeButtonUp] ? InputAbsoluteMin : (_buttons[player-1][OEArcadeButtonDown] ? InputAbsoluteMax : 0);
+    if (player == 0 || player > 8 || button < 0 || button >= OEArcadeButtonCount)
+    {
+        os_log_error(OE_CORE_LOG, "ignoring invalid arcade input player %lu button %lu", (unsigned long)player, (unsigned long)button);
+        return;
+    }
+
+    NSUInteger playerIndex = player - 1;
+    _buttons[playerIndex][button] = pressed ? 1 : 0;
+    _axes[playerIndex][0] = _buttons[playerIndex][OEArcadeButtonLeft] ? InputAbsoluteMin : (_buttons[playerIndex][OEArcadeButtonRight] ? InputAbsoluteMax : 0);
+    _axes[playerIndex][1] = _buttons[playerIndex][OEArcadeButtonUp] ? InputAbsoluteMin : (_buttons[playerIndex][OEArcadeButtonDown] ? InputAbsoluteMax : 0);
 }
 
 - (oneway void)didPushArcadeButton:(OEArcadeButton)button forPlayer:(NSUInteger)player
@@ -553,7 +560,7 @@ BOOL driverIsNotWorking(GameDriverOptions o)
     }
     
     MAMEAuditResult *other = (MAMEAuditResult *)object;
-    return self.identifier == other.identifier;
+    return [self.identifier isEqualToString:other.identifier];
 }
 
 - (NSComparisonResult)compare:(MAMEAuditResult *)other

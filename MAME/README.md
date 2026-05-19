@@ -24,6 +24,8 @@ To reproduce the full local build:
 ./Scripts/build-mame-core.sh
 ```
 
+The script automatically mirrors the checkout to a temporary no-space path when the repository path contains whitespace, because MAME's project generator cannot reliably build from paths such as `Open Emu`.
+
 The script does the following:
 
 1. Prepares `MAME/deps/mame` if needed.

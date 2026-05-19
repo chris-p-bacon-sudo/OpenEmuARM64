@@ -8,6 +8,42 @@ REPO_ROOT="$(dirname "$SCRIPT_DIR")"
 MAME_DIR="$REPO_ROOT/MAME"
 DD="$MAME_DIR/build/XcodeDerived"
 
+# MAME's project generator mishandles absolute paths containing spaces. The
+# repository often lives in "Open Emu", so transparently mirror the checkout to
+# a temporary no-space path, build there, then copy the derived products back so
+# install-core.sh and verify-core-installed.sh keep working from this checkout.
+if [[ -z "${MAME_BUILD_NO_REEXEC:-}" && "$REPO_ROOT" =~ [[:space:]] ]]; then
+  TMP_ROOT="$(mktemp -d /tmp/openemu-mame-build.XXXXXX)"
+  TMP_REPO="$TMP_ROOT/repo"
+  cleanup() {
+    rm -rf "$TMP_ROOT"
+  }
+  trap cleanup EXIT
+
+  echo "Repository path contains whitespace; building MAME from temporary path:"
+  echo "  $TMP_REPO"
+  mkdir -p "$TMP_REPO"
+  rsync -a --delete \
+    --exclude '.git' \
+    --exclude 'MAME/deps' \
+    --exclude 'MAME/build' \
+    "$REPO_ROOT/" "$TMP_REPO/"
+
+  MAME_BUILD_NO_REEXEC=1 "$TMP_REPO/Scripts/build-mame-core.sh"
+
+  rm -rf "$DD"
+  mkdir -p "$(dirname "$DD")" "$MAME_DIR/deps/mame"
+  rsync -a --delete "$TMP_REPO/MAME/build/XcodeDerived/" "$DD/"
+  cp -f "$TMP_REPO/MAME/deps/mame/mamearcade_headless.dylib" "$MAME_DIR/deps/mame/mamearcade_headless.dylib"
+
+  PLUGIN="$DD/Build/Products/Release/MAME.oecoreplugin"
+  echo ""
+  echo "Copied build products back to: $PLUGIN"
+  file "$PLUGIN/Contents/MacOS/MAME"
+  file "$PLUGIN/Contents/Frameworks/mamearcade_headless.dylib"
+  exit 0
+fi
+
 "$SCRIPT_DIR/prepare-mame-core.sh"
 
 cd "$MAME_DIR/deps/mame"
