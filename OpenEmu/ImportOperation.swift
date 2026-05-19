@@ -698,7 +698,17 @@ final class ImportOperation: Operation, NSCopying, @unchecked Sendable {
         do {
             let md5: String
             if let gdiHash = dreamcastGDIContentHash(at: url) {
-                md5 = gdiHash
+                // Pre-fix Dreamcast GDI imports were stored under the descriptor
+                // file's MD5. Keep that lookup path so existing libraries don't
+                // accept a one-time duplicate import after upgrading.
+                let descriptorHash = try FileManager.default.hashFile(at: url).lowercased()
+                if let context = importer.context,
+                   let existingROM = try? OEDBRom.rom(withMD5HashString: descriptorHash, in: context),
+                   existingROM != nil {
+                    md5 = descriptorHash
+                } else {
+                    md5 = gdiHash
+                }
             } else {
                 md5 = try FileManager.default.hashFile(at: url)
             }

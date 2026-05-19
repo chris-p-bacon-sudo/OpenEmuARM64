@@ -452,7 +452,7 @@ static OELibretroSystemPolicy OELibretroSystemPolicyForSystemID(NSString *system
     NSData *_romData;
     size_t _cachedMaxWidth;
     size_t _cachedMaxHeight;
-    unsigned _rotation;
+    _Atomic(unsigned) _rotation;
     
     // Input state: 4 ports × 16 buttons (RETRO_DEVICE_JOYPAD).
     // Atomic relaxed because writers (input thread) and readers (emu thread)
@@ -676,9 +676,7 @@ static bool libretro_environment_cb(unsigned cmd, void *data) {
         case RETRO_ENVIRONMENT_SET_ROTATION:
             if (data && _current) {
                 unsigned rotation = (*(const unsigned *)data) & 3;
-                os_unfair_lock_lock(&_current->_avInfoLock);
-                _current->_rotation = rotation;
-                os_unfair_lock_unlock(&_current->_avInfoLock);
+                atomic_store_explicit(&_current->_rotation, rotation, memory_order_release);
                 _current.didClearSaturnBuffer = NO;
                 _current.clearFramesRemaining = 3;
 #if DEBUG
@@ -1175,7 +1173,7 @@ static void libretro_video_refresh_cb(const void *data, unsigned width, unsigned
                 _current.clearFramesRemaining--;
             }
             
-            unsigned rotation = _current->_rotation & 3;
+            unsigned rotation = atomic_load_explicit(&_current->_rotation, memory_order_acquire) & 3;
             unsigned outputWidth = (rotation == 1 || rotation == 3) ? height : width;
             unsigned outputHeight = (rotation == 1 || rotation == 3) ? width : height;
 
@@ -1322,7 +1320,7 @@ static void* bridge_dlsym(void *handle, const char *symbol) {
         _bpp           = 4;
         _cachedMaxWidth = 0;
         _cachedMaxHeight = 0;
-        _rotation = 0;
+        atomic_store_explicit(&_rotation, 0, memory_order_relaxed);
         _isBufferSizeLocked = NO;
         _clearFramesRemaining = 20;
         _retroPixelFormat = RETRO_PIXEL_FORMAT_0RGB1555; // Libretro spec default
@@ -1606,8 +1604,8 @@ static void* bridge_dlsym(void *handle, const char *symbol) {
     os_unfair_lock_lock(&_avInfoLock);
     size_t width  = _avInfo.geometry.max_width  ?: 1024;
     size_t height = _avInfo.geometry.max_height ?: 1024;
-    unsigned rotation = _rotation & 3;
     os_unfair_lock_unlock(&_avInfoLock);
+    unsigned rotation = atomic_load_explicit(&_rotation, memory_order_acquire) & 3;
     // Final protection: OpenEmu needs non-zero dimensions
     if (width == 0)  width  = 1024;
     if (height == 0) height = 1024;
@@ -1623,8 +1621,8 @@ static void* bridge_dlsym(void *handle, const char *symbol) {
     os_unfair_lock_lock(&_avInfoLock);
     int width  = _avInfo.geometry.base_width;
     int height = _avInfo.geometry.base_height;
-    unsigned rotation = _rotation & 3;
     os_unfair_lock_unlock(&_avInfoLock);
+    unsigned rotation = atomic_load_explicit(&_rotation, memory_order_acquire) & 3;
     // Fallback to max dimensions if base is invalid
     if (width <= 0)  width  = 320;
     if (height <= 0) height = 240;
@@ -1650,8 +1648,8 @@ static void* bridge_dlsym(void *handle, const char *symbol) {
     float aspect = _avInfo.geometry.aspect_ratio;
     int baseW = (int)_avInfo.geometry.base_width;
     int baseH = (int)_avInfo.geometry.base_height;
-    unsigned rotation = _rotation & 3;
     os_unfair_lock_unlock(&_avInfoLock);
+    unsigned rotation = atomic_load_explicit(&_rotation, memory_order_acquire) & 3;
     if (!isfinite(aspect) || aspect <= 0.0f) {
         if (baseW > 0 && baseH > 0) {
             aspect = (float)baseW / (float)baseH;
@@ -1926,6 +1924,9 @@ static const uint8_t OEC64ButtonToLibretro[] = {
 
 #pragma mark - OEArcadeSystemResponderClient
 
+static const unsigned OERetroKeyTab = 9;
+static const unsigned OERetroKeyF2  = 283;
+
 // Standard 6-button arcade layout for FBA/MAME libretro cores.
 // Buttons 1-3 are the top row (jab/strong/fierce), 4-6 the bottom (short/forward/roundhouse).
 static const uint8_t OEArcadeButtonToLibretro[] = {
@@ -1946,6 +1947,15 @@ static const uint8_t OEArcadeButtonToLibretro[] = {
 };
 
 - (oneway void)didPushArcadeButton:(NSInteger)button forPlayer:(NSUInteger)player {
+    if (button == 13) { // OEArcadeUIConfigure — MAME menu (TAB)
+        if (_retroKeyboardEvent) _retroKeyboardEvent(true, OERetroKeyTab, 0, 0);
+        return;
+    }
+    if (button == 12) { // OEArcadeButtonService — MAME service mode (F2)
+        if (_retroKeyboardEvent) _retroKeyboardEvent(true, OERetroKeyF2, 0, 0);
+        return;
+    }
+
     NSUInteger port = player > 0 ? player - 1 : 0;
     if (port >= 4 || (NSUInteger)button >= sizeof(OEArcadeButtonToLibretro)) return;
     uint8_t btn = OEArcadeButtonToLibretro[button];
@@ -1954,6 +1964,15 @@ static const uint8_t OEArcadeButtonToLibretro[] = {
 }
 
 - (oneway void)didReleaseArcadeButton:(NSInteger)button forPlayer:(NSUInteger)player {
+    if (button == 13) { // OEArcadeUIConfigure — MAME menu (TAB)
+        if (_retroKeyboardEvent) _retroKeyboardEvent(false, OERetroKeyTab, 0, 0);
+        return;
+    }
+    if (button == 12) { // OEArcadeButtonService — MAME service mode (F2)
+        if (_retroKeyboardEvent) _retroKeyboardEvent(false, OERetroKeyF2, 0, 0);
+        return;
+    }
+
     NSUInteger port = player > 0 ? player - 1 : 0;
     if (port >= 4 || (NSUInteger)button >= sizeof(OEArcadeButtonToLibretro)) return;
     uint8_t btn = OEArcadeButtonToLibretro[button];
@@ -1970,6 +1989,7 @@ static unsigned OERetroKeyForMacVirtualKey(NSInteger keycode) {
         case 49:  return 32;   // Space
         case 51:  return 8;    // Delete / Backspace
         case 53:  return 27;   // Escape
+        case 120: return OERetroKeyF2;
         case 123: return 276;  // Left
         case 124: return 275;  // Right
         case 125: return 274;  // Down
@@ -2001,6 +2021,14 @@ static unsigned OERetroKeyForMacVirtualKey(NSInteger keycode) {
     if (_retroKeyboardEvent) {
         _retroKeyboardEvent(false, OERetroKeyForMacVirtualKey(keycode), 0, 0);
     }
+}
+
+- (oneway void)keyDown:(NSUInteger)keyCode {
+    [self didPressKey:(NSInteger)keyCode forPlayer:1];
+}
+
+- (oneway void)keyUp:(NSUInteger)keyCode {
+    [self didReleaseKey:(NSInteger)keyCode forPlayer:1];
 }
 
 #pragma mark - Speed Control

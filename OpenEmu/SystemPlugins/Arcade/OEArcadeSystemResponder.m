@@ -45,4 +45,22 @@
     [self.client didReleaseArcadeButton:(OEArcadeButton)aKey.key forPlayer:aKey.player];
 }
 
+- (void)HIDKeyDown:(OEHIDEvent *)theEvent
+{
+    [super HIDKeyDown:theEvent];
+
+    // Forward only MAME UI keys. Gameplay keys still flow through OpenEmu's
+    // normal control mapping above, avoiding duplicate keyboard+joypad input.
+    if((theEvent.keycode == 48 || theEvent.keycode == 120) && [self.client respondsToSelector:@selector(keyDown:)])
+        [self.client keyDown:theEvent.keycode];
+}
+
+- (void)HIDKeyUp:(OEHIDEvent *)theEvent
+{
+    [super HIDKeyUp:theEvent];
+
+    if((theEvent.keycode == 48 || theEvent.keycode == 120) && [self.client respondsToSelector:@selector(keyUp:)])
+        [self.client keyUp:theEvent.keycode];
+}
+
 @end

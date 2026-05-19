@@ -55,4 +55,8 @@ typedef enum _OEArcadeButton
 - (oneway void)didPushArcadeButton:(OEArcadeButton)button forPlayer:(NSUInteger)player;
 - (oneway void)didReleaseArcadeButton:(OEArcadeButton)button forPlayer:(NSUInteger)player;
 
+@optional
+- (oneway void)keyDown:(NSUInteger)keyCode;
+- (oneway void)keyUp:(NSUInteger)keyCode;
+
 @end
