@@ -2047,7 +2047,6 @@ final class OEGameDocument: NSDocument {
                 return
             }
             
-            state.save()
             let mainContext = state.managedObjectContext
             mainContext?.perform {
                 try? mainContext?.save()

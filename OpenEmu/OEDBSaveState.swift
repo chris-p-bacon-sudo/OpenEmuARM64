@@ -249,7 +249,6 @@ final class OEDBSaveState: OEDBItem {
             return nil
         }
         
-        saveState.save()
         return saveState
     }
     

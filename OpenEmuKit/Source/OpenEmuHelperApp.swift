@@ -93,6 +93,7 @@ extension OSLog {
     // RetroAchievements token received from the main app via XPC.
     // Stored here so the core can pick it up at load time and on mid-session token delivery.
     var _retroAchievementsToken: String?
+    var _retroAchievementsUsername: String?
 
     // RA hardcore mode flag received from the main app via XPC. Defaults to true
     // (RA's recommended default); cores read this at load time and on mid-session toggles.
@@ -319,6 +320,7 @@ extension OSLog {
                 gameCoreOwner.setDisplayModes(displayModes)
             }
             loadedRom = true
+            replayRetroAchievementsTokenIfAvailable()
         } catch {
             gameCore = nil
             
@@ -559,10 +561,9 @@ extension OSLog {
         }
     }
 
-    public func setRetroAchievementsToken(_ token: String?, username: String?) {
-        _retroAchievementsToken = token
+    private func postRetroAchievementsTokenDidChange() {
         var userInfo: [String: Any]? = nil
-        if let token = token, let username = username {
+        if let token = _retroAchievementsToken, let username = _retroAchievementsUsername {
             userInfo = [OERetroAchievementsTokenKey: token,
                         OERetroAchievementsUsernameKey: username]
         }
@@ -571,6 +572,17 @@ extension OSLog {
             object: nil,
             userInfo: userInfo
         )
+    }
+
+    private func replayRetroAchievementsTokenIfAvailable() {
+        guard _retroAchievementsToken != nil, _retroAchievementsUsername != nil else { return }
+        postRetroAchievementsTokenDidChange()
+    }
+
+    public func setRetroAchievementsToken(_ token: String?, username: String?) {
+        _retroAchievementsToken = token
+        _retroAchievementsUsername = username
+        postRetroAchievementsTokenDidChange()
     }
 
     public func setHardcoreEnabled(_ enabled: Bool) {

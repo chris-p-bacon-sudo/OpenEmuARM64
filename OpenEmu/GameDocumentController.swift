@@ -142,6 +142,7 @@ class GameDocumentController: NSDocumentController {
                 completionHandler?(document, nil)
                 NotificationCenter.default.post(name: .OEGameDocumentSetupDidFinish, object: nil)
             } else {
+                self.removeDocument(document)
                 completionHandler?(nil, error as NSError?)
             }
         }
