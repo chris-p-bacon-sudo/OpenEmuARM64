@@ -23,6 +23,7 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import Foundation
+import CryptoKit
 import OpenEmuKit
 import OpenEmuSystem
 import XADMaster
@@ -695,7 +696,22 @@ final class ImportOperation: Operation, NSCopying, @unchecked Sendable {
         let url = extractedFileURL ?? url
         
         do {
-            let md5 = try FileManager.default.hashFile(at: url)
+            let md5: String
+            if let gdiHash = dreamcastGDIContentHash(at: url) {
+                // Pre-fix Dreamcast GDI imports were stored under the descriptor
+                // file's MD5. Keep that lookup path so existing libraries don't
+                // accept a one-time duplicate import after upgrading.
+                let descriptorHash = try FileManager.default.hashFile(at: url).lowercased()
+                if let context = importer.context,
+                   let existingROM = try? OEDBRom.rom(withMD5HashString: descriptorHash, in: context),
+                   existingROM != nil {
+                    md5 = descriptorHash
+                } else {
+                    md5 = gdiHash
+                }
+            } else {
+                md5 = try FileManager.default.hashFile(at: url)
+            }
             
             md5Hash = md5.lowercased()
             
@@ -710,6 +726,24 @@ final class ImportOperation: Operation, NSCopying, @unchecked Sendable {
             let error = NSError(domain: OEImportErrorDomainFatal, code: OEImportErrorCode.noHash.rawValue)
             exit(with: .errorFatal, error: error)
         }
+    }
+
+    private func dreamcastGDIContentHash(at url: URL) -> String? {
+        guard url.pathExtension.caseInsensitiveCompare("gdi") == .orderedSame else { return nil }
+        guard let descriptor = try? OEDreamcastGDI(fileURL: url) else { return nil }
+
+        let trackURLs = descriptor.referencedBinaryFileURLs
+        guard !trackURLs.isEmpty else { return nil }
+
+        var manifest = "openemu-dreamcast-gdi-v1\n"
+        for trackURL in trackURLs {
+            guard let trackHash = try? FileManager.default.hashFile(at: trackURL) else { return nil }
+            let size = (try? trackURL.resourceValues(forKeys: Set<URLResourceKey>([.fileSizeKey])).fileSize) ?? 0
+            manifest += "\(size):\(trackHash.lowercased())\n"
+        }
+
+        let digest = Insecure.MD5.hash(data: Data(manifest.utf8))
+        return digest.map { String(format: "%02x", $0) }.joined()
     }
     
     private func performImportStepCheckHash() {

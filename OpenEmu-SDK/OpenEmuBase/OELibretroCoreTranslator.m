@@ -56,7 +56,11 @@
 #define RETRO_ENVIRONMENT_GET_AUDIO_VIDEO_ENABLE (47 | 0x10000)
 #endif
 
-NSString * const OELibretroBridgeVersion = @"3";
+#ifndef RETRO_ENVIRONMENT_SET_ROTATION
+#define RETRO_ENVIRONMENT_SET_ROTATION 1
+#endif
+
+NSString * const OELibretroBridgeVersion = @"4";
 
 
 @interface OELibretroCoreTranslator () <OELibretroInputReceiver>
@@ -448,6 +452,7 @@ static OELibretroSystemPolicy OELibretroSystemPolicyForSystemID(NSString *system
     NSData *_romData;
     size_t _cachedMaxWidth;
     size_t _cachedMaxHeight;
+    _Atomic(unsigned) _rotation;
     
     // Input state: 4 ports × 16 buttons (RETRO_DEVICE_JOYPAD).
     // Atomic relaxed because writers (input thread) and readers (emu thread)
@@ -664,6 +669,18 @@ static bool libretro_environment_cb(unsigned cmd, void *data) {
                 _current.didExplicitlySetPixelFormat = YES;
 #if DEBUG
                 NSLog(@"[OELibretro] Core requested Pixel Format: %d", _current.retroPixelFormat);
+#endif
+                return true;
+            }
+            return false;
+        case RETRO_ENVIRONMENT_SET_ROTATION:
+            if (data && _current) {
+                unsigned rotation = (*(const unsigned *)data) & 3;
+                atomic_store_explicit(&_current->_rotation, rotation, memory_order_release);
+                _current.didClearSaturnBuffer = NO;
+                _current.clearFramesRemaining = 3;
+#if DEBUG
+                NSLog(@"[OELibretro] Rotation updated: %u", rotation);
 #endif
                 return true;
             }
@@ -1066,6 +1083,67 @@ static void OEVideoCopyXRGB8888(const uint8_t *src, uint32_t *dst, unsigned widt
     }
 }
 
+static inline uint32_t OEVideoDecodePixelBGRA(const uint8_t *src, enum retro_pixel_format format) {
+    switch (format) {
+        case RETRO_PIXEL_FORMAT_0RGB1555: {
+            uint16_t pix = *(const uint16_t *)src;
+            uint32_t r = (pix >> 10) & 0x1F;
+            uint32_t g = (pix >> 5)  & 0x1F;
+            uint32_t b =  pix        & 0x1F;
+            r = (r << 3) | (r >> 2);
+            g = (g << 3) | (g >> 2);
+            b = (b << 3) | (b >> 2);
+            return 0xFF000000 | (r << 16) | (g << 8) | b;
+        }
+        case RETRO_PIXEL_FORMAT_RGB565: {
+            uint16_t pix = *(const uint16_t *)src;
+            uint32_t r = (pix >> 11) & 0x1F;
+            uint32_t g = (pix >> 5)  & 0x3F;
+            uint32_t b =  pix        & 0x1F;
+            r = (r << 3) | (r >> 2);
+            g = (g << 2) | (g >> 4);
+            b = (b << 3) | (b >> 2);
+            return 0xFF000000 | (r << 16) | (g << 8) | b;
+        }
+        case RETRO_PIXEL_FORMAT_XRGB8888:
+            return *(const uint32_t *)src | 0xFF000000;
+        default:
+            return 0;
+    }
+}
+
+static void OEVideoCopyRotated(const uint8_t *src, uint32_t *dst, unsigned width, unsigned height, size_t srcPitch, size_t dstPitchWords, enum retro_pixel_format format, unsigned rotation) {
+    const size_t bytesPerPixel = (format == RETRO_PIXEL_FORMAT_XRGB8888) ? 4 : 2;
+
+    for (unsigned y = 0; y < height; y++) {
+        const uint8_t *srcRow = src + (y * srcPitch);
+        for (unsigned x = 0; x < width; x++) {
+            uint32_t pixel = OEVideoDecodePixelBGRA(srcRow + (x * bytesPerPixel), format);
+            unsigned dstX = x;
+            unsigned dstY = y;
+
+            switch (rotation & 3) {
+                case 1: // 90 degrees counter-clockwise per libretro API.
+                    dstX = y;
+                    dstY = width - 1 - x;
+                    break;
+                case 2:
+                    dstX = width - 1 - x;
+                    dstY = height - 1 - y;
+                    break;
+                case 3:
+                    dstX = height - 1 - y;
+                    dstY = x;
+                    break;
+                default:
+                    break;
+            }
+
+            dst[(dstY * dstPitchWords) + dstX] = pixel;
+        }
+    }
+}
+
 static void libretro_video_refresh_cb(const void *data, unsigned width, unsigned height, size_t pitch) {
     if (data && _current) {
         if (width != _current->_lastWidth || height != _current->_lastHeight) {
@@ -1095,10 +1173,24 @@ static void libretro_video_refresh_cb(const void *data, unsigned width, unsigned
                 _current.clearFramesRemaining--;
             }
             
+            unsigned rotation = atomic_load_explicit(&_current->_rotation, memory_order_acquire) & 3;
+            unsigned outputWidth = (rotation == 1 || rotation == 3) ? height : width;
+            unsigned outputHeight = (rotation == 1 || rotation == 3) ? width : height;
+
             // Safety Check: Avoid out-of-bounds writes if core resolution exceeds buffer
-            if (width > destRowWords || height > bufferHeight) {
-                width = (unsigned)MIN(width, destRowWords);
-                height = (unsigned)MIN(height, bufferHeight);
+            if (outputWidth > destRowWords || outputHeight > bufferHeight) {
+                if (rotation == 1 || rotation == 3) {
+                    height = (unsigned)MIN(height, destRowWords);
+                    width = (unsigned)MIN(width, bufferHeight);
+                } else {
+                    width = (unsigned)MIN(width, destRowWords);
+                    height = (unsigned)MIN(height, bufferHeight);
+                }
+            }
+
+            if (rotation != 0) {
+                OEVideoCopyRotated((const uint8_t *)data, dst, width, height, pitch, destRowWords, _current.retroPixelFormat, rotation);
+                return;
             }
 
             OEVideoCopyHandler handler = NULL;
@@ -1228,6 +1320,7 @@ static void* bridge_dlsym(void *handle, const char *symbol) {
         _bpp           = 4;
         _cachedMaxWidth = 0;
         _cachedMaxHeight = 0;
+        atomic_store_explicit(&_rotation, 0, memory_order_relaxed);
         _isBufferSizeLocked = NO;
         _clearFramesRemaining = 20;
         _retroPixelFormat = RETRO_PIXEL_FORMAT_0RGB1555; // Libretro spec default
@@ -1512,9 +1605,15 @@ static void* bridge_dlsym(void *handle, const char *symbol) {
     size_t width  = _avInfo.geometry.max_width  ?: 1024;
     size_t height = _avInfo.geometry.max_height ?: 1024;
     os_unfair_lock_unlock(&_avInfoLock);
+    unsigned rotation = atomic_load_explicit(&_rotation, memory_order_acquire) & 3;
     // Final protection: OpenEmu needs non-zero dimensions
     if (width == 0)  width  = 1024;
     if (height == 0) height = 1024;
+    if (rotation == 1 || rotation == 3) {
+        size_t tmp = width;
+        width = height;
+        height = tmp;
+    }
     return OEIntSizeMake((int)width, (int)height);
 }
 
@@ -1523,9 +1622,15 @@ static void* bridge_dlsym(void *handle, const char *symbol) {
     int width  = _avInfo.geometry.base_width;
     int height = _avInfo.geometry.base_height;
     os_unfair_lock_unlock(&_avInfoLock);
+    unsigned rotation = atomic_load_explicit(&_rotation, memory_order_acquire) & 3;
     // Fallback to max dimensions if base is invalid
     if (width <= 0)  width  = 320;
     if (height <= 0) height = 240;
+    if (rotation == 1 || rotation == 3) {
+        int tmp = width;
+        width = height;
+        height = tmp;
+    }
     // Always return from (0,0). OpenEmu's Metal renderer extracts the game from our Max-Canvas.
     return OEIntRectMake(0, 0, width, height);
 }
@@ -1544,6 +1649,7 @@ static void* bridge_dlsym(void *handle, const char *symbol) {
     int baseW = (int)_avInfo.geometry.base_width;
     int baseH = (int)_avInfo.geometry.base_height;
     os_unfair_lock_unlock(&_avInfoLock);
+    unsigned rotation = atomic_load_explicit(&_rotation, memory_order_acquire) & 3;
     if (!isfinite(aspect) || aspect <= 0.0f) {
         if (baseW > 0 && baseH > 0) {
             aspect = (float)baseW / (float)baseH;
@@ -1551,6 +1657,10 @@ static void* bridge_dlsym(void *handle, const char *symbol) {
             return OEIntSizeMake(4, 3);
         }
     }
+    if ((rotation == 1 || rotation == 3) && aspect > 0.0f) {
+        aspect = 1.0f / aspect;
+    }
+
     // Snap aspect to a small (num, den) pair with denominator ≤ 16.
     int bestNum = 4, bestDen = 3;
     float bestErr = FLT_MAX;
@@ -1814,6 +1924,9 @@ static const uint8_t OEC64ButtonToLibretro[] = {
 
 #pragma mark - OEArcadeSystemResponderClient
 
+static const unsigned OERetroKeyTab = 9;
+static const unsigned OERetroKeyF2  = 283;
+
 // Standard 6-button arcade layout for FBA/MAME libretro cores.
 // Buttons 1-3 are the top row (jab/strong/fierce), 4-6 the bottom (short/forward/roundhouse).
 static const uint8_t OEArcadeButtonToLibretro[] = {
@@ -1834,6 +1947,15 @@ static const uint8_t OEArcadeButtonToLibretro[] = {
 };
 
 - (oneway void)didPushArcadeButton:(NSInteger)button forPlayer:(NSUInteger)player {
+    if (button == 13) { // OEArcadeUIConfigure — MAME menu (TAB)
+        if (_retroKeyboardEvent) _retroKeyboardEvent(true, OERetroKeyTab, 0, 0);
+        return;
+    }
+    if (button == 12) { // OEArcadeButtonService — MAME service mode (F2)
+        if (_retroKeyboardEvent) _retroKeyboardEvent(true, OERetroKeyF2, 0, 0);
+        return;
+    }
+
     NSUInteger port = player > 0 ? player - 1 : 0;
     if (port >= 4 || (NSUInteger)button >= sizeof(OEArcadeButtonToLibretro)) return;
     uint8_t btn = OEArcadeButtonToLibretro[button];
@@ -1842,6 +1964,15 @@ static const uint8_t OEArcadeButtonToLibretro[] = {
 }
 
 - (oneway void)didReleaseArcadeButton:(NSInteger)button forPlayer:(NSUInteger)player {
+    if (button == 13) { // OEArcadeUIConfigure — MAME menu (TAB)
+        if (_retroKeyboardEvent) _retroKeyboardEvent(false, OERetroKeyTab, 0, 0);
+        return;
+    }
+    if (button == 12) { // OEArcadeButtonService — MAME service mode (F2)
+        if (_retroKeyboardEvent) _retroKeyboardEvent(false, OERetroKeyF2, 0, 0);
+        return;
+    }
+
     NSUInteger port = player > 0 ? player - 1 : 0;
     if (port >= 4 || (NSUInteger)button >= sizeof(OEArcadeButtonToLibretro)) return;
     uint8_t btn = OEArcadeButtonToLibretro[button];
@@ -1849,16 +1980,55 @@ static const uint8_t OEArcadeButtonToLibretro[] = {
     atomic_store_explicit(&_buttonStates[port][btn], 0, memory_order_relaxed);
 }
 
+static unsigned OERetroKeyForMacVirtualKey(NSInteger keycode) {
+    // Libretro keyboard callbacks use RETROK_* values, which mirror SDL 1.2
+    // key symbols for common keys. OpenEmu hands us macOS virtual keycodes.
+    switch (keycode) {
+        case 36:  return 13;   // Return
+        case 48:  return 9;    // Tab — opens MAME's internal menu.
+        case 49:  return 32;   // Space
+        case 51:  return 8;    // Delete / Backspace
+        case 53:  return 27;   // Escape
+        case 120: return OERetroKeyF2;
+        case 123: return 276;  // Left
+        case 124: return 275;  // Right
+        case 125: return 274;  // Down
+        case 126: return 273;  // Up
+        default: break;
+    }
+
+    static const struct { NSInteger mac; unsigned retro; } letterMap[] = {
+        {0, 'a'}, {11, 'b'}, {8, 'c'}, {2, 'd'}, {14, 'e'}, {3, 'f'},
+        {5, 'g'}, {4, 'h'}, {34, 'i'}, {38, 'j'}, {40, 'k'}, {37, 'l'},
+        {46, 'm'}, {45, 'n'}, {31, 'o'}, {35, 'p'}, {12, 'q'}, {15, 'r'},
+        {1, 's'}, {17, 't'}, {32, 'u'}, {9, 'v'}, {13, 'w'}, {7, 'x'},
+        {16, 'y'}, {6, 'z'},
+    };
+    for (NSUInteger i = 0; i < sizeof(letterMap) / sizeof(letterMap[0]); i++) {
+        if (letterMap[i].mac == keycode) return letterMap[i].retro;
+    }
+
+    return (unsigned)keycode;
+}
+
 - (void)didPressKey:(NSInteger)keycode forPlayer:(NSUInteger)player {
     if (_retroKeyboardEvent) {
-        _retroKeyboardEvent(true, (unsigned)keycode, 0, 0);
+        _retroKeyboardEvent(true, OERetroKeyForMacVirtualKey(keycode), 0, 0);
     }
 }
 
 - (void)didReleaseKey:(NSInteger)keycode forPlayer:(NSUInteger)player {
     if (_retroKeyboardEvent) {
-        _retroKeyboardEvent(false, (unsigned)keycode, 0, 0);
+        _retroKeyboardEvent(false, OERetroKeyForMacVirtualKey(keycode), 0, 0);
     }
+}
+
+- (oneway void)keyDown:(NSUInteger)keyCode {
+    [self didPressKey:(NSInteger)keyCode forPlayer:1];
+}
+
+- (oneway void)keyUp:(NSUInteger)keyCode {
+    [self didReleaseKey:(NSInteger)keyCode forPlayer:1];
 }
 
 #pragma mark - Speed Control
