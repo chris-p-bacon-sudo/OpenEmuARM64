@@ -4,5 +4,16 @@
   xmlns:dc="http://purl.org/dc/elements/1.1/">
   <channel>
     <title>MAME</title>
-  </channel>
+      <item>
+      <title>MAME 0.250.0.1</title>
+      <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
+      <enclosure
+        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.3.3/MAME.oecoreplugin.zip"
+        sparkle:version="0.250.0.1"
+        sparkle:shortVersionString="0.250.0.1"
+        length="59551153"
+        sparkle:edSignature="UYkykJBDzHh5BL8tkHSVPyi7FX8Lk2kvZxGt3jl2cVqwti89FKpibITQ9JpcIyZgdymqStE66rbdKIbKcsYWBw=="
+        type="application/octet-stream" />
+    </item>
+</channel>
 </rss>
