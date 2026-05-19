@@ -37,7 +37,7 @@ When RetroAchievements is enabled, OpenEmu-Silicon uses the rcheevos client libr
 
 ### What is stored locally
 
-After sign-in, the RetroAchievements token is stored locally in your macOS Keychain. The app may also store local preferences such as whether hardcore mode is enabled.
+After sign-in, the RetroAchievements token is stored locally in OpenEmu-Silicon's encrypted credential file at `~/Library/Application Support/OpenEmu/.oe_credentials`. The app may also store local preferences such as whether hardcore mode is enabled.
 
 Your RetroAchievements password is not stored by OpenEmu-Silicon.
 
@@ -72,11 +72,11 @@ No personal information, no device identifiers, no usage metrics.
 
 ### How authentication works
 
-Sign-in uses Google's standard OAuth 2.0 flow. Your Google account password is never seen or stored by the app. After you authorize access, Google issues an OAuth token. That token is stored locally in your macOS Keychain and is used only to read and write your save data to the App Data folder.
+Sign-in uses Google's standard OAuth 2.0 flow. Your Google account password is never seen or stored by the app. After you authorize access, Google issues an OAuth token. That token is stored locally in OpenEmu-Silicon's encrypted credential file at `~/Library/Application Support/OpenEmu/.oe_credentials` and is used only to read and write your save data to the App Data folder.
 
 ### Revoking access
 
-You can disconnect Google Drive at any time from **Preferences → Cloud Sync → Sign Out**. This clears the stored token from your Keychain. You can also revoke access from your Google Account at [myaccount.google.com/permissions](https://myaccount.google.com/permissions).
+You can disconnect Google Drive at any time from **Preferences → Cloud Sync → Sign Out**. This clears the stored Google Drive token from OpenEmu-Silicon's local credential store. You can also revoke access from your Google Account at [myaccount.google.com/permissions](https://myaccount.google.com/permissions).
 
 ---
 
