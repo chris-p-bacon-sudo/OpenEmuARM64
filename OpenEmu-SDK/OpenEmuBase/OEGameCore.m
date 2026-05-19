@@ -65,6 +65,7 @@ NSString *const OEGameCoreErrorDomain = @"org.openemu.GameCore.ErrorDomain";
     BOOL                    singleFrameStep;
     BOOL                    isRewinding;
     BOOL                    isPausedExecution;
+    BOOL                    _hardcoreEnabled;
 
     NSTimeInterval          lastRate;
 
@@ -76,6 +77,24 @@ NSString *const OEGameCoreErrorDomain = @"org.openemu.GameCore.ErrorDomain";
 @synthesize nextFrameTime;
 
 static Class GameCoreClass = Nil;
+
+- (BOOL)hardcoreEnabled
+{
+    return _hardcoreEnabled;
+}
+
+- (void)setHardcoreEnabled:(BOOL)hardcoreEnabled
+{
+    _hardcoreEnabled = hardcoreEnabled;
+    if (hardcoreEnabled) {
+        isRewinding = NO;
+        singleFrameStep = NO;
+        lastRate = 1.0;
+        if (_rate != 0) {
+            self.rate = 1.0;
+        }
+    }
+}
 
 + (void)initialize
 {
@@ -627,19 +646,34 @@ static Class GameCoreClass = Nil;
     return _rate == 0;
 }
 
+- (void)retroAchievementsIdle
+{
+}
+
+- (BOOL)canPauseRetroAchievementsHardcoreWithFramesRemaining:(uint32_t *)framesRemaining
+{
+    if (framesRemaining != NULL) {
+        *framesRemaining = 0;
+    }
+    return YES;
+}
+
 - (void)fastForwardAtSpeed:(CGFloat)fastForwardSpeed;
 {
+    if (self.hardcoreEnabled) return;
     [self setRate:fastForwardSpeed];
 }
 
 - (void)rewindAtSpeed:(CGFloat)rewindSpeed;
 {
+    if (self.hardcoreEnabled) { isRewinding = NO; return; }
     isRewinding = (rewindSpeed > 0);
     [self setRate:rewindSpeed];
 }
 
 - (void)slowMotionAtSpeed:(CGFloat)slowMotionSpeed;
 {
+    if (self.hardcoreEnabled) return;
     [self setRate:slowMotionSpeed];
 }
 

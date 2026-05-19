@@ -2,7 +2,7 @@
 
 [RetroAchievements](https://retroachievements.org) is a community platform that adds an achievement system to classic games played through emulators. OpenEmu-Silicon integrates RA support through [rcheevos](https://github.com/RetroAchievements/rcheevos), the same client library used by RetroArch and other supported emulators.
 
-This guide is for **users and contributors** — people who want to earn achievements, test RA behavior, or report issues. If you're a developer looking to integrate rcheevos into a new core, see [retroachievements-implementation-guide.md](retroachievements-implementation-guide.md) instead.
+This guide is for **users and contributors** — people who want to earn achievements, test RA behavior, or report issues. If you're a developer looking to integrate rcheevos into a new core, see [retroachievements-implementation-guide.md](retroachievements-implementation-guide.md) instead. For native compliance evidence and #438 verification results, see [retroachievements-compliance-evidence.md](retroachievements-compliance-evidence.md).
 
 ---
 
@@ -49,7 +49,7 @@ RA integration is rolling out in phases. See [issue #258](https://github.com/nic
 - 🔄 In Progress — actively being worked on
 - 🔲 Planned — tracked in the rollout issue; contributors welcome
 
-> **Note:** Hardcore mode compliance is still in progress (#438). Hardcore mode is not currently enforced across all cores. This is being addressed before the official RetroAchievements listing.
+> **Note:** The native-core hardcore compliance rollout is tracked in #438. The main P0 enforcement work is complete for supported native RA cores; remaining work is focused on manual verification evidence, submission-readiness documentation, and follow-up polish before the official RetroAchievements listing.
 
 ---
 

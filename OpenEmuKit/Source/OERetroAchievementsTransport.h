@@ -51,6 +51,62 @@
 #define OEAchievementBadgeURLKey            @"badgeURL"
 #define OEAchievementPointsKey              @"points"
 
+/// NSNotificationCenter name posted by a core plugin when RA session metadata changes.
+/// Fired after game load succeeds and after each achievement trigger. The helper app
+/// observes this and forwards the payload to the host via OEGameCoreOwner.
+#define OERASessionUpdatedNotification      @"OERetroAchievementsSessionUpdated"
+
+// Session payload keys — userInfo dictionary for OERASessionUpdatedNotification
+#define OERAGameIDKey                @"gameID"
+#define OERAGameTitleKey             @"gameTitle"
+#define OERAGameHashKey              @"gameHash"
+#define OERAGameBadgeURLKey          @"gameBadgeURL"
+#define OERAUnlockedCountKey         @"unlockedCount"
+#define OERAAchievementCountKey      @"achievementCount"
+#define OERAUnlockedPointsKey        @"unlockedPoints"
+#define OERATotalPointsKey           @"totalPoints"
+#define OERAAchievementsKey          @"achievements"
+#define OERASetsKey                  @"sets"
+#define OERASetIDKey                 @"setID"
+#define OERASetTitleKey              @"setTitle"
+#define OERASetBadgeURLKey           @"setBadgeURL"
+#define OERASetAchievementCountKey   @"setAchievementCount"
+#define OERASetLeaderboardCountKey   @"setLeaderboardCount"
+#define OERABucketTitleKey           @"bucketTitle"
+#define OERABucketTypeKey            @"bucketType"
+#define OERAStateKey                 @"state"
+#define OERATypeKey                  @"type"
+#define OERAMeasuredProgressKey      @"measuredProgress"
+#define OERAMeasuredPercentKey       @"measuredPercent"
+#define OERABadgeLockedURLKey        @"badgeLockedURL"
+#define OERARarityKey                @"rarity"
+#define OERAHardcoreRarityKey        @"rarityHardcore"
+#define OERAUnlockedKey              @"unlocked"
+#define OERASessionStatusKey         @"sessionStatus"
+#define OERASessionErrorCodeKey      @"sessionErrorCode"
+#define OERASessionErrorMessageKey   @"sessionErrorMessage"
+#define OERASessionStatusUnrecognized @"unrecognized"
+#define OERASessionStatusLoginFailed  @"loginFailed"
+#define OERASessionStatusLoadFailed   @"loadFailed"
+
+/// NSNotificationCenter name posted by a core plugin when rcheevos emits a gameplay UI event.
+/// The helper app observes this and forwards the payload to the host via OEGameCoreOwner.
+#define OERAEventNotification        @"OERetroAchievementsEvent"
+#define OERAEventTypeKey             @"eventType"
+#define OERAEventKindKey             @"eventKind"
+#define OERAEventIDKey               @"eventID"
+#define OERAEventTitleKey            @"eventTitle"
+#define OERAEventDescriptionKey      @"eventDescription"
+#define OERAEventBadgeURLKey         @"eventBadgeURL"
+#define OERAEventPointsKey           @"eventPoints"
+#define OERAEventDisplayKey          @"eventDisplay"
+#define OERAEventSubmittedScoreKey   @"eventSubmittedScore"
+#define OERAEventBestScoreKey        @"eventBestScore"
+#define OERAEventRankKey             @"eventRank"
+#define OERAEventTotalEntriesKey     @"eventTotalEntries"
+#define OERAEventErrorMessageKey     @"eventErrorMessage"
+#define OERAEventAPIKey              @"eventAPI"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -63,6 +119,21 @@ void oeRetroAchievementsServerCall(const rc_api_request_t *request,
                                     rc_client_server_callback_t callback,
                                     void *callback_data,
                                     rc_client_t *client);
+
+/**
+ * Posts a property-list-safe OERAEventNotification for rcheevos gameplay UI
+ * events. Core event handlers should call this before handling achievement
+ * unlocks or refreshing session snapshots.
+ */
+void oeRetroAchievementsPostEventNotification(const rc_client_event_t *event,
+                                               rc_client_t *client);
+
+/**
+ * Posts property-list-safe OERASessionUpdatedNotification payloads when
+ * login or game identification fails before a normal session snapshot exists.
+ */
+void oeRetroAchievementsPostSessionLoadFailure(int result, const char *error_message);
+void oeRetroAchievementsPostLoginFailure(int result, const char *error_message);
 
 #ifdef __cplusplus
 }

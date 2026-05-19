@@ -50,6 +50,9 @@ import AudioToolbox
      * @param pauseEmulation Specify @c true to pause the core.
      */
     func setPauseEmulation(_ pauseEmulation: Bool)
+
+    /// Returns whether a RetroAchievements hardcore session may pause right now.
+    func canPauseRetroAchievementsHardcore(completionHandler block: @escaping (Bool, UInt32) -> Void)
     
     /** Specifies how and when shader effects are rendered.
      *

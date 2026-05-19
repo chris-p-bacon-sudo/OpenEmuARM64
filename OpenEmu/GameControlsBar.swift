@@ -338,6 +338,9 @@ final class GameControlsBar: NSWindow {
         
         var item = NSMenuItem(title: NSLocalizedString("Edit Game Controls…", comment: ""), action: #selector(OEGameDocument.editControls(_:)), keyEquivalent: "")
         menu.addItem(item)
+
+        item = NSMenuItem(title: NSLocalizedString("Achievements…", comment: "RetroAchievements menu item title"), action: #selector(OEGameDocument.showRetroAchievements(_:)), keyEquivalent: "")
+        menu.addItem(item)
         
         item = NSMenuItem(title: NSLocalizedString("Image Adjustments…", comment: ""), action: #selector(GameControlsBarView.showAdjustmentsPopoverFromMenu(_:)), keyEquivalent: "")
         item.target = controlsView

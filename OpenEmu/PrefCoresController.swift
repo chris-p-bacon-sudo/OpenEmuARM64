@@ -178,8 +178,16 @@ final class PrefCoresController: NSViewController {
     // MARK: - Data
 
     private func rebuildEntries() {
-        let allRetroArch = scanRetroArchCores()
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            guard let self else { return }
+            let allRetroArch = self.scanRetroArchCores()
+            DispatchQueue.main.async { [weak self] in
+                self?.applyEntries(retroArchCores: allRetroArch)
+            }
+        }
+    }
 
+    private func applyEntries(retroArchCores allRetroArch: [RetroArchCore]) {
         var map: [String: (name: String, cores: [CoreDownload])] = [:]
         for core in CoreUpdater.shared.coreList {
             for sysID in core.systemIdentifiers {

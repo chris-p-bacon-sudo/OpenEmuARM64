@@ -24,7 +24,184 @@
 // THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #import <Foundation/Foundation.h>
-#import <rc_client.h>
+#import <string.h>
+#import "OERetroAchievementsTransport.h"
+
+static NSString *OEStringFromCString(const char *string)
+{
+    if (!string) { return @""; }
+    NSString *value = [NSString stringWithCString:string encoding:NSUTF8StringEncoding];
+    return value ?: @"";
+}
+
+static void OEPostSessionStatus(NSString *status, int result, const char *error_message)
+{
+    NSMutableDictionary *payload = [NSMutableDictionary dictionary];
+    payload[OERASessionStatusKey] = status;
+    payload[OERASessionErrorCodeKey] = @(result);
+
+    NSString *message = OEStringFromCString(error_message);
+    if (message.length > 0) { payload[OERASessionErrorMessageKey] = message; }
+
+    [[NSNotificationCenter defaultCenter] postNotificationName:OERASessionUpdatedNotification
+                                                        object:nil
+                                                      userInfo:payload];
+}
+
+static BOOL OEIsUnrecognizedGameResult(int result)
+{
+    // rcheevos currently reports unknown/no-set hashes through these two
+    // results. Keep this classification centralized so new upstream result
+    // codes can be added in one place if needed.
+    return result == RC_NO_GAME_LOADED || result == RC_NOT_FOUND;
+}
+
+void oeRetroAchievementsPostSessionLoadFailure(int result, const char *error_message)
+{
+    NSString *status = OEIsUnrecognizedGameResult(result)
+        ? OERASessionStatusUnrecognized
+        : OERASessionStatusLoadFailed;
+    OEPostSessionStatus(status, result, error_message);
+}
+
+void oeRetroAchievementsPostLoginFailure(int result, const char *error_message)
+{
+    OEPostSessionStatus(OERASessionStatusLoginFailed, result, error_message);
+}
+
+static void OEAddAchievementPayload(NSMutableDictionary *payload, const rc_client_achievement_t *achievement)
+{
+    if (!achievement) { return; }
+    payload[OERAEventIDKey] = @(achievement->id);
+    payload[OERAEventTitleKey] = OEStringFromCString(achievement->title);
+    payload[OERAEventDescriptionKey] = OEStringFromCString(achievement->description);
+    payload[OERAEventPointsKey] = @(achievement->points);
+    payload[OERAMeasuredProgressKey] = OEStringFromCString(achievement->measured_progress);
+    payload[OERAMeasuredPercentKey] = @(achievement->measured_percent);
+    if (achievement->badge_url) { payload[OERAEventBadgeURLKey] = OEStringFromCString(achievement->badge_url); }
+    if (achievement->badge_locked_url) { payload[OERABadgeLockedURLKey] = OEStringFromCString(achievement->badge_locked_url); }
+}
+
+static void OEAddLeaderboardPayload(NSMutableDictionary *payload, const rc_client_leaderboard_t *leaderboard)
+{
+    if (!leaderboard) { return; }
+    payload[OERAEventIDKey] = @(leaderboard->id);
+    payload[OERAEventTitleKey] = OEStringFromCString(leaderboard->title);
+    payload[OERAEventDescriptionKey] = OEStringFromCString(leaderboard->description);
+    if (leaderboard->tracker_value) {
+        payload[OERAEventDisplayKey] = OEStringFromCString(leaderboard->tracker_value);
+    }
+}
+
+void oeRetroAchievementsPostEventNotification(const rc_client_event_t *event,
+                                               rc_client_t *client)
+{
+    (void)client;
+    if (!event) { return; }
+
+    NSMutableDictionary *payload = [NSMutableDictionary dictionary];
+    payload[OERAEventTypeKey] = @(event->type);
+
+    switch (event->type) {
+        case RC_CLIENT_EVENT_ACHIEVEMENT_TRIGGERED:
+            payload[OERAEventKindKey] = @"achievementUnlocked";
+            OEAddAchievementPayload(payload, event->achievement);
+            break;
+        case RC_CLIENT_EVENT_ACHIEVEMENT_CHALLENGE_INDICATOR_SHOW:
+            payload[OERAEventKindKey] = @"challengeShow";
+            OEAddAchievementPayload(payload, event->achievement);
+            break;
+        case RC_CLIENT_EVENT_ACHIEVEMENT_CHALLENGE_INDICATOR_HIDE:
+            payload[OERAEventKindKey] = @"challengeHide";
+            OEAddAchievementPayload(payload, event->achievement);
+            break;
+        case RC_CLIENT_EVENT_ACHIEVEMENT_PROGRESS_INDICATOR_SHOW:
+            payload[OERAEventKindKey] = @"progressShow";
+            OEAddAchievementPayload(payload, event->achievement);
+            break;
+        case RC_CLIENT_EVENT_ACHIEVEMENT_PROGRESS_INDICATOR_UPDATE:
+            payload[OERAEventKindKey] = @"progressUpdate";
+            OEAddAchievementPayload(payload, event->achievement);
+            break;
+        case RC_CLIENT_EVENT_ACHIEVEMENT_PROGRESS_INDICATOR_HIDE:
+            payload[OERAEventKindKey] = @"progressHide";
+            break;
+        case RC_CLIENT_EVENT_LEADERBOARD_STARTED:
+            payload[OERAEventKindKey] = @"leaderboardStarted";
+            OEAddLeaderboardPayload(payload, event->leaderboard);
+            break;
+        case RC_CLIENT_EVENT_LEADERBOARD_FAILED:
+            payload[OERAEventKindKey] = @"leaderboardFailed";
+            OEAddLeaderboardPayload(payload, event->leaderboard);
+            break;
+        case RC_CLIENT_EVENT_LEADERBOARD_SUBMITTED:
+            payload[OERAEventKindKey] = @"leaderboardSubmitted";
+            OEAddLeaderboardPayload(payload, event->leaderboard);
+            break;
+        case RC_CLIENT_EVENT_LEADERBOARD_TRACKER_SHOW:
+            payload[OERAEventKindKey] = @"leaderboardTrackerShow";
+            if (event->leaderboard_tracker) {
+                payload[OERAEventIDKey] = @(event->leaderboard_tracker->id);
+                payload[OERAEventDisplayKey] = OEStringFromCString(event->leaderboard_tracker->display);
+            }
+            break;
+        case RC_CLIENT_EVENT_LEADERBOARD_TRACKER_UPDATE:
+            payload[OERAEventKindKey] = @"leaderboardTrackerUpdate";
+            if (event->leaderboard_tracker) {
+                payload[OERAEventIDKey] = @(event->leaderboard_tracker->id);
+                payload[OERAEventDisplayKey] = OEStringFromCString(event->leaderboard_tracker->display);
+            }
+            break;
+        case RC_CLIENT_EVENT_LEADERBOARD_TRACKER_HIDE:
+            payload[OERAEventKindKey] = @"leaderboardTrackerHide";
+            if (event->leaderboard_tracker) { payload[OERAEventIDKey] = @(event->leaderboard_tracker->id); }
+            break;
+        case RC_CLIENT_EVENT_LEADERBOARD_SCOREBOARD:
+            payload[OERAEventKindKey] = @"leaderboardScoreboard";
+            if (event->leaderboard_scoreboard) {
+                payload[OERAEventIDKey] = @(event->leaderboard_scoreboard->leaderboard_id);
+                payload[OERAEventSubmittedScoreKey] = OEStringFromCString(event->leaderboard_scoreboard->submitted_score);
+                payload[OERAEventBestScoreKey] = OEStringFromCString(event->leaderboard_scoreboard->best_score);
+                payload[OERAEventRankKey] = @(event->leaderboard_scoreboard->new_rank);
+                payload[OERAEventTotalEntriesKey] = @(event->leaderboard_scoreboard->num_entries);
+            }
+            break;
+        case RC_CLIENT_EVENT_RESET:
+            payload[OERAEventKindKey] = @"resetRequested";
+            break;
+        case RC_CLIENT_EVENT_GAME_COMPLETED:
+            payload[OERAEventKindKey] = @"gameCompleted";
+            break;
+        case RC_CLIENT_EVENT_SUBSET_COMPLETED:
+            payload[OERAEventKindKey] = @"subsetCompleted";
+            if (event->subset) {
+                payload[OERAEventIDKey] = @(event->subset->id);
+                payload[OERAEventTitleKey] = OEStringFromCString(event->subset->title);
+                if (event->subset->badge_url) { payload[OERAEventBadgeURLKey] = OEStringFromCString(event->subset->badge_url); }
+            }
+            break;
+        case RC_CLIENT_EVENT_SERVER_ERROR:
+            payload[OERAEventKindKey] = @"serverError";
+            if (event->server_error) {
+                payload[OERAEventErrorMessageKey] = OEStringFromCString(event->server_error->error_message);
+                payload[OERAEventAPIKey] = OEStringFromCString(event->server_error->api);
+                payload[OERAEventIDKey] = @(event->server_error->related_id);
+            }
+            break;
+        case RC_CLIENT_EVENT_DISCONNECTED:
+            payload[OERAEventKindKey] = @"disconnected";
+            break;
+        case RC_CLIENT_EVENT_RECONNECTED:
+            payload[OERAEventKindKey] = @"reconnected";
+            break;
+        default:
+            return;
+    }
+
+    [[NSNotificationCenter defaultCenter] postNotificationName:OERAEventNotification
+                                                        object:nil
+                                                      userInfo:payload];
+}
 
 // Bridge a rcheevos HTTP request to NSURLSession.
 // This function is passed as the `server_call_function` argument to rc_client_create.
@@ -53,11 +230,11 @@ void oeRetroAchievementsServerCall(const rc_api_request_t *request,
     rc_client_get_user_agent_clause(client, rcClause, sizeof(rcClause));
 
     // RA expects an identifying User-Agent so they can correlate traffic to the host app.
-    // Format: OpenEmu/<host-version> (macOS <os-version>) rcheevos/<...>
+    // Format: OpenEmu-Silicon/<host-version> (macOS <os-version>) rcheevos/<...>
     NSString *hostVersion = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleShortVersionString"] ?: @"unknown";
     NSOperatingSystemVersion osv = [[NSProcessInfo processInfo] operatingSystemVersion];
     NSString *osVersion = [NSString stringWithFormat:@"%ld.%ld.%ld", (long)osv.majorVersion, (long)osv.minorVersion, (long)osv.patchVersion];
-    NSString *userAgent = [NSString stringWithFormat:@"OpenEmu/%@ (macOS %@) %@",
+    NSString *userAgent = [NSString stringWithFormat:@"OpenEmu-Silicon/%@ (macOS %@) %@",
                             hostVersion, osVersion, [NSString stringWithUTF8String:rcClause]];
     [urlRequest setValue:userAgent forHTTPHeaderField:@"User-Agent"];
 
@@ -81,10 +258,22 @@ void oeRetroAchievementsServerCall(const rc_api_request_t *request,
             dataTaskWithRequest:urlRequest
               completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
             if (error || !data) {
+                const char *message = error ? error.localizedDescription.UTF8String : "";
                 rc_api_server_response_t err = {
-                    .body             = error ? error.localizedDescription.UTF8String : "",
-                    .body_length      = 0,
-                    .http_status_code = RC_API_SERVER_RESPONSE_CLIENT_ERROR
+                    .body             = message,
+                    .body_length      = strlen(message),
+                    .http_status_code = RC_API_SERVER_RESPONSE_RETRYABLE_CLIENT_ERROR
+                };
+                callback(&err, callback_data);
+                return;
+            }
+
+            if (![response isKindOfClass:NSHTTPURLResponse.class]) {
+                const char *message = "Invalid HTTP response";
+                rc_api_server_response_t err = {
+                    .body             = message,
+                    .body_length      = strlen(message),
+                    .http_status_code = RC_API_SERVER_RESPONSE_RETRYABLE_CLIENT_ERROR
                 };
                 callback(&err, callback_data);
                 return;

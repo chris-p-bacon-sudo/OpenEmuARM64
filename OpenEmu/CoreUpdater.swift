@@ -46,6 +46,7 @@ final class CoreUpdater: NSObject {
     private var coresDict: [String : CoreDownload] = [:]
     private var autoInstall = false
     private var lastCoreListURLTask: URLSessionDataTask?
+    private var pendingCoreListCompletionHandlers: [(_ error: Error?) -> Void] = []
     private var pendingUserInitiatedDownloads: Set<CoreDownload> = []
     private var oeKnownCoreIDs: Set<String> = []
     
@@ -160,8 +161,15 @@ final class CoreUpdater: NSObject {
     }
     
     func checkForNewCores(completionHandler handler: ((_ error: Error?) -> Void)? = nil) {
+        guard Thread.isMainThread else {
+            DispatchQueue.main.async { self.checkForNewCores(completionHandler: handler) }
+            return
+        }
+        
         guard lastCoreListURLTask == nil else {
-            DispatchQueue.main.async { handler?(Errors.newCoreCheckAlreadyPendingError) }
+            if let handler {
+                pendingCoreListCompletionHandlers.append(handler)
+            }
             return
         }
         
@@ -176,9 +184,14 @@ final class CoreUpdater: NSObject {
                         self.updateCoreList()
                     }
                     
-                    handler?(error)
-                    
+                    let pendingHandlers = self.pendingCoreListCompletionHandlers
+                    self.pendingCoreListCompletionHandlers.removeAll()
                     self.lastCoreListURLTask = nil
+                    
+                    handler?(error)
+                    for pendingHandler in pendingHandlers {
+                        pendingHandler(error)
+                    }
                 }
             }
             

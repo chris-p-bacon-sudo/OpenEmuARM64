@@ -159,6 +159,12 @@ final class OEGameDocument: NSDocument {
     private(set) var displayModes: [[String: Any]] = []
     
     private var gameCoreManager: GameCoreManager?
+    private var retroAchievementsWindowController: NSWindowController?
+    @objc dynamic private(set) var retroAchievementsSessionInfo: [String: Any]?
+    private var retroAchievementsSuppressedUnlockIDs = Set<UInt32>()
+    private var retroAchievementsActiveChallengeIDs = Set<UInt32>()
+    private var retroAchievementsActiveProgressByAchievementID: [UInt32: String] = [:]
+    private var didShowRetroAchievementsBootPlacard = false
     private var raCredentialObserver: Any?
     private var raHardcoreObserver: Any?
 
@@ -173,13 +179,20 @@ final class OEGameDocument: NSDocument {
     }
 
     /// Whether hardcore restrictions should actually be enforced right now.
-    /// True only when the user has the preference on **and** an RA session is
-    /// active (a token is stored). Without a token, no achievements are being
-    /// tracked, so blocking save states, cheats, rewind, etc. would just take
-    /// existing OpenEmu functionality away from non-RA users.
+    /// True only when the user has the preference on, a token is stored, and
+    /// the selected core advertises RetroAchievements support for this system.
+    /// Without all three, no hardcore achievements are being tracked, so blocking
+    /// save states, cheats, rewind, etc. would just take existing OpenEmu
+    /// functionality away from non-RA or unsupported games.
     @objc var isHardcoreModeEnabled: Bool {
         guard isHardcoreModePreferenceEnabled else { return false }
-        return OECredentialStore.shared.get(.retroAchievementsToken) != nil
+        guard OECredentialStore.shared.get(.retroAchievementsToken) != nil else { return false }
+        return isRetroAchievementsSessionSupported
+    }
+
+    private var isRetroAchievementsSessionSupported: Bool {
+        guard let corePlugin, let systemPlugin else { return false }
+        return corePlugin.supportsRetroAchievements(forSystemIdentifier: systemPlugin.systemIdentifier)
     }
 
     private var displaySleepAssertionID: IOPMAssertionID = 0
@@ -614,6 +627,12 @@ final class OEGameDocument: NSDocument {
                 }
 
                 self.emulationStatus = .notSetup
+                self.retroAchievementsSessionInfo = nil
+                self.retroAchievementsSuppressedUnlockIDs.removeAll()
+                self.retroAchievementsActiveChallengeIDs.removeAll()
+                self.retroAchievementsActiveProgressByAchievementID.removeAll()
+                self.gameViewController?.clearRetroAchievementsIndicators()
+                self.didShowRetroAchievementsBootPlacard = false
                 
                 self.gameCoreManager = nil
                 
@@ -665,27 +684,32 @@ final class OEGameDocument: NSDocument {
                 self.rom.incrementPlayCount()
                 self.rom.markAsPlayedNow()
                 self.lastPlayStartDate = Date()
-                
+
+                // set initial volume
+                self.setVolume(self.volume, asDefault: false)
+
+                // set initial image adjustments
+                self.imageSaturation = Self.clampedSaturation((UserDefaults.standard.object(forKey: OEGameSaturationKey) as? Float) ?? 1.0)
+                self.imageGamma = Self.clampedGamma((UserDefaults.standard.object(forKey: OEGameGammaKey) as? Float) ?? 1.0)
+
+                self.gameCoreHelper?.setGlobalShaderParameters(gamma: CGFloat(self.imageGamma), saturation: CGFloat(self.imageSaturation))
+
+                OEBindingsController.default.systemBindings(for: self.systemPlugin.controller).add(self)
+
+                self.gameCoreManager?.setHandleEvents(self.handleEvents)
+                self.gameCoreManager?.setHandleKeyboardEvents(self.handleKeyboardEvents)
+
+                // Push the effective hardcore state to the helper before any startup save-state
+                // decision. The helper defaults to hardcore=true; without this early push a
+                // softcore/non-RA/unsupported startup restore would be blocked by the stale default (#438).
+                self.gameCoreManager?.setHardcoreEnabled(self.isHardcoreModeEnabled)
+
                 if let saveStateForGameStart = self.saveStateForGameStart {
                     self.saveStateForGameStart = nil
                     DispatchQueue.main.async {
                         self.loadState(state: saveStateForGameStart)
                     }
                 }
-                
-                // set initial volume
-                self.setVolume(self.volume, asDefault: false)
-                
-                // set initial image adjustments
-                self.imageSaturation = Self.clampedSaturation((UserDefaults.standard.object(forKey: OEGameSaturationKey) as? Float) ?? 1.0)
-                self.imageGamma = Self.clampedGamma((UserDefaults.standard.object(forKey: OEGameGammaKey) as? Float) ?? 1.0)
-                
-                self.gameCoreHelper?.setGlobalShaderParameters(gamma: CGFloat(self.imageGamma), saturation: CGFloat(self.imageSaturation))
-                
-                OEBindingsController.default.systemBindings(for: self.systemPlugin.controller).add(self)
-                
-                self.gameCoreManager?.setHandleEvents(self.handleEvents)
-                self.gameCoreManager?.setHandleKeyboardEvents(self.handleKeyboardEvents)
 
                 // Pass stored RA credentials so the core can log in at launch
                 let raUsername = UserDefaults.standard.string(forKey: "RAUsername")
@@ -712,11 +736,6 @@ final class OEGameDocument: NSDocument {
                     // flip that would let RA track an already-mutated session (#447).
                     self.handleHardcoreToggle(enabled: self.isHardcoreModePreferenceEnabled)
                 }
-
-                // Push the effective hardcore state to the helper at game start.
-                // Without an RA session this stays false even if the preference is on,
-                // so non-RA users keep save states, rewind, cheats, etc. (#445).
-                self.gameCoreManager?.setHardcoreEnabled(self.isHardcoreModeEnabled)
 
                 // Forward mid-session hardcore toggles. soft→hard requires a reset
                 // (RA spec: switching into hardcore must restart the run).
@@ -760,6 +779,12 @@ final class OEGameDocument: NSDocument {
         assert(core != corePlugin, "Do not attempt to run a new core using the same plug-in as the current one.")
         
         emulationStatus = .notSetup
+        retroAchievementsSessionInfo = nil
+        retroAchievementsSuppressedUnlockIDs.removeAll()
+        retroAchievementsActiveChallengeIDs.removeAll()
+        retroAchievementsActiveProgressByAchievementID.removeAll()
+        gameViewController?.clearRetroAchievementsIndicators()
+        didShowRetroAchievementsBootPlacard = false
         gameCoreManager?.stopEmulation() {
             OEBindingsController.default.systemBindings(for: self.systemPlugin.controller).remove(self)
             
@@ -1022,8 +1047,11 @@ final class OEGameDocument: NSDocument {
     @objc private func windowDidResignMain(_ notification: Notification) {
         let backgroundPause = UserDefaults.standard.bool(forKey: OEBackgroundPauseKey)
         if backgroundPause && emulationStatus == .playing {
-            isEmulationPaused = true
-            pausedByGoingToBackground = true
+            requestEmulationPauseRespectingRetroAchievementsHardcore { [weak self] paused in
+                if paused {
+                    self?.pausedByGoingToBackground = true
+                }
+            }
         }
     }
     
@@ -1050,35 +1078,53 @@ final class OEGameDocument: NSDocument {
     
     @objc private func didReceiveLowBatteryWarning(_ notification: Notification) {
         let isRunning = !isEmulationPaused
-        isEmulationPaused = true
-        
-        let devHandler = notification.object as? OEDeviceHandler
-        let message = String(format: NSLocalizedString("The battery in device number %lu, %@, is low. Please charge or replace the battery.", comment: "Low battery alert detail message."), devHandler?.deviceNumber ?? 0, devHandler?.deviceDescription?.name ?? "")
-        let alert = OEAlert()
-        alert.messageText = NSLocalizedString("Low Controller Battery", comment: "Device battery level is low.")
-        alert.informativeText = message
-        alert.defaultButtonTitle = NSLocalizedString("Resume", comment: "")
-        alert.runModal()
-        
+        let showAlert = { [weak self] in
+            guard let self else { return }
+            let devHandler = notification.object as? OEDeviceHandler
+            let message = String(format: NSLocalizedString("The battery in device number %lu, %@, is low. Please charge or replace the battery.", comment: "Low battery alert detail message."), devHandler?.deviceNumber ?? 0, devHandler?.deviceDescription?.name ?? "")
+            let alert = OEAlert()
+            alert.messageText = NSLocalizedString("Low Controller Battery", comment: "Device battery level is low.")
+            alert.informativeText = message
+            alert.defaultButtonTitle = NSLocalizedString("Resume", comment: "")
+            alert.runModal()
+
+            if isRunning && self.isEmulationPaused {
+                self.isEmulationPaused = false
+            }
+        }
+
         if isRunning {
-            isEmulationPaused = false
+            requestEmulationPauseRespectingRetroAchievementsHardcore { _ in
+                showAlert()
+            }
+        } else {
+            showAlert()
         }
     }
     
     @objc private func deviceDidDisconnect(_ notification: Notification) {
         let isRunning = !isEmulationPaused
-        isEmulationPaused = true
-        
-        let devHandler = notification.userInfo?[OEDeviceManagerDeviceHandlerUserInfoKey] as? OEDeviceHandler
-        let message = String(format: NSLocalizedString("Device number %lu, %@, has disconnected.", comment: "Device disconnection detail message."), devHandler?.deviceNumber ?? 0, devHandler?.deviceDescription?.name ?? "")
-        let alert = OEAlert()
-        alert.messageText = NSLocalizedString("Device Disconnected", comment: "A controller device has disconnected.")
-        alert.informativeText = message
-        alert.defaultButtonTitle = NSLocalizedString("Resume", comment: "Resume game after battery warning button label")
-        alert.runModal()
-        
+        let showAlert = { [weak self] in
+            guard let self else { return }
+            let devHandler = notification.userInfo?[OEDeviceManagerDeviceHandlerUserInfoKey] as? OEDeviceHandler
+            let message = String(format: NSLocalizedString("Device number %lu, %@, has disconnected.", comment: "Device disconnection detail message."), devHandler?.deviceNumber ?? 0, devHandler?.deviceDescription?.name ?? "")
+            let alert = OEAlert()
+            alert.messageText = NSLocalizedString("Device Disconnected", comment: "A controller device has disconnected.")
+            alert.informativeText = message
+            alert.defaultButtonTitle = NSLocalizedString("Resume", comment: "Resume game after battery warning button label")
+            alert.runModal()
+
+            if isRunning && self.isEmulationPaused {
+                self.isEmulationPaused = false
+            }
+        }
+
         if isRunning {
-            isEmulationPaused = false
+            requestEmulationPauseRespectingRetroAchievementsHardcore { _ in
+                showAlert()
+            }
+        } else {
+            showAlert()
         }
     }
     
@@ -1116,6 +1162,8 @@ final class OEGameDocument: NSDocument {
         gameViewController.showHardcoreNotification(isHardcoreModeEnabled)
     }
     
+    private var retroAchievementsHardcorePausePreflightSatisfied = false
+
     var isEmulationPaused: Bool {
         get {
             return emulationStatus != .playing
@@ -1128,6 +1176,10 @@ final class OEGameDocument: NSDocument {
                 return
             }
             if pauseEmulation {
+                if emulationStatus == .playing && isHardcoreModeEnabled && !retroAchievementsHardcorePausePreflightSatisfied {
+                    showRetroAchievementsPauseBlockedToast(framesRemaining: 0)
+                    return
+                }
                 SentryService.addBreadcrumb(message: "Emulation paused", category: "emulation")
                 enableOSSleep()
                 emulationStatus = .paused
@@ -1159,7 +1211,59 @@ final class OEGameDocument: NSDocument {
     }
     
     @objc func toggleEmulationPaused(_ sender: Any?) {
-        isEmulationPaused.toggle()
+        if isEmulationPaused {
+            isEmulationPaused = false
+            return
+        }
+
+        requestEmulationPauseRespectingRetroAchievementsHardcore()
+    }
+
+    func requestEmulationPauseRespectingRetroAchievementsHardcore(showBlockedToast: Bool = true, completion: ((Bool) -> Void)? = nil) {
+        guard emulationStatus == .playing else {
+            completion?(false)
+            return
+        }
+
+        guard isHardcoreModeEnabled else {
+            isEmulationPaused = true
+            completion?(true)
+            return
+        }
+
+        guard let gameCoreManager else {
+            completion?(false)
+            return
+        }
+
+        gameCoreManager.canPauseRetroAchievementsHardcore { [weak self] allowed, framesRemaining in
+            guard let self else { return }
+            guard self.emulationStatus == .playing else {
+                completion?(false)
+                return
+            }
+
+            if allowed {
+                self.retroAchievementsHardcorePausePreflightSatisfied = true
+                defer { self.retroAchievementsHardcorePausePreflightSatisfied = false }
+                self.isEmulationPaused = true
+                completion?(self.isEmulationPaused)
+            } else {
+                if showBlockedToast {
+                    self.showRetroAchievementsPauseBlockedToast(framesRemaining: framesRemaining)
+                }
+                completion?(false)
+            }
+        }
+    }
+
+    private func showRetroAchievementsPauseBlockedToast(framesRemaining: UInt32) {
+        let seconds = max(1, Int(ceil(Double(framesRemaining) / 60.0)))
+        gameViewController?.showRetroAchievementsEventToast(
+            title: NSLocalizedString("Pause Blocked in Hardcore", comment: "RetroAchievements pause blocked title"),
+            subtitle: String(format: NSLocalizedString("Try again in about %d seconds.", comment: "RetroAchievements pause blocked subtitle"), seconds),
+            symbolName: "pause.slash"
+        )
     }
     
     @objc func resetEmulation(_ sender: Any?) {
@@ -1171,55 +1275,68 @@ final class OEGameDocument: NSDocument {
     }
 
     /// Handle a mid-session hardcore toggle. Soft→hard requires confirming a reset
-    /// (RA spec) — but only when an RA session is actually active; without a
-    /// signed-in session, hardcore wouldn't be enforced anyway, so we skip the
-    /// reset prompt and just record the preference. Hard→soft drops to softcore
-    /// immediately with no prompt.
+    /// (RA spec) — but only when an RA session can actually be active for the
+    /// current core/system; without a signed-in RA-supported session, hardcore
+    /// wouldn't be enforced anyway, so we skip the reset prompt and just record
+    /// the preference. Hard→soft drops to softcore immediately with no prompt.
     private func handleHardcoreToggle(enabled: Bool) {
-        let willEnforce = enabled && OECredentialStore.shared.get(.retroAchievementsToken) != nil
+        let willEnforce = enabled
+            && isRetroAchievementsSessionSupported
+            && OECredentialStore.shared.get(.retroAchievementsToken) != nil
 
         if willEnforce && HardcoreModePolicy.requiresResetWhenEnabling {
-            isEmulationPaused = true
-            let alert = OEAlert()
-            alert.messageText = NSLocalizedString("Switching to hardcore mode requires restarting the game.", comment: "")
-            alert.informativeText = NSLocalizedString("Save states, rewind, frame advance, and cheats will be disabled.", comment: "")
-            alert.defaultButtonTitle = NSLocalizedString("Restart Game", comment: "")
-            alert.alternateButtonTitle = NSLocalizedString("Cancel", comment: "")
-
-            let handleResponse: (NSApplication.ModalResponse) -> Void = { [weak self] response in
-                guard let self else { return }
-                if response == .alertFirstButtonReturn {
-                    // Flush active cheats from the core before engaging hardcore.
-                    // setHardcoreEnabled(true) blocks the document's setCheat guard,
-                    // but core cheat lists persist across a reset — they must be
-                    // cleared first so the restarted session is clean (#447).
-                    self.cheats.filter(\.isEnabled).forEach {
-                        self.gameCoreManager?.setCheat($0.code, withType: $0.type, enabled: false)
-                    }
-                    self.gameCoreManager?.setHardcoreEnabled(true)
-                    self.gameCoreManager?.resetEmulation { [weak self] in
-                        self?.isEmulationPaused = false
-                    }
-                    self.gameViewController.showHardcoreNotification(true)
-                } else {
-                    // User cancelled — revert the preference so UI and state agree.
-                    // Post the change so the prefs checkbox can resync (#446); if we
-                    // only write UserDefaults, the imperatively-set checkbox stays
-                    // visually checked until the pane is rebuilt.
-                    UserDefaults.standard.set(false, forKey: RAHardcoreEnabledKey)
-                    NotificationCenter.default.post(
-                        name: .OERAHardcoreDidChange,
-                        object: nil,
-                        userInfo: [OEHardcoreEnabledKey: false]
-                    )
-                    self.isEmulationPaused = false
-                }
+            let revertHardcorePreference = {
+                UserDefaults.standard.set(false, forKey: RAHardcoreEnabledKey)
+                NotificationCenter.default.post(
+                    name: .OERAHardcoreDidChange,
+                    object: nil,
+                    userInfo: [OEHardcoreEnabledKey: false]
+                )
             }
 
-            if let win = gameWindowController?.window {
-                alert.beginSheetModal(for: win, completionHandler: handleResponse)
-            } else {
-                handleResponse(alert.runModal())
+            requestEmulationPauseRespectingRetroAchievementsHardcore { [weak self] paused in
+                guard let self else { return }
+                guard paused else {
+                    revertHardcorePreference()
+                    return
+                }
+
+                let alert = OEAlert()
+                alert.messageText = NSLocalizedString("Switching to hardcore mode requires restarting the game.", comment: "")
+                alert.informativeText = NSLocalizedString("Save states, rewind, frame advance, and cheats will be disabled.", comment: "")
+                alert.defaultButtonTitle = NSLocalizedString("Restart Game", comment: "")
+                alert.alternateButtonTitle = NSLocalizedString("Cancel", comment: "")
+
+                let handleResponse: (NSApplication.ModalResponse) -> Void = { [weak self] response in
+                    guard let self else { return }
+                    if response == .alertFirstButtonReturn {
+                        // Flush active cheats from the core before engaging hardcore.
+                        // setHardcoreEnabled(true) blocks the document's setCheat guard,
+                        // but core cheat lists persist across a reset — they must be
+                        // cleared first so the restarted session is clean (#447).
+                        self.cheats.filter(\.isEnabled).forEach {
+                            self.gameCoreManager?.setCheat($0.code, withType: $0.type, enabled: false)
+                        }
+                        self.gameCoreManager?.setHardcoreEnabled(true)
+                        self.gameCoreManager?.resetEmulation { [weak self] in
+                            self?.isEmulationPaused = false
+                        }
+                        self.gameViewController.showHardcoreNotification(true)
+                    } else {
+                        // User cancelled — revert the preference so UI and state agree.
+                        // Post the change so the prefs checkbox can resync (#446); if we
+                        // only write UserDefaults, the imperatively-set checkbox stays
+                        // visually checked until the pane is rebuilt.
+                        revertHardcorePreference()
+                        self.isEmulationPaused = false
+                    }
+                }
+
+                if let win = self.gameWindowController?.window {
+                    alert.beginSheetModal(for: win, completionHandler: handleResponse)
+                } else {
+                    handleResponse(alert.runModal())
+                }
             }
         } else if !enabled && HardcoreModePolicy.requiresResetWhenDisabling {
             // Reserved branch for future spec changes — currently unreachable.
@@ -1265,7 +1382,7 @@ final class OEGameDocument: NSDocument {
             isEmulationPaused = true
         }
         
-        return pauseNeeded
+        return pauseNeeded && isEmulationPaused
     }
     
     // MARK: - Actions
@@ -1277,6 +1394,22 @@ final class OEGameDocument: NSDocument {
         ]
         
         NotificationCenter.default.post(Notification(name: PreferencesWindowController.openPaneNotificationName, userInfo: userInfo))
+    }
+
+    @IBAction func showRetroAchievements(_ sender: Any?) {
+        if retroAchievementsWindowController == nil {
+            let viewController = RetroAchievementsGameViewController(document: self)
+            let window = NSWindow(contentViewController: viewController)
+            window.title = NSLocalizedString("Achievements", comment: "RetroAchievements game window title")
+            window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
+            window.isReleasedWhenClosed = false
+            window.setContentSize(NSSize(width: 680, height: 520))
+            window.minSize = NSSize(width: 520, height: 360)
+            retroAchievementsWindowController = NSWindowController(window: window)
+        }
+
+        retroAchievementsWindowController?.showWindow(sender)
+        retroAchievementsWindowController?.window?.makeKeyAndOrderFront(sender)
     }
     
     /// expects `sender` or `sender.representedObject` to be an `OECorePlugin` object and prompts the user for confirmation
@@ -1296,6 +1429,7 @@ final class OEGameDocument: NSDocument {
         }
         
         isEmulationPaused = true
+        guard isEmulationPaused else { return }
         
         let alert = OEAlert()
         alert.messageText = NSLocalizedString("If you change the core you current progress will be lost and save states will not work anymore.", comment: "")
@@ -2114,6 +2248,9 @@ extension OEGameDocument {
         case #selector(nextDisplayMode(_:)),
              #selector(lastDisplayMode(_:)):
             return supportsDisplayModeChange
+        case #selector(showRetroAchievements(_:)):
+            menuItem.title = NSLocalizedString("Achievements…", comment: "RetroAchievements menu item title")
+            return true
         default:
             return true
         }
@@ -2273,10 +2410,39 @@ extension OEGameDocument: OESystemBindingsObserver {
         stopEmulation(self)
     }
 
+    func retroAchievementsSessionUpdated(_ info: [String: Any]) {
+        DispatchQueue.main.async {
+            if self.retroAchievementsSessionInfo == nil {
+                self.gameViewController?.clearRetroAchievementsIndicators()
+            }
+            let enrichedInfo = self.retroAchievementsInfoWithLiveStates(info)
+            self.retroAchievementsSessionInfo = enrichedInfo
+            self.updateRetroAchievementsSuppressedUnlockIDs(from: enrichedInfo)
+            NotificationCenter.default.post(name: .OERetroAchievementsSessionDidChange, object: self, userInfo: enrichedInfo)
+            if !self.didShowRetroAchievementsBootPlacard {
+                self.didShowRetroAchievementsBootPlacard = true
+                self.gameViewController?.showRetroAchievementsPlacard(
+                    info: enrichedInfo,
+                    hardcore: self.isHardcoreModeEnabled,
+                    signedIn: OECredentialStore.shared.get(.retroAchievementsToken) != nil
+                )
+            }
+        }
+    }
+
     func achievementUnlocked(id: UInt32, title: String, description: String, badgeURL: String, points: UInt32) {
         DispatchQueue.main.async {
+            if self.isRetroAchievementsUnknownEmulatorWarning(title: title) {
+                self.gameViewController?.showRetroAchievementsUnknownEmulatorNotice()
+                return
+            }
+            if self.retroAchievementsSuppressedUnlockIDs.contains(id) {
+                return
+            }
+            self.retroAchievementsSuppressedUnlockIDs.insert(id)
+
             // In-app banner — always visible regardless of Focus mode or notification settings
-            self.gameViewController?.showAchievementUnlocked(title: title, points: points)
+            self.gameViewController?.showAchievementUnlocked(title: title, description: description, badgeURL: badgeURL, points: points)
 
             // macOS system notification — timeSensitive breaks through Focus/DND
             let content = UNMutableNotificationContent()
@@ -2290,6 +2456,136 @@ extension OEGameDocument: OESystemBindingsObserver {
                 trigger: nil
             )
             UNUserNotificationCenter.current().add(request)
+        }
+    }
+
+    private func isRetroAchievementsUnknownEmulatorWarning(title: String) -> Bool {
+        let foldedTitle = title.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current)
+        return foldedTitle.contains("unknown emulator") || foldedTitle.contains("unknown emu")
+    }
+
+    private func updateRetroAchievementsSuppressedUnlockIDs(from info: [String: Any]) {
+        let requiredUnlockFlag = isHardcoreModeEnabled ? 2 : 1
+        let achievements = info[OERetroAchievementsAchievementsKey] as? [[String: Any]] ?? []
+        for achievement in achievements {
+            guard let id = (achievement[OEAchievementIDKey] as? NSNumber)?.uint32Value else { continue }
+            let unlocked = (achievement[OERetroAchievementsUnlockedKey] as? NSNumber)?.intValue ?? 0
+            if (unlocked & requiredUnlockFlag) != 0 {
+                retroAchievementsSuppressedUnlockIDs.insert(id)
+            }
+        }
+    }
+
+    private func retroAchievementsInfoWithLiveStates(_ info: [String: Any]) -> [String: Any] {
+        let achievements = info[OERetroAchievementsAchievementsKey] as? [[String: Any]] ?? []
+        guard !achievements.isEmpty else { return info }
+
+        var updatedInfo = info
+        updatedInfo[OERetroAchievementsAchievementsKey] = achievements.map { achievement in
+            var updatedAchievement = achievement
+            updatedAchievement.removeValue(forKey: OERetroAchievementsActiveChallengeKey)
+            updatedAchievement.removeValue(forKey: OERetroAchievementsActiveProgressKey)
+
+            guard let id = (achievement[OEAchievementIDKey] as? NSNumber)?.uint32Value else { return updatedAchievement }
+            if retroAchievementsActiveChallengeIDs.contains(id) {
+                updatedAchievement[OERetroAchievementsActiveChallengeKey] = true
+            }
+            if let progress = retroAchievementsActiveProgressByAchievementID[id], !progress.isEmpty {
+                updatedAchievement[OERetroAchievementsActiveProgressKey] = progress
+            }
+            return updatedAchievement
+        }
+        return updatedInfo
+    }
+
+    private func refreshRetroAchievementsSessionLiveStates() {
+        guard let info = retroAchievementsSessionInfo else { return }
+        let updatedInfo = retroAchievementsInfoWithLiveStates(info)
+        retroAchievementsSessionInfo = updatedInfo
+        NotificationCenter.default.post(name: .OERetroAchievementsSessionDidChange, object: self, userInfo: updatedInfo)
+    }
+
+    func retroAchievementsEvent(_ info: [String: Any]) {
+        DispatchQueue.main.async {
+            self.handleRetroAchievementsEvent(info)
+        }
+    }
+
+    private func handleRetroAchievementsEvent(_ info: [String: Any]) {
+        guard let kind = info[OERetroAchievementsEventKindKey] as? String else { return }
+        let id = (info[OERetroAchievementsEventIDKey] as? NSNumber)?.uint32Value ?? 0
+        let title = info[OERetroAchievementsEventTitleKey] as? String ?? NSLocalizedString("RetroAchievements", comment: "RetroAchievements event fallback title")
+        let description = info[OERetroAchievementsEventDescriptionKey] as? String ?? ""
+        let badgeURL = info[OERetroAchievementsEventBadgeURLKey] as? String
+        let display = info[OERetroAchievementsEventDisplayKey] as? String ?? ""
+
+        switch kind {
+        case "achievementUnlocked":
+            // The dedicated achievement unlock path already shows the richer unlock
+            // banner and macOS notification. Keep this event for future routing only.
+            return
+        case "challengeShow":
+            if id != 0 { retroAchievementsActiveChallengeIDs.insert(id) }
+            refreshRetroAchievementsSessionLiveStates()
+            gameViewController?.showRetroAchievementsChallenge(id: id, title: title)
+        case "challengeHide":
+            if id != 0 { retroAchievementsActiveChallengeIDs.remove(id) }
+            refreshRetroAchievementsSessionLiveStates()
+            gameViewController?.hideRetroAchievementsChallenge(id: id)
+        case "progressShow", "progressUpdate":
+            let progress = info[OERetroAchievementsMeasuredProgressKey] as? String ?? display
+            if id != 0 { retroAchievementsActiveProgressByAchievementID[id] = progress }
+            refreshRetroAchievementsSessionLiveStates()
+            gameViewController?.showRetroAchievementsProgress(title: title, progress: progress)
+        case "progressHide":
+            retroAchievementsActiveProgressByAchievementID.removeAll()
+            refreshRetroAchievementsSessionLiveStates()
+            gameViewController?.hideRetroAchievementsProgress()
+        case "leaderboardStarted":
+            gameViewController?.showRetroAchievementsEventToast(title: NSLocalizedString("Leaderboard Started", comment: "RA leaderboard started"), subtitle: title, symbolName: "flag.checkered")
+        case "leaderboardFailed":
+            gameViewController?.hideAllRetroAchievementsLeaderboards()
+            gameViewController?.showRetroAchievementsEventToast(title: NSLocalizedString("Leaderboard Failed", comment: "RA leaderboard failed"), subtitle: title, symbolName: "xmark.circle.fill")
+        case "leaderboardSubmitted":
+            gameViewController?.hideAllRetroAchievementsLeaderboards()
+            gameViewController?.showRetroAchievementsEventToast(title: NSLocalizedString("Leaderboard Submitted", comment: "RA leaderboard submitted"), subtitle: title, symbolName: "checkmark.seal.fill")
+        case "leaderboardTrackerShow":
+            gameViewController?.showRetroAchievementsLeaderboard(id: id, display: display)
+        case "leaderboardTrackerUpdate":
+            gameViewController?.updateRetroAchievementsLeaderboard(id: id, display: display)
+        case "leaderboardTrackerHide":
+            gameViewController?.hideRetroAchievementsLeaderboard(id: id)
+        case "leaderboardScoreboard":
+            gameViewController?.hideAllRetroAchievementsLeaderboards()
+            let submitted = info[OERetroAchievementsEventSubmittedScoreKey] as? String ?? ""
+            let rank = (info[OERetroAchievementsEventRankKey] as? NSNumber)?.intValue ?? 0
+            let subtitle = rank > 0
+                ? String(format: NSLocalizedString("%@ · Rank #%d", comment: "RA leaderboard scoreboard"), submitted, rank)
+                : submitted
+            gameViewController?.showRetroAchievementsEventToast(title: NSLocalizedString("Leaderboard Result", comment: "RA leaderboard result"), subtitle: subtitle, symbolName: "list.number")
+        case "gameCompleted":
+            let gameTitle = retroAchievementsSessionInfo?[OERetroAchievementsGameTitleKey] as? String ?? rom.game?.displayName ?? title
+            let verb = isHardcoreModeEnabled ? NSLocalizedString("Mastered", comment: "RA mastered game") : NSLocalizedString("Completed", comment: "RA completed game")
+            gameViewController?.showRetroAchievementsEventToast(title: "\(verb) \(gameTitle)", subtitle: NSLocalizedString("All achievements earned", comment: "RA game completed subtitle"), badgeURL: retroAchievementsSessionInfo?[OERetroAchievementsGameBadgeURLKey] as? String, symbolName: "crown.fill")
+        case "subsetCompleted":
+            let verb = isHardcoreModeEnabled ? NSLocalizedString("Mastered", comment: "RA mastered subset") : NSLocalizedString("Completed", comment: "RA completed subset")
+            gameViewController?.showRetroAchievementsEventToast(title: "\(verb) \(title)", subtitle: NSLocalizedString("Achievement set complete", comment: "RA subset completed subtitle"), badgeURL: badgeURL, symbolName: "crown.fill")
+        case "resetRequested":
+            gameCoreManager?.resetEmulation { [weak self] in
+                self?.isEmulationPaused = false
+            }
+            gameViewController?.showRetroAchievementsEventToast(title: NSLocalizedString("Hardcore Reset", comment: "RA reset requested"), subtitle: NSLocalizedString("Restarting to apply hardcore mode.", comment: "RA reset requested subtitle"), symbolName: "arrow.clockwise.circle.fill")
+        case "serverError":
+            let message = info[OERetroAchievementsEventErrorMessageKey] as? String ?? description
+            gameViewController?.showRetroAchievementsEventToast(title: NSLocalizedString("RetroAchievements Error", comment: "RA server error"), subtitle: message, symbolName: "exclamationmark.triangle.fill")
+        case "disconnected":
+            gameViewController?.showRetroAchievementsOfflineNotice()
+            gameViewController?.showRetroAchievementsEventToast(title: NSLocalizedString("RetroAchievements Offline", comment: "RA disconnected"), subtitle: NSLocalizedString("Some submissions are pending retry.", comment: "RA disconnected subtitle"), symbolName: "wifi.slash")
+        case "reconnected":
+            gameViewController?.hideRetroAchievementsOfflineNotice()
+            gameViewController?.showRetroAchievementsEventToast(title: NSLocalizedString("RetroAchievements Reconnected", comment: "RA reconnected"), subtitle: NSLocalizedString("Pending submissions completed.", comment: "RA reconnected subtitle"), symbolName: "wifi")
+        default:
+            return
         }
     }
 }

@@ -168,9 +168,6 @@ enum SentryService {
             // OS-level diagnostics: hangs the in-process detector misses,
             // CPU exceptions, disk-write spikes. Off by default in the SDK.
             options.enableMetricKit  = true
-            // Default is 2.0s. UI thread blocks shorter than that — like the
-            // OEAlert runModal hang we fixed in 01456229 — slip through silently.
-            options.appHangTimeoutInterval = 1.0
         }
     }
 }

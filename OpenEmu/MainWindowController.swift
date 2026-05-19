@@ -213,7 +213,7 @@ final class MainWindowController: NSWindowController {
             shouldExitFullScreenWhenGameFinishes = false
             shouldUndockGameWindowOnFullScreenExit = true
         } else {
-            gameDocument?.isEmulationPaused = true
+            gameDocument?.requestEmulationPauseRespectingRetroAchievementsHardcore()
             currentContentController = nil
             gameDocument?.gameWindowController = nil
             
@@ -444,7 +444,7 @@ extension MainWindowController: NSWindowDelegate {
     func windowWillEnterFullScreen(_ notification: Notification) {
         if let gameDocument = gameDocument, gameDocument.gameWindowController == self {
             resumePlayingAfterFullScreenTransition = !gameDocument.isEmulationPaused
-            gameDocument.isEmulationPaused = true
+            gameDocument.requestEmulationPauseRespectingRetroAchievementsHardcore()
         }
     }
     
@@ -464,7 +464,7 @@ extension MainWindowController: NSWindowDelegate {
     func windowWillExitFullScreen(_ notification: Notification) {
         if let gameDocument = gameDocument {
             resumePlayingAfterFullScreenTransition = !gameDocument.isEmulationPaused
-            gameDocument.isEmulationPaused = true
+            gameDocument.requestEmulationPauseRespectingRetroAchievementsHardcore()
         }
     }
     

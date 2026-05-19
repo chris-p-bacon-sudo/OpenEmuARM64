@@ -54,3 +54,75 @@ public let OEAchievementTitleKey       = "title"
 public let OEAchievementDescriptionKey = "description"
 public let OEAchievementBadgeURLKey    = "badgeURL"
 public let OEAchievementPointsKey      = "points"
+
+/// Posted inside the helper process by a core plugin when the loaded game's
+/// RetroAchievements metadata changes. The helper observes this and forwards
+/// the payload to the host app through `OEGameCoreOwner`.
+public extension Notification.Name {
+    static let OERetroAchievementsSessionUpdated = Notification.Name("OERetroAchievementsSessionUpdated")
+}
+
+/// Posted by `OEGameDocument` in the host app after the helper forwards a
+/// RetroAchievements session metadata update. UI should observe this host-side
+/// notification instead of `OERetroAchievementsSessionUpdated` to avoid echoing
+/// helper notifications in same-process core-manager mode.
+public extension Notification.Name {
+    static let OERetroAchievementsSessionDidChange = Notification.Name("OERetroAchievementsSessionDidChange")
+}
+
+/// Keys in the RetroAchievements session metadata `userInfo` dictionary.
+public let OERetroAchievementsGameIDKey              = "gameID"
+public let OERetroAchievementsGameTitleKey           = "gameTitle"
+public let OERetroAchievementsGameHashKey            = "gameHash"
+public let OERetroAchievementsGameBadgeURLKey        = "gameBadgeURL"
+public let OERetroAchievementsUnlockedCountKey       = "unlockedCount"
+public let OERetroAchievementsAchievementCountKey    = "achievementCount"
+public let OERetroAchievementsUnlockedPointsKey      = "unlockedPoints"
+public let OERetroAchievementsTotalPointsKey         = "totalPoints"
+public let OERetroAchievementsAchievementsKey        = "achievements"
+public let OERetroAchievementsSetsKey                = "sets"
+public let OERetroAchievementsSetIDKey               = "setID"
+public let OERetroAchievementsSetTitleKey            = "setTitle"
+public let OERetroAchievementsSetBadgeURLKey         = "setBadgeURL"
+public let OERetroAchievementsSetAchievementCountKey = "setAchievementCount"
+public let OERetroAchievementsSetLeaderboardCountKey = "setLeaderboardCount"
+public let OERetroAchievementsBucketTitleKey         = "bucketTitle"
+public let OERetroAchievementsBucketTypeKey          = "bucketType"
+public let OERetroAchievementsStateKey               = "state"
+public let OERetroAchievementsTypeKey                = "type"
+public let OERetroAchievementsMeasuredProgressKey    = "measuredProgress"
+public let OERetroAchievementsMeasuredPercentKey     = "measuredPercent"
+public let OERetroAchievementsActiveChallengeKey     = "activeChallenge"
+public let OERetroAchievementsActiveProgressKey      = "activeProgress"
+public let OERetroAchievementsBadgeLockedURLKey      = "badgeLockedURL"
+public let OERetroAchievementsRarityKey              = "rarity"
+public let OERetroAchievementsHardcoreRarityKey      = "rarityHardcore"
+public let OERetroAchievementsUnlockedKey            = "unlocked"
+public let OERetroAchievementsSessionStatusKey       = "sessionStatus"
+public let OERetroAchievementsSessionErrorCodeKey    = "sessionErrorCode"
+public let OERetroAchievementsSessionErrorMessageKey = "sessionErrorMessage"
+public let OERetroAchievementsSessionStatusUnrecognized = "unrecognized"
+public let OERetroAchievementsSessionStatusLoginFailed  = "loginFailed"
+public let OERetroAchievementsSessionStatusLoadFailed   = "loadFailed"
+
+/// Posted inside the helper process by a core plugin when rcheevos emits a
+/// gameplay UI event. The helper forwards this to the host via `OEGameCoreOwner`.
+public extension Notification.Name {
+    static let OERetroAchievementsEvent = Notification.Name("OERetroAchievementsEvent")
+}
+
+/// Keys in the RetroAchievements gameplay event `userInfo` dictionary.
+public let OERetroAchievementsEventTypeKey       = "eventType"
+public let OERetroAchievementsEventKindKey       = "eventKind"
+public let OERetroAchievementsEventIDKey         = "eventID"
+public let OERetroAchievementsEventTitleKey      = "eventTitle"
+public let OERetroAchievementsEventDescriptionKey = "eventDescription"
+public let OERetroAchievementsEventBadgeURLKey   = "eventBadgeURL"
+public let OERetroAchievementsEventPointsKey     = "eventPoints"
+public let OERetroAchievementsEventDisplayKey    = "eventDisplay"
+public let OERetroAchievementsEventSubmittedScoreKey = "eventSubmittedScore"
+public let OERetroAchievementsEventBestScoreKey  = "eventBestScore"
+public let OERetroAchievementsEventRankKey       = "eventRank"
+public let OERetroAchievementsEventTotalEntriesKey = "eventTotalEntries"
+public let OERetroAchievementsEventErrorMessageKey = "eventErrorMessage"
+public let OERetroAchievementsEventAPIKey        = "eventAPI"

@@ -184,10 +184,16 @@ final class OECredentialStore {
         guard !isLoaded else { return }
         isLoaded = true
 
-        // One-time migration: if old keychain items exist, move them here and delete them.
-        migrateFromKeychain()
-
         let url = OECredentialStore.storeURL
+
+        // One-time migration: only touch legacy keychain items when the encrypted
+        // file store does not exist yet. If the store already exists, trying to
+        // read old keychain leftovers can trigger a macOS access prompt when a
+        // different Debug/Release build or app path launches.
+        if !FileManager.default.fileExists(atPath: url.path) {
+            migrateFromKeychain()
+        }
+
         guard FileManager.default.fileExists(atPath: url.path),
               let ciphertext = try? Data(contentsOf: url)
         else { return }
@@ -244,8 +250,9 @@ final class OECredentialStore {
     /// cache, then deletes the keychain items. This runs exactly once — after the store
     /// file exists the keychain items are gone and this code is never reached again.
     ///
-    /// Users will not see any permission dialogs: reading a keychain item that the same
-    /// binary created previously does not prompt. We just clean up and move on.
+    /// Migration must never show a Keychain permission dialog. If macOS would require
+    /// interaction because the item was created by a different binary/path/signature,
+    /// skip that item and let the user sign in again through Preferences instead.
     private func migrateFromKeychain() {
         var migrated = 0
 
@@ -282,11 +289,12 @@ final class OECredentialStore {
 
     private func keychainRead(service: String, account: String) -> String? {
         let query: [CFString: Any] = [
-            kSecClass:       kSecClassGenericPassword,
-            kSecAttrService: service,
-            kSecAttrAccount: account,
-            kSecReturnData:  kCFBooleanTrue!,
-            kSecMatchLimit:  kSecMatchLimitOne,
+            kSecClass:               kSecClassGenericPassword,
+            kSecAttrService:         service,
+            kSecAttrAccount:         account,
+            kSecReturnData:          kCFBooleanTrue!,
+            kSecMatchLimit:          kSecMatchLimitOne,
+            kSecUseAuthenticationUI: kSecUseAuthenticationUIFail,
         ]
         var result: AnyObject?
         let status = SecItemCopyMatching(query as CFDictionary, &result)

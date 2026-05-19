@@ -84,6 +84,18 @@ extension GameCoreManager: OEGameCoreHelper {
     public func setPauseEmulation(_ pauseEmulation: Bool) {
         gameCoreHelper?.setPauseEmulation(pauseEmulation)
     }
+
+    public func canPauseRetroAchievementsHardcore(completionHandler block: @escaping (Bool, UInt32) -> Void) {
+        guard let gameCoreHelper else {
+            block(true, 0)
+            return
+        }
+        gameCoreHelper.canPauseRetroAchievementsHardcore { allowed, framesRemaining in
+            DispatchQueue.main.async {
+                block(allowed, framesRemaining)
+            }
+        }
+    }
     
     public func setEffectsMode(_ mode: OEGameCoreEffectsMode) {
         gameCoreHelper?.setEffectsMode(mode)

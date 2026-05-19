@@ -31,7 +31,6 @@ The goal is to honor the original OpenEmu spirit — a beautifully designed, fir
 4. **Don't rewrite files wholesale.** This is a large, complex Xcode project. Make surgical changes. Rewriting `.pbxproj` or large ObjC files without understanding them will break the build.
 5. **Respect the flattened architecture.** Submodule directories (`Nestopia/`, `BSNES/`, etc.) are regular directories — do not attempt to re-initialize them as git submodules.
 6. **Do not commit build artifacts.** No `.o` files, derived data, `.app` bundles, build logs, or compiled executables.
-7. **Note AI assistance in commit messages.** If a commit was written or significantly assisted by an AI tool (Claude, Cursor, Copilot, etc.), say so in the commit message. Example: `fix: resolve VICE dlopen crash (assisted by Claude Code)`.
 
 ---
 
@@ -430,9 +429,9 @@ xcodebuild -workspace OpenEmu-metal.xcworkspace -scheme OpenEmu \
   -configuration Debug -destination 'platform=macOS,arch=arm64' \
   build 2>&1 | tail -10
 
-# Stage and commit (note AI tools used if applicable)
+# Stage and commit
 git add -p
-git commit -m "fix: description (assisted by Claude Code)"
+git commit -m "fix: description"
 
 # Push and open a PR — always in the same step, never one without the other
 git push -u origin fix/your-description
