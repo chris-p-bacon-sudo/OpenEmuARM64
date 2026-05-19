@@ -100,16 +100,49 @@ if [ -z "${BUILT}" ] || [ ! -e "${BUILT}/Contents/MacOS/${CORE}" ]; then
   exit 4
 fi
 
+bundle_digest() {
+  python3 - "$1" <<'PY'
+import hashlib
+import os
+import sys
+
+root = sys.argv[1]
+entries = []
+for dirpath, _, filenames in os.walk(root):
+    for filename in filenames:
+        if filename == ".DS_Store" or filename.startswith("._"):
+            continue
+        path = os.path.join(dirpath, filename)
+        rel = os.path.relpath(path, root)
+        h = hashlib.sha256()
+        with open(path, "rb") as f:
+            for chunk in iter(lambda: f.read(1024 * 1024), b""):
+                h.update(chunk)
+        entries.append((rel, h.hexdigest()))
+
+overall = hashlib.sha256()
+for rel, digest in sorted(entries):
+    overall.update(rel.encode("utf-8"))
+    overall.update(b"\0")
+    overall.update(digest.encode("ascii"))
+    overall.update(b"\0")
+print(overall.hexdigest())
+PY
+}
+
 INSTALLED_BIN="${INSTALLED}/Contents/MacOS/${CORE}"
 BUILT_BIN="${BUILT}/Contents/MacOS/${CORE}"
 
 INSTALLED_MD5=$(md5 -q "${INSTALLED_BIN}")
 BUILT_MD5=$(md5 -q "${BUILT_BIN}")
+INSTALLED_DIGEST=$(bundle_digest "${INSTALLED}")
+BUILT_DIGEST=$(bundle_digest "${BUILT}")
 
-if [ "${INSTALLED_MD5}" = "${BUILT_MD5}" ]; then
+if [ "${INSTALLED_MD5}" = "${BUILT_MD5}" ] && [ "${INSTALLED_DIGEST}" = "${BUILT_DIGEST}" ]; then
   INSTALLED_DATE=$(stat -f "%Sm" -t "%b %d %H:%M:%S" "${INSTALLED_BIN}")
   echo "OK — installed ${CORE} (${CONFIG}) matches latest build."
-  echo "     md5: ${INSTALLED_MD5}   active ${INSTALLED_DATE}"
+  echo "     binary md5: ${INSTALLED_MD5}   active ${INSTALLED_DATE}"
+  echo "     bundle sha256: ${INSTALLED_DIGEST}"
   exit 0
 fi
 
@@ -118,11 +151,13 @@ BUILT_DATE=$(stat -f "%Sm" -t "%b %d %H:%M:%S" "${BUILT_BIN}")
 
 echo "FAIL — installed ${CORE} plugin does not match latest ${CONFIG} build." >&2
 echo "" >&2
-echo "Built:      ${BUILT_DATE}   md5: ${BUILT_MD5}" >&2
-echo "            ${BUILT_BIN}" >&2
+echo "Built:      ${BUILT_DATE}   binary md5: ${BUILT_MD5}" >&2
+echo "            bundle sha256: ${BUILT_DIGEST}" >&2
+echo "            ${BUILT}" >&2
 echo "" >&2
-echo "Installed:  ${INSTALLED_DATE}   md5: ${INSTALLED_MD5}" >&2
-echo "            ${INSTALLED_BIN}" >&2
+echo "Installed:  ${INSTALLED_DATE}   binary md5: ${INSTALLED_MD5}" >&2
+echo "            bundle sha256: ${INSTALLED_DIGEST}" >&2
+echo "            ${INSTALLED}" >&2
 echo "" >&2
 echo "To fix: ./Scripts/install-core.sh ${CORE}$([ "${CONFIG}" = "Release" ] && echo " --release")" >&2
 exit 1

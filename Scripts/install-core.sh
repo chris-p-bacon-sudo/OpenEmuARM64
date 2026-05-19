@@ -115,33 +115,65 @@ if pgrep -xq "OpenEmu"; then
   fi
 fi
 
-if [ ! -d "$DEST" ]; then
-  echo "First-time install: creating ${DEST}"
-  mkdir -p "$(dirname "$DEST")"
-  cp -R "${DERIVED}" "${DEST}"
-else
-  echo "Installing ${CORE}.oecoreplugin (${CONFIG}) from:"
-  echo "  ${DERIVED}"
-  cp -f "${DERIVED}/Contents/MacOS/${CORE}" "${DEST}/Contents/MacOS/${CORE}"
-  cp -f "${DERIVED}/Contents/Info.plist"    "${DEST}/Contents/Info.plist"
-fi
+bundle_digest() {
+  python3 - "$1" <<'PY'
+import hashlib
+import os
+import sys
+
+root = sys.argv[1]
+entries = []
+for dirpath, _, filenames in os.walk(root):
+    for filename in filenames:
+        if filename == ".DS_Store" or filename.startswith("._"):
+            continue
+        path = os.path.join(dirpath, filename)
+        rel = os.path.relpath(path, root)
+        h = hashlib.sha256()
+        with open(path, "rb") as f:
+            for chunk in iter(lambda: f.read(1024 * 1024), b""):
+                h.update(chunk)
+        entries.append((rel, h.hexdigest()))
+
+overall = hashlib.sha256()
+for rel, digest in sorted(entries):
+    overall.update(rel.encode("utf-8"))
+    overall.update(b"\0")
+    overall.update(digest.encode("ascii"))
+    overall.update(b"\0")
+print(overall.hexdigest())
+PY
+}
+
+echo "Installing ${CORE}.oecoreplugin (${CONFIG}) from:"
+echo "  ${DERIVED}"
+mkdir -p "$(dirname "$DEST")"
+TMP_DEST="${DEST}.tmp.$$"
+rm -rf "${TMP_DEST}"
+cp -R "${DERIVED}" "${TMP_DEST}"
+rm -rf "${DEST}"
+mv "${TMP_DEST}" "${DEST}"
 
 SRC_MD5=$(md5 -q "${DERIVED}/Contents/MacOS/${CORE}")
 DST_MD5=$(md5 -q "${DEST}/Contents/MacOS/${CORE}")
+SRC_DIGEST=$(bundle_digest "${DERIVED}")
+DST_DIGEST=$(bundle_digest "${DEST}")
 SRC_DATE=$(stat -f "%Sm" -t "%b %d %H:%M:%S" "${DERIVED}/Contents/MacOS/${CORE}")
 DST_DATE=$(stat -f "%Sm" -t "%b %d %H:%M:%S" "${DEST}/Contents/MacOS/${CORE}")
 
 echo ""
-echo "Source     ${SRC_MD5}   built  ${SRC_DATE}"
-echo "Installed  ${DST_MD5}   active ${DST_DATE}"
+echo "Source binary     ${SRC_MD5}   built  ${SRC_DATE}"
+echo "Installed binary  ${DST_MD5}   active ${DST_DATE}"
+echo "Source bundle     ${SRC_DIGEST}"
+echo "Installed bundle  ${DST_DIGEST}"
 
-if [ "${SRC_MD5}" = "${DST_MD5}" ]; then
+if [ "${SRC_MD5}" = "${DST_MD5}" ] && [ "${SRC_DIGEST}" = "${DST_DIGEST}" ]; then
   echo ""
-  echo "OK — installed binary matches source."
+  echo "OK — installed bundle matches source."
 else
   echo ""
-  echo "WARNING — installed binary does NOT match source. The copy may have"
-  echo "          failed silently (OpenEmu still holding the binary open?)."
+  echo "WARNING — installed bundle does NOT match source. The copy may have"
+  echo "          failed silently (OpenEmu still holding files open?)."
   echo "          Quit OpenEmu fully and re-run."
   exit 1
 fi

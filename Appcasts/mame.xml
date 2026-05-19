@@ -11,8 +11,8 @@
         url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.3.3/MAME.oecoreplugin.zip"
         sparkle:version="0.250.0.1"
         sparkle:shortVersionString="0.250.0.1"
-        length="59551153"
-        sparkle:edSignature="UYkykJBDzHh5BL8tkHSVPyi7FX8Lk2kvZxGt3jl2cVqwti89FKpibITQ9JpcIyZgdymqStE66rbdKIbKcsYWBw=="
+        length="59548817"
+        sparkle:edSignature="vIXP0/BFyipn8z+yLuGbIkbVI7rvguI2TIYxlswAwZs/dJp58+Qe7TeAYOWDyxZHeIxNJ1lRXXf5wTJa78PeCg=="
         type="application/octet-stream" />
     </item>
 </channel>
