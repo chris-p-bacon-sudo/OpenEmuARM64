@@ -4,7 +4,18 @@
   xmlns:dc="http://purl.org/dc/elements/1.1/">
   <channel>
     <title>BSNES</title>
-          <item>
+              <item>
+      <title>BSNES 115.2</title>
+      <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
+      <enclosure
+        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.3.3/BSNES.oecoreplugin.zip"
+        sparkle:version="115.2"
+        sparkle:shortVersionString="115.2"
+        length="1793227"
+        sparkle:edSignature="DzNb48yaC++NRTY29ujCouup8o7c3a70gLQDOA+qepkGkn6PndBS4q8XfUriFaSuxBom52+o1Q1fdvVR/PkdCg=="
+        type="application/octet-stream" />
+    </item>
+<item>
       <title>BSNES 115.1</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure

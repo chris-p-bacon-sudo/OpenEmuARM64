@@ -92,7 +92,7 @@ step "Creating zip"
 
 ZIP="/tmp/${CORE}.oecoreplugin.zip"
 rm -f "$ZIP"
-ditto -c -k --keepParent "$PLUGIN" "$ZIP"
+ditto -c -k --keepParent --norsrc "$PLUGIN" "$ZIP"
 ok "Zip: $ZIP"
 
 # ── 6. Verify zip contents ───────────────────────────────────────────────────
