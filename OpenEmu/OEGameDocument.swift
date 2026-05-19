@@ -2017,6 +2017,7 @@ final class OEGameDocument: NSDocument {
             return URL(string: UUID().uuidString, relativeTo: temporaryDirectoryURL)!
         }
         
+        SentryService.addBreadcrumb(message: "Save state written: \(stateName)", category: "savestate")
         gameCoreManager?.saveStateToFile(at: temporaryStateFileURL) { success, error in
             if !success {
                 handler?()
@@ -2127,6 +2128,7 @@ final class OEGameDocument: NSDocument {
         }
 
         let loadState: (() -> Void) = {
+            SentryService.addBreadcrumb(message: "Save state loaded: \(state.name)", category: "savestate")
             self.gameCoreManager?.loadStateFromFile(at: state.dataFileURL) { success, error in
                 if !success {
                     if let error = error {
@@ -2440,6 +2442,8 @@ extension OEGameDocument: OESystemBindingsObserver {
             }
             self.retroAchievementsSuppressedUnlockIDs.insert(id)
 
+            SentryService.addBreadcrumb(message: "Achievement unlocked: \(title) (\(points) pts)", category: "retroachievements")
+
             // In-app banner — always visible regardless of Focus mode or notification settings
             self.gameViewController?.showAchievementUnlocked(title: title, description: description, badgeURL: badgeURL, points: points)
 
@@ -2565,6 +2569,7 @@ extension OEGameDocument: OESystemBindingsObserver {
         case "gameCompleted":
             let gameTitle = retroAchievementsSessionInfo?[OERetroAchievementsGameTitleKey] as? String ?? rom.game?.displayName ?? title
             let verb = isHardcoreModeEnabled ? NSLocalizedString("Mastered", comment: "RA mastered game") : NSLocalizedString("Completed", comment: "RA completed game")
+            SentryService.addBreadcrumb(message: "\(verb) \(gameTitle) — all achievements earned", category: "retroachievements")
             gameViewController?.showRetroAchievementsEventToast(title: "\(verb) \(gameTitle)", subtitle: NSLocalizedString("All achievements earned", comment: "RA game completed subtitle"), badgeURL: retroAchievementsSessionInfo?[OERetroAchievementsGameBadgeURLKey] as? String, symbolName: "crown.fill")
         case "subsetCompleted":
             let verb = isHardcoreModeEnabled ? NSLocalizedString("Mastered", comment: "RA mastered subset") : NSLocalizedString("Completed", comment: "RA completed subset")
