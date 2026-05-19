@@ -97,29 +97,19 @@ After writing the file, print its contents so the user can see the draft.
 
 ## Step 5 — Build check
 
+Use Release config — Debug config has a pre-existing codesign issue with the test target.
+
 ```bash
 xcodebuild -workspace OpenEmu-metal.xcworkspace -scheme OpenEmu \
-  -configuration Debug -destination 'platform=macOS,arch=arm64' \
-  build 2>&1 | tail -10
+  -configuration Release -destination 'platform=macOS,arch=arm64' \
+  build 2>&1 | tail -5
 ```
 
 If the build fails, stop and report the errors. Do not continue.
 
-## Step 6 — Commit version bump and release notes directly to main
+Do NOT commit the version bump yet. The version bump files (plist, pbxproj, SECURITY.md, notes) stay as working-tree changes and are picked up by the release script's final commit in Step 7.
 
-This is a config/docs-only change and qualifies for a direct commit to main.
-
-```bash
-git add OpenEmu/OpenEmu-Info.plist OpenEmu/OpenEmu.xcodeproj/project.pbxproj Releases/notes-VERSION.md .github/SECURITY.md
-git commit -m "chore: bump version to VERSION (build BUILD)
-
-Add release notes for VERSION."
-git push origin main
-```
-
-Report the commit SHA.
-
-## Step 7 — Pre-flight checklist
+## Step 6 — Pre-flight checklist
 
 ```bash
 xcrun notarytool history --keychain-profile "OpenEmu" &>/dev/null && echo "OK: notarytool" || echo "MISSING: notarytool credentials — run: xcrun notarytool store-credentials OpenEmu"
@@ -130,7 +120,7 @@ command -v sentry-cli &>/dev/null && (sentry-cli info &>/dev/null && echo "OK: s
 
 If any required check (notarytool, gh, Developer ID) fails, stop and tell the user what to fix. sentry-cli is a warning only.
 
-## Step 8 — Run the release script
+## Step 7 — Run the release script
 
 Run the release script. This step takes 10–20 minutes (archive + notarization + DMG). Use a 600-second timeout. If the command times out, tell the user to run it manually from their terminal — the prep work is all done.
 
@@ -146,9 +136,9 @@ The script will:
 5. Run `sign_update` to get the EdDSA signature
 6. Prepend a new entry to `appcast.xml` with the correct signature and length
 7. Create a **draft** GitHub Release and upload the DMG
-8. Commit and push the updated `appcast.xml` and Homebrew cask together
+8. Commit and push `appcast.xml`, Homebrew cask, version bump files, and release notes together in one commit to main
 
-## Step 9 — Report and hand off
+## Step 8 — Report and hand off
 
 After the script completes, report:
 - Build number and version shipped
