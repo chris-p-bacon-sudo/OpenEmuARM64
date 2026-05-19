@@ -45,13 +45,16 @@ class GameDocumentController: NSDocumentController {
     }
     
     override func removeDocument(_ document: NSDocument) {
+        let isKnownDocument = documents.contains { $0 === document }
         
         if let document = document as? OEGameDocument,
            let index = gameDocuments.firstIndex(of: document) {
             gameDocuments.remove(at: index)
         }
         
-        super.removeDocument(document)
+        if isKnownDocument {
+            super.removeDocument(document)
+        }
     }
     
     private func sendDelegateCallback(toTarget target: AnyObject, selector: Selector, documentController: NSDocumentController, didReviewAll: Bool, contextInfo: UnsafeMutableRawPointer?) {

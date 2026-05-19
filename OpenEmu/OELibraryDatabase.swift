@@ -688,6 +688,10 @@ final class OELibraryDatabase: NSObject {
                     let game = OEDBGame.object(with: objectID, in: context)
                     if let game = game {
                         let allowedAttributeKeys = Set(game.entity.attributesByName.keys)
+                        let droppedKeys = Set(gameInfo.keys).subtracting(allowedAttributeKeys)
+                        if !droppedKeys.isEmpty {
+                            DLog("Ignoring unsupported OpenVGDB sync keys for Game: \(droppedKeys.sorted().joined(separator: ", "))")
+                        }
                         let safeGameInfo = gameInfo.filter { allowedAttributeKeys.contains($0.key) }
                         game.setValuesForKeys(safeGameInfo)
                     }
