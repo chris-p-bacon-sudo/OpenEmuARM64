@@ -696,22 +696,7 @@ final class ImportOperation: Operation, NSCopying, @unchecked Sendable {
         let url = extractedFileURL ?? url
         
         do {
-            let md5: String
-            if let gdiHash = dreamcastGDIContentHash(at: url) {
-                // Pre-fix Dreamcast GDI imports were stored under the descriptor
-                // file's MD5. Keep that lookup path so existing libraries don't
-                // accept a one-time duplicate import after upgrading.
-                let descriptorHash = try FileManager.default.hashFile(at: url).lowercased()
-                if let context = importer.context,
-                   let existingROM = try? OEDBRom.rom(withMD5HashString: descriptorHash, in: context),
-                   existingROM != nil {
-                    md5 = descriptorHash
-                } else {
-                    md5 = gdiHash
-                }
-            } else {
-                md5 = try FileManager.default.hashFile(at: url)
-            }
+            let md5 = try importHash(for: url)
             
             md5Hash = md5.lowercased()
             
@@ -728,7 +713,44 @@ final class ImportOperation: Operation, NSCopying, @unchecked Sendable {
         }
     }
 
-    private func dreamcastGDIContentHash(at url: URL) -> String? {
+    private func importHash(for url: URL) throws -> String {
+        guard let gdiHash = Self.dreamcastGDIContentHash(at: url) else {
+            return try FileManager.default.hashFile(at: url)
+        }
+
+        // Pre-fix Dreamcast GDI imports were stored under the descriptor file's
+        // MD5. Keep that lookup only when it points at the same track content.
+        // Different games can ship identical descriptor text, so descriptor MD5
+        // alone is not enough to prove the ROM is already in the library.
+        let descriptorHash = try FileManager.default.hashFile(at: url).lowercased()
+        if let context = importer.context,
+           let existingROM = try? OEDBRom.rom(withMD5HashString: descriptorHash, in: context),
+           shouldUseLegacyDreamcastGDIHash(for: existingROM, newContentHash: gdiHash) {
+            return descriptorHash
+        }
+
+        return gdiHash
+    }
+
+    private func shouldUseLegacyDreamcastGDIHash(for existingROM: OEDBRom, newContentHash: String) -> Bool {
+        guard let existingURL = existingROM.url else {
+            // Let performImportStepCheckHash remove the stale legacy row.
+            return true
+        }
+
+        guard (try? existingURL.checkResourceIsReachable()) == true else {
+            // Let performImportStepCheckHash remove the stale legacy row.
+            return true
+        }
+
+        guard let existingContentHash = Self.dreamcastGDIContentHash(at: existingURL) else {
+            return true
+        }
+
+        return existingContentHash == newContentHash.lowercased()
+    }
+
+    static func dreamcastGDIContentHash(at url: URL) -> String? {
         guard url.pathExtension.caseInsensitiveCompare("gdi") == .orderedSame else { return nil }
         guard let descriptor = try? OEDreamcastGDI(fileURL: url) else { return nil }
 
