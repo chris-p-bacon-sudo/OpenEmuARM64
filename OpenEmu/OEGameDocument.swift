@@ -2161,7 +2161,7 @@ final class OEGameDocument: NSDocument {
                     alert.beginSheetModal(for: win) { [weak self] response in
                         guard let self else { return }
                         if response == .alertFirstButtonReturn {
-                            self.loadState()
+                            loadState()
                         } else {
                             self.startEmulation()
                         }
