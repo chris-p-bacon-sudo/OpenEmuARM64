@@ -441,6 +441,16 @@ final class LibraryController: NSTabViewController, NSMenuItemValidation {
         else { return }
         delegate?.libraryController?(self, didSelectGame: game, withCore: core)
     }
+
+    @objc(startSelectedGameLockedOnToSonicKnuckles:)
+    @IBAction func startSelectedGameLockedOnToSonicKnuckles(_ sender: NSMenuItem) {
+        guard let lockOnGame = sender.representedObject as? OEDBGame else { return }
+        guard
+            let ctl = tabView.selectedTabViewItem?.viewController as? LibrarySubviewControllerGameSelection,
+            let game = ctl.selectedGames.first
+        else { return }
+        delegate?.libraryController?(self, didSelectGame: game, lockedOnTo: lockOnGame)
+    }
     
     @objc(startSelectedGameWithSaveState:)
     @IBAction func startSelectedGame(saveState sender: NSMenuItem) {
@@ -481,6 +491,7 @@ extension LibraryController {
 protocol LibraryControllerDelegate {
     @objc optional func libraryController(_ controller: LibraryController, didSelectGame: OEDBGame)
     @objc optional func libraryController(_ controller: LibraryController, didSelectGame: OEDBGame, withCore: OECorePlugin)
+    @objc optional func libraryController(_ controller: LibraryController, didSelectGame: OEDBGame, lockedOnTo: OEDBGame)
     @objc optional func libraryController(_ controller: LibraryController, didSelectRom: OEDBRom)
     @objc optional func libraryController(_ controller: LibraryController, didSelectSaveState: OEDBSaveState)
 }

@@ -749,24 +749,25 @@ void md_cart_init(void)
         /* check ROM header */
         if (!memcmp(cart.rom + 0x400000 + 0x120, "SONIC & KNUCKLES",16))
         {
-          /* try to load Sonic 2 & Knuckles upmem ROM file (256KB) */
-          if (load_archive(SK_UPMEM, cart.rom + 0x600000, 0x40000, NULL) == 0x40000)
+          int sk_upmem_loaded = (load_archive(SK_UPMEM, cart.rom + 0x600000, 0x40000, NULL) == 0x40000);
+
+          /* $000000-$1FFFFF is mapped to S&K ROM */
+          for (i=0x00; i<0x20; i++)
           {
-            /* $000000-$1FFFFF is mapped to S&K ROM */
-            for (i=0x00; i<0x20; i++)
-            {
-              m68k.memory_map[i].base = cart.rom + 0x400000 + (i << 16);
-            }
+            m68k.memory_map[i].base = cart.rom + 0x400000 + (i << 16);
+          }
 
 #ifdef LSB_FIRST
-            for (i=0; i<0x200000; i+=2)
-            {
-              /* Byteswap ROM */
-              uint8 temp = cart.rom[i + 0x400000];
-              cart.rom[i + 0x400000] = cart.rom[i + 0x400000 + 1];
-              cart.rom[i + 0x400000 + 1] = temp;
-            }
+          for (i=0; i<0x200000; i+=2)
+          {
+            /* Byteswap ROM */
+            uint8 temp = cart.rom[i + 0x400000];
+            cart.rom[i + 0x400000] = cart.rom[i + 0x400000 + 1];
+            cart.rom[i + 0x400000 + 1] = temp;
+          }
 
+          if (sk_upmem_loaded)
+          {
             for (i=0; i<0x40000; i+=2)
             {
               /* Byteswap ROM */
@@ -774,9 +775,9 @@ void md_cart_init(void)
               cart.rom[i + 0x600000] = cart.rom[i + 0x600000 + 1];
               cart.rom[i + 0x600000 + 1] = temp;
             }
-#endif
-            cart.special |= HW_LOCK_ON;
           }
+#endif
+          cart.special |= HW_LOCK_ON;
         }
       }
       break;

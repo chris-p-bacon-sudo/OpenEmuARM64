@@ -249,6 +249,8 @@ OE_EXPORTED_CLASS
 @property(nonatomic, copy)     NSString                      *ROMMD5 NS_SWIFT_NAME(romMD5);
 @property(nonatomic, copy)     NSString                      *ROMHeader;
 @property(nonatomic, copy)     NSString                      *ROMSerial;
+@property(nonatomic, copy, nullable) NSURL                    *lockOnRomURL;
+@property(nonatomic, copy, nullable) NSURL                    *lockOnUpmemURL;
 
 /** The current value for each display mode preference key. Used to fetch the
  *  initial display mode state after the core is initialized.

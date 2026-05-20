@@ -287,6 +287,8 @@ extension OSLog {
         gameCore.romMD5             = info.romMD5
         gameCore.romHeader          = info.romHeader
         gameCore.romSerial          = info.romSerial
+        gameCore.lockOnRomURL       = info.lockOnRomURL
+        gameCore.lockOnUpmemURL     = info.lockOnUpmemURL
         gameCore.hardcoreEnabled    = _hardcoreEnabled
         
         _systemResponder.client                 = gameCore

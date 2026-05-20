@@ -36,12 +36,15 @@ import Foundation
     public let shaderParameters: [String: Double]
     public let corePluginURL: URL
     public let systemPluginURL: URL
+    public let lockOnRomURL: URL?
+    public let lockOnUpmemURL: URL?
     
     public init(romURL: URL, romMD5: String, romHeader: String, romSerial: String,
                 systemRegion: String,
                 displayModeInfo: [String: Any]?,
                 shaderURL: URL, shaderParameters: [String: Double],
-                corePluginURL: URL, systemPluginURL: URL) {
+                corePluginURL: URL, systemPluginURL: URL,
+                lockOnRomURL: URL? = nil, lockOnUpmemURL: URL? = nil) {
         self.romURL = romURL
         self.romMD5 = romMD5
         self.romHeader = romHeader
@@ -52,6 +55,8 @@ import Foundation
         self.shaderParameters = shaderParameters
         self.corePluginURL = corePluginURL
         self.systemPluginURL = systemPluginURL
+        self.lockOnRomURL = lockOnRomURL
+        self.lockOnUpmemURL = lockOnUpmemURL
     }
     
     // MARK: - NSSecureCoding
@@ -83,6 +88,8 @@ import Foundation
         self.shaderParameters = shaderParameters
         self.corePluginURL = corePluginURL
         self.systemPluginURL = systemPluginURL
+        self.lockOnRomURL = coder.decodeObject(of: NSURL.self, forKey: CodingKeys.lockOnRomURL.rawValue) as? URL
+        self.lockOnUpmemURL = coder.decodeObject(of: NSURL.self, forKey: CodingKeys.lockOnUpmemURL.rawValue) as? URL
     }
     
     public func encode(with coder: NSCoder) {
@@ -96,6 +103,8 @@ import Foundation
         coder.encode(shaderParameters, forKey: CodingKeys.shaderParameters.rawValue)
         coder.encode(corePluginURL, forKey: CodingKeys.corePluginURL.rawValue)
         coder.encode(systemPluginURL, forKey: CodingKeys.systemPluginURL.rawValue)
+        coder.encode(lockOnRomURL, forKey: CodingKeys.lockOnRomURL.rawValue)
+        coder.encode(lockOnUpmemURL, forKey: CodingKeys.lockOnUpmemURL.rawValue)
     }
     
     private enum CodingKeys: String {
@@ -103,5 +112,6 @@ import Foundation
         case systemRegion, displayModeInfo
         case shaderURL, shaderParameters
         case corePluginURL, systemPluginURL
+        case lockOnRomURL, lockOnUpmemURL
     }
 }

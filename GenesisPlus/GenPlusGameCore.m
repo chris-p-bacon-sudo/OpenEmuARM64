@@ -378,6 +378,35 @@ static __weak GenPlusGameCore *_current;
 
     [self configureOptions];
 
+    if (self.lockOnRomURL != nil && [self.systemIdentifier isEqualToString:@"openemu.system.sg"])
+    {
+        config.lock_on = TYPE_SK;
+        snprintf(SK_ROM, sizeof(SK_ROM), "%s", self.lockOnRomURL.path.fileSystemRepresentation);
+        if (self.lockOnUpmemURL != nil)
+        {
+            snprintf(SK_UPMEM, sizeof(SK_UPMEM), "%s", self.lockOnUpmemURL.path.fileSystemRepresentation);
+        }
+        else
+        {
+            NSArray<NSString *> *candidateNames = @[@"sk_upmem.bin", @"Sonic & Knuckles (World) (Lock-on).bin"];
+            SK_UPMEM[0] = '\0';
+            for (NSString *candidateName in candidateNames)
+            {
+                NSString *candidatePath = [self.biosDirectoryPath stringByAppendingPathComponent:candidateName];
+                if ([NSFileManager.defaultManager isReadableFileAtPath:candidatePath])
+                {
+                    snprintf(SK_UPMEM, sizeof(SK_UPMEM), "%s", candidatePath.fileSystemRepresentation);
+                    break;
+                }
+            }
+        }
+    }
+    else
+    {
+        SK_ROM[0] = '\0';
+        SK_UPMEM[0] = '\0';
+    }
+
     if (!load_rom((char *)path.fileSystemRepresentation))
         return NO;
 

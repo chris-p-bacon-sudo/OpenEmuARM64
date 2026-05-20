@@ -592,6 +592,67 @@ static NSString * const OEGameTableSortDescriptorsKey = @"OEGameTableSortDescrip
 }
 
 #pragma mark - Context Menu
+
+- (BOOL)OE_isGenesisGame:(OEDBGame *)game
+{
+    return [[game.system systemIdentifier] isEqualToString:@"openemu.system.sg"];
+}
+
+- (BOOL)OE_isSonicKnucklesROM:(OEDBRom *)rom
+{
+    if(![rom filesAvailable]) return NO;
+
+    NSString *header = [rom header] ?: @"";
+    NSString *serial = [rom serial] ?: @"";
+    if([header rangeOfString:@"SONIC & KNUCKLES" options:NSCaseInsensitiveSearch].location != NSNotFound ||
+       [serial rangeOfString:@"MK-1563" options:NSCaseInsensitiveSearch].location != NSNotFound)
+        return YES;
+
+    NSURL *url = [rom URL];
+    NSFileHandle *handle = url != nil ? [NSFileHandle fileHandleForReadingFromURL:url error:nil] : nil;
+    if(handle != nil)
+    {
+        [handle seekToFileOffset:0x120];
+        NSData *data = [handle readDataOfLength:16];
+        [handle closeFile];
+        NSString *romHeader = [[NSString alloc] initWithData:data encoding:NSASCIIStringEncoding];
+        if([romHeader rangeOfString:@"SONIC & KNUCKLES" options:NSCaseInsensitiveSearch].location != NSNotFound)
+            return YES;
+    }
+
+    return NO;
+}
+
+- (BOOL)OE_isSonicKnucklesGame:(OEDBGame *)game
+{
+    if(![self OE_isGenesisGame:game]) return NO;
+
+    for(OEDBRom *rom in [game roms])
+    {
+        if([self OE_isSonicKnucklesROM:rom]) return YES;
+    }
+
+    return NO;
+}
+
+- (OEDBGame *)OE_sonicKnucklesGameForLockOnGame:(OEDBGame *)game
+{
+    if(![self OE_isGenesisGame:game]) return nil;
+
+    NSManagedObjectContext *context = [game managedObjectContext];
+    if(context == nil) return nil;
+
+    NSFetchRequest *request = [OEDBGame fetchRequest];
+    request.predicate = [NSPredicate predicateWithFormat:@"system == %@", game.system];
+    NSArray<OEDBGame *> *games = [context executeFetchRequest:request error:nil];
+    for(OEDBGame *candidate in games)
+    {
+        if(candidate == game || ![self OE_isSonicKnucklesGame:candidate]) continue;
+        return candidate;
+    }
+    return nil;
+}
+
 - (NSMenu *)menuForItemsAtIndexes:(NSIndexSet*)indexes
 {
     NSMenu *menu = [[NSMenu alloc] init];
@@ -620,6 +681,17 @@ static NSString * const OEGameTableSortDescriptorsKey = @"OEGameTableSortDescrip
             NSMenuItem *coreMenuItem = [[NSMenuItem alloc] initWithTitle:NSLocalizedString(@"Play With\u2026", @"Submenu listing available cores for this system") action:NULL keyEquivalent:@""];
             [coreMenuItem setSubmenu:coreSubmenu];
             [menu addItem:coreMenuItem];
+        }
+
+        if([self OE_isGenesisGame:game] && ![self OE_isSonicKnucklesGame:game])
+        {
+            NSMenuItem *lockOnMenuItem = [[NSMenuItem alloc] initWithTitle:NSLocalizedString(@"Play locked on to Sonic & Knuckles", @"Launch a Genesis game using Sonic & Knuckles lock-on technology") action:@selector(startSelectedGameLockedOnToSonicKnuckles:) keyEquivalent:@""];
+            OEDBGame *lockOnGame = [self OE_sonicKnucklesGameForLockOnGame:game];
+            if(lockOnGame != nil)
+                [lockOnMenuItem setRepresentedObject:lockOnGame];
+            else
+                [lockOnMenuItem setEnabled:NO];
+            [menu addItem:lockOnMenuItem];
         }
 
         // Create Save State Menu

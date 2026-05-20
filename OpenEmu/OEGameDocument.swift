@@ -151,7 +151,9 @@ final class OEGameDocument: NSDocument {
     private(set) var romFileURL: URL!
     private(set) var corePlugin: OECorePlugin!
     private(set) var systemPlugin: OESystemPlugin!
-    
+    private(set) var lockOnROMURL: URL?
+    private(set) var lockOnUPMEMURL: URL?
+
     private(set) var gameViewController: GameViewController!
     
     private(set) var cheats: [Cheat] = []
@@ -305,6 +307,20 @@ final class OEGameDocument: NSDocument {
     init(game: OEDBGame, core: OECorePlugin?) throws {
         super.init()
         do {
+            try setUpDocument(with: game.defaultROM!, using: core)
+        } catch {
+            throw error
+        }
+    }
+
+    init(game: OEDBGame, core: OECorePlugin?, lockOnROM: OEDBRom) throws {
+        super.init()
+        do {
+            lockOnROMURL = lockOnROM.url
+            let upmemNames = ["sk_upmem.bin", "Sonic & Knuckles (World) (Lock-on).bin"]
+            lockOnUPMEMURL = upmemNames
+                .map { BIOSFile.biosFolderURL.appendingPathComponent($0) }
+                .first { FileManager.default.isReadableFile(atPath: $0.path) }
             try setUpDocument(with: game.defaultROM!, using: core)
         } catch {
             throw error
@@ -842,7 +858,9 @@ final class OEGameDocument: NSDocument {
                                      shaderURL: preset.shader.url,
                                      shaderParameters: params,
                                      corePluginURL: corePlugin.url,
-                                     systemPluginURL: systemPlugin.url)
+                                     systemPluginURL: systemPlugin.url,
+                                     lockOnRomURL: lockOnROMURL,
+                                     lockOnUpmemURL: lockOnUPMEMURL)
         
         if let managerClassName = UserDefaults.standard.string(forKey: OEGameCoreManagerModePreferenceKey),
            let managerClass = NSClassFromString(managerClassName),
@@ -1949,7 +1967,7 @@ final class OEGameDocument: NSDocument {
     // MARK: - Saving States
     
     var supportsSaveStates: Bool {
-        return !corePlugin.saveStatesNotSupported(forSystemIdentifier: systemPlugin.systemIdentifier)
+        return lockOnROMURL == nil && !corePlugin.saveStatesNotSupported(forSystemIdentifier: systemPlugin.systemIdentifier)
     }
     
     @objc private func saveState(_ sender: Any?) {
@@ -2242,6 +2260,7 @@ extension OEGameDocument {
     override func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
         switch menuItem.action {
         case #selector(quickLoad(_:)):
+            guard lockOnROMURL == nil else { return false }
             let slot = menuItem.representedObject != nil ? (menuItem.representedObject as? Int) ?? 0 : menuItem.tag
             return rom.quickSaveState(inSlot: slot) != nil
         case #selector(quickSave(_:)):

@@ -176,8 +176,8 @@ class GameDocumentController: NSDocumentController {
     }
     
     override func openGameDocument(with game: OEDBGame, display displayDocument: Bool, fullScreen: Bool, completionHandler: @escaping (OEGameDocument?, Error?) -> Void) {
-        // Bring an already-running document for this game to front rather than opening a second copy.
-        if let existing = gameDocuments.first(where: { $0.rom?.game == game }) {
+        // Bring an already-running normal document for this game to front rather than opening a second copy.
+        if let existing = gameDocuments.first(where: { $0.rom?.game == game && $0.lockOnROMURL == nil }) {
             existing.gameWindowController?.window?.makeKeyAndOrderFront(nil)
             completionHandler(existing, nil)
             return
@@ -191,13 +191,28 @@ class GameDocumentController: NSDocumentController {
     }
     
     override func openGameDocument(with game: OEDBGame, core: OECorePlugin, display displayDocument: Bool, fullScreen: Bool, completionHandler: @escaping (OEGameDocument?, Error?) -> Void) {
-        if let existing = gameDocuments.first(where: { $0.rom?.game == game }) {
+        if let existing = gameDocuments.first(where: { $0.rom?.game == game && $0.lockOnROMURL == nil }) {
             existing.gameWindowController?.window?.makeKeyAndOrderFront(nil)
             completionHandler(existing, nil)
             return
         }
         do {
             let document = try OEGameDocument(game: game, core: core)
+            setUpGameDocument(document, display: displayDocument, fullScreen: fullScreen, completionHandler: completionHandler)
+        } catch {
+            completionHandler(nil, error)
+        }
+    }
+
+    override func openGameDocument(with game: OEDBGame, core: OECorePlugin, lockOnROM: OEDBRom, display displayDocument: Bool, fullScreen: Bool, completionHandler: @escaping (OEGameDocument?, Error?) -> Void) {
+        let lockOnURL = lockOnROM.url
+        if let existing = gameDocuments.first(where: { $0.rom?.game == game && $0.lockOnROMURL == lockOnURL }) {
+            existing.gameWindowController?.window?.makeKeyAndOrderFront(nil)
+            completionHandler(existing, nil)
+            return
+        }
+        do {
+            let document = try OEGameDocument(game: game, core: core, lockOnROM: lockOnROM)
             setUpGameDocument(document, display: displayDocument, fullScreen: fullScreen, completionHandler: completionHandler)
         } catch {
             completionHandler(nil, error)
