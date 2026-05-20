@@ -26,38 +26,81 @@ import XCTest
 @testable import OpenEmu
 
 class ROMImporterTests: XCTestCase {
-    
+
+    func testDreamcastGDIContentHashUsesReferencedTracks() throws {
+        let rootURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("OpenEmu-GDIHashTests-")
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: rootURL) }
+
+        let firstGDI = try makeDreamcastGDITestFolder(at: rootURL.appendingPathComponent("Crazy Taxi", isDirectory: true), trackPayload: "crazy taxi")
+        let secondGDI = try makeDreamcastGDITestFolder(at: rootURL.appendingPathComponent("18 Wheeler", isDirectory: true), trackPayload: "18 wheeler")
+
+        XCTAssertEqual(try FileManager.default.hashFile(at: firstGDI), try FileManager.default.hashFile(at: secondGDI))
+        XCTAssertNotEqual(ImportOperation.dreamcastGDIContentHash(at: firstGDI), ImportOperation.dreamcastGDIContentHash(at: secondGDI))
+    }
+
+    func testDreamcastGDIContentHashMatchesIdenticalTrackContent() throws {
+        let rootURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("OpenEmu-GDIHashTests-")
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: rootURL) }
+
+        let firstGDI = try makeDreamcastGDITestFolder(at: rootURL.appendingPathComponent("First", isDirectory: true), trackPayload: "same game")
+        let secondGDI = try makeDreamcastGDITestFolder(at: rootURL.appendingPathComponent("Second", isDirectory: true), trackPayload: "same game")
+
+        XCTAssertEqual(ImportOperation.dreamcastGDIContentHash(at: firstGDI), ImportOperation.dreamcastGDIContentHash(at: secondGDI))
+    }
+
+    private func makeDreamcastGDITestFolder(at folderURL: URL, trackPayload: String) throws -> URL {
+        try FileManager.default.createDirectory(at: folderURL, withIntermediateDirectories: true)
+
+        let gdiURL = folderURL.appendingPathComponent("disc.gdi")
+        let descriptor = """
+        3
+        1 0 4 2048 track01.bin 0
+        2 450 0 2352 track02.raw 0
+        3 45150 4 2048 track03.bin 0
+        """
+        try descriptor.write(to: gdiURL, atomically: true, encoding: .utf8)
+        try "common metadata".data(using: .utf8)!.write(to: folderURL.appendingPathComponent("track01.bin"))
+        try trackPayload.data(using: .utf8)!.write(to: folderURL.appendingPathComponent("track02.raw"))
+        try "more common metadata".data(using: .utf8)!.write(to: folderURL.appendingPathComponent("track03.bin"))
+
+        return gdiURL
+    }
+
     func testArchiveUnarchiveOperationQueue() {
         let ri = ROMImporter(database: OELibraryDatabase.default!)
-        
+
         let data: Data!
         let url1 = URL(string: "file://url/op1")!
         let url2 = URL(string: "file://url/op2")!
-        
+
         do {
             var ops: [ImportOperation] = []
             var op: ImportOperation
-            
+
             op = ImportOperation(url: url1, sourceURL: url1)
             ops.append(op)
-            
+
             op = ImportOperation(url: url2, sourceURL: url2)
             ops.append(op)
-            
+
             data = ri._data(forOperationQueue: ops)
             XCTAssertNotNil(data)
         }
-        
+
         do {
             let ops: [ImportOperation]! = ri._operationQueue(from: data)
             XCTAssertNotNil(ops)
             XCTAssertEqual(ops.count, 2)
             var op: ImportOperation
-            
+
             op = ops[0]
             XCTAssertEqual(op.url.absoluteString, url1.absoluteString)
             XCTAssertEqual(op.sourceURL.absoluteString, url1.absoluteString)
-            
+
             op = ops[1]
             XCTAssertEqual(op.url.absoluteString, url2.absoluteString)
             XCTAssertEqual(op.sourceURL.absoluteString, url2.absoluteString)
