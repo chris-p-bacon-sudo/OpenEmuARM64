@@ -109,7 +109,7 @@ New to the project? Here's where to start:
 - [`good first issue`](https://github.com/nickybmon/OpenEmu-Silicon/issues?q=is%3Aopen+label%3A%22good+first+issue%22) — well-scoped bugs and improvements with pointers to the relevant code
 - [`help wanted`](https://github.com/nickybmon/OpenEmu-Silicon/issues?q=is%3Aopen+label%3A%22help+wanted%22) — things the maintainer wants help with but can't prioritize right now
 - [CONTRIBUTING.md](../.github/CONTRIBUTING.md) — how to set up a build, submit a PR, and the AI contribution policy
-- [RetroAchievements Community Guide](retroachievements-community-guide.md) — if you're an RA user or achievement set developer
+- [RetroAchievements Community Guide](retro-achievements/retroachievements-community-guide.md) — if you're an RA user or achievement set developer
 
 Questions? Open a [Discussion](https://github.com/nickybmon/OpenEmu-Silicon/discussions).
 

@@ -167,7 +167,7 @@ This is how RPCS3 grew its team.
 
 ## RetroAchievements-Specific Triage
 
-RA issues require different handling. See [retroachievements-community-guide.md](retroachievements-community-guide.md) for full context. Short version:
+RA issues require different handling. See [retroachievements-community-guide.md](retro-achievements/retroachievements-community-guide.md) for full context. Short version:
 
 - **Achievement not triggering / triggering incorrectly:** Apply `retro-achievements` + the relevant core label. Ask: is this core in the supported list? If not, link to the [RA rollout issue (#258)](https://github.com/nickybmon/OpenEmu-Silicon/issues/258). If yes, ask for game title, achievement name, and whether it reproduces with RA disabled.
 - **RA vs. emulator bug:** Many RA bugs belong upstream in the RetroAchievements issue tracker or in rcheevos, not here. When the achievement set itself is wrong (wrong memory address, wrong trigger condition), file an RA-side ticket and link it from the issue here.

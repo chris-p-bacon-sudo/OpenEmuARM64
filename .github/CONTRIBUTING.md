@@ -12,7 +12,7 @@ You don't need to write code to make a meaningful contribution.
 |------|-----------------|--------------|
 | **Issue Triager** | Applying labels, asking for repro steps, closing duplicates, flagging `good first issue` candidates | Engage with a few issues, then ask the maintainer for triage permissions |
 | **Compatibility Tester** | Testing games on the latest build, documenting results in the wiki | Open a Discussion and introduce yourself |
-| **RetroAchievements Liaison** | Testing RA integration per-core, filing upstream RA tickets, maintaining the compatibility table | See [docs/retroachievements-community-guide.md](../docs/retroachievements-community-guide.md) |
+| **RetroAchievements Liaison** | Testing RA integration per-core, filing upstream RA tickets, maintaining the compatibility table | See [docs/retro-achievements/retroachievements-community-guide.md](../docs/retro-achievements/retroachievements-community-guide.md) |
 | **Wiki / Docs Maintainer** | Keeping installation guides, core pages, and build instructions accurate | Open a PR or comment on a docs issue |
 | **Code Contributor** | Bug fixes, feature work, core updates | Read on |
 
@@ -123,9 +123,9 @@ Comment on an issue before you start work to avoid duplicates.
 
 ## Working on RetroAchievements Integration
 
-RA core integration is tracked in [issue #258](https://github.com/nickybmon/OpenEmu-Silicon/issues/258). The implementation pattern and known pitfalls are documented in [docs/retroachievements-implementation-guide.md](../docs/retroachievements-implementation-guide.md). Read that before wiring up a new core.
+RA core integration is tracked in [issue #258](https://github.com/nickybmon/OpenEmu-Silicon/issues/258). The implementation pattern and known pitfalls are documented in [docs/retro-achievements/retroachievements-implementation-guide.md](../docs/retro-achievements/retroachievements-implementation-guide.md). Read that before wiring up a new core.
 
-For testing RA as a user or tester rather than as a developer, see [docs/retroachievements-community-guide.md](../docs/retroachievements-community-guide.md).
+For testing RA as a user or tester rather than as a developer, see [docs/retro-achievements/retroachievements-community-guide.md](../docs/retro-achievements/retroachievements-community-guide.md).
 
 ---
 
@@ -154,7 +154,7 @@ The compatibility list lives in the [project wiki](https://github.com/nickybmon/
 
 ### RetroAchievements Testing
 
-See [docs/retroachievements-community-guide.md](../docs/retroachievements-community-guide.md) for how to test achievement behavior per-core and how to file upstream RA tickets.
+See [docs/retro-achievements/retroachievements-community-guide.md](../docs/retro-achievements/retroachievements-community-guide.md) for how to test achievement behavior per-core and how to file upstream RA tickets.
 
 ---
 
