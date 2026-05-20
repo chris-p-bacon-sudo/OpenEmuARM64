@@ -686,117 +686,91 @@ void __fastcall _madam_Poke(unsigned int addr, unsigned int val)
 			_madam_FSM=FSM_SUSPENDED;
 		return;
 
-//Matrix engine macros
-#define M00  ((double)(signed int)mregs[0x600])
-#define M01  ((double)(signed int)mregs[0x604])
-#define M02  ((double)(signed int)mregs[0x608])
-#define M03  ((double)(signed int)mregs[0x60C])
-#define M10  ((double)(signed int)mregs[0x610])
-#define M11  ((double)(signed int)mregs[0x614])
-#define M12  ((double)(signed int)mregs[0x618])
-#define M13  ((double)(signed int)mregs[0x61C])
-#define M20  ((double)(signed int)mregs[0x620])
-#define M21  ((double)(signed int)mregs[0x624])
-#define M22  ((double)(signed int)mregs[0x628])
-#define M23  ((double)(signed int)mregs[0x62C])
-#define M30  ((double)(signed int)mregs[0x630])
-#define M31  ((double)(signed int)mregs[0x634])
-#define M32  ((double)(signed int)mregs[0x638])
-#define M33  ((double)(signed int)mregs[0x63C])
+// Matrix engine macros
+#define M00  ((__int64)(signed int)mregs[0x600])
+#define M01  ((__int64)(signed int)mregs[0x604])
+#define M02  ((__int64)(signed int)mregs[0x608])
+#define M03  ((__int64)(signed int)mregs[0x60C])
+#define M10  ((__int64)(signed int)mregs[0x610])
+#define M11  ((__int64)(signed int)mregs[0x614])
+#define M12  ((__int64)(signed int)mregs[0x618])
+#define M13  ((__int64)(signed int)mregs[0x61C])
+#define M20  ((__int64)(signed int)mregs[0x620])
+#define M21  ((__int64)(signed int)mregs[0x624])
+#define M22  ((__int64)(signed int)mregs[0x628])
+#define M23  ((__int64)(signed int)mregs[0x62C])
+#define M30  ((__int64)(signed int)mregs[0x630])
+#define M31  ((__int64)(signed int)mregs[0x634])
+#define M32  ((__int64)(signed int)mregs[0x638])
+#define M33  ((__int64)(signed int)mregs[0x63C])
 
-#define  V0  ((double)(signed int)mregs[0x640])
-#define  V1  ((double)(signed int)mregs[0x644])
-#define  V2  ((double)(signed int)mregs[0x648])
-#define  V3  ((double)(signed int)mregs[0x64C])
+#define  V0  ((__int64)(signed int)mregs[0x640])
+#define  V1  ((__int64)(signed int)mregs[0x644])
+#define  V2  ((__int64)(signed int)mregs[0x648])
+#define  V3  ((__int64)(signed int)mregs[0x64C])
 
 #define Rez0 mregs[0x660]
 #define Rez1 mregs[0x664]
 #define Rez2 mregs[0x668]
 #define Rez3 mregs[0x66C]
 
-//#define Nfrac16 ((__int64)mregs[0x680]<<32|(unsigned int)mregs[0x684])
 #define Nfrac16 (((__int64)mregs[0x680]<<32)|(unsigned int)mregs[0x684])
 
-// Matix engine
+// Matrix engine
 
 
 	case 0x7fc:
+	{
+		mregs[0x7fc]=0; // Our matrix engine is already ready.
 
-		mregs[0x7fc]=0; // Ours matrix engine already ready
+		static __int64 Rez0T,Rez1T,Rez2T,Rez3T;
 
-		static double Rez0T,Rez1T,Rez2T,Rez3T;
-			   // io_interface(EXT_DEBUG_PRINT,(void*)str.print("MADAM Write madam[0x%X] = 0x%8.8X\n",addr,val).CStr());
+		// Match upstream Opera's integer matrix engine. The old floating-point
+		// implementation can lose fixed-point precision in 3D-heavy games.
+		Rez0=(unsigned int)Rez0T;
+		Rez1=(unsigned int)Rez1T;
+		Rez2=(unsigned int)Rez2T;
+		Rez3=(unsigned int)Rez3T;
 
 		switch(val) // Cmd
 		{
-			case 0: //printf("#Matrix = NOP\n");
-				Rez0=Rez0T;
-				Rez1=Rez1T;
-				Rez2=Rez2T;
-				Rez3=Rez3T;
-				return;   // NOP
-
-
-			case 1: //multiply a 4x4 matrix of 16.16 values by a vector of 16.16 values
-
-				Rez0=Rez0T;
-				Rez1=Rez1T;
-				Rez2=Rez2T;
-				Rez3=Rez3T;
-
-
-				Rez0T=(int)((M00*V0+M01*V1+M02*V2+M03*V3)/65536.0);
-				Rez1T=(int)((M10*V0+M11*V1+M12*V2+M13*V3)/65536.0);
-				Rez2T=(int)((M20*V0+M21*V1+M22*V2+M23*V3)/65536.0);
-				Rez3T=(int)((M30*V0+M31*V1+M32*V2+M33*V3)/65536.0);
-
-				return;
-			case 2: //multiply a 3x3 matrix of 16.16 values by a vector of 16.16 values
-				Rez0=Rez0T;
-				Rez1=Rez1T;
-				Rez2=Rez2T;
-				Rez3=Rez3T;
-
-				Rez0T=(int)((M00*V0+M01*V1+M02*V2)/65536.0);
-				Rez1T=(int)((M10*V0+M11*V1+M12*V2)/65536.0);
-				Rez2T=(int)((M20*V0+M21*V1+M22*V2)/65536.0);
-				//printf("#Matrix CMD2, R0=0x%8.8X, R1=0x%8.8X, R2=0x%8.8X\n",Rez0,Rez1,Rez2);
+			case 0: // NOP: return previous matrix result.
 				return;
 
-			case 3: // Multiply a 3x3 matrix of 16.16 values by multiple vectors, then multiply x and y by n/z
-				{   // Return the result vectors {x*n/z, y*n/z, z}
-
-
-					Rez0=Rez0T;
-					Rez1=Rez1T;
-					Rez2=Rez2T;
-					Rez3=Rez3T;
-
-					double M;
-
-					Rez2T=(signed int)((M20*V0+M21*V1+M22*V2)/65536.0); // z
-					if(Rez2T!=0)
-						M=Nfrac16/(double)Rez2T;          // n/z
-					else
-						{
-							M=Nfrac16;
-						//	io_interface(EXT_DEBUG_PRINT,(void*)"!!!Division by zero!!!\n");
-						}
-
-					Rez0T=(signed int)((M00*V0+M01*V1+M02*V2)/65536.0);
-					Rez1T=(signed int)((M10*V0+M11*V1+M12*V2)/65536.0);
-
-
-					Rez0T=(double)((Rez0T*M)/65536.0/65536.0); // x * n/z
-					Rez1T=(double)((Rez1T*M)/65536.0/65536.0); // y * n/z
-
-				}
+			case 1: // multiply a 4x4 matrix of 16.16 values by a vector of 16.16 values
+				Rez0T=((M00*V0+M01*V1+M02*V2+M03*V3)>>16);
+				Rez1T=((M10*V0+M11*V1+M12*V2+M13*V3)>>16);
+				Rez2T=((M20*V0+M21*V1+M22*V2+M23*V3)>>16);
+				Rez3T=((M30*V0+M31*V1+M32*V2+M33*V3)>>16);
 				return;
-				default:
-					//io_interface(EXT_DEBUG_PRINT,(void*)str.print("??? Unknown cmd MADAM[0x7FC]==0x%x\n", val).CStr());
-					return;
+
+			case 2: // multiply a 3x3 matrix of 16.16 values by a vector of 16.16 values
+				Rez0T=((M00*V0+M01*V1+M02*V2)>>16);
+				Rez1T=((M10*V0+M11*V1+M12*V2)>>16);
+				Rez2T=((M20*V0+M21*V1+M22*V2)>>16);
+				return;
+
+			case 3: // multiply a 3x3 matrix by a vector, then multiply x and y by n/z
+			{
+				__int64 M = Nfrac16;
+
+				Rez2T=((M20*V0+M21*V1+M22*V2)>>16); // z
+				if(Rez2T != 0)
+					M /= Rez2T;
+
+				Rez0T=((M00*V0+M01*V1+M02*V2)>>16);
+				Rez1T=((M10*V0+M11*V1+M12*V2)>>16);
+
+				Rez0T=((Rez0T*M)>>32); // x * n/z
+				Rez1T=((Rez1T*M)>>32); // y * n/z
+				return;
+			}
+
+			default:
+				return;
 		}
 		break;
+	}
 	case 0x130:
 		mregs[addr]=val;	//modulo variables :)
 		RMOD=((val&1)<<7)+((val&12)<<8)+((val&0x70)<<4);
@@ -2015,7 +1989,7 @@ void __fastcall DrawLiteralCel_New()
 	{
 		//  if(speedfixes>=0&&speedfixes<=100001)   speedfixes=300000;
 		sdf=100000;
-		//øğèôòû NFS
+		//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ NFS
 		SPRWI-=((PRE0>>24)&0xf);
 		xvert+=TEXTURE_HI_START*VDX1616;
 		yvert+=TEXTURE_HI_START*VDY1616;
