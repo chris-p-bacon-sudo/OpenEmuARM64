@@ -476,6 +476,9 @@ final class OEGameDocument: NSDocument {
             // The latter uses Cocoa document architecture and relies on documents having URLs,
             // including untitled (new) documents.
             var displayName = rom.game?.displayName ?? ""
+            if let coreName = corePlugin?.displayName, !coreName.isEmpty {
+                displayName += " (\(coreName))"
+            }
             #if DEBUG
             displayName += " (DEBUG BUILD)"
             #endif
