@@ -75,8 +75,14 @@ gh auth status &>/dev/null || die "gh CLI not authenticated. Run: gh auth login"
 echo "OK: gh CLI authenticated"
 
 CURRENT_BRANCH=$(git -C "$REPO_ROOT" rev-parse --abbrev-ref HEAD)
-[ "$CURRENT_BRANCH" = "main" ] || die "release.sh must run from main because it commits and pushes release metadata. Current branch: $CURRENT_BRANCH"
-echo "OK: on main"
+RELEASE_BRANCH="chore/release-v$VERSION"
+if [ "$CURRENT_BRANCH" = "main" ]; then
+  echo "OK: on main — will create release branch $RELEASE_BRANCH"
+elif [ "$CURRENT_BRANCH" = "$RELEASE_BRANCH" ]; then
+  echo "OK: already on release branch $RELEASE_BRANCH"
+else
+  die "release.sh must run from main or $RELEASE_BRANCH. Current branch: $CURRENT_BRANCH"
+fi
 
 # Check sentry-cli auth (non-fatal — warns but doesn't abort)
 if command -v sentry-cli &>/dev/null; then
@@ -230,13 +236,18 @@ python3 "$SCRIPT_DIR/update_appcast.py" \
   "$APPCAST" "$VERSION" "$NEXT_VERSION" "$PUB_DATE" "$ED_SIG" "$DMG_LENGTH" \
   ${NOTES_FILE:+"$NOTES_FILE"}
 
-# ── 5. Commit, tag, push, and create GitHub draft release ─────────────────────
-step "5/5  Committing release metadata, tagging, and creating GitHub draft release"
+# ── 5. Commit to release branch, open PR, tag, and create GitHub draft release ─
+step "5/5  Committing release metadata, opening PR, and creating GitHub draft release"
 
 TAG="v$VERSION"
 
-# Commit and push appcast + cask + version bump files before tagging. The tag
-# must point at the exact source/metadata used for the release binary.
+# Switch to (or create) the release branch so the commit goes through PR review
+# rather than landing directly on main. CI lint and version checks run on the PR.
+if [ "$CURRENT_BRANCH" = "main" ]; then
+  git -C "$REPO_ROOT" checkout -b "$RELEASE_BRANCH"
+fi
+
+# Stage all release metadata files
 git -C "$REPO_ROOT" add "$APPCAST" "$CASK_FILE" \
   "OpenEmu/OpenEmu-Info.plist" \
   "OpenEmu/OpenEmu.xcodeproj/project.pbxproj" \
@@ -249,11 +260,13 @@ if git -C "$REPO_ROOT" diff --cached --quiet; then
   echo "No release metadata changes to commit; using current HEAD."
 else
   git -C "$REPO_ROOT" commit -m "chore: release v$VERSION — update appcast, cask, and version bump"
-  git -C "$REPO_ROOT" push origin main
 fi
 
-# Ensure tag points at the release metadata commit, then push it before creating
-# the GitHub release so GitHub associates the release with the correct source.
+# Push the release branch
+git -C "$REPO_ROOT" push -u origin "$RELEASE_BRANCH"
+
+# Tag the release commit so the GitHub Release download URL is valid immediately.
+# The tag points at this branch commit; after PR merges it remains reachable from main.
 if git -C "$REPO_ROOT" tag -l | grep -qx "$TAG"; then
   TAG_TARGET=$(git -C "$REPO_ROOT" rev-list -n 1 "$TAG")
   HEAD_TARGET=$(git -C "$REPO_ROOT" rev-parse HEAD)
@@ -292,22 +305,51 @@ fi
 
 echo "DMG uploaded to draft release $TAG."
 
+# Open a draft PR so CI version checks run before the appcast lands on main
+PR_NOTES=""
+if [ -n "$NOTES_FILE" ] && [ -f "$NOTES_FILE" ]; then
+  PR_NOTES=$(cat "$NOTES_FILE")
+fi
+
+PR_URL=$(gh pr create \
+  --repo nickybmon/OpenEmu-Silicon \
+  --base main \
+  --head "$RELEASE_BRANCH" \
+  --draft \
+  --title "chore: release v$VERSION" \
+  --body "## Release v$VERSION
+
+This PR lands the appcast update, Homebrew cask, and version files for v$VERSION. Merging makes the Sparkle update live for existing users.
+
+**Before merging:**
+- [ ] CI build check passes
+- [ ] Draft GitHub Release reviewed — notes look good
+- [ ] DMG tested (launch, quick smoke, check version in About)
+
+**After merging:**
+Publish the GitHub Release:
+\`\`\`
+gh release edit $TAG --draft=false --repo nickybmon/OpenEmu-Silicon
+\`\`\`
+
+---
+${PR_NOTES}")
+
 echo ""
 echo "╔══════════════════════════════════════════════════════╗"
-echo "║  Release $VERSION prepared — draft is ready to review  ║"
+echo "║  Release $VERSION prepared — review PR then publish  ║"
 echo "╚══════════════════════════════════════════════════════╝"
 echo ""
-echo "  DMG:     $DMG"
-echo "  Appcast: appcast.xml (committed and pushed)"
-echo "  Draft:   https://github.com/nickybmon/OpenEmu-Silicon/releases/tag/$TAG"
+echo "  DMG:    $DMG"
+echo "  Tag:    $TAG (pushed — download URL is live)"
+echo "  PR:     $PR_URL"
+echo "  Draft:  https://github.com/nickybmon/OpenEmu-Silicon/releases/tag/$TAG"
 echo ""
-if [ -z "$NOTES_FILE" ] || [ ! -f "$NOTES_FILE" ]; then
-  echo "  ACTION REQUIRED before publishing:"
-  echo "  → Edit the release notes in appcast.xml (search for 'TODO')"
-  echo "  → Edit the draft release notes on GitHub"
-  echo "  → Then publish the draft with: gh release edit $TAG --draft=false --repo nickybmon/OpenEmu-Silicon"
-else
-  echo "  When ready to publish:"
-  echo "  → gh release edit $TAG --draft=false --repo nickybmon/OpenEmu-Silicon"
-fi
+echo "  Next steps:"
+echo "  1. Let CI run on the PR — check for version lint failures"
+echo "  2. Review draft release notes on GitHub"
+echo "  3. Test the DMG"
+echo "  4. Merge the PR (makes appcast live for Sparkle)"
+echo "  5. Publish the GitHub Release:"
+echo "     gh release edit $TAG --draft=false --repo nickybmon/OpenEmu-Silicon"
 echo ""

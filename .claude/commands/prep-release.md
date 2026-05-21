@@ -95,6 +95,34 @@ Rules for drafting:
 
 After writing the file, print its contents so the user can see the draft.
 
+## Step 4.5 — Check for unreleased core updates
+
+Before building, check whether any in-repo cores have source changes that haven't been released yet. This catches cores that need a `/release-core` run before or alongside this app release.
+
+Find the most recent cores release tag and compare each core's source directory against it:
+
+```bash
+LAST_CORES_TAG=$(git tag --sort=-version:refname | grep '^cores-' | head -1)
+echo "Last cores tag: $LAST_CORES_TAG"
+
+for dir in 4DO Dolphin DeSmuME Flycast GenesisPlus mGBA Mednafen Nestopia PPSSPP Snes9x mupen64plus; do
+  [ -d "$dir" ] || continue
+  changes=$(git log "${LAST_CORES_TAG}..HEAD" --oneline --no-merges -- "$dir/" 2>/dev/null | wc -l | tr -d ' ')
+  if [ "$changes" -gt 0 ]; then
+    ver=$(plutil -p "$dir/Info.plist" 2>/dev/null | grep CFBundleVersion | awk -F'"' '{print $4}')
+    appcast_name=$(echo "$dir" | tr '[:upper:]' '[:lower:]')
+    live_ver=$(grep -m1 'sparkle:version=' "Appcasts/${appcast_name}.xml" 2>/dev/null | grep -o '"[^"]*"' | tr -d '"')
+    if [ "$ver" = "$live_ver" ]; then
+      echo "NEEDS RELEASE: $dir — $changes commit(s) since $LAST_CORES_TAG, plist=$ver, appcast=$live_ver (version not yet bumped)"
+    else
+      echo "NEEDS RELEASE: $dir — $changes commit(s) since $LAST_CORES_TAG, plist=$ver, appcast=$live_ver"
+    fi
+  fi
+done
+```
+
+If any cores show up as needing a release, report them to the user and ask whether to proceed with the app release now and handle the cores separately, or pause here. Do not block the app release — cores and app releases are independent — but make sure the user is aware.
+
 ## Step 5 — Build check
 
 Use Release config — Debug config has a pre-existing codesign issue with the test target.
