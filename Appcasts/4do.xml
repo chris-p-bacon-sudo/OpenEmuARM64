@@ -4,7 +4,18 @@
   xmlns:dc="http://purl.org/dc/elements/1.1/">
   <channel>
     <title>4DO</title>
-                        <item>
+                            <item>
+      <title>4DO 2.3.7</title>
+      <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
+      <enclosure
+        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.3.4/4DO.oecoreplugin.zip"
+        sparkle:version="2.3.7"
+        sparkle:shortVersionString="2.3.7"
+        length="73844"
+        sparkle:edSignature="pO4QO647ZuE4kx3TKNjsymreATT36c6BIFLF0MyCB6QFq/j6oEV5si+/UibGMj8gzBt5QDC3vXxhoJ4Fr2hVAg=="
+        type="application/octet-stream" />
+    </item>
+<item>
       <title>4DO 2.3.6</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
