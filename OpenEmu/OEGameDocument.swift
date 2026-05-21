@@ -673,13 +673,6 @@ final class OEGameDocument: NSDocument {
     // MARK: - Setup
     
     func setUpGame(completionHandler handler: @escaping (_ success: Bool, _ error: Error?) -> Void) {
-        do {
-            // TODO: Remove after further testing.
-            try corePlugin.bundle.loadAndReturnError()
-        } catch {
-            handler(false, error)
-            return
-        }
         guard
             emulationStatus == .notSetup,
             checkRequiredFiles(),
@@ -2118,7 +2111,7 @@ final class OEGameDocument: NSDocument {
         }
 
         // calling pauseGame here because it might need some time to execute
-        pauseEmulationIfNeeded()
+        let didPause = pauseEmulationIfNeeded()
 
         let state: OEDBSaveState
         if let sender = sender as? OEDBSaveState {
@@ -2126,7 +2119,8 @@ final class OEGameDocument: NSDocument {
         } else if let obj = (sender?.representedObject as AnyObject?) as? OEDBSaveState {
             state = obj
         } else {
-            assertionFailure("Invalid argument passed: \(String(describing: sender))")
+            DLog("loadState: invalid sender \(String(describing: sender)), ignoring")
+            if didPause { isEmulationPaused = false }
             return
         }
 

@@ -699,6 +699,7 @@ final class OELibraryDatabase: NSObject {
                     if let imageDictionary = imageDictionary,
                        let game = game {
                         let image = OEDBImage.createImage(with: imageDictionary, in: context)
+                        try? context.obtainPermanentIDs(for: [image])
                         if let previousImage = game.boxImage {
                             previousBoxImages.append(previousImage.permanentID)
                         }
