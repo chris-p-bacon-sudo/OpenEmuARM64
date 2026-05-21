@@ -65,27 +65,14 @@ codesign --verify --deep --strict "$PLUGIN" \
   && ok "codesign --verify passed" \
   || die "codesign --verify failed after signing. Bundle may be malformed."
 
-# ── 4. Upload dSYM to Sentry ─────────────────────────────────────────────────
-step "Uploading dSYM to Sentry"
+# ── 4. Verify and upload dSYM to Sentry ──────────────────────────────────────
+step "Verifying and uploading dSYM to Sentry"
 
-DSYM="$DERIVED_DATA/Build/Products/Release/${CORE}.oecoreplugin.dSYM"
-if command -v sentry-cli &>/dev/null; then
-  if [ -d "$DSYM" ]; then
-    sentry-cli debug-files upload \
-      --org openemu-silicon \
-      --project openemu-silicon \
-      "$DSYM" \
-      && ok "dSYM uploaded to Sentry" \
-      || warn "dSYM upload failed — check sentry-cli auth (run: sentry-cli login)"
-  else
-    warn "dSYM not found at expected path: $DSYM"
-    warn "Xcode may not have produced a dSYM for this target in Release config."
-    warn "Check the target's Build Settings → Debug Information Format (should be 'DWARF with dSYM File')."
-  fi
-else
-  warn "sentry-cli not installed — skipping dSYM upload."
-  warn "Install: brew install getsentry/tools/sentry-cli && sentry-cli login"
-fi
+"$SCRIPT_DIR/verify-sentry-symbols.sh" \
+  --upload \
+  --wait-for 120 \
+  --binary-root "$PLUGIN" \
+  --dsym-root "$DERIVED_DATA/Build/Products/Release"
 
 # ── 5. Zip with ditto ────────────────────────────────────────────────────────
 step "Creating zip"

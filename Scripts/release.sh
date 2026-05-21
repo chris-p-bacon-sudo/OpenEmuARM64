@@ -84,15 +84,13 @@ else
   die "release.sh must run from main or $RELEASE_BRANCH. Current branch: $CURRENT_BRANCH"
 fi
 
-# Check sentry-cli auth (non-fatal — warns but doesn't abort)
-if command -v sentry-cli &>/dev/null; then
-  if ! sentry-cli info &>/dev/null; then
-    echo "WARNING: sentry-cli is not authenticated. dSYM upload will fail."
-    echo "         Run: sentry-cli login  (or set SENTRY_AUTH_TOKEN env var)"
-  else
-    echo "OK: sentry-cli authenticated"
-  fi
-fi
+# Check sentry-cli auth. Release builds must upload matching dSYMs so Sentry
+# can symbolicate user crashes.
+command -v sentry-cli &>/dev/null \
+  || die "sentry-cli is not installed. Install with: brew install getsentry/tools/sentry-cli"
+sentry-cli info &>/dev/null \
+  || die "sentry-cli is not authenticated. Run: sentry-cli login  (or set SENTRY_AUTH_TOKEN env var)"
+echo "OK: sentry-cli authenticated"
 
 # Check cert
 security find-identity -v | grep -q "Developer ID Application" \
@@ -148,43 +146,23 @@ xcodebuild archive \
 [ -d "$ARCHIVE_PATH" ] || die "Archive not found at expected path: $ARCHIVE_PATH"
 echo "Archive: $ARCHIVE_PATH"
 
-# ── 1.5. Upload dSYMs to Sentry ───────────────────────────────────────────────
-step "Uploading dSYMs to Sentry (symbolicated crash reports)"
+# ── 1.5. Verify and upload dSYMs to Sentry ────────────────────────────────────
+step "Verifying and uploading dSYMs to Sentry (symbolicated crash reports)"
 
-if command -v sentry-cli &>/dev/null; then
-  # Upload host app + framework dSYMs from the archive
-  sentry-cli debug-files upload \
-    --org openemu-silicon \
-    --project openemu-silicon \
-    "$ARCHIVE_PATH/dSYMs/" \
-    || echo "WARNING: dSYM upload to Sentry failed — crash stack traces may be unreadable. Check sentry-cli auth."
-
-  # Upload core plugin dSYMs from DerivedData (Xcode does not copy them into the archive).
-  # Find the DerivedData folder for this workspace by matching the OpenEmu-metal prefix.
-  DERIVED_DATA=$(find ~/Library/Developer/Xcode/DerivedData -maxdepth 1 -name "OpenEmu-metal-*" -type d 2>/dev/null | head -1)
-  if [ -n "$DERIVED_DATA" ]; then
-    CORE_DSYM_DIR="$DERIVED_DATA/Build/Products/Release"
-    CORE_DSYMS=()
-    while IFS= read -r -d '' dsym; do CORE_DSYMS+=("$dsym"); done \
-      < <(find "$CORE_DSYM_DIR" -maxdepth 1 -name "*.oecoreplugin.dSYM" -type d -print0 2>/dev/null)
-    if [ "${#CORE_DSYMS[@]}" -gt 0 ]; then
-      echo "Uploading ${#CORE_DSYMS[@]} core plugin dSYM(s)..."
-      sentry-cli debug-files upload \
-        --org openemu-silicon \
-        --project openemu-silicon \
-        "${CORE_DSYMS[@]}" \
-        || echo "WARNING: Core plugin dSYM upload failed — core crash traces may be unsymbolicated."
-    else
-      echo "NOTE: No core plugin dSYMs found in DerivedData. Build the full workspace in Release first."
-    fi
-  else
-    echo "NOTE: DerivedData folder for OpenEmu-metal not found — skipping core plugin dSYM upload."
-  fi
-else
-  echo "WARNING: sentry-cli not installed. Crash stack traces in Sentry will not be symbolicated."
-  echo "         Install with: brew install getsentry/tools/sentry-cli"
-  echo "         Then authenticate: sentry-cli login"
+DERIVED_DATA=$(ls -td ~/Library/Developer/Xcode/DerivedData/OpenEmu-metal-* 2>/dev/null | head -1 || true)
+SYMBOL_ARGS=(
+  --upload
+  --wait-for 120
+  --binary-root "$ARCHIVE_PATH/Products/Applications/OpenEmu.app"
+  --dsym-root "$ARCHIVE_PATH/dSYMs"
+  --generated-dsym-root "$ARCHIVE_PATH/dSYMs/Generated"
+)
+if [ -n "$DERIVED_DATA" ]; then
+  # Includes dSYMs supplied by binary dependencies such as Sentry's xcframework.
+  SYMBOL_ARGS+=(--dsym-root "$DERIVED_DATA")
 fi
+
+"$SCRIPT_DIR/verify-sentry-symbols.sh" "${SYMBOL_ARGS[@]}"
 
 # ── 2. Notarize (re-sign + notarize + DMG + staple) ──────────────────────────
 step "2/5  Re-signing, notarizing, and creating DMG"
