@@ -10,8 +10,9 @@
 #   2. Calls notarize.sh (re-sign, notarize, DMG, staple)
 #   3. Runs sign_update to get the EdDSA signature
 #   4. Prepends a new entry to appcast.xml
-#   5. Creates a draft GitHub Release and uploads the DMG
-#   6. Commits and pushes the updated appcast
+#   5. Commits and pushes the updated appcast, cask, notes, and version files
+#   6. Tags that exact release commit
+#   7. Creates a draft GitHub Release and uploads the DMG
 #
 # What it does NOT do:
 #   - Publish the GitHub Release (stays as draft — you review and publish manually)
@@ -72,6 +73,10 @@ echo "OK: notarytool credentials"
 # Check gh CLI
 gh auth status &>/dev/null || die "gh CLI not authenticated. Run: gh auth login"
 echo "OK: gh CLI authenticated"
+
+CURRENT_BRANCH=$(git -C "$REPO_ROOT" rev-parse --abbrev-ref HEAD)
+[ "$CURRENT_BRANCH" = "main" ] || die "release.sh must run from main because it commits and pushes release metadata. Current branch: $CURRENT_BRANCH"
+echo "OK: on main"
 
 # Check sentry-cli auth (non-fatal — warns but doesn't abort)
 if command -v sentry-cli &>/dev/null; then
@@ -225,14 +230,35 @@ python3 "$SCRIPT_DIR/update_appcast.py" \
   "$APPCAST" "$VERSION" "$NEXT_VERSION" "$PUB_DATE" "$ED_SIG" "$DMG_LENGTH" \
   ${NOTES_FILE:+"$NOTES_FILE"}
 
-# ── 5. GitHub Release (draft) + push appcast ──────────────────────────────────
-step "5/5  Creating GitHub draft release and pushing appcast"
+# ── 5. Commit, tag, push, and create GitHub draft release ─────────────────────
+step "5/5  Committing release metadata, tagging, and creating GitHub draft release"
 
 TAG="v$VERSION"
 
-# Ensure tag exists and is pushed — must happen before gh release create
-# so GitHub associates the release with the tag URL instead of "untagged-..."
-if ! git -C "$REPO_ROOT" tag -l | grep -qx "$TAG"; then
+# Commit and push appcast + cask + version bump files before tagging. The tag
+# must point at the exact source/metadata used for the release binary.
+git -C "$REPO_ROOT" add "$APPCAST" "$CASK_FILE" \
+  "OpenEmu/OpenEmu-Info.plist" \
+  "OpenEmu/OpenEmu.xcodeproj/project.pbxproj" \
+  ".github/SECURITY.md"
+if [ ! -f "$REPO_ROOT/Releases/notes-${VERSION}.md" ]; then
+  die "Release notes not found: Releases/notes-${VERSION}.md — run prep-release first."
+fi
+git -C "$REPO_ROOT" add -f "Releases/notes-${VERSION}.md"
+if git -C "$REPO_ROOT" diff --cached --quiet; then
+  echo "No release metadata changes to commit; using current HEAD."
+else
+  git -C "$REPO_ROOT" commit -m "chore: release v$VERSION — update appcast, cask, and version bump"
+  git -C "$REPO_ROOT" push origin main
+fi
+
+# Ensure tag points at the release metadata commit, then push it before creating
+# the GitHub release so GitHub associates the release with the correct source.
+if git -C "$REPO_ROOT" tag -l | grep -qx "$TAG"; then
+  TAG_TARGET=$(git -C "$REPO_ROOT" rev-list -n 1 "$TAG")
+  HEAD_TARGET=$(git -C "$REPO_ROOT" rev-parse HEAD)
+  [ "$TAG_TARGET" = "$HEAD_TARGET" ] || die "Tag $TAG already exists but does not point at HEAD. Delete or move it manually before continuing."
+else
   echo "Creating git tag $TAG..."
   git -C "$REPO_ROOT" tag "$TAG"
 fi
@@ -265,18 +291,6 @@ else
 fi
 
 echo "DMG uploaded to draft release $TAG."
-
-# Commit and push appcast + cask + version bump files
-git -C "$REPO_ROOT" add "$APPCAST" "$CASK_FILE" \
-  "OpenEmu/OpenEmu-Info.plist" \
-  "OpenEmu/OpenEmu.xcodeproj/project.pbxproj" \
-  ".github/SECURITY.md"
-if [ ! -f "$REPO_ROOT/Releases/notes-${VERSION}.md" ]; then
-  die "Release notes not found: Releases/notes-${VERSION}.md — run prep-release first."
-fi
-git -C "$REPO_ROOT" add -f "Releases/notes-${VERSION}.md"
-git -C "$REPO_ROOT" commit -m "chore: release v$VERSION — update appcast, cask, and version bump"
-git -C "$REPO_ROOT" push origin main
 
 echo ""
 echo "╔══════════════════════════════════════════════════════╗"

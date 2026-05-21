@@ -778,6 +778,10 @@ void md_cart_init(void)
           }
 #endif
           cart.special |= HW_LOCK_ON;
+          if (sk_upmem_loaded)
+          {
+            cart.special |= HW_SK_UPMEM;
+          }
         }
       }
       break;
@@ -1042,7 +1046,7 @@ static void mapper_sega_w(uint32 data)
     }
 
     /* S&K lock-on chip */
-    if (cart.special & HW_LOCK_ON)
+    if (cart.special & HW_SK_UPMEM)
     {
       /* S2K upmem chip mapped to $300000-$3fffff (256KB mirrored) */
       for (i=0x30; i<0x40; i++)

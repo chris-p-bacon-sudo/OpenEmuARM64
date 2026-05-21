@@ -734,17 +734,15 @@ final class ImportOperation: Operation, NSCopying, @unchecked Sendable {
 
     private func shouldUseLegacyDreamcastGDIHash(for existingROM: OEDBRom, newContentHash: String) -> Bool {
         guard let existingURL = existingROM.url else {
-            // Let performImportStepCheckHash remove the stale legacy row.
-            return true
+            return false
         }
 
         guard (try? existingURL.checkResourceIsReachable()) == true else {
-            // Let performImportStepCheckHash remove the stale legacy row.
-            return true
+            return false
         }
 
         guard let existingContentHash = Self.dreamcastGDIContentHash(at: existingURL) else {
-            return true
+            return false
         }
 
         return existingContentHash == newContentHash.lowercased()
