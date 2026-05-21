@@ -57,6 +57,7 @@ final class PreferencesWindowController: NSWindowController {
     override func windowDidLoad() {
         
         super.windowDidLoad()
+        window?.level = .floating // make Settings window floating so it always stays on top
         
         preferencesTabViewController = PreferencesTabViewController()
         self.window?.contentView = preferencesTabViewController.view
