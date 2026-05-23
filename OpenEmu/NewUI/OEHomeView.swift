@@ -74,7 +74,7 @@ struct OEHomeView: View {
             // directly — no binding indirection, no hit-test conflicts.
             VStack(spacing: 0) {
                 HStack(spacing: 0) {
-                    Spacer().frame(width: sidebarOpen ? 200 : 78)
+                    Spacer().frame(width: sidebarOpen ? 200 : 100)
                     glassButton(icon: "sidebar.left") {
                         sidebarOpen.toggle()
                     }
