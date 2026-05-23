@@ -82,13 +82,10 @@ final class OENewMainWindowController: NSWindowController {
         window?.styleMask.insert(.fullSizeContentView)
         window?.titlebarAppearsTransparent = true
 
-        // Position traffic lights to vertically center with our 52pt nav bar
-        positionTrafficLights()
-
-        // Re-position after content is laid out
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
-            self?.positionTrafficLights()
-        }
+        // An empty unified toolbar makes the title bar area ~52pt tall and
+        // AppKit automatically centers the traffic lights in it — no manual
+        // button repositioning needed.
+        setUpUnifiedToolbar()
 
         if OELibraryDatabase.default != nil {
             OELibraryStore.shared.reload()
@@ -100,37 +97,15 @@ final class OENewMainWindowController: NSWindowController {
             name: .libraryDidLoad,
             object: nil
         )
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(repositionTrafficLights),
-            name: NSWindow.didResizeNotification,
-            object: window
-        )
     }
 
-    /// Centers the traffic light buttons in our 52pt nav bar rather than the
-    /// default ~28pt AppKit title bar. This gives a visually balanced look
-    /// where the dots, sidebar toggle, and nav pill are all on the same center line.
-    @objc private func repositionTrafficLights() {
-        positionTrafficLights()
-    }
-
-    private func positionTrafficLights() {
-        guard let window = window,
-              let contentView = window.contentView else { return }
-
-        let navBarHeight: CGFloat = 52
-        let viewHeight = contentView.bounds.height
-        // In AppKit coordinates (origin bottom-left), the center of our nav bar is
-        // at viewHeight - navBarHeight/2 from the bottom.
-        let targetCenterY = viewHeight - navBarHeight / 2
-
-        let types: [NSWindow.ButtonType] = [.closeButton, .miniaturizeButton, .zoomButton]
-        for type in types {
-            guard let btn = window.standardWindowButton(type) else { continue }
-            var origin = btn.frame.origin
-            origin.y = targetCenterY - btn.frame.height / 2
-            btn.setFrameOrigin(origin)
+    private func setUpUnifiedToolbar() {
+        let toolbar = NSToolbar(identifier: "OENewUI-Toolbar")
+        toolbar.showsBaselineSeparator = false
+        toolbar.displayMode = .iconOnly
+        window?.toolbar = toolbar
+        if #available(macOS 11.0, *) {
+            window?.toolbarStyle = .unified
         }
     }
 
@@ -174,14 +149,6 @@ final class OENewMainWindowController: NSWindowController {
 }
 
 extension OENewMainWindowController: NSWindowDelegate {
-    func windowDidBecomeKey(_ notification: Notification) {
-        positionTrafficLights()
-    }
-
-    func windowDidResize(_ notification: Notification) {
-        positionTrafficLights()
-    }
-
     func windowWillClose(_ notification: Notification) {
         NotificationCenter.default.removeObserver(self)
     }
