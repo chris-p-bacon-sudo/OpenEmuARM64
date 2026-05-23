@@ -68,71 +68,73 @@ struct OESidebarView: View {
 
     private var panel: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Traffic lights area — AppKit renders the real controls here
-            Spacer().frame(height: 52)
+            // Traffic lights area — AppKit renders here, stays pinned at top
+            Color.clear.frame(height: 52)
 
-            // App identity
-            HStack(spacing: 10) {
-                Image(nsImage: NSApp.applicationIconImage)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(width: 34, height: 34)
-                    .cornerRadius(8)
-
-                VStack(alignment: .leading, spacing: 1) {
-                    Text("OpenEmu")
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundColor(OEColors.textPrimary)
-                    Text("\(store.allGames.count) games · \(store.systems.count) systems")
-                        .font(.system(size: 10.5))
-                        .foregroundColor(OEColors.textTertiary)
-                }
-            }
-            .padding(.horizontal, 16)
-            .padding(.bottom, 14)
-
-            // Navigation items
-            VStack(spacing: 1) {
-                ForEach(OENavSection.allCases) { section in
-                    navRow(section)
-                }
-            }
-            .padding(.horizontal, 8)
-
-            // Divider
-            Rectangle()
-                .fill(Color.white.opacity(0.07))
-                .frame(height: 0.5)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 10)
-
-            // Systems
-            Text("SYSTEMS")
-                .font(.system(size: 11, weight: .semibold))
-                .kerning(0.7)
-                .foregroundColor(OEColors.textTertiary)
-                .padding(.horizontal, 18)
-                .padding(.bottom, 6)
-
+            // Everything except user row is scrollable
             ScrollView(.vertical, showsIndicators: false) {
-                VStack(spacing: 1) {
-                    ForEach(store.systems, id: \.objectID) { system in
-                        systemRow(system)
+                VStack(alignment: .leading, spacing: 0) {
+                    // App identity
+                    HStack(spacing: 10) {
+                        Image(nsImage: NSApp.applicationIconImage)
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(width: 34, height: 34)
+                            .cornerRadius(8)
+
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text("OpenEmu")
+                                .font(.system(size: 14, weight: .bold))
+                                .foregroundColor(OEColors.textPrimary)
+                            Text("\(store.allGames.count) games · \(store.systems.count) systems")
+                                .font(.system(size: 10.5))
+                                .foregroundColor(OEColors.textTertiary)
+                        }
                     }
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 14)
+
+                    // Navigation items — stay selected, don't close sidebar
+                    VStack(spacing: 1) {
+                        ForEach(OENavSection.allCases) { section in
+                            navRow(section)
+                        }
+                    }
+                    .padding(.horizontal, 8)
+
+                    // Divider
+                    Rectangle()
+                        .fill(Color.white.opacity(0.07))
+                        .frame(height: 0.5)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 10)
+
+                    // Systems header
+                    Text("SYSTEMS")
+                        .font(.system(size: 11, weight: .semibold))
+                        .kerning(0.7)
+                        .foregroundColor(OEColors.textTertiary)
+                        .padding(.horizontal, 18)
+                        .padding(.bottom, 6)
+
+                    // System rows
+                    VStack(spacing: 1) {
+                        ForEach(store.systems, id: \.objectID) { system in
+                            systemRow(system)
+                        }
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.bottom, 12)
                 }
-                .padding(.horizontal, 8)
             }
 
-            Spacer(minLength: 0)
-
-            // Divider
+            // Divider above pinned user row
             Rectangle()
                 .fill(Color.white.opacity(0.07))
                 .frame(height: 0.5)
                 .padding(.horizontal, 16)
-                .padding(.vertical, 8)
 
-            // User row
+            // User row — pinned to bottom
             HStack(spacing: 10) {
                 OEUserAvatar(size: 28)
                 VStack(alignment: .leading, spacing: 1) {
@@ -150,14 +152,13 @@ struct OESidebarView: View {
                     .foregroundColor(.white.opacity(0.3))
             }
             .padding(.horizontal, 16)
-            .padding(.bottom, 16)
+            .padding(.vertical, 12)
         }
     }
 
     private func navRow(_ section: OENavSection) -> some View {
         Button {
-            selectedSection = section
-            withAnimation(.easeInOut(duration: 0.25)) { isOpen = false }
+            selectedSection = section   // stay open — sidebar is persistent
         } label: {
             HStack(spacing: 10) {
                 Image(systemName: section.icon)
@@ -184,7 +185,7 @@ struct OESidebarView: View {
 
     private func systemRow(_ system: OEDBSystem) -> some View {
         Button {
-            withAnimation(.easeInOut(duration: 0.25)) { isOpen = false }
+            // TODO: filter main content by this system
         } label: {
             HStack(spacing: 10) {
                 OESystemBadge(system: system, size: 28)

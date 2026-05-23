@@ -58,12 +58,12 @@ struct OEHomeView: View {
 
             // Main content fills remaining space
             ZStack(alignment: .top) {
-                OEColors.background.ignoresSafeArea()
+                OEColors.background
                 scrollContent
-                    .ignoresSafeArea(edges: .top) // hero bleeds behind transparent nav
                 floatingNavBar
             }
         }
+        .ignoresSafeArea()  // hero fills behind the transparent title bar area
         .animation(.easeInOut(duration: 0.25), value: sidebarOpen)
         .preferredColorScheme(.dark)
     }
