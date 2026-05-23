@@ -149,6 +149,16 @@ final class OENewMainWindowController: NSWindowController {
 }
 
 extension OENewMainWindowController: NSWindowDelegate {
+
+    func windowWillEnterFullScreen(_ notification: Notification) {
+        // The unified toolbar shows a gray background in full screen — hide it.
+        window?.toolbar?.isVisible = false
+    }
+
+    func windowDidExitFullScreen(_ notification: Notification) {
+        window?.toolbar?.isVisible = true
+    }
+
     func windowWillClose(_ notification: Notification) {
         NotificationCenter.default.removeObserver(self)
     }

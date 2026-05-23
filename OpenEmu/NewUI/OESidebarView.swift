@@ -74,7 +74,7 @@ struct OESidebarView: View {
             HStack {
                 Spacer()
                 Button {
-                    withAnimation(.easeInOut(duration: 0.25)) { isOpen = false }
+                    withAnimation(.easeInOut(duration: 0.25)) { isOpen.toggle() }
                 } label: {
                     Image(systemName: "sidebar.left")
                         .font(.system(size: 13, weight: .medium))
