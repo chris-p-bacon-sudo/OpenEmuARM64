@@ -29,7 +29,10 @@ import OpenEmuKit
 /// Fixed at 380pt tall — background art fills it, text overlays the bottom.
 struct OEHeroView: View {
     let game: OEDBGame
+    let currentIndex: Int
+    let totalCount: Int
     let onResume: () -> Void
+    let onDotTap: (Int) -> Void
 
     @State private var heroImage: NSImage?
     @State private var coverImage: NSImage?
@@ -149,13 +152,21 @@ struct OEHeroView: View {
 
                     Spacer(minLength: 0)
 
-                    // Page dots
-                    HStack(spacing: 6) {
-                        Capsule().fill(Color.white).frame(width: 22, height: 6)
-                        Capsule().fill(Color.white.opacity(0.35)).frame(width: 6, height: 6)
-                        Capsule().fill(Color.white.opacity(0.35)).frame(width: 6, height: 6)
+                    // Tappable page dots
+                    if totalCount > 1 {
+                        HStack(spacing: 6) {
+                            ForEach(0..<totalCount, id: \.self) { idx in
+                                Button { onDotTap(idx) } label: {
+                                    Capsule()
+                                        .fill(idx == currentIndex ? Color.white : Color.white.opacity(0.35))
+                                        .frame(width: idx == currentIndex ? 22 : 6, height: 6)
+                                        .animation(.easeInOut(duration: 0.2), value: currentIndex)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        .padding(.bottom, 12)
                     }
-                    .padding(.bottom, 12)
                 }
                 .padding(.horizontal, 48)
                 .padding(.bottom, 52)

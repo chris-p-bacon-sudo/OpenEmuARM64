@@ -45,7 +45,7 @@ actor OEHeroArtFetcher {
 
     func heroArt(for game: OEDBGame) async -> NSImage? {
         let md5 = await MainActor.run { game.defaultROM?.md5Hash?.lowercased() ?? "" }
-        guard !md5.isEmpty else { return await boxArt(for: game) }
+        guard !md5.isEmpty else { return nil }
 
         // Check disk cache
         let cachedPath = cacheDir.appendingPathComponent("\(md5).png")
@@ -72,8 +72,8 @@ actor OEHeroArtFetcher {
                 return img
             }
 
-            // Fallback: box art (already on disk via OE's cache)
-            return await boxArt(for: game)
+            // No art found — return nil so hero shows a clean black background
+            return nil
         }
 
         inFlight[md5] = task
@@ -117,9 +117,9 @@ extension ScreenScraperClient {
         components.queryItems = [
             URLQueryItem(name: "devid",       value: Self.devID),
             URLQueryItem(name: "devpassword", value: Self.devPassword),
-            URLQueryItem(name: "softname",    value: "OpenEmuSilicon"),
+            URLQueryItem(name: "softname",    value: "OpenEmu-Silicon"),
             URLQueryItem(name: "output",      value: "json"),
-            URLQueryItem(name: "rommd5",      value: md5),
+            URLQueryItem(name: "rommd5",      value: md5.uppercased()),
             URLQueryItem(name: "systemeid",   value: String(systemID)),
         ]
 

@@ -32,7 +32,12 @@ struct OEHomeView: View {
     @StateObject private var store = OELibraryStore.shared
     @State private var selectedTab: OENavTab = .home
     @State private var selectedSystem: OEDBSystem? = nil
+    @State private var heroIndex: Int = 0
     @Binding var gameToLaunch: OEDBGame?
+
+    private var heroGames: [OEDBGame] {
+        Array(store.recentlyPlayedGames.prefix(3))
+    }
 
     private var filteredSystems: [OEDBSystem] {
         guard let filter = selectedSystem else { return store.systems }
@@ -110,11 +115,21 @@ struct OEHomeView: View {
         ScrollView(.vertical, showsIndicators: false) {
             LazyVStack(alignment: .leading, spacing: 0) {
                 // Hero
-                if let hero = store.heroGame {
-                    OEHeroView(game: hero) {
+                if !heroGames.isEmpty {
+                    let hero = heroGames[heroIndex]
+                    OEHeroView(
+                        game: hero,
+                        currentIndex: heroIndex,
+                        totalCount: heroGames.count
+                    ) {
                         gameToLaunch = hero
+                    } onDotTap: { idx in
+                        withAnimation(.easeInOut(duration: 0.3)) {
+                            heroIndex = idx
+                        }
                     }
                     .padding(.bottom, -20)
+                    .id(heroIndex) // forces full redraw + art reload on switch
                 }
 
                 // System filter chips
