@@ -171,8 +171,13 @@ struct OEHeroView: View {
 
     private func loadImages() {
         Task.detached(priority: .userInitiated) {
-            let img = await OECoverLoader.cover(for: game)
-            await MainActor.run { heroImage = img; coverImage = img }
+            // Cover art: box art as floating element
+            let cover = await OECoverLoader.cover(for: game)
+            await MainActor.run { coverImage = cover }
+
+            // Background art: fanart from ScreenScraper (cached), falls back to box art
+            let bg = await OEHeroArtFetcher.shared.heroArt(for: game)
+            await MainActor.run { heroImage = bg }
         }
     }
 }

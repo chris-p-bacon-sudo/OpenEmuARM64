@@ -589,6 +589,7 @@
 		94E6C304166DB15900082F27 /* Controller-Mappings.plist in Resources */ = {isa = PBXBuildFile; fileRef = 94E6C303166DB15900082F27 /* Controller-Mappings.plist */; };
 		9ACAEF142DD44E2AACFFB26F /* OEWiiSystemResponder.m in Sources */ = {isa = PBXBuildFile; fileRef = 4C5E668B27CE43FF88AE57AF /* OEWiiSystemResponder.m */; };
 		A7E7F95C20C5FD3DA727DCAC /* OENavBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 686B26F3EF0436296D8B48CD /* OENavBar.swift */; };
+		A9A1C6DB741E12A2CE6F85D7 /* OEHeroArtFetcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31808D07275B16F27A4178AB /* OEHeroArtFetcher.swift */; };
 		A9A7057179028A1049052486 /* OELibraryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CC59D11EBB1EA0BEAEE862E /* OELibraryStore.swift */; };
 		C3A0FE0857AF614EBC218749 /* OpenEmuLibretroBridge.oecoreplugin in Copy Libretro Bridge to App PlugIns */ = {isa = PBXBuildFile; fileRef = C44B2D2208894931909A8618 /* OpenEmuLibretroBridge.oecoreplugin */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		C6252DAC14E752E300350A13 /* Controller-Preferences.plist in Resources */ = {isa = PBXBuildFile; fileRef = C6252DAA14E752E300350A13 /* Controller-Preferences.plist */; };
@@ -1224,6 +1225,7 @@
 		277CBA5819DE55210059A2C1 /* Keyboard-Mappings.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "Keyboard-Mappings.plist"; sourceTree = "<group>"; };
 		277CBA5B19DE553C0059A2C1 /* Controller-Mappings.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "Controller-Mappings.plist"; sourceTree = "<group>"; };
 		277CBA5C19DE553C0059A2C1 /* Controller-Preferences.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "Controller-Preferences.plist"; sourceTree = "<group>"; };
+		31808D07275B16F27A4178AB /* OEHeroArtFetcher.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OEHeroArtFetcher.swift; sourceTree = "<group>"; };
 		32DBCF750370BD2300C91783 /* OpenEmu_Prefix.pch */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OpenEmu_Prefix.pch; sourceTree = "<group>"; };
 		35F8401C31D685D3E7EAA048 /* OEGoogleDriveSecrets.template.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OEGoogleDriveSecrets.template.swift; sourceTree = "<group>"; };
 		3887A7F61024D1F9000FC4CF /* OESaveStateQLPlugin.qlgenerator */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = OESaveStateQLPlugin.qlgenerator; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -3101,6 +3103,7 @@
 				138F03D7B3AC4F4F8419286E /* OEHeroView.swift */,
 				956243BD91771E0212552DC8 /* OEHomeView.swift */,
 				D03F93A14A16D08C25E1C01F /* OENewMainWindowController.swift */,
+				31808D07275B16F27A4178AB /* OEHeroArtFetcher.swift */,
 			);
 			name = NewUI;
 			path = NewUI;
@@ -6480,6 +6483,7 @@
 				1E14CA201B4C6412464FCF9E /* OEHeroView.swift in Sources */,
 				F77C5E2EF880198BB1EAC540 /* OEHomeView.swift in Sources */,
 				26A42C9678185296F3149D30 /* OENewMainWindowController.swift in Sources */,
+				A9A1C6DB741E12A2CE6F85D7 /* OEHeroArtFetcher.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -33,13 +33,12 @@ struct OEGameRowView: View {
     let onSeeAll: (OEDBSystem) -> Void
 
     @State private var scrollProxy: ScrollViewProxy? = nil
-    @State private var currentPage = 0
-    private let visibleCards = 5          // approx cards visible at once
+    @State private var currentIndex = 0   // Index of leftmost visible card
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             rowHeader
-            ZStack(alignment: .trailing) {
+            ZStack {
                 ScrollViewReader { proxy in
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(alignment: .top, spacing: 16) {
@@ -54,26 +53,43 @@ struct OEGameRowView: View {
                     .onAppear { scrollProxy = proxy }
                 }
 
-                // Scroll arrow — actually scrolls
-                Button {
-                    currentPage += 1
-                    let targetIdx = min(currentPage * visibleCards, games.count - 1)
-                    withAnimation { scrollProxy?.scrollTo(targetIdx, anchor: .leading) }
-                } label: {
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundColor(.white.opacity(0.88))
-                        .frame(width: 40, height: 40)
-                        .background(Color.black.opacity(0.72))
-                        .overlay(Circle().stroke(Color.white.opacity(0.14), lineWidth: 0.5))
-                        .clipShape(Circle())
-                        .shadow(color: .black.opacity(0.5), radius: 8, y: 4)
+                // Left arrow — appears after scrolling right
+                if currentIndex > 0 {
+                    scrollButton(systemImage: "chevron.left", leading: true) {
+                        currentIndex = max(0, currentIndex - 1)
+                        withAnimation(.easeOut(duration: 0.25)) {
+                            scrollProxy?.scrollTo(currentIndex, anchor: .leading)
+                        }
+                    }
                 }
-                .buttonStyle(.plain)
-                .padding(.trailing, 12)
-                .opacity(currentPage * visibleCards < games.count - 1 ? 1 : 0)
+
+                // Right arrow — disappears at end
+                if currentIndex < games.count - 1 {
+                    scrollButton(systemImage: "chevron.right", leading: false) {
+                        currentIndex = min(games.count - 1, currentIndex + 1)
+                        withAnimation(.easeOut(duration: 0.25)) {
+                            scrollProxy?.scrollTo(currentIndex, anchor: .leading)
+                        }
+                    }
+                }
             }
         }
+    }
+
+    private func scrollButton(systemImage: String, leading: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: systemImage)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundColor(.white.opacity(0.88))
+                .frame(width: 40, height: 40)
+                .background(Color.black.opacity(0.72))
+                .overlay(Circle().stroke(Color.white.opacity(0.14), lineWidth: 0.5))
+                .clipShape(Circle())
+                .shadow(color: .black.opacity(0.5), radius: 8, y: 4)
+        }
+        .buttonStyle(.plain)
+        .frame(maxWidth: .infinity, alignment: leading ? .leading : .trailing)
+        .padding(.horizontal, 12)
     }
 
     private var rowHeader: some View {
@@ -105,10 +121,13 @@ struct OEGameRowView: View {
     }
 }
 
-/// Colored system identity badge shown in row headers and the sidebar.
+/// System identity badge using the existing `*_library` pixel art from each system plugin.
+/// Falls back to colored text if the plugin icon isn't available.
 struct OESystemBadge: View {
     let system: OEDBSystem
     let size: CGFloat
+
+    private var icon: NSImage? { system.plugin?.systemIcon }
 
     var body: some View {
         let colors = OESystemColors.colors(for: system.systemIdentifier)
@@ -116,20 +135,28 @@ struct OESystemBadge: View {
             RoundedRectangle(cornerRadius: OERadius.systemBadge)
                 .fill(
                     LinearGradient(
-                        colors: [colors.primary, colors.primary.opacity(0.8)],
+                        colors: [colors.primary, colors.primary.opacity(0.85)],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     )
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: OERadius.systemBadge)
-                        .stroke(Color.black.opacity(0.4), lineWidth: 0.5)
+                        .stroke(Color.black.opacity(0.35), lineWidth: 0.5)
                 )
-            Text(system.shortName ?? "?")
-                .font(.system(size: size * 0.3, weight: .black))
-                .foregroundColor(colors.accent)
-                .minimumScaleFactor(0.5)
-                .lineLimit(1)
+
+            if let img = icon {
+                Image(nsImage: img)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: size * 0.7, height: size * 0.7)
+            } else {
+                Text(system.shortName ?? "?")
+                    .font(.system(size: size * 0.28, weight: .black))
+                    .foregroundColor(colors.accent)
+                    .minimumScaleFactor(0.5)
+                    .lineLimit(1)
+            }
         }
         .frame(width: size, height: size)
     }
