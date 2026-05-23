@@ -41,7 +41,8 @@ final class OELibraryStore: ObservableObject {
     private var notificationObserver: NSObjectProtocol?
 
     init() {
-        reload()
+        // Don't call reload() here — Core Data context isn't ready at init time.
+        // Load is triggered by the .libraryDidLoad notification or explicit reload() call.
         notificationObserver = NotificationCenter.default.addObserver(
             forName: .libraryDidLoad,
             object: nil,
@@ -61,24 +62,37 @@ final class OELibraryStore: ObservableObject {
         guard let db = OELibraryDatabase.default else { return }
         let ctx = db.mainThreadContext
 
-        systems = OEDBSystem.allSystems(in: ctx)
+        // Use OE's own high-level APIs — raw fetch requests on nested contexts
+        // are unsafe due to NSException propagation through OE's writer/view context stack.
+        // Sort systems by most recently played game across the system
+        let loadedSystems = OEDBSystem.allSystems(in: ctx)
             .filter { $0.games.count > 0 }
+            .sorted { sysA, sysB in
+                let latestA = sysA.games.compactMap { $0.lastPlayed }.max() ?? .distantPast
+                let latestB = sysB.games.compactMap { $0.lastPlayed }.max() ?? .distantPast
+                return latestA > latestB
+            }
+        systems = loadedSystems
 
-        let fetchRequest = OEDBGame.fetchRequest()
-        fetchRequest.sortDescriptors = [NSSortDescriptor(key: "lastPlayed", ascending: false)]
-        fetchRequest.fetchLimit = 20
-        recentlyPlayedGames = (try? ctx.fetch(fetchRequest) as? [OEDBGame]) ?? []
+        // Build the full game list from system sets (avoids direct fetch)
+        let all = loadedSystems.flatMap { Array($0.games) }
+        allGames = all.sorted { ($0.lastPlayed ?? .distantPast) > ($1.lastPlayed ?? .distantPast) }
 
-        let allRequest = OEDBGame.fetchRequest()
-        allRequest.sortDescriptors = [NSSortDescriptor(key: "lastPlayed", ascending: false)]
-        allGames = (try? ctx.fetch(allRequest) as? [OEDBGame]) ?? []
+        recentlyPlayedGames = allGames
+            .filter { $0.lastPlayed != nil }
+            .prefix(20)
+            .map { $0 }
 
-        favorites = [] // isFavorite not exposed yet; extend when needed
+        favorites = []
 
-        let stateRequest = OEDBSaveState.fetchRequest()
-        stateRequest.sortDescriptors = [NSSortDescriptor(key: "timestamp", ascending: false)]
-        stateRequest.fetchLimit = 20
-        saveStates = (try? ctx.fetch(stateRequest) as? [OEDBSaveState]) ?? []
+        // Save states via OEDBGame's roms (avoids unsafe fetch on writer context)
+        let states = allGames.flatMap { game in
+            game.roms.flatMap { Array($0.saveStates) }
+        }
+        saveStates = states
+            .sorted { ($0.timestamp ?? .distantPast) > ($1.timestamp ?? .distantPast) }
+            .prefix(20)
+            .map { $0 }
     }
 
     func games(for system: OEDBSystem) -> [OEDBGame] {

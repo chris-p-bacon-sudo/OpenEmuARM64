@@ -34,11 +34,6 @@ struct OEHomeView: View {
     @State private var selectedSystem: OEDBSystem? = nil
     @Binding var gameToLaunch: OEDBGame?
 
-    private var cardWidth: CGFloat {
-        // NES boxes portrait ~158pt; SNES landscape wider at correct aspect
-        158
-    }
-
     private var filteredSystems: [OEDBSystem] {
         guard let filter = selectedSystem else { return store.systems }
         return [filter]
@@ -118,10 +113,8 @@ struct OEHomeView: View {
                 if let hero = store.heroGame {
                     OEHeroView(game: hero) {
                         gameToLaunch = hero
-                    } onDetails: {
-                        // TODO: push game detail view
                     }
-                    .padding(.bottom, -80)
+                    .padding(.bottom, -20)
                 }
 
                 // System filter chips
@@ -135,8 +128,7 @@ struct OEHomeView: View {
                     if !games.isEmpty {
                         OEGameRowView(
                             system: system,
-                            games: games,
-                            cardWidth: cardWidth
+                            games: games
                         ) { game in
                             gameToLaunch = game
                         } onSeeAll: { _ in

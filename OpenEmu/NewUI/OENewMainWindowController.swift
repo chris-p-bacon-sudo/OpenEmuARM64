@@ -71,19 +71,23 @@ final class OENewMainWindowController: NSWindowController {
         window.center()
 
         self.init(window: window)
+
+        // init(window:) does not trigger windowDidLoad — set up content here
+        setUp()
     }
 
-    override func windowDidLoad() {
-        super.windowDidLoad()
-
+    private func setUp() {
         window?.contentViewController = rootViewController
         window?.delegate = self
-
-        // Transparent title bar so SwiftUI controls the full surface
         window?.styleMask.insert(.fullSizeContentView)
         window?.titlebarAppearsTransparent = true
 
-        // Reload the store once the library is ready
+        // If the library is already loaded, populate immediately
+        if OELibraryDatabase.default != nil {
+            OELibraryStore.shared.reload()
+        }
+
+        // Also listen for library load in case we beat the notification
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(libraryDidLoad),

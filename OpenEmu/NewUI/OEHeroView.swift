@@ -25,160 +25,154 @@
 import SwiftUI
 import OpenEmuKit
 
-/// Full-bleed hero section showing the most recently played game.
+/// Full-bleed hero section for the most recently played game.
+/// Fixed at 380pt tall — background art fills it, text overlays the bottom.
 struct OEHeroView: View {
     let game: OEDBGame
     let onResume: () -> Void
-    let onDetails: () -> Void
 
     @State private var heroImage: NSImage?
+    @State private var coverImage: NSImage?
 
     var systemName: String { game.system?.name ?? "" }
-    var genreName: String  { (game.gameDescription ?? "").isEmpty ? "" : "" }
 
     var lastPlayedText: String {
-        guard let date = game.lastPlayed else { return "Not yet played" }
-        let formatter = RelativeDateTimeFormatter()
-        formatter.unitsStyle = .short
-        return "Played \(formatter.localizedString(for: date, relativeTo: Date()))"
+        guard let date = game.lastPlayed else { return "" }
+        let f = RelativeDateTimeFormatter()
+        f.unitsStyle = .short
+        return "Played \(f.localizedString(for: date, relativeTo: Date()))"
     }
 
     var totalPlayText: String {
-        let hours = game.playTime / 3600
-        return String(format: "%.1fh total", hours)
+        let h = game.playTime / 3600
+        return h > 0 ? String(format: "%.1fh total", h) : ""
     }
 
     var body: some View {
-        ZStack(alignment: .bottomLeading) {
-            background
-            bottomFade
-            content
-        }
-        .frame(height: OESpacing.heroHeight)
-        .onAppear { loadHeroImage() }
-    }
+        // Use GeometryReader so we have explicit sizing for the background
+        GeometryReader { geo in
+            ZStack(alignment: .bottomLeading) {
+                // Background art
+                Group {
+                    if let img = heroImage {
+                        Image(nsImage: img)
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .frame(width: geo.size.width, height: geo.size.height)
+                            .clipped()
+                            .opacity(0.6)
+                    } else {
+                        OEColors.background
+                    }
+                }
 
-    private var background: some View {
-        Group {
-            if let img = heroImage {
-                Image(nsImage: img)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .opacity(0.65)
-            } else {
-                let colors = OESystemColors.colors(for: game.system?.systemIdentifier ?? "")
+                // Top dim
                 LinearGradient(
-                    colors: [colors.primary.opacity(0.8), OEColors.background],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
+                    colors: [.black.opacity(0.45), .clear],
+                    startPoint: .top, endPoint: .bottom
                 )
-            }
-        }
-        .clipped()
-    }
+                .frame(height: 80)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
 
-    private var bottomFade: some View {
-        VStack {
-            Spacer()
-            LinearGradient(
-                colors: [.clear, OEColors.background],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .frame(height: 180)
-        }
-    }
+                // Bottom fade to bg
+                LinearGradient(
+                    colors: [.clear, OEColors.background],
+                    startPoint: .top, endPoint: .bottom
+                )
+                .frame(height: 200)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
 
-    private var content: some View {
-        HStack(alignment: .bottom, spacing: 0) {
-            VStack(alignment: .leading, spacing: 12) {
-                // Tag line
-                HStack(spacing: 8) {
-                    Rectangle()
-                        .fill(OEColors.accent)
-                        .frame(width: 6, height: 6)
-                        .cornerRadius(3)
-                    Text("CONTINUE PLAYING")
-                        .font(.system(size: 11, weight: .bold))
-                        .kerning(1.5)
-                        .foregroundColor(OEColors.accent)
-                }
-
-                // Title
-                Text(game.displayName ?? "")
-                    .font(.system(size: 44, weight: .heavy, design: .default))
-                    .foregroundColor(OEColors.textPrimary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-                    .shadow(color: .black.opacity(0.5), radius: 12, y: 2)
-
-                // Metadata
-                HStack(spacing: 10) {
-                    Text(systemName)
-                    dot
-                    Text(lastPlayedText)
-                    dot
-                    Text(totalPlayText)
-                }
-                .font(.system(size: 13))
-                .foregroundColor(.white.opacity(0.7))
-
-                // Actions
-                HStack(spacing: 10) {
-                    Button(action: onResume) {
-                        Label("Resume", systemImage: "play.fill")
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundColor(Color(hex: 0x0a0a0c))
-                            .padding(.horizontal, 22)
-                            .frame(height: 36)
-                            .background(Color.white)
-                            .cornerRadius(18)
-                            .shadow(color: .black.opacity(0.25), radius: 14, y: 4)
+                // Hero content — cover box + text
+                HStack(alignment: .bottom, spacing: 28) {
+                    // Floating cover art — flat 2D with drop shadow
+                    if let cover = coverImage {
+                        Image(nsImage: cover)
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(height: 170)
+                            .cornerRadius(5)
+                            .shadow(color: .black.opacity(0.65), radius: 24, y: 12)
                     }
-                    .buttonStyle(.plain)
 
-                    Button(action: onDetails) {
-                        Text("Details")
-                            .font(.system(size: 13, weight: .medium))
+                    // Text block
+                    VStack(alignment: .leading, spacing: 10) {
+                        // Tag
+                        HStack(spacing: 8) {
+                            Rectangle()
+                                .fill(OEColors.accent)
+                                .frame(width: 18, height: 1.5)
+                            Text("CONTINUE PLAYING")
+                                .font(.system(size: 10.5, weight: .bold))
+                                .kerning(1.5)
+                                .foregroundColor(OEColors.accent)
+                        }
+
+                        // Title
+                        Text(game.displayName)
+                            .font(.system(size: 44, weight: .heavy))
                             .foregroundColor(.white)
-                            .padding(.horizontal, 18)
-                            .frame(height: 36)
-                            .background(Color.white.opacity(0.1))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 18)
-                                    .stroke(Color.white.opacity(0.2), lineWidth: 0.5)
-                            )
-                            .cornerRadius(18)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.65)
+                            .shadow(color: .black.opacity(0.5), radius: 12)
+
+                        // Metadata
+                        HStack(spacing: 10) {
+                            Text(systemName)
+                            if !lastPlayedText.isEmpty {
+                                dot
+                                Text(lastPlayedText)
+                            }
+                            if !totalPlayText.isEmpty {
+                                dot
+                                Text(totalPlayText)
+                            }
+                        }
+                        .font(.system(size: 13))
+                        .foregroundColor(.white.opacity(0.7))
+
+                        // Actions
+                        HStack(spacing: 10) {
+                            Button(action: onResume) {
+                                Label("Resume", systemImage: "play.fill")
+                                    .font(.system(size: 13, weight: .semibold))
+                                    .foregroundColor(Color(red: 0.04, green: 0.04, blue: 0.05))
+                                    .padding(.horizontal, 22)
+                                    .frame(height: 36)
+                                    .background(Color.white)
+                                    .cornerRadius(18)
+                                    .shadow(color: .black.opacity(0.25), radius: 14, y: 4)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        .padding(.top, 4)
                     }
-                    .buttonStyle(.plain)
+
+                    Spacer(minLength: 0)
+
+                    // Page dots
+                    HStack(spacing: 6) {
+                        Capsule().fill(Color.white).frame(width: 22, height: 6)
+                        Capsule().fill(Color.white.opacity(0.35)).frame(width: 6, height: 6)
+                        Capsule().fill(Color.white.opacity(0.35)).frame(width: 6, height: 6)
+                    }
+                    .padding(.bottom, 12)
                 }
-                .padding(.top, 6)
+                .padding(.horizontal, 48)
+                .padding(.bottom, 52)
             }
-            .padding(.leading, 48)
-            .padding(.bottom, 80)
-
-            Spacer()
-
-            // Page dots (placeholder — carousel not yet wired)
-            HStack(spacing: 6) {
-                Capsule().fill(Color.white).frame(width: 22, height: 6)
-                Capsule().fill(Color.white.opacity(0.35)).frame(width: 6, height: 6)
-                Capsule().fill(Color.white.opacity(0.35)).frame(width: 6, height: 6)
-            }
-            .padding(.trailing, 48)
-            .padding(.bottom, 88)
         }
+        .frame(height: 380)
+        .onAppear { loadImages() }
     }
 
     private var dot: some View {
         Text("•").foregroundColor(.white.opacity(0.4))
     }
 
-    private func loadHeroImage() {
+    private func loadImages() {
         Task.detached(priority: .userInitiated) {
             let img = await OECoverLoader.cover(for: game)
-            await MainActor.run { heroImage = img }
+            await MainActor.run { heroImage = img; coverImage = img }
         }
     }
 }
-

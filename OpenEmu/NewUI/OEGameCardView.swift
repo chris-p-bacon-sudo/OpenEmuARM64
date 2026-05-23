@@ -25,50 +25,58 @@
 import SwiftUI
 import OpenEmuKit
 
-/// A single game cover card used in horizontal scroll rows and the library grid.
+private let cardHeight: CGFloat = 180   // Fixed row height — all covers share this
+
+/// A single game cover card. Height is fixed at `cardHeight`; width scales
+/// naturally from the image's real aspect ratio using .fit so there's no cropping.
 struct OEGameCardView: View {
     let game: OEDBGame
-    let width: CGFloat
     let onPlay: () -> Void
 
     @State private var isHovered = false
     @State private var coverImage: NSImage?
 
-    var aspectRatio: CGFloat {
-        guard let system = game.system else { return 0.72 }
-        return OESystemAspectRatio.ratio(for: system.systemIdentifier)
-    }
-
-    var coverHeight: CGFloat { width / aspectRatio }
-
     var lastPlayedText: String? {
         guard let date = game.lastPlayed else { return nil }
-        let formatter = RelativeDateTimeFormatter()
-        formatter.unitsStyle = .short
-        return formatter.localizedString(for: date, relativeTo: Date())
+        let f = RelativeDateTimeFormatter()
+        f.unitsStyle = .short
+        return f.localizedString(for: date, relativeTo: Date())
     }
+
+    @State private var coverWidth: CGFloat = 0
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             ZStack {
-                // Cover art
-                Group {
-                    if let img = coverImage {
-                        Image(nsImage: img)
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                    } else {
-                        OEPlaceholderCoverView(game: game, width: width)
-                    }
+                if let img = coverImage {
+                    Image(nsImage: img)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(height: cardHeight)
+                        .cornerRadius(OERadius.card)
+                        .shadow(color: .black.opacity(0.45), radius: 9, y: 6)
+                        // Capture the rendered image width for the text below
+                        .background(
+                            GeometryReader { geo in
+                                Color.clear.onAppear { coverWidth = geo.size.width }
+                                    .onChange(of: geo.size.width) { coverWidth = $0 }
+                            }
+                        )
+                } else {
+                    OEPlaceholderCoverView(game: game)
+                        .frame(height: cardHeight)
+                        .cornerRadius(OERadius.card)
+                        .shadow(color: .black.opacity(0.45), radius: 9, y: 6)
+                        .background(
+                            GeometryReader { geo in
+                                Color.clear.onAppear { coverWidth = geo.size.width }
+                            }
+                        )
                 }
-                .frame(width: width, height: coverHeight)
-                .clipShape(RoundedRectangle(cornerRadius: OERadius.card))
-                .shadow(color: .black.opacity(0.45), radius: 9, y: 6)
 
-                // Hover play affordance
                 if isHovered {
                     RoundedRectangle(cornerRadius: OERadius.card)
-                        .fill(Color.black.opacity(0.35))
+                        .fill(Color.black.opacity(0.3))
                     Image(systemName: "play.fill")
                         .font(.system(size: 16, weight: .bold))
                         .foregroundColor(.white)
@@ -79,30 +87,30 @@ struct OEGameCardView: View {
                         .onTapGesture { onPlay() }
                 }
             }
-            .frame(width: width, height: coverHeight)
+            .frame(height: cardHeight)
             .onHover { isHovered = $0 }
             .offset(y: isHovered ? -3 : 0)
             .animation(.easeOut(duration: 0.18), value: isHovered)
 
-            // Metadata below cover
+            // Text constrained to cover art width, wraps to 2 lines max
             VStack(alignment: .leading, spacing: 2) {
-                Text(game.displayName ?? "")
+                Text(game.displayName)
                     .font(.system(size: 12.5, weight: .semibold))
                     .foregroundColor(OEColors.textPrimary)
-                    .lineLimit(1)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
 
                 if let played = lastPlayedText {
                     HStack(spacing: 5) {
-                        Circle()
-                            .fill(OEColors.success)
-                            .frame(width: 4, height: 4)
+                        Circle().fill(OEColors.success).frame(width: 4, height: 4)
                         Text(played)
                             .font(.system(size: 11))
                             .foregroundColor(OEColors.textSecondary)
+                            .lineLimit(1)
                     }
                 }
             }
-            .frame(width: width, alignment: .leading)
+            .frame(width: coverWidth > 0 ? coverWidth : nil, alignment: .leading)
         }
         .onAppear { loadCover() }
     }
@@ -118,7 +126,6 @@ struct OEGameCardView: View {
 /// Placeholder cover rendered from the game's system color + abbreviated title.
 struct OEPlaceholderCoverView: View {
     let game: OEDBGame
-    let width: CGFloat
 
     var body: some View {
         let colors = OESystemColors.colors(for: game.system?.systemIdentifier ?? "unknown")
@@ -129,9 +136,10 @@ struct OEPlaceholderCoverView: View {
                 endPoint: .bottomTrailing
             )
             Text(String(game.displayName.prefix(2)).uppercased())
-                .font(.system(size: width * 0.22, weight: .black))
+                .font(.system(size: 40, weight: .black))
                 .foregroundColor(colors.accent.opacity(0.9))
         }
+        .frame(width: cardHeight * 0.72, height: cardHeight) // default portrait ratio
     }
 }
 

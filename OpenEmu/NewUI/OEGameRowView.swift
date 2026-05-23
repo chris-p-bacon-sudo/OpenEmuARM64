@@ -29,20 +29,49 @@ import OpenEmuKit
 struct OEGameRowView: View {
     let system: OEDBSystem
     let games: [OEDBGame]
-    let cardWidth: CGFloat
     let onPlayGame: (OEDBGame) -> Void
     let onSeeAll: (OEDBSystem) -> Void
 
-    private var gap: CGFloat {
-        OESystemAspectRatio.ratio(for: system.systemIdentifier) > 1 ? 22 : 16
-    }
+    @State private var scrollProxy: ScrollViewProxy? = nil
+    @State private var currentPage = 0
+    private let visibleCards = 5          // approx cards visible at once
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             rowHeader
             ZStack(alignment: .trailing) {
-                scrollContent
-                scrollArrow
+                ScrollViewReader { proxy in
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(alignment: .top, spacing: 16) {
+                            ForEach(Array(games.enumerated()), id: \.element.objectID) { idx, game in
+                                OEGameCardView(game: game) { onPlayGame(game) }
+                                    .id(idx)
+                            }
+                        }
+                        .padding(.horizontal, OESpacing.rowPadding)
+                        .padding(.vertical, 4)
+                    }
+                    .onAppear { scrollProxy = proxy }
+                }
+
+                // Scroll arrow — actually scrolls
+                Button {
+                    currentPage += 1
+                    let targetIdx = min(currentPage * visibleCards, games.count - 1)
+                    withAnimation { scrollProxy?.scrollTo(targetIdx, anchor: .leading) }
+                } label: {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(.white.opacity(0.88))
+                        .frame(width: 40, height: 40)
+                        .background(Color.black.opacity(0.72))
+                        .overlay(Circle().stroke(Color.white.opacity(0.14), lineWidth: 0.5))
+                        .clipShape(Circle())
+                        .shadow(color: .black.opacity(0.5), radius: 8, y: 4)
+                }
+                .buttonStyle(.plain)
+                .padding(.trailing, 12)
+                .opacity(currentPage * visibleCards < games.count - 1 ? 1 : 0)
             }
         }
     }
@@ -52,7 +81,7 @@ struct OEGameRowView: View {
             HStack(spacing: 12) {
                 OESystemBadge(system: system, size: 28)
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(system.name ?? "")
+                    Text(system.name)
                         .font(.system(size: 18, weight: .bold))
                         .foregroundColor(OEColors.textPrimary)
                     Text("\(games.count) games · sorted by recently played")
@@ -61,13 +90,10 @@ struct OEGameRowView: View {
                 }
             }
             Spacer()
-            Button {
-                onSeeAll(system)
-            } label: {
+            Button { onSeeAll(system) } label: {
                 HStack(spacing: 4) {
                     Text("See All")
-                    Image(systemName: "chevron.right")
-                        .imageScale(.small)
+                    Image(systemName: "chevron.right").imageScale(.small)
                 }
                 .font(.system(size: 12.5, weight: .medium))
                 .foregroundColor(OEColors.accent)
@@ -76,40 +102,6 @@ struct OEGameRowView: View {
         }
         .padding(.horizontal, OESpacing.rowPadding)
         .padding(.bottom, 12)
-    }
-
-    private var scrollContent: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(alignment: .top, spacing: gap) {
-                ForEach(games, id: \.objectID) { game in
-                    OEGameCardView(game: game, width: cardWidth) {
-                        onPlayGame(game)
-                    }
-                }
-            }
-            .padding(.horizontal, OESpacing.rowPadding)
-            .padding(.vertical, 4)
-        }
-    }
-
-    private var scrollArrow: some View {
-        Button {
-            // Scroll right — handled via NSScrollView proxy when needed
-        } label: {
-            Image(systemName: "chevron.right")
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundColor(.white.opacity(0.88))
-                .frame(width: 40, height: 40)
-                .background(Color.black.opacity(0.72))
-                .overlay(
-                    Circle().stroke(Color.white.opacity(0.14), lineWidth: 0.5)
-                )
-                .clipShape(Circle())
-                .shadow(color: .black.opacity(0.5), radius: 8, y: 4)
-        }
-        .buttonStyle(.plain)
-        .padding(.trailing, 12)
-        .allowsHitTesting(true)
     }
 }
 
