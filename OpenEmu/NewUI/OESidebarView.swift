@@ -55,58 +55,29 @@ struct OESidebarView: View {
     @ObservedObject var store: OELibraryStore
 
     var body: some View {
-        HStack(spacing: 0) {
-            panel
-                .frame(width: 240)
-                .background(Color(red: 0.067, green: 0.067, blue: 0.071)) // #111113
-                .overlay(
-                    Rectangle()
-                        .fill(Color.white.opacity(0.07))
-                        .frame(width: 0.5),
-                    alignment: .trailing
-                )
-
-            // Dismiss overlay — tapping outside closes sidebar
-            Color.black.opacity(0.35)
-                .ignoresSafeArea()
-                .onTapGesture { withAnimation(.easeInOut(duration: 0.25)) { isOpen = false } }
-        }
+        panel
+            .frame(width: 240)
+            .background(Color(red: 0.067, green: 0.067, blue: 0.071)) // #111113
+            .overlay(
+                Rectangle()
+                    .fill(Color.white.opacity(0.07))
+                    .frame(width: 0.5),
+                alignment: .trailing
+            )
     }
 
     private var panel: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Traffic lights + collapse
-            HStack {
-                // Traffic lights are rendered by AppKit — reserve space
-                Spacer().frame(width: 72)
-                Spacer()
-                Button {
-                    withAnimation(.easeInOut(duration: 0.25)) { isOpen = false }
-                } label: {
-                    Image(systemName: "sidebar.left")
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(.white.opacity(0.5))
-                        .frame(width: 28, height: 28)
-                }
-                .buttonStyle(.plain)
-                .padding(.trailing, 12)
-            }
-            .frame(height: 52)
+            // Traffic lights area — AppKit renders the real controls here
+            Spacer().frame(height: 52)
 
             // App identity
             HStack(spacing: 10) {
-                RoundedRectangle(cornerRadius: 9)
-                    .fill(LinearGradient(
-                        colors: [Color(hex: 0x1c1c1e), Color(hex: 0x2a2a2e)],
-                        startPoint: .topLeading, endPoint: .bottomTrailing
-                    ))
-                    .overlay(RoundedRectangle(cornerRadius: 9).stroke(Color.white.opacity(0.12), lineWidth: 0.5))
+                Image(nsImage: NSApp.applicationIconImage)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
                     .frame(width: 34, height: 34)
-                    .overlay(
-                        Image(systemName: "gamecontroller.fill")
-                            .font(.system(size: 14))
-                            .foregroundColor(.white.opacity(0.85))
-                    )
+                    .cornerRadius(8)
 
                 VStack(alignment: .leading, spacing: 1) {
                     Text("OpenEmu")

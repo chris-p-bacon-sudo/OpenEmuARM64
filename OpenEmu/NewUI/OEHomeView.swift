@@ -44,16 +44,8 @@ struct OEHomeView: View {
     }
 
     var body: some View {
-        ZStack(alignment: .topLeading) {
-            OEColors.background.ignoresSafeArea()
-
-            // Main scrollable content — starts at window top (hero bleeds behind nav)
-            scrollContent
-
-            // Floating transparent nav bar
-            floatingNavBar
-
-            // Sidebar overlay
+        HStack(spacing: 0) {
+            // Sidebar slides in from the left — pushes content right
             if sidebarOpen {
                 OESidebarView(
                     isOpen: $sidebarOpen,
@@ -63,7 +55,16 @@ struct OEHomeView: View {
                 .transition(.move(edge: .leading))
                 .zIndex(10)
             }
+
+            // Main content fills remaining space
+            ZStack(alignment: .top) {
+                OEColors.background.ignoresSafeArea()
+                scrollContent
+                    .ignoresSafeArea(edges: .top) // hero bleeds behind transparent nav
+                floatingNavBar
+            }
         }
+        .animation(.easeInOut(duration: 0.25), value: sidebarOpen)
         .preferredColorScheme(.dark)
     }
 
