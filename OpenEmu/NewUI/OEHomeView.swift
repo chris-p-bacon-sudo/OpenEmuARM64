@@ -83,22 +83,16 @@ struct OEHomeView: View {
             .ignoresSafeArea()
 
             HStack(spacing: 0) {
-                // Left: align buttons to the AppKit traffic lights vertical center.
-                // Traffic lights live in the standard ~28pt title bar area (top of the nav),
-                // so we pin the button group to the top 28pt of our 52pt nav bar.
-                VStack(spacing: 0) {
-                    HStack(spacing: 6) {
-                        Spacer().frame(width: 72) // AppKit traffic lights
+                // Left: traffic lights (repositioned by OENewMainWindowController) + buttons.
+                // All elements share the 52pt nav bar center line.
+                HStack(spacing: 6) {
+                    Spacer().frame(width: 72) // space for AppKit traffic lights
 
-                        glassButton(icon: "sidebar.left") {
-                            withAnimation(.easeInOut(duration: 0.25)) { sidebarOpen.toggle() }
-                        }
-                        glassButton(icon: "chevron.left") { /* TODO: nav stack */ }
+                    glassButton(icon: "sidebar.left") {
+                        withAnimation(.easeInOut(duration: 0.25)) { sidebarOpen.toggle() }
                     }
-                    .frame(height: 28) // match AppKit title bar height → same vertical center
-                    Spacer()
+                    glassButton(icon: "chevron.left") { /* TODO: nav stack */ }
                 }
-                .frame(height: 52)
 
                 Spacer()
 

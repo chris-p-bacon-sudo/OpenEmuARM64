@@ -82,18 +82,56 @@ final class OENewMainWindowController: NSWindowController {
         window?.styleMask.insert(.fullSizeContentView)
         window?.titlebarAppearsTransparent = true
 
-        // If the library is already loaded, populate immediately
+        // Position traffic lights to vertically center with our 52pt nav bar
+        positionTrafficLights()
+
+        // Re-position after content is laid out
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
+            self?.positionTrafficLights()
+        }
+
         if OELibraryDatabase.default != nil {
             OELibraryStore.shared.reload()
         }
 
-        // Also listen for library load in case we beat the notification
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(libraryDidLoad),
             name: .libraryDidLoad,
             object: nil
         )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(repositionTrafficLights),
+            name: NSWindow.didResizeNotification,
+            object: window
+        )
+    }
+
+    /// Centers the traffic light buttons in our 52pt nav bar rather than the
+    /// default ~28pt AppKit title bar. This gives a visually balanced look
+    /// where the dots, sidebar toggle, and nav pill are all on the same center line.
+    @objc private func repositionTrafficLights() {
+        positionTrafficLights()
+    }
+
+    private func positionTrafficLights() {
+        guard let window = window,
+              let contentView = window.contentView else { return }
+
+        let navBarHeight: CGFloat = 52
+        let viewHeight = contentView.bounds.height
+        // In AppKit coordinates (origin bottom-left), the center of our nav bar is
+        // at viewHeight - navBarHeight/2 from the bottom.
+        let targetCenterY = viewHeight - navBarHeight / 2
+
+        let types: [NSWindow.ButtonType] = [.closeButton, .miniaturizeButton, .zoomButton]
+        for type in types {
+            guard let btn = window.standardWindowButton(type) else { continue }
+            var origin = btn.frame.origin
+            origin.y = targetCenterY - btn.frame.height / 2
+            btn.setFrameOrigin(origin)
+        }
     }
 
     @objc private func libraryDidLoad() {
@@ -136,6 +174,14 @@ final class OENewMainWindowController: NSWindowController {
 }
 
 extension OENewMainWindowController: NSWindowDelegate {
+    func windowDidBecomeKey(_ notification: Notification) {
+        positionTrafficLights()
+    }
+
+    func windowDidResize(_ notification: Notification) {
+        positionTrafficLights()
+    }
+
     func windowWillClose(_ notification: Notification) {
         NotificationCenter.default.removeObserver(self)
     }
