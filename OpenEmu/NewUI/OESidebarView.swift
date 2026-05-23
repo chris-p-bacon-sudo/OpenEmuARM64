@@ -50,7 +50,6 @@ enum OENavSection: String, CaseIterable, Identifiable {
 }
 
 struct OESidebarView: View {
-    @Binding var isOpen: Bool
     @Binding var selectedSection: OENavSection
     @ObservedObject var store: OELibraryStore
 
@@ -68,29 +67,8 @@ struct OESidebarView: View {
 
     private var panel: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Traffic lights are at the top-left of the window (AppKit-rendered).
-            // The sidebar toggle sits at the top-right of this same row so it visually
-            // occupies the same position as when the sidebar is closed.
-            HStack {
-                Spacer()
-                Button {
-                    isOpen = false   // parent .animation modifier handles the slide-out
-                } label: {
-                    Image(systemName: "sidebar.left")
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(.white.opacity(0.85))
-                        .frame(width: 28, height: 28)
-                        .background(Color(hex: 0x141416).opacity(0.5))
-                        .clipShape(RoundedRectangle(cornerRadius: 14))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 14)
-                                .stroke(Color.white.opacity(0.08), lineWidth: 0.5)
-                        )
-                }
-                .buttonStyle(.plain)
-                .padding(.trailing, 12)
-            }
-            .frame(height: 52)
+            // Traffic lights area — toggle is managed by the parent (OEHomeView outer ZStack)
+            Color.clear.frame(height: 52)
 
             // Everything except user row is scrollable
             ScrollView(.vertical, showsIndicators: false) {

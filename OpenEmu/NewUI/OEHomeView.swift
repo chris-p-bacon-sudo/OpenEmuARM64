@@ -44,30 +44,47 @@ struct OEHomeView: View {
     }
 
     var body: some View {
-        HStack(spacing: 0) {
-            // Sidebar slides in from the left — pushes content right
-            if sidebarOpen {
-                OESidebarView(
-                    isOpen: $sidebarOpen,
-                    selectedSection: $selectedSection,
-                    store: store
-                )
-                .transition(.move(edge: .leading))
-                .zIndex(10)
-            }
+        ZStack(alignment: .topLeading) {
+            HStack(spacing: 0) {
+                // Sidebar slides in from the left — pushes content right
+                if sidebarOpen {
+                    OESidebarView(
+                        selectedSection: $selectedSection,
+                        store: store
+                    )
+                    .transition(.move(edge: .leading))
+                    .zIndex(10)
+                }
 
-            // Main content fills remaining space
-            // .clipped() prevents floatingNavBar hit area from bleeding into sidebar
-            ZStack(alignment: .top) {
-                OEColors.background
-                scrollContent
-                floatingNavBar
+                // Main content fills remaining space
+                ZStack(alignment: .top) {
+                    OEColors.background
+                    scrollContent
+                    floatingNavBar
+                }
+                .clipped()
             }
-            .clipped()
+            .ignoresSafeArea()
+            .animation(.easeInOut(duration: 0.25), value: sidebarOpen)
+            .preferredColorScheme(.dark)
+
+            // Sidebar toggle pinned at the same window-level position in both states:
+            // closed → x≈78 in full window; open → x≈(sidebarWidth-28-12) in sidebar area.
+            // Keeping it here in the outer ZStack means sidebarOpen is always mutated
+            // directly — no binding indirection, no hit-test conflicts.
+            VStack(spacing: 0) {
+                HStack(spacing: 0) {
+                    Spacer().frame(width: sidebarOpen ? 200 : 78)
+                    glassButton(icon: "sidebar.left") {
+                        sidebarOpen.toggle()
+                    }
+                    Spacer()
+                }
+                .frame(height: 52)
+                Spacer()
+            }
+            .ignoresSafeArea()
         }
-        .ignoresSafeArea()  // hero fills behind the transparent title bar area
-        .animation(.easeInOut(duration: 0.25), value: sidebarOpen)
-        .preferredColorScheme(.dark)
     }
 
     // MARK: - Floating nav bar
@@ -87,14 +104,8 @@ struct OEHomeView: View {
             HStack(spacing: 0) {
                 // Left: when sidebar is closed, show only the toggle after the traffic lights.
                 // When sidebar is open, the toggle lives in the sidebar header instead — nothing here.
-                if !sidebarOpen {
-                    HStack(spacing: 0) {
-                        Spacer().frame(width: 78)
-                        glassButton(icon: "sidebar.left") {
-                            sidebarOpen = true   // parent .animation handles the transition
-                        }
-                    }
-                }
+                // Spacer reserves the toggle button's width so the nav pill stays centered
+                Spacer().frame(width: 106)
 
                 Spacer()
 
