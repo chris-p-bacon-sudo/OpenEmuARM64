@@ -57,11 +57,13 @@ struct OEHomeView: View {
             }
 
             // Main content fills remaining space
+            // .clipped() prevents floatingNavBar hit area from bleeding into sidebar
             ZStack(alignment: .top) {
                 OEColors.background
                 scrollContent
                 floatingNavBar
             }
+            .clipped()
         }
         .ignoresSafeArea()  // hero fills behind the transparent title bar area
         .animation(.easeInOut(duration: 0.25), value: sidebarOpen)
@@ -86,11 +88,10 @@ struct OEHomeView: View {
                 // Left: when sidebar is closed, show only the toggle after the traffic lights.
                 // When sidebar is open, the toggle lives in the sidebar header instead — nothing here.
                 if !sidebarOpen {
-                    // Spacer reserves traffic lights area; toggle sits ~16pt after the green dot
                     HStack(spacing: 0) {
-                        Spacer().frame(width: 70)
+                        Spacer().frame(width: 78)
                         glassButton(icon: "sidebar.left") {
-                            withAnimation(.easeInOut(duration: 0.25)) { sidebarOpen.toggle() }
+                            sidebarOpen = true   // parent .animation handles the transition
                         }
                     }
                 }
