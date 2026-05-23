@@ -574,12 +574,14 @@ final class OEGameDocument: NSDocument {
                 alert.alternateButtonTitle = NSLocalizedString("Cancel", comment: "")
                 
                 // Ugly hack to start imported games in main window
-                let mainWindowController = (NSApp.delegate as! AppDelegate).mainWindowController
+                let appDelegate = NSApp.delegate as! AppDelegate
+                let mainWindowController = appDelegate.mainWindowController
+                let legacyController = appDelegate.legacyMainWindowController
                 alert.beginSheetModal(for: mainWindowController.window!) { response in
                     guard response == .alertFirstButtonReturn else { return }
                     let rom = OEDBRom.object(with: romID, in: context)!
-                    if !mainWindowController.mainWindowRunsGame {
-                        mainWindowController.startGame(rom.game)
+                    if legacyController?.mainWindowRunsGame != true {
+                        legacyController?.startGame(rom.game)
                     } else {
                         if let url = rom.url {
                             NSDocumentController.shared.openDocument(withContentsOf: url, display: false) { _, _, _ in }

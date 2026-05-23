@@ -50,7 +50,16 @@ class AppDelegate: NSObject, UNUserNotificationCenterDelegate {
     @IBOutlet weak var fileMenu: NSMenu!
     @IBOutlet weak var helpMenu: NSMenu!
     
-    lazy var mainWindowController = MainWindowController(windowNibName: "MainWindow")
+    lazy var mainWindowController: NSWindowController = {
+        if OENewMainWindowController.isEnabled {
+            return OENewMainWindowController()
+        }
+        return MainWindowController(windowNibName: "MainWindow")
+    }()
+
+    var legacyMainWindowController: MainWindowController? {
+        mainWindowController as? MainWindowController
+    }
     
     lazy var preferencesWindowController = PreferencesWindowController(windowNibName: "Preferences")
     
