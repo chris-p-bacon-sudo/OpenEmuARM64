@@ -83,10 +83,10 @@ struct OEHomeView: View {
             .ignoresSafeArea()
 
             HStack(spacing: 0) {
-                // Left: traffic lights (repositioned by OENewMainWindowController) + buttons.
-                // All elements share the 52pt nav bar center line.
-                HStack(spacing: 6) {
-                    Spacer().frame(width: 72) // space for AppKit traffic lights
+                // Left: traffic lights + buttons with equal spacing on both sides of the sidebar icon.
+                // Traffic lights right edge ≈ 54pt → spacer 78pt → 24pt gap on each side.
+                HStack(spacing: 24) {
+                    Spacer().frame(width: 78)
 
                     glassButton(icon: "sidebar.left") {
                         withAnimation(.easeInOut(duration: 0.25)) { sidebarOpen.toggle() }
