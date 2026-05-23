@@ -365,6 +365,7 @@
 		87FBC0A61C07996B00AECF5A /* Controller-Mappings.plist in Resources */ = {isa = PBXBuildFile; fileRef = 87FBC0A51C07996B00AECF5A /* Controller-Mappings.plist */; };
 		87FBC0C01BFC7A0000AECF5A /* Commodore 64.oesystemplugin in Copy System Plugins to App Plugins */ = {isa = PBXBuildFile; fileRef = 87FBC06D1BFC70FE00AECF5A /* Commodore 64.oesystemplugin */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		8CBD3AA217D23AA80022399B /* OEGridGameCell.m in Sources */ = {isa = PBXBuildFile; fileRef = 8CBD3AA117D23AA80022399B /* OEGridGameCell.m */; };
+		8DD517C7478F8323BD72F57D /* OESidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7976555C6991BEAE053990F /* OESidebarView.swift */; };
 		8F057160254E7EA5003B36FD /* MainMenu.strings in Resources */ = {isa = PBXBuildFile; fileRef = 8F057162254E7EA5003B36FD /* MainMenu.strings */; };
 		8F071F391C25534E007B76DA /* Preferences.xib in Resources */ = {isa = PBXBuildFile; fileRef = 8F071F381C25534E007B76DA /* Preferences.xib */; };
 		8F071F3B1C255362007B76DA /* Credits.rtf in Resources */ = {isa = PBXBuildFile; fileRef = 8F071F3A1C255362007B76DA /* Credits.rtf */; };
@@ -1853,6 +1854,7 @@
 		99574CB1B5EE4AE89B192EBD /* OEWiiSystemResponder.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OEWiiSystemResponder.h; sourceTree = "<group>"; };
 		9964A7D7B3C4438D9BE62654 /* OEFolderBackupManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OEFolderBackupManager.swift; sourceTree = "<group>"; };
 		9BAF3ECDABF5A2D068218C7F /* OEGoogleDriveConfig.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OEGoogleDriveConfig.swift; sourceTree = "<group>"; };
+		A7976555C6991BEAE053990F /* OESidebarView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OESidebarView.swift; sourceTree = "<group>"; };
 		AC6CB8F335B64A48AE857C59 /* Wii.oesystemplugin */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = Wii.oesystemplugin; sourceTree = BUILT_PRODUCTS_DIR; };
 		AEF58A5A63D543529C6A8983 /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Images.xcassets; sourceTree = "<group>"; };
 		B2B0961AB4D99C699E238F1E /* OEDesignTokens.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OEDesignTokens.swift; sourceTree = "<group>"; };
@@ -3104,6 +3106,7 @@
 				956243BD91771E0212552DC8 /* OEHomeView.swift */,
 				D03F93A14A16D08C25E1C01F /* OENewMainWindowController.swift */,
 				31808D07275B16F27A4178AB /* OEHeroArtFetcher.swift */,
+				A7976555C6991BEAE053990F /* OESidebarView.swift */,
 			);
 			name = NewUI;
 			path = NewUI;
@@ -6484,6 +6487,7 @@
 				F77C5E2EF880198BB1EAC540 /* OEHomeView.swift in Sources */,
 				26A42C9678185296F3149D30 /* OENewMainWindowController.swift in Sources */,
 				A9A1C6DB741E12A2CE6F85D7 /* OEHeroArtFetcher.swift in Sources */,
+				8DD517C7478F8323BD72F57D /* OESidebarView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

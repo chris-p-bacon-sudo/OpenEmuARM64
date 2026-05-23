@@ -25,88 +25,113 @@
 import SwiftUI
 import OpenEmuKit
 
-/// Root view for the new OpenEmu home screen (Direction A — Faithful).
-/// Hosted inside OENewMainWindowController via NSHostingController.
+/// Root view for the OpenEmu home screen — Cinematic direction.
+/// The title bar floats transparently over the hero; sidebar slides in from the left.
 struct OEHomeView: View {
 
     @StateObject private var store = OELibraryStore.shared
     @State private var selectedTab: OENavTab = .home
+    @State private var selectedSection: OENavSection = .home
     @State private var selectedSystem: OEDBSystem? = nil
     @State private var heroIndex: Int = 0
+    @State private var sidebarOpen: Bool = false
     @Binding var gameToLaunch: OEDBGame?
 
-    private var heroGames: [OEDBGame] {
-        Array(store.recentlyPlayedGames.prefix(3))
-    }
-
+    private var heroGames: [OEDBGame] { Array(store.recentlyPlayedGames.prefix(3)) }
     private var filteredSystems: [OEDBSystem] {
         guard let filter = selectedSystem else { return store.systems }
         return [filter]
     }
 
     var body: some View {
-        ZStack(alignment: .top) {
+        ZStack(alignment: .topLeading) {
             OEColors.background.ignoresSafeArea()
 
-            VStack(spacing: 0) {
-                titleBar
-                scrollContent
+            // Main scrollable content — starts at window top (hero bleeds behind nav)
+            scrollContent
+
+            // Floating transparent nav bar
+            floatingNavBar
+
+            // Sidebar overlay
+            if sidebarOpen {
+                OESidebarView(
+                    isOpen: $sidebarOpen,
+                    selectedSection: $selectedSection,
+                    store: store
+                )
+                .transition(.move(edge: .leading))
+                .zIndex(10)
             }
         }
         .preferredColorScheme(.dark)
     }
 
-    // MARK: - Title bar
+    // MARK: - Floating nav bar
 
-    private var titleBar: some View {
+    /// Transparent title bar that floats over the hero art.
+    private var floatingNavBar: some View {
         ZStack {
-            // Title bar background
-            Rectangle()
-                .fill(Color(hex: 0x141416).opacity(0.9))
-                .overlay(
-                    Rectangle()
-                        .fill(OEColors.border)
-                        .frame(height: 0.5),
-                    alignment: .bottom
-                )
+            // Subtle top gradient so traffic lights and nav are readable over art
+            LinearGradient(
+                colors: [Color.black.opacity(0.55), .clear],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .frame(height: 80)
+            .ignoresSafeArea()
 
-            HStack {
-                // Traffic lights are rendered by AppKit — just reserve space
-                Spacer().frame(width: 72)
+            HStack(spacing: 0) {
+                // Left: traffic lights placeholder + sidebar toggle + back
+                HStack(spacing: 6) {
+                    Spacer().frame(width: 72) // AppKit traffic lights
 
-                Spacer()
-                OENavBar(selectedTab: $selectedTab)
-                Spacer()
-
-                // Right actions
-                HStack(spacing: 8) {
-                    Button {
-                        // TODO: trigger search
-                    } label: {
-                        Image(systemName: "magnifyingglass")
-                            .foregroundColor(.white.opacity(0.65))
+                    // Sidebar toggle
+                    glassButton(icon: "sidebar.left") {
+                        withAnimation(.easeInOut(duration: 0.25)) { sidebarOpen.toggle() }
                     }
-                    .buttonStyle(.plain)
 
-                    Circle()
-                        .fill(
-                            LinearGradient(
-                                colors: [OEColors.accent, OEColors.accent.opacity(0.67)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .frame(width: 28, height: 28)
+                    // Back button
+                    glassButton(icon: "chevron.left") { /* TODO: nav stack */ }
+                }
+
+                Spacer()
+
+                // Center: pill nav
+                OENavBar(selectedTab: $selectedTab)
+
+                Spacer()
+
+                // Right: search + avatar
+                HStack(spacing: 8) {
+                    glassButton(icon: "magnifyingglass") { /* TODO: search */ }
+
+                    OEUserAvatar(size: 28)
                         .overlay(
-                            Text("JK")
-                                .font(.system(size: 11, weight: .bold))
-                                .foregroundColor(.white)
+                            Circle().stroke(Color.white.opacity(0.18), lineWidth: 0.5)
                         )
                 }
                 .padding(.trailing, 16)
             }
         }
         .frame(height: 52)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+    }
+
+    private func glassButton(icon: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: icon)
+                .font(.system(size: 13, weight: .medium))
+                .foregroundColor(.white.opacity(0.85))
+                .frame(width: 28, height: 28)
+                .background(Color(hex: 0x141416).opacity(0.5))
+                .clipShape(RoundedRectangle(cornerRadius: 14))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14)
+                        .stroke(Color.white.opacity(0.08), lineWidth: 0.5)
+                )
+        }
+        .buttonStyle(.plain)
     }
 
     // MARK: - Scrollable content
@@ -114,7 +139,7 @@ struct OEHomeView: View {
     private var scrollContent: some View {
         ScrollView(.vertical, showsIndicators: false) {
             LazyVStack(alignment: .leading, spacing: 0) {
-                // Hero
+                // Hero — starts at the very top, nav floats over it
                 if !heroGames.isEmpty {
                     let hero = heroGames[heroIndex]
                     OEHeroView(
@@ -124,12 +149,10 @@ struct OEHomeView: View {
                     ) {
                         gameToLaunch = hero
                     } onDotTap: { idx in
-                        withAnimation(.easeInOut(duration: 0.3)) {
-                            heroIndex = idx
-                        }
+                        withAnimation(.easeInOut(duration: 0.3)) { heroIndex = idx }
                     }
                     .padding(.bottom, -20)
-                    .id(heroIndex) // forces full redraw + art reload on switch
+                    .id(heroIndex)
                 }
 
                 // System filter chips
@@ -141,14 +164,9 @@ struct OEHomeView: View {
                 ForEach(filteredSystems, id: \.objectID) { system in
                     let games = store.games(for: system)
                     if !games.isEmpty {
-                        OEGameRowView(
-                            system: system,
-                            games: games
-                        ) { game in
+                        OEGameRowView(system: system, games: games) { game in
                             gameToLaunch = game
-                        } onSeeAll: { _ in
-                            // TODO: push library view
-                        }
+                        } onSeeAll: { _ in }
                         .padding(.bottom, OESpacing.sectionGap)
                     }
                 }
@@ -163,19 +181,11 @@ struct OEHomeView: View {
     private var systemFilterRow: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
-                // All Systems chip
-                OEFilterChip(
-                    label: "All Systems",
-                    isSelected: selectedSystem == nil
-                ) {
+                OEFilterChip(label: "All Systems", isSelected: selectedSystem == nil) {
                     selectedSystem = nil
                 }
-
                 ForEach(store.systems, id: \.objectID) { system in
-                    OEFilterChip(
-                        label: system.name ?? "",
-                        isSelected: selectedSystem == system
-                    ) {
+                    OEFilterChip(label: system.name, isSelected: selectedSystem == system) {
                         selectedSystem = system
                     }
                 }
@@ -186,7 +196,7 @@ struct OEHomeView: View {
     }
 }
 
-/// Pill-shaped filter chip matching the design.
+/// Pill-shaped filter chip.
 struct OEFilterChip: View {
     let label: String
     let isSelected: Bool
@@ -199,17 +209,8 @@ struct OEFilterChip: View {
                 .foregroundColor(isSelected ? Color(hex: 0x0a0a0c) : OEColors.textSecondary)
                 .padding(.horizontal, 14)
                 .frame(height: 30)
-                .background(
-                    isSelected
-                        ? Color(hex: 0xf5f5f7)
-                        : Color.white.opacity(0.05)
-                )
-                .overlay(
-                    Capsule().stroke(
-                        isSelected ? Color.clear : Color.white.opacity(0.12),
-                        lineWidth: 0.5
-                    )
-                )
+                .background(isSelected ? Color(hex: 0xf5f5f7) : Color.white.opacity(0.05))
+                .overlay(Capsule().stroke(isSelected ? .clear : Color.white.opacity(0.12), lineWidth: 0.5))
                 .clipShape(Capsule())
         }
         .buttonStyle(.plain)
