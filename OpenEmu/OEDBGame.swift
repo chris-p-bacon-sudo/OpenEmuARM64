@@ -46,6 +46,7 @@ final class OEDBGame: OEDBItem {
     private static var _prefObserver: NSObjectProtocol?
 
     static func startObservingDisplayPreference() {
+        guard _prefObserver == nil else { return }
         _prefObserver = NotificationCenter.default.addObserver(
             forName: UserDefaults.didChangeNotification,
             object: nil,
