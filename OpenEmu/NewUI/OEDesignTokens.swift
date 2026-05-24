@@ -40,11 +40,14 @@ enum OEColors {
 }
 
 enum OESpacing {
-    static let rowPadding: CGFloat  = 28
-    static let cardGapNES: CGFloat  = 16
-    static let cardGapSNES: CGFloat = 22
-    static let sectionGap: CGFloat  = 28
-    static let heroHeight: CGFloat  = 340
+    static let rowPadding: CGFloat        = 32   // home page & library
+    static let rowPaddingDetail: CGFloat  = 56   // game detail page
+    static let cardGapNES: CGFloat        = 22
+    static let cardGapSNES: CGFloat       = 22
+    static let sectionGap: CGFloat        = 40   // section bottom margin
+    static let sectionTopPad: CGFloat     = 28   // section top padding
+    static let heroHeight: CGFloat        = 400  // game detail hero
+    static let heroHeightHome: CGFloat    = 520  // home hero
 }
 
 enum OERadius {

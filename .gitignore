@@ -33,6 +33,7 @@ Releases/
 !Releases/*.md
 OpenEmu/OEGoogleDriveSecrets.swift
 OpenEmu/ScreenScraperDevCredentials.swift
+OpenEmu/APICredentials.swift
 
 
 # Misc build artifacts committed to root

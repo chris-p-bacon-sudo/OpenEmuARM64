@@ -35,6 +35,8 @@ struct OEHomeView: View {
     @State private var selectedSystem: OEDBSystem? = nil
     @State private var heroIndex: Int = 0
     @State private var sidebarOpen: Bool = false
+    @State private var detailGame: OEDBGame? = nil
+    @State private var libraryContent: LibraryContent? = nil
     @Binding var gameToLaunch: OEDBGame?
 
     private var heroGames: [OEDBGame] { Array(store.recentlyPlayedGames.prefix(3)) }
@@ -59,8 +61,32 @@ struct OEHomeView: View {
                 // Main content fills remaining space
                 ZStack(alignment: .top) {
                     OEColors.background
-                    scrollContent
-                    floatingNavBar
+
+                    if let game = detailGame {
+                        OEGameDetailView(
+                            game: game,
+                            onBack: { withAnimation(.easeInOut(duration: 0.2)) { detailGame = nil } },
+                            onPlay: { gameToLaunch = game },
+                            onSelectGame: { g in
+                                withAnimation(.easeInOut(duration: 0.2)) { detailGame = g }
+                            }
+                        )
+                        .transition(.opacity)
+                    } else if let content = libraryContent {
+                        OELibraryView(
+                            content: content,
+                            store: store,
+                            onBack: { withAnimation(.easeInOut(duration: 0.2)) { libraryContent = nil } },
+                            onPlay: { gameToLaunch = $0 },
+                            onSelectGame: { game in
+                                withAnimation(.easeInOut(duration: 0.2)) { detailGame = game }
+                            }
+                        )
+                        .transition(.opacity)
+                    } else {
+                        scrollContent
+                        floatingNavBar
+                    }
                 }
                 .clipped()
             }
@@ -84,6 +110,16 @@ struct OEHomeView: View {
                 Spacer()
             }
             .ignoresSafeArea()
+        }
+        .onChange(of: selectedSection) { section in
+            withAnimation(.easeInOut(duration: 0.2)) {
+                switch section {
+                case .recentlyPlayed: libraryContent = .recentlyPlayed
+                case .favorites:      libraryContent = .favorites
+                case .home:           libraryContent = nil; detailGame = nil
+                default:              break
+                }
+            }
         }
     }
 
@@ -178,7 +214,11 @@ struct OEHomeView: View {
                     if !games.isEmpty {
                         OEGameRowView(system: system, games: games) { game in
                             gameToLaunch = game
-                        } onSeeAll: { _ in }
+                        } onSeeAll: { system in
+                            withAnimation(.easeInOut(duration: 0.2)) { libraryContent = .system(system) }
+                        } onSelectGame: { game in
+                            withAnimation(.easeInOut(duration: 0.2)) { detailGame = game }
+                        }
                         .padding(.bottom, OESpacing.sectionGap)
                     }
                 }

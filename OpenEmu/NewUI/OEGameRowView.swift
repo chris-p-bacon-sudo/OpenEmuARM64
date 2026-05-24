@@ -31,6 +31,7 @@ struct OEGameRowView: View {
     let games: [OEDBGame]
     let onPlayGame: (OEDBGame) -> Void
     let onSeeAll: (OEDBSystem) -> Void
+    var onSelectGame: ((OEDBGame) -> Void)? = nil
 
     @State private var scrollProxy: ScrollViewProxy? = nil
     @State private var currentIndex = 0   // Index of leftmost visible card
@@ -41,9 +42,10 @@ struct OEGameRowView: View {
             ZStack {
                 ScrollViewReader { proxy in
                     ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(alignment: .top, spacing: 16) {
+                        HStack(alignment: .top, spacing: OESpacing.cardGapNES) {
+                            let cardH = OESystemAspectRatio.cardHeight(for: system.systemIdentifier)
                             ForEach(Array(games.enumerated()), id: \.element.objectID) { idx, game in
-                                OEGameCardView(game: game) { onPlayGame(game) }
+                                OEGameCardView(game: game, cardHeight: cardH, onSelect: { onSelectGame?(game) }) { onPlayGame(game) }
                                     .id(idx)
                             }
                         }

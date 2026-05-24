@@ -91,6 +91,11 @@ final class OENewMainWindowController: NSWindowController {
             OELibraryStore.shared.reload()
         }
 
+        // Force early initialization so it starts observing RA session notifications
+        // before any game is launched — lazy init would miss sessions played before
+        // the detail view is first opened.
+        _ = OERetroAchievementsDataStore.shared
+
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(libraryDidLoad),
@@ -168,7 +173,5 @@ extension OENewMainWindowController: NSWindowDelegate {
 
 extension OENewMainWindowController {
     /// Returns true when the new UI should be used.
-    static var isEnabled: Bool {
-        ProcessInfo.processInfo.arguments.contains("-OENewUI")
-    }
+    static var isEnabled: Bool { true }
 }

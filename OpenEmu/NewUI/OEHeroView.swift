@@ -92,7 +92,7 @@ struct OEHeroView: View {
                         Image(nsImage: cover)
                             .resizable()
                             .aspectRatio(contentMode: .fit)
-                            .frame(height: 170)
+                            .frame(height: 220)
                             .cornerRadius(5)
                             .shadow(color: .black.opacity(0.65), radius: 24, y: 12)
                     }
@@ -168,11 +168,11 @@ struct OEHeroView: View {
                         .padding(.bottom, 12)
                     }
                 }
-                .padding(.horizontal, 48)
+                .padding(.horizontal, OESpacing.rowPadding)
                 .padding(.bottom, 52)
             }
         }
-        .frame(height: 380)
+        .frame(height: OESpacing.heroHeightHome)
         .onAppear { loadImages() }
     }
 

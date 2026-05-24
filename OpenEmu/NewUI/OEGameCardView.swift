@@ -25,12 +25,12 @@
 import SwiftUI
 import OpenEmuKit
 
-private let cardHeight: CGFloat = 180   // Fixed row height — all covers share this
-
-/// A single game cover card. Height is fixed at `cardHeight`; width scales
-/// naturally from the image's real aspect ratio using .fit so there's no cropping.
+/// A single game cover card. `cardHeight` defaults to 220 (home screen rows); library grid passes 260.
+/// Width scales naturally from the image's real aspect ratio using .fit so there's no cropping.
 struct OEGameCardView: View {
     let game: OEDBGame
+    var cardHeight: CGFloat = 220
+    var onSelect: (() -> Void)? = nil
     let onPlay: () -> Void
 
     @State private var isHovered = false
@@ -63,7 +63,7 @@ struct OEGameCardView: View {
                             }
                         )
                 } else {
-                    OEPlaceholderCoverView(game: game)
+                    OEPlaceholderCoverView(game: game, cardHeight: cardHeight)
                         .frame(height: cardHeight)
                         .cornerRadius(OERadius.card)
                         .shadow(color: .black.opacity(0.45), radius: 9, y: 6)
@@ -92,6 +92,7 @@ struct OEGameCardView: View {
             .onHover { isHovered = $0 }
             .offset(y: isHovered ? -3 : 0)
             .animation(.easeOut(duration: 0.18), value: isHovered)
+            .onTapGesture { onSelect?() }
 
             // Text constrained to cover art width, wraps to 2 lines max
             VStack(alignment: .leading, spacing: 2) {
@@ -127,6 +128,7 @@ struct OEGameCardView: View {
 /// Placeholder cover rendered from the game's system color + abbreviated title.
 struct OEPlaceholderCoverView: View {
     let game: OEDBGame
+    var cardHeight: CGFloat = 180
 
     var body: some View {
         let colors = OESystemColors.colors(for: game.system?.systemIdentifier ?? "unknown")
@@ -172,7 +174,7 @@ enum OESystemColors {
     }
 }
 
-/// System cover art aspect ratios.
+/// System cover art aspect ratios and canonical card heights from the Paper designs.
 enum OESystemAspectRatio {
     static func ratio(for systemIdentifier: String) -> CGFloat {
         let id = systemIdentifier.lowercased()
@@ -183,6 +185,18 @@ enum OESystemAspectRatio {
         if id.contains("genesis") { return 0.70 }
         if id.contains("ps1") || id.contains("psx") || id.contains("playstation") { return 0.72 }
         return 0.75
+    }
+
+    /// Design-specified card heights per system (from Paper designs, 1280pt canvas).
+    static func cardHeight(for systemIdentifier: String) -> CGFloat {
+        let id = systemIdentifier.lowercased()
+        if id.contains("nes") && !id.contains("snes") { return 253 }
+        if id.contains("snes")    { return 183 }
+        if id.contains("n64")     { return 200 }
+        if id.contains("gba")     { return 145 }
+        if id.contains("genesis") { return 260 }
+        if id.contains("ps1") || id.contains("psx") || id.contains("playstation") { return 253 }
+        return 220
     }
 }
 

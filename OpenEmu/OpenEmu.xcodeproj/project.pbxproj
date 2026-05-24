@@ -159,6 +159,11 @@
 		1BFC26D0116C1CA300B95689 /* OpenEmuHelperApp in Resources */ = {isa = PBXBuildFile; fileRef = 1BEF2A9411682A530090F72B /* OpenEmuHelperApp */; };
 		1E0E90051A8932BB72161909 /* PrefCloudSyncController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EF37C00BE9099269AB29467 /* PrefCloudSyncController.swift */; };
 		1E14CA201B4C6412464FCF9E /* OEHeroView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 138F03D7B3AC4F4F8419286E /* OEHeroView.swift */; };
+		D1E2F3A4B5C6D7E8F9A0B1C2 /* OEGameDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1D2E3F4A5B6C7D8E9F0A1B2 /* OEGameDetailView.swift */; };
+		F1A2B3C4D5E6F7A8B9C0D1E2 /* OEGameMetadataCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1F2A3B4C5D6E7F8A9B0C1D2 /* OEGameMetadataCache.swift */; };
+		B2C3D4E5F6A7B8C9D0E1F2A3 /* OERetroAchievementsDataStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2B3C4D5E6F7A8B9C0D1E2F3 /* OERetroAchievementsDataStore.swift */; };
+		E4F5A6B7C8D9E0F1A2B3C4D5 /* OELibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4E5F6A7B8C9D0E1F2A3B4C5 /* OELibraryView.swift */; };
+		A5B6C7D8E9F0A1B2C3D4E5F6 /* OEGameListRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5A6B7C8D9E0F1A2B3C4D5E6 /* OEGameListRow.swift */; };
 		1E2F3DBB10DEAB4C0019AA84 /* OEVersionMigrationController.m in Sources */ = {isa = PBXBuildFile; fileRef = 1E2F3DBA10DEAB4C0019AA84 /* OEVersionMigrationController.m */; };
 		1E37453273BB2A77BB11F34C /* OEDesignTokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2B0961AB4D99C699E238F1E /* OEDesignTokens.swift */; };
 		1E4B7FC710DE4156A46DAB79 /* OEWiiSystemController.m in Sources */ = {isa = PBXBuildFile; fileRef = 60C6AA00A0A44B609186B94D /* OEWiiSystemController.m */; };
@@ -667,6 +672,10 @@
 		CC0011223344556901900001 /* PrefScreenScraperController.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0011223344556801900001 /* PrefScreenScraperController.swift */; };
 		CC0011223344556B01900001 /* LibretroThumbnailsClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0011223344556A01900001 /* LibretroThumbnailsClient.swift */; };
 		CC0011223344557101900001 /* ScreenScraperDevCredentials.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0011223344557001900001 /* ScreenScraperDevCredentials.swift */; };
+		DD0011223344556701000001 /* OEGameMetadata.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD0011223344556601000001 /* OEGameMetadata.swift */; };
+		EE0011223344556701000001 /* SteamGridDBClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE0011223344556601000001 /* SteamGridDBClient.swift */; };
+		FF0011223344556701000001 /* IGDBClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF0011223344556601000001 /* IGDBClient.swift */; };
+		AA0011223344556701000001 /* APICredentials.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0011223344556601000001 /* APICredentials.swift */; };
 		CEA508990AF842369046D92D /* OEFolderBackupManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9964A7D7B3C4438D9BE62654 /* OEFolderBackupManager.swift */; };
 		DEAAB8E598494A97A260F43C84A6B563 /* Dreamcast.oesystemplugin in Copy System Plugins to App Plugins */ = {isa = PBXBuildFile; fileRef = 87DF04FE1BCE2D100060E2C2 /* Dreamcast.oesystemplugin */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		DFDDE95A9D47B0C0B525780A /* OESaveSyncManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F74677D2124A2E934C10038 /* OESaveSyncManager.swift */; };
@@ -1200,6 +1209,11 @@
 		0867696A1B96E93F006545DA /* Controller-Mappings.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "Controller-Mappings.plist"; sourceTree = "<group>"; };
 		0EF37C00BE9099269AB29467 /* PrefCloudSyncController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PrefCloudSyncController.swift; sourceTree = "<group>"; };
 		138F03D7B3AC4F4F8419286E /* OEHeroView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OEHeroView.swift; sourceTree = "<group>"; };
+		C1D2E3F4A5B6C7D8E9F0A1B2 /* OEGameDetailView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OEGameDetailView.swift; sourceTree = "<group>"; };
+		E1F2A3B4C5D6E7F8A9B0C1D2 /* OEGameMetadataCache.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OEGameMetadataCache.swift; sourceTree = "<group>"; };
+		A2B3C4D5E6F7A8B9C0D1E2F3 /* OERetroAchievementsDataStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OERetroAchievementsDataStore.swift; sourceTree = "<group>"; };
+		D4E5F6A7B8C9D0E1F2A3B4C5 /* OELibraryView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OELibraryView.swift; sourceTree = "<group>"; };
+		F5A6B7C8D9E0F1A2B3C4D5E6 /* OEGameListRow.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OEGameListRow.swift; sourceTree = "<group>"; };
 		1415540F1442B3B300A01683 /* N64.oesystemplugin */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = N64.oesystemplugin; sourceTree = BUILT_PRODUCTS_DIR; };
 		1415541F1442B7B100A01683 /* OEN64SystemResponder.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OEN64SystemResponder.h; sourceTree = "<group>"; };
 		141554201442B7B100A01683 /* OEN64SystemResponder.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = OEN64SystemResponder.m; sourceTree = "<group>"; };
@@ -1929,6 +1943,11 @@
 		CC0011223344556A01900001 /* LibretroThumbnailsClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibretroThumbnailsClient.swift; sourceTree = "<group>"; };
 		CC0011223344557001900001 /* ScreenScraperDevCredentials.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenScraperDevCredentials.swift; sourceTree = "<group>"; };
 		CC0011223344557201900001 /* ScreenScraperDevCredentials.template.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ScreenScraperDevCredentials.template.swift; sourceTree = "<group>"; };
+		DD0011223344556601000001 /* OEGameMetadata.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OEGameMetadata.swift; sourceTree = "<group>"; };
+		EE0011223344556601000001 /* SteamGridDBClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SteamGridDBClient.swift; sourceTree = "<group>"; };
+		FF0011223344556601000001 /* IGDBClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IGDBClient.swift; sourceTree = "<group>"; };
+		AA0011223344556601000001 /* APICredentials.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APICredentials.swift; sourceTree = "<group>"; };
+		BB0011223344556601000001 /* APICredentials.template.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = APICredentials.template.swift; sourceTree = "<group>"; };
 		D03F93A14A16D08C25E1C01F /* OENewMainWindowController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OENewMainWindowController.swift; sourceTree = "<group>"; };
 		DBFF44DC2E9D79C700B30F0A /* OENESSystemResponderClient.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = OENESSystemResponderClient.h; sourceTree = "<group>"; };
 		DBFF44DD2E9D79D400B30F0A /* OEFDSSystemResponderClient.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = OEFDSSystemResponderClient.h; sourceTree = "<group>"; };
@@ -2958,6 +2977,7 @@
 				CC0011223344556801900001 /* PrefScreenScraperController.swift */,
 				OE0RA0APPFILEREF00000001 /* PrefRetroAchievementsController.swift */,
 				CC0011223344557001900001 /* ScreenScraperDevCredentials.swift */,
+				AA0011223344556601000001 /* APICredentials.swift */,
 				83495DD319A38F31009DB6E5 /* PrefBiosController.swift */,
 				83495DD719A38F3D009DB6E5 /* PrefBiosController.xib */,
 				83753F1614F537C400D708A7 /* PrefDebugController.swift */,
@@ -3102,6 +3122,11 @@
 				686B26F3EF0436296D8B48CD /* OENavBar.swift */,
 				42B9EF2701386F83487ABF86 /* OEGameCardView.swift */,
 				8A4BF0DABEC39BCA5D0A0BB5 /* OEGameRowView.swift */,
+				C1D2E3F4A5B6C7D8E9F0A1B2 /* OEGameDetailView.swift */,
+				E1F2A3B4C5D6E7F8A9B0C1D2 /* OEGameMetadataCache.swift */,
+				A2B3C4D5E6F7A8B9C0D1E2F3 /* OERetroAchievementsDataStore.swift */,
+				D4E5F6A7B8C9D0E1F2A3B4C5 /* OELibraryView.swift */,
+				F5A6B7C8D9E0F1A2B3C4D5E6 /* OEGameListRow.swift */,
 				138F03D7B3AC4F4F8419286E /* OEHeroView.swift */,
 				956243BD91771E0212552DC8 /* OEHomeView.swift */,
 				D03F93A14A16D08C25E1C01F /* OENewMainWindowController.swift */,
@@ -3239,6 +3264,9 @@
 				CC0011223344556A01900001 /* LibretroThumbnailsClient.swift */,
 				8F4AEAC0273594E6005C6246 /* OpenVGDB.swift */,
 				836BC9561853815A00B6AF26 /* SQLiteDatabase.swift */,
+				DD0011223344556601000001 /* OEGameMetadata.swift */,
+				EE0011223344556601000001 /* SteamGridDBClient.swift */,
+				FF0011223344556601000001 /* IGDBClient.swift */,
 			);
 			name = GameInfo;
 			sourceTree = "<group>";
@@ -4111,6 +4139,7 @@
 				0EF37C00BE9099269AB29467 /* PrefCloudSyncController.swift */,
 				35F8401C31D685D3E7EAA048 /* OEGoogleDriveSecrets.template.swift */,
 				CC0011223344557201900001 /* ScreenScraperDevCredentials.template.swift */,
+				BB0011223344556601000001 /* APICredentials.template.swift */,
 				42A14B489D09FD1B597AD586 /* OECredentialStore.swift */,
 				60A7766A41EEE0D289B9C7D8 /* NewUI */,
 			);
@@ -6409,6 +6438,10 @@
 				0570B85725449E4C008EC8A6 /* ImageCollectionViewController.swift in Sources */,
 				01E2A2F323E60F7E00194150 /* PrefCoresController.swift in Sources */,
 				CC0011223344556701900001 /* ScreenScraperClient.swift in Sources */,
+				DD0011223344556701000001 /* OEGameMetadata.swift in Sources */,
+				EE0011223344556701000001 /* SteamGridDBClient.swift in Sources */,
+				FF0011223344556701000001 /* IGDBClient.swift in Sources */,
+				AA0011223344556701000001 /* APICredentials.swift in Sources */,
 				CC0011223344556B01900001 /* LibretroThumbnailsClient.swift in Sources */,
 				CC0011223344556901900001 /* PrefScreenScraperController.swift in Sources */,
 				OE0RA0APPBUILDFILE0000001 /* PrefRetroAchievementsController.swift in Sources */,
@@ -6483,6 +6516,11 @@
 				A7E7F95C20C5FD3DA727DCAC /* OENavBar.swift in Sources */,
 				345FC4D91F75840002C3EDB2 /* OEGameCardView.swift in Sources */,
 				5F0605F7F8C17117CCAE7B7B /* OEGameRowView.swift in Sources */,
+				D1E2F3A4B5C6D7E8F9A0B1C2 /* OEGameDetailView.swift in Sources */,
+				F1A2B3C4D5E6F7A8B9C0D1E2 /* OEGameMetadataCache.swift in Sources */,
+				B2C3D4E5F6A7B8C9D0E1F2A3 /* OERetroAchievementsDataStore.swift in Sources */,
+				E4F5A6B7C8D9E0F1A2B3C4D5 /* OELibraryView.swift in Sources */,
+				A5B6C7D8E9F0A1B2C3D4E5F6 /* OEGameListRow.swift in Sources */,
 				1E14CA201B4C6412464FCF9E /* OEHeroView.swift in Sources */,
 				F77C5E2EF880198BB1EAC540 /* OEHomeView.swift in Sources */,
 				26A42C9678185296F3149D30 /* OENewMainWindowController.swift in Sources */,
