@@ -333,7 +333,10 @@ static NSString * const OEGameTableSortDescriptorsKey = @"OEGameTableSortDescrip
     {
         if(token.length > 0)
         {
-            NSPredicate *predicate = [NSPredicate predicateWithFormat:@"displayName contains[cd] %@", token];
+            NSPredicate *predicate = [NSCompoundPredicate orPredicateWithSubpredicates:@[
+                [NSPredicate predicateWithFormat:@"name contains[cd] %@", token],
+                [NSPredicate predicateWithFormat:@"gameTitle contains[cd] %@", token],
+            ]];
             [predarray addObject:predicate];
         }
     }

@@ -1212,6 +1212,7 @@ extension AppDelegate: NSMenuDelegate {
         UNUserNotificationCenter.current().delegate = self
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in }
 
+        OEDBGame.startObservingDisplayPreference()
         validateDefaultPluginAssignments()
         migrateStaleRACoreDefaults()
         logCorePluginInventory()
