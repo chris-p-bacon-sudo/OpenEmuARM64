@@ -37,6 +37,7 @@ struct OEGameDetailView: View {
     @State private var coverImage: NSImage?
     @State private var metadata: ScreenScraperResult?
     @State private var raSessionInfo: [String: Any]?
+    @State private var artItems: [SteamGridDBItem] = []
     @ObservedObject private var store = OELibraryStore.shared
 
     private var systemName: String { game.system?.name ?? "" }
@@ -57,9 +58,9 @@ struct OEGameDetailView: View {
         let total = game.playTime
         let h = Int(total / 3600)
         let m = Int(total.truncatingRemainder(dividingBy: 3600) / 60)
-        if h > 0 { return "\(h)h \(m)m" }
-        if m > 0 { return "\(m)m" }
-        return "—"
+        if h > 0 { return "\(h) hrs" }
+        if m > 0 { return "\(m) min" }
+        return "0 min"
     }
 
     private var lastPlayedText: String {
@@ -75,14 +76,6 @@ struct OEGameDetailView: View {
             return String(date[range])
         }
         return date
-    }
-
-    private var heroSubtitle: String {
-        var parts: [String] = []
-        if let dev = metadata?.developer, !dev.isEmpty { parts.append(dev) }
-        if !releaseYear.isEmpty { parts.append(releaseYear) }
-        if let genre = metadata?.genres.first, !genre.isEmpty { parts.append(genre) }
-        return parts.joined(separator: " · ")
     }
 
     private var raUnlocked: Int? {
@@ -111,10 +104,9 @@ struct OEGameDetailView: View {
             ScrollView(.vertical, showsIndicators: false) {
                 LazyVStack(alignment: .leading, spacing: 0) {
                     heroSection
-                    statsSection
                     screenshotsSection
                     aboutAndAchievementsSection
-                    aboutFullSection
+                    if showArtAndMedia && !artItems.isEmpty { artAndMediaSection }
                     achievementsSection
                     if !saveStates.isEmpty { saveStatesSection }
                     if !otherGames.isEmpty { moreSection }
@@ -129,6 +121,7 @@ struct OEGameDetailView: View {
         .onAppear {
             loadImages()
             loadMetadata()
+            loadArtMedia()
         }
     }
 
@@ -235,18 +228,11 @@ struct OEGameDetailView: View {
                         Text(game.displayName)
                             .font(.system(size: 52, weight: .heavy))
                             .foregroundColor(.white)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.6)
+                            .fixedSize(horizontal: false, vertical: true)
                             .shadow(color: .black.opacity(0.5), radius: 12)
 
-                        let subtitle = heroSubtitle
-                        if !subtitle.isEmpty {
-                            Text(subtitle)
-                                .font(.system(size: 13))
-                                .foregroundColor(.white.opacity(0.55))
-                                .lineLimit(1)
-                                .shadow(color: .black.opacity(0.4), radius: 8)
-                        }
+                        heroStatsRow
+                            .shadow(color: .black.opacity(0.4), radius: 8)
 
                         HStack(spacing: 10) {
                             Button(action: onPlay) {
@@ -275,6 +261,7 @@ struct OEGameDetailView: View {
                         }
                         .padding(.top, 4)
                     }
+                    .frame(maxWidth: geo.size.width * 0.55)
 
                     Spacer(minLength: 0)
                 }
@@ -283,90 +270,6 @@ struct OEGameDetailView: View {
             }
         }
         .frame(height: OESpacing.heroHeight)
-    }
-
-    // MARK: - Stats Bar (G2-0)
-    // Cells are content-width, left-aligned; the right half of the bar stays empty (matches Paper)
-
-    private var statsSection: some View {
-        HStack(spacing: 0) {
-            statCell(label: "Play Time", value: formattedPlayTime)
-            statCell(label: "Save States", value: "\(game.saveStateCount) saves")
-            lastPlayedStatCell
-            achievementsStatCell
-            Spacer(minLength: 0)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(OEColors.background)
-        .overlay(
-            Rectangle().fill(OEColors.border).frame(height: 0.5),
-            alignment: .bottom
-        )
-    }
-
-    private func statCell(label: String, value: String) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(label.uppercased())
-                .font(.system(size: 11, weight: .semibold))
-                .kerning(0.08 * 11)
-                .foregroundColor(Color(hex: 0xEDEDEE, opacity: 0.40))
-            Text(value)
-                .font(.system(size: 22, weight: .bold))
-                .tracking(-0.5)
-                .foregroundColor(OEColors.textPrimary)
-        }
-        .padding(.leading, OESpacing.rowPaddingDetail)
-        .padding(.trailing, 28)
-        .padding(.vertical, 22)
-        .overlay(
-            Rectangle().fill(OEColors.border).frame(width: 0.5),
-            alignment: .trailing
-        )
-    }
-
-    private var lastPlayedStatCell: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text("LAST PLAYED")
-                .font(.system(size: 11, weight: .semibold))
-                .kerning(0.08 * 11)
-                .foregroundColor(Color(hex: 0xEDEDEE, opacity: 0.40))
-            HStack(spacing: 6) {
-                if game.lastPlayed != nil {
-                    Circle().fill(OEColors.success).frame(width: 6, height: 6)
-                }
-                Text(lastPlayedText)
-                    .font(.system(size: 22, weight: .bold))
-                    .tracking(-0.5)
-                    .foregroundColor(OEColors.textPrimary)
-            }
-        }
-        .padding(.leading, OESpacing.rowPaddingDetail)
-        .padding(.trailing, 28)
-        .padding(.vertical, 22)
-        .overlay(
-            Rectangle().fill(OEColors.border).frame(width: 0.5),
-            alignment: .trailing
-        )
-    }
-
-    private var achievementsStatCell: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text("ACHIEVEMENTS")
-                .font(.system(size: 11, weight: .semibold))
-                .kerning(0.08 * 11)
-                .foregroundColor(Color(hex: 0xEDEDEE, opacity: 0.40))
-            let value: String = {
-                if let u = raUnlocked, let t = raTotal { return "\(u) / \(t)" }
-                return "—"
-            }()
-            Text(value)
-                .font(.system(size: 22, weight: .bold))
-                .tracking(-0.5)
-                .foregroundColor(OEColors.textPrimary)
-        }
-        .padding(.leading, OESpacing.rowPaddingDetail)
-        .padding(.trailing, 28)
-        .padding(.vertical, 22)
     }
 
     // MARK: - Gameplay Screenshots (GH-0)
@@ -415,11 +318,21 @@ struct OEGameDetailView: View {
         .padding(.bottom, OESpacing.sectionGap)
     }
 
-    // MARK: - About + Achievements Condensed (K9-0)
+    // MARK: - About + Community Rating (K9-0)
 
     private var aboutAndAchievementsSection: some View {
-        HStack(alignment: .top, spacing: 0) {
-            // Left column — About
+        let rom = game.defaultROM
+        let md5Str: String = {
+            guard let md5 = rom?.md5, !md5.isEmpty else { return "—" }
+            return "MD5: \(md5.prefix(8))…"
+        }()
+        let fileSizeStr: String = {
+            guard let bytes = rom?.fileSize?.int64Value, bytes > 0 else { return "—" }
+            return ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file)
+        }()
+
+        return HStack(alignment: .top, spacing: 40) {
+            // Left — About
             VStack(alignment: .leading, spacing: 16) {
                 Text("About")
                     .font(.system(size: 20, weight: .bold))
@@ -431,46 +344,41 @@ struct OEGameDetailView: View {
                         .font(.system(size: 13))
                         .foregroundColor(OEColors.textSecondary)
                         .lineSpacing(5)
-                        .lineLimit(4)
                         .fixedSize(horizontal: false, vertical: true)
                 }
 
-                simpleMetadataList
+                VStack(spacing: 10) {
+                    if let dev = metadata?.developer, !dev.isEmpty { simpleMetaRow("Developer", value: dev) }
+                    if let pub = metadata?.publisher, !pub.isEmpty { simpleMetaRow("Publisher", value: pub) }
+                    if let rel = metadata?.releaseDate, !rel.isEmpty { simpleMetaRow("Released", value: rel) }
+                    let genres = metadata?.genres.filter { !$0.isEmpty } ?? []
+                    if !genres.isEmpty { simpleMetaRow("Genre", value: genres.joined(separator: " · ")) }
+                    if let sys = game.system?.name, !sys.isEmpty { simpleMetaRow("Platform", value: sys) }
+                    if let region = metadata?.region, !region.isEmpty { simpleMetaRow("Region", value: region) }
+                    if let age = metadata?.ageRating, !age.isEmpty { simpleMetaRow("Age Rating", value: age) }
+                    if let players = metadata?.players, !players.isEmpty { simpleMetaRow("Players", value: players) }
+                    if md5Str != "—" { simpleMetaRow("ROM Hash", value: md5Str) }
+                    if fileSizeStr != "—" { simpleMetaRow("File Size", value: fileSizeStr) }
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
-            // Vertical divider
-            Rectangle()
-                .fill(OEColors.border)
-                .frame(width: 1)
-                .padding(.vertical, 4)
-
-            // Right column — Achievements
-            achievementsColumn
+            // Right — Community Rating
+            communityRatingColumn
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.leading, OESpacing.rowPaddingDetail)
         }
         .padding(.horizontal, OESpacing.rowPaddingDetail)
         .padding(.top, OESpacing.sectionTopPad)
         .padding(.bottom, OESpacing.sectionGap)
     }
 
-    private var simpleMetadataList: some View {
-        VStack(spacing: 10) {
-            simpleMetaRow("Developer", value: metadata?.developer ?? "—")
-            simpleMetaRow("Released",  value: metadata?.releaseDate ?? "—")
-            simpleMetaRow("Genre",     value: metadata?.genres.first ?? "—")
-            simpleMetaRow("Platform",  value: game.system?.name ?? "—")
-        }
-    }
-
     private func simpleMetaRow(_ label: String, value: String) -> some View {
         HStack(spacing: 12) {
             Text(label.uppercased())
-                .font(.system(size: 12, weight: .semibold))
-                .kerning(0.06 * 12)
+                .font(.system(size: 11, weight: .semibold))
+                .kerning(0.06 * 11)
                 .foregroundColor(Color(hex: 0xEDEDEE, opacity: 0.40))
-                .frame(width: 80, alignment: .leading)
+                .frame(width: 90, alignment: .leading)
             Text(value)
                 .font(.system(size: 13))
                 .foregroundColor(OEColors.textSecondary)
@@ -554,76 +462,256 @@ struct OEGameDetailView: View {
         .frame(height: 36)
     }
 
-    // MARK: - About Full (LW-0) — full description + bordered metadata table
+    // MARK: - Hero Stats Row
 
-    private var aboutFullSection: some View {
-        let rom = game.defaultROM
-        let fileSizeStr: String = {
-            guard let bytes = rom?.fileSize?.int64Value, bytes > 0 else { return "—" }
-            return ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file)
-        }()
-        let md5Str: String = {
-            guard let md5 = rom?.md5, !md5.isEmpty else { return "—" }
-            return "MD5: \(md5.prefix(8))…"
-        }()
-
-        return HStack(alignment: .top, spacing: 40) {
-            // Left — full description
-            VStack(alignment: .leading, spacing: 16) {
-                let desc = metadata?.gameDescription ?? game.gameDescription
-                if let desc, !desc.isEmpty {
-                    Text(desc)
-                        .font(.system(size: 13))
-                        .foregroundColor(OEColors.textSecondary)
-                        .lineSpacing(5)
-                        .fixedSize(horizontal: false, vertical: true)
+    private var heroStatsRow: some View {
+        HStack(spacing: 0) {
+            if let cr = metadata?.criticRating {
+                HStack(spacing: 4) {
+                    heroStarRating(Int(cr / 20))
+                    Text("\(Int(cr))")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(.white.opacity(0.90))
                 }
+                heroDot
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-
-            // Right — bordered metadata table
-            VStack(spacing: 0) {
-                metaRowRight("Developer", value: metadata?.developer ?? "—")
-                metaRowRight("Publisher",  value: metadata?.publisher ?? "—")
-                metaRowRight("Released",   value: metadata?.releaseDate ?? "—")
-                metaRowRight("Genre",      value: metadata?.genres.isEmpty == false ? metadata!.genres.joined(separator: " · ") : "—")
-                metaRowRight("Players",    value: metadata?.players ?? "—")
-                metaRowRight("Region",     value: metadata?.region ?? "—")
-                metaRowRight("ROM hash",   value: md5Str, isLast: false)
-                metaRowRight("File size",  value: fileSizeStr, isLast: true)
+            HStack(spacing: 4) {
+                Image(systemName: "clock").font(.system(size: 11))
+                Text(formattedPlayTime).font(.system(size: 13))
             }
-            .padding(.vertical, 4)
-            .padding(.horizontal, 18)
-            .background(Color(hex: 0xFFFFFF, opacity: 0.024))
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-            .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color(hex: 0xFFFFFF, opacity: 0.078), lineWidth: 0.5))
-            .frame(width: 420)
+            .foregroundColor(.white.opacity(0.65))
+            heroDot
+            HStack(spacing: 4) {
+                Image(systemName: "calendar").font(.system(size: 11))
+                Text(lastPlayedText).font(.system(size: 13))
+            }
+            .foregroundColor(.white.opacity(0.65))
+            if let u = raUnlocked, let t = raTotal {
+                heroDot
+                HStack(spacing: 4) {
+                    Image(systemName: "star").font(.system(size: 11))
+                    Text("\(u) / \(t)").font(.system(size: 13))
+                }
+                .foregroundColor(.white.opacity(0.65))
+            }
         }
+    }
+
+    private var heroDot: some View {
+        Text("  ·  ")
+            .font(.system(size: 12))
+            .foregroundColor(.white.opacity(0.30))
+    }
+
+    @ViewBuilder
+    private func heroStarRating(_ filled: Int) -> some View {
+        HStack(spacing: 2) {
+            ForEach(0..<5, id: \.self) { i in
+                Image(systemName: i < filled ? "star.fill" : "star")
+                    .font(.system(size: 10))
+                    .foregroundColor(i < filled ? Color(hex: 0xF5A623) : .white.opacity(0.30))
+            }
+        }
+    }
+
+    // MARK: - Community Rating Column
+
+    private var communityRatingColumn: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text("Community Rating")
+                .font(.system(size: 20, weight: .bold))
+                .tracking(-0.3)
+                .foregroundColor(OEColors.textPrimary)
+
+            if let cr = metadata?.criticRating {
+                HStack(alignment: .lastTextBaseline, spacing: 4) {
+                    Text(String(format: "%.0f", cr))
+                        .font(.system(size: 72, weight: .heavy))
+                        .tracking(-2)
+                        .foregroundColor(OEColors.textPrimary)
+                    Text("/100")
+                        .font(.system(size: 20))
+                        .foregroundColor(Color(hex: 0xEDEDEE, opacity: 0.35))
+                }
+                .padding(.top, 10)
+
+                HStack(spacing: 6) {
+                    communityStarRating(cr / 20)
+                    let starVal = cr / 20
+                    let countText = metadata?.criticRatingCount.map {
+                        let fmt = NumberFormatter()
+                        fmt.numberStyle = .decimal
+                        return (fmt.string(from: NSNumber(value: $0)) ?? "\($0)") + " RATINGS VIA IGDB"
+                    } ?? ""
+                    Text(String(format: "%.1f  ·  ", starVal) + countText)
+                        .font(.system(size: 11, weight: .semibold))
+                        .kerning(0.04 * 11)
+                        .foregroundColor(Color(hex: 0xEDEDEE, opacity: 0.40))
+                }
+                .padding(.top, 8)
+
+                VStack(spacing: 10) {
+                    if metadata?.genres.isEmpty == false {
+                        simpleMetaRow("Themes", value: metadata!.genres.joined(separator: " · "))
+                    }
+                    if metadata?.gameModes.isEmpty == false {
+                        simpleMetaRow("Mode", value: metadata!.gameModes.joined(separator: " · "))
+                    }
+                    if let f = metadata?.franchise, !f.isEmpty {
+                        simpleMetaRow("Series", value: f)
+                    }
+                }
+                .padding(.top, 20)
+
+            } else {
+                Text("No community rating available.")
+                    .font(.system(size: 13))
+                    .foregroundColor(OEColors.textTertiary)
+                    .italic()
+                    .padding(.top, 12)
+
+                VStack(spacing: 10) {
+                    if metadata?.genres.isEmpty == false {
+                        simpleMetaRow("Themes", value: metadata!.genres.joined(separator: " · "))
+                    }
+                    if metadata?.gameModes.isEmpty == false {
+                        simpleMetaRow("Mode", value: metadata!.gameModes.joined(separator: " · "))
+                    }
+                    if let f = metadata?.franchise, !f.isEmpty {
+                        simpleMetaRow("Series", value: f)
+                    }
+                }
+                .padding(.top, 16)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func communityStarRating(_ value: Double) -> some View {
+        HStack(spacing: 3) {
+            ForEach(0..<5, id: \.self) { i in
+                Image(systemName: Double(i) < value ? "star.fill" : "star")
+                    .font(.system(size: 12))
+                    .foregroundColor(Double(i) < value ? Color(hex: 0xF5A623) : Color(hex: 0xEDEDEE, opacity: 0.25))
+            }
+        }
+    }
+
+    // MARK: - Art & Media
+
+    private var showArtAndMedia: Bool {
+        UserDefaults.standard.object(forKey: "OEShowArtAndMedia") == nil
+            ? true
+            : UserDefaults.standard.bool(forKey: "OEShowArtAndMedia")
+    }
+
+    private var artAndMediaSection: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack {
+                Text("Art & Media")
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundColor(OEColors.textPrimary)
+                Spacer()
+                Button("Browse All") {}
+                    .font(.system(size: 13))
+                    .foregroundColor(OEColors.accent)
+                    .buttonStyle(.plain)
+            }
+
+            artMosaic.padding(.top, 16)
+        }
+        .frame(maxWidth: .infinity)
         .padding(.horizontal, OESpacing.rowPaddingDetail)
         .padding(.top, OESpacing.sectionTopPad)
         .padding(.bottom, OESpacing.sectionGap)
     }
 
-    private func metaRowRight(_ label: String, value: String, isLast: Bool = false) -> some View {
-        HStack {
-            Text(label)
-                .font(.system(size: 12))
-                .foregroundColor(Color(hex: 0xEDEDEE, opacity: 0.50))
-            Spacer()
-            Text(value)
-                .font(.system(size: 12.5, weight: .medium))
-                .foregroundColor(OEColors.textPrimary)
-                .lineLimit(1)
-        }
-        .padding(.vertical, 12)
-        .overlay(
-            Group {
-                if !isLast {
-                    Rectangle().fill(Color(hex: 0xFFFFFF, opacity: 0.059)).frame(height: 0.5)
+    private var artDisplayItems: [SteamGridDBItem] {
+        let heroes = artItems.filter { $0.type == .hero }
+        let grids  = artItems.filter { $0.type == .grid }
+        var display: [SteamGridDBItem] = []
+        if let h = heroes.first { display.append(h) }
+        if let g = grids.first  { display.append(g) }
+        let used = Set(display.map(\.id))
+        let rest = artItems.filter { !used.contains($0.id) }
+        display.append(contentsOf: rest.prefix(max(0, 5 - display.count)))
+        return display
+    }
+
+    private var artMosaic: some View {
+        let display = artDisplayItems
+        let row2 = Array(display.dropFirst(3).prefix(3))
+        // Aspect ratio (width:height) chosen to match the original 340/200 proportions
+        // at the intended ~1100pt content width. Scales with section width automatically.
+        let ratio: CGFloat = row2.isEmpty ? 3.2 : 2.0
+
+        return Color.clear
+            .frame(maxWidth: .infinity)
+            .aspectRatio(ratio, contentMode: .fit)
+            .overlay(
+                GeometryReader { geo in
+                    artMosaicLayout(display: display, row2: row2, size: geo.size)
                 }
-            },
-            alignment: .bottom
-        )
+            )
+    }
+
+    @ViewBuilder
+    private func artMosaicLayout(display: [SteamGridDBItem], row2: [SteamGridDBItem], size: CGSize) -> some View {
+        let w = size.width
+        let h = size.height
+        let gap: CGFloat = 12
+        let rightW = (w - gap) * 0.40
+        let leftW  = w - gap - rightW
+        // Distribute total height proportionally to the original 340:200 design ratio
+        let row1H = row2.isEmpty ? h : h * (340.0 / 552.0)
+        let rightH = (row1H - gap) / 2
+        let row2H  = row2.isEmpty ? 0 : h - row1H - gap
+
+        VStack(spacing: gap) {
+            HStack(alignment: .top, spacing: gap) {
+                artTileOrPlaceholder(display, index: 0)
+                    .frame(width: leftW, height: row1H)
+
+                VStack(spacing: gap) {
+                    artTileOrPlaceholder(display, index: 1)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: rightH)
+                    artTileOrPlaceholder(display, index: 2)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: rightH)
+                }
+                .frame(width: rightW)
+            }
+
+            if !row2.isEmpty {
+                HStack(spacing: gap) {
+                    ForEach(row2) { item in
+                        OEArtTile(item: item)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: row2H)
+                    }
+                }
+            }
+        }
+        .frame(width: w)
+        .clipped()
+    }
+
+    @ViewBuilder
+    private func artTileOrPlaceholder(_ items: [SteamGridDBItem], index: Int) -> some View {
+        if index < items.count {
+            OEArtTile(item: items[index])
+        } else {
+            RoundedRectangle(cornerRadius: 10).fill(OEColors.surface)
+        }
+    }
+
+    private func loadArtMedia() {
+        guard showArtAndMedia else { return }
+        Task {
+            let items = await OEArtMediaCache.shared.fetchOrCache(for: game)
+            await MainActor.run { artItems = items }
+        }
     }
 
     // MARK: - Achievements Full (N0-0)
@@ -968,6 +1056,61 @@ extension OEVideoThumbnail {
     }
 }
 
+// MARK: - Art Tile
+
+struct OEArtTile: View {
+    let item: SteamGridDBItem
+
+    @State private var image: NSImage?
+
+    var body: some View {
+        // GeometryReader gives the Image the exact pixel dimensions of the tile frame,
+        // preventing fill-mode images from reporting a larger layout size than their container.
+        GeometryReader { proxy in
+            ZStack(alignment: .topLeading) {
+                if let img = image {
+                    Image(nsImage: img)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(width: proxy.size.width, height: proxy.size.height)
+                        .clipped()
+                } else {
+                    OEColors.surface
+                }
+
+                Text(item.type.displayLabel)
+                    .font(.system(size: 9.5, weight: .semibold))
+                    .kerning(0.06 * 9.5)
+                    .foregroundColor(.white.opacity(0.90))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color.black.opacity(0.45))
+                    .clipShape(RoundedRectangle(cornerRadius: 5))
+                    .padding(10)
+
+                if let author = item.authorName {
+                    Text(author)
+                        .font(.system(size: 11))
+                        .foregroundColor(.white.opacity(0.65))
+                        .shadow(color: .black.opacity(0.6), radius: 4)
+                        .padding(10)
+                        .frame(width: proxy.size.width, height: proxy.size.height, alignment: .bottomLeading)
+                }
+            }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .onAppear { loadThumb() }
+    }
+
+    private func loadThumb() {
+        Task.detached(priority: .userInitiated) {
+            guard let data = try? Data(contentsOf: item.thumbURL),
+                  let img = NSImage(data: data) else { return }
+            await MainActor.run { image = img }
+        }
+    }
+}
+
 // MARK: - Remote Image
 
 struct OERemoteImage: View {
@@ -1102,3 +1245,5 @@ struct OESaveStateCard: View {
         }
     }
 }
+
+

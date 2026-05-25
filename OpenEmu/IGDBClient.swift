@@ -31,6 +31,12 @@ struct IGDBGame {
     var screenshotURLs: [URL] = []
     var genres: [String] = []
     var developer: String?
+    var publisher: String?
+    var criticRating: Double?
+    var criticRatingCount: Int?
+    var ageRating: String?
+    var franchise: String?
+    var gameModes: [String] = []
     var summary: String?
     var releaseDate: String?
 }
@@ -129,7 +135,7 @@ actor IGDBClient {
         guard let token = await validToken() else { return nil }
         let safeName = name.replacingOccurrences(of: "\"", with: "\\\"")
 
-        let fields = "fields name,cover.url,screenshots.url,genres.name,involved_companies.company.name,summary,first_release_date;"
+        let fields = "fields name,cover.url,screenshots.url,genres.name,involved_companies.company.name,involved_companies.developer,involved_companies.publisher,aggregated_rating,aggregated_rating_count,age_ratings.category,age_ratings.rating,franchise.name,game_modes.name,summary,first_release_date;"
         let cat    = "(category = null | category = (0,8,9))"
 
         if let pid = platformID {
@@ -210,9 +216,30 @@ actor IGDBClient {
             result.genres = genres.compactMap { $0["name"] as? String }
         }
 
-        if let companies = game["involved_companies"] as? [[String: Any]],
-           let company = companies.first?["company"] as? [String: Any] {
-            result.developer = company["name"] as? String
+        if let companies = game["involved_companies"] as? [[String: Any]] {
+            for entry in companies {
+                guard let co = entry["company"] as? [String: Any],
+                      let name = co["name"] as? String else { continue }
+                if (entry["developer"] as? Bool == true) && result.developer == nil { result.developer = name }
+                if (entry["publisher"] as? Bool == true) && result.publisher == nil { result.publisher = name }
+            }
+        }
+
+        result.criticRating      = game["aggregated_rating"] as? Double
+        result.criticRatingCount = game["aggregated_rating_count"] as? Int
+
+        if let ageRatings = game["age_ratings"] as? [[String: Any]] {
+            let esrb = ageRatings.first { $0["category"] as? Int == 1 }
+            let pegi = ageRatings.first { $0["category"] as? Int == 2 }
+            if let r = esrb?["rating"] as? Int { result.ageRating = esrbLabel(r) }
+            else if let r = pegi?["rating"] as? Int { result.ageRating = pegiLabel(r) }
+        }
+
+        if let franchise = game["franchise"] as? [String: Any] {
+            result.franchise = franchise["name"] as? String
+        }
+        if let modes = game["game_modes"] as? [[String: Any]] {
+            result.gameModes = modes.compactMap { $0["name"] as? String }
         }
 
         result.summary = game["summary"] as? String
@@ -225,5 +252,29 @@ actor IGDBClient {
         }
 
         return result
+    }
+
+    private func esrbLabel(_ v: Int) -> String {
+        switch v {
+        case 6:  return "RP"
+        case 7:  return "EC"
+        case 8:  return "E"
+        case 9:  return "E10+"
+        case 10: return "T"
+        case 11: return "M"
+        case 12: return "AO"
+        default: return "—"
+        }
+    }
+
+    private func pegiLabel(_ v: Int) -> String {
+        switch v {
+        case 1: return "PEGI 3"
+        case 2: return "PEGI 7"
+        case 3: return "PEGI 12"
+        case 4: return "PEGI 16"
+        case 5: return "PEGI 18"
+        default: return "—"
+        }
     }
 }

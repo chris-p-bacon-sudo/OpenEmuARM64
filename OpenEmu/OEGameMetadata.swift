@@ -36,4 +36,9 @@ struct OEGameMetadata: Codable {
     var region: String?
     var screenshotURLs: [URL] = []
     var videoURL: URL?
+    var criticRating: Double?
+    var criticRatingCount: Int?
+    var ageRating: String?
+    var franchise: String?
+    var gameModes: [String] = []
 }

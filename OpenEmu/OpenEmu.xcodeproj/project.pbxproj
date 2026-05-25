@@ -161,6 +161,7 @@
 		1E14CA201B4C6412464FCF9E /* OEHeroView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 138F03D7B3AC4F4F8419286E /* OEHeroView.swift */; };
 		D1E2F3A4B5C6D7E8F9A0B1C2 /* OEGameDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1D2E3F4A5B6C7D8E9F0A1B2 /* OEGameDetailView.swift */; };
 		F1A2B3C4D5E6F7A8B9C0D1E2 /* OEGameMetadataCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1F2A3B4C5D6E7F8A9B0C1D2 /* OEGameMetadataCache.swift */; };
+		AA11BB22CC33DD44EE55FF66 /* OEArtMediaCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB22CC33DD44EE55FF6677AA /* OEArtMediaCache.swift */; };
 		B2C3D4E5F6A7B8C9D0E1F2A3 /* OERetroAchievementsDataStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2B3C4D5E6F7A8B9C0D1E2F3 /* OERetroAchievementsDataStore.swift */; };
 		E4F5A6B7C8D9E0F1A2B3C4D5 /* OELibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4E5F6A7B8C9D0E1F2A3B4C5 /* OELibraryView.swift */; };
 		A5B6C7D8E9F0A1B2C3D4E5F6 /* OEGameListRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5A6B7C8D9E0F1A2B3C4D5E6 /* OEGameListRow.swift */; };
@@ -1211,6 +1212,7 @@
 		138F03D7B3AC4F4F8419286E /* OEHeroView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OEHeroView.swift; sourceTree = "<group>"; };
 		C1D2E3F4A5B6C7D8E9F0A1B2 /* OEGameDetailView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OEGameDetailView.swift; sourceTree = "<group>"; };
 		E1F2A3B4C5D6E7F8A9B0C1D2 /* OEGameMetadataCache.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OEGameMetadataCache.swift; sourceTree = "<group>"; };
+		BB22CC33DD44EE55FF6677AA /* OEArtMediaCache.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OEArtMediaCache.swift; sourceTree = "<group>"; };
 		A2B3C4D5E6F7A8B9C0D1E2F3 /* OERetroAchievementsDataStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OERetroAchievementsDataStore.swift; sourceTree = "<group>"; };
 		D4E5F6A7B8C9D0E1F2A3B4C5 /* OELibraryView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OELibraryView.swift; sourceTree = "<group>"; };
 		F5A6B7C8D9E0F1A2B3C4D5E6 /* OEGameListRow.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OEGameListRow.swift; sourceTree = "<group>"; };
@@ -3124,6 +3126,7 @@
 				8A4BF0DABEC39BCA5D0A0BB5 /* OEGameRowView.swift */,
 				C1D2E3F4A5B6C7D8E9F0A1B2 /* OEGameDetailView.swift */,
 				E1F2A3B4C5D6E7F8A9B0C1D2 /* OEGameMetadataCache.swift */,
+				BB22CC33DD44EE55FF6677AA /* OEArtMediaCache.swift */,
 				A2B3C4D5E6F7A8B9C0D1E2F3 /* OERetroAchievementsDataStore.swift */,
 				D4E5F6A7B8C9D0E1F2A3B4C5 /* OELibraryView.swift */,
 				F5A6B7C8D9E0F1A2B3C4D5E6 /* OEGameListRow.swift */,
@@ -6518,6 +6521,7 @@
 				5F0605F7F8C17117CCAE7B7B /* OEGameRowView.swift in Sources */,
 				D1E2F3A4B5C6D7E8F9A0B1C2 /* OEGameDetailView.swift in Sources */,
 				F1A2B3C4D5E6F7A8B9C0D1E2 /* OEGameMetadataCache.swift in Sources */,
+				AA11BB22CC33DD44EE55FF66 /* OEArtMediaCache.swift in Sources */,
 				B2C3D4E5F6A7B8C9D0E1F2A3 /* OERetroAchievementsDataStore.swift in Sources */,
 				E4F5A6B7C8D9E0F1A2B3C4D5 /* OELibraryView.swift in Sources */,
 				A5B6C7D8E9F0A1B2C3D4E5F6 /* OEGameListRow.swift in Sources */,

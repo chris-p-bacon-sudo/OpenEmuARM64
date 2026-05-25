@@ -25,6 +25,32 @@
 import Foundation
 import os.log
 
+struct SteamGridDBItem: Codable {
+    let sgdbID: Int
+    let type: SteamGridDBItemType
+    let url: URL
+    let thumbURL: URL
+    let width: Int
+    let height: Int
+    let score: Int
+    let authorName: String?
+}
+
+extension SteamGridDBItem: Identifiable {
+    var id: String { "\(type.rawValue)-\(sgdbID)" }
+}
+
+enum SteamGridDBItemType: String, Codable {
+    case hero, grid, icon
+    var displayLabel: String {
+        switch self {
+        case .hero: return "HERO ART"
+        case .grid: return "COVER ART"
+        case .icon: return "ICON"
+        }
+    }
+}
+
 actor SteamGridDBClient {
 
     static let shared = SteamGridDBClient()
@@ -79,5 +105,50 @@ actor SteamGridDBClient {
               let dataArray = json["data"] as? [[String: Any]],
               let urlStr = dataArray.first?["url"] as? String else { return nil }
         return URL(string: urlStr)
+    }
+
+    func fetchArtMedia(gameID: Int) async -> [SteamGridDBItem] {
+        async let heroes = fetchArtItems(type: .hero, gameID: gameID)
+        async let grids  = fetchArtItems(type: .grid, gameID: gameID)
+        async let icons  = fetchArtItems(type: .icon, gameID: gameID)
+        return await heroes + grids + icons
+    }
+
+    private func fetchArtItems(type: SteamGridDBItemType, gameID: Int) async -> [SteamGridDBItem] {
+        let segment: String
+        var queryItems: [URLQueryItem] = []
+        switch type {
+        case .hero: segment = "heroes"
+        case .grid: segment = "grids"; queryItems.append(URLQueryItem(name: "dimensions", value: "600x900"))
+        case .icon: segment = "icons"
+        }
+        var components = URLComponents(string: "\(base)/\(segment)/game/\(gameID)")!
+        if !queryItems.isEmpty { components.queryItems = queryItems }
+        guard let url = components.url else { return [] }
+
+        var request = URLRequest(url: url)
+        request.setValue("Bearer \(SteamGridDBClient.apiKey)", forHTTPHeaderField: "Authorization")
+
+        guard let (data, _) = try? await URLSession.shared.data(for: request),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let dataArray = json["data"] as? [[String: Any]] else { return [] }
+
+        return dataArray
+            .filter { $0["animated"] as? Bool != true }
+            .sorted { ($0["score"] as? Int ?? 0) > ($1["score"] as? Int ?? 0) }
+            .prefix(6)
+            .compactMap { item -> SteamGridDBItem? in
+                guard let id       = item["id"] as? Int,
+                      let urlStr   = item["url"] as? String,
+                      let fullURL  = URL(string: urlStr) else { return nil }
+                let thumbStr = item["thumb"] as? String ?? urlStr
+                guard let thumbURL = URL(string: thumbStr) else { return nil }
+                let score      = item["score"] as? Int ?? 0
+                let width      = item["width"] as? Int ?? 0
+                let height     = item["height"] as? Int ?? 0
+                let authorName = (item["author"] as? [String: Any])?["name"] as? String
+                return SteamGridDBItem(sgdbID: id, type: type, url: fullURL, thumbURL: thumbURL,
+                                       width: width, height: height, score: score, authorName: authorName)
+            }
     }
 }

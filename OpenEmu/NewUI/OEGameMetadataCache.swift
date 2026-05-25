@@ -75,13 +75,19 @@ actor OEGameMetadataCache {
         guard let igdbGame = await IGDBClient.shared.fetchGame(name: displayName, platformID: platformID) else { return nil }
 
         var result = OEGameMetadata()
-        result.gameTitle      = igdbGame.name
-        result.gameDescription = igdbGame.summary
-        result.developer      = igdbGame.developer
-        result.releaseDate    = igdbGame.releaseDate
-        result.genres         = igdbGame.genres
-        result.screenshotURLs = igdbGame.screenshotURLs
-        result.boxImageURL    = igdbGame.coverURL
+        result.gameTitle        = igdbGame.name
+        result.gameDescription  = igdbGame.summary
+        result.developer        = igdbGame.developer
+        result.publisher        = igdbGame.publisher
+        result.releaseDate      = igdbGame.releaseDate
+        result.genres           = igdbGame.genres
+        result.screenshotURLs   = igdbGame.screenshotURLs
+        result.boxImageURL      = igdbGame.coverURL
+        result.criticRating     = igdbGame.criticRating
+        result.criticRatingCount = igdbGame.criticRatingCount
+        result.ageRating        = igdbGame.ageRating
+        result.franchise        = igdbGame.franchise
+        result.gameModes        = igdbGame.gameModes
 
         setMetadata(result, forMD5: md5)
         return result
