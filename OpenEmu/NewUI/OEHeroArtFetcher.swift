@@ -56,7 +56,7 @@ actor OEHeroArtFetcher {
             return await existing.value
         }
 
-        let displayName = await MainActor.run { game.displayName ?? "" }
+        let displayName = await MainActor.run { game.displayName }
 
         let task = Task<NSImage?, Never> {
             defer { inFlight.removeValue(forKey: md5) }
@@ -65,7 +65,7 @@ actor OEHeroArtFetcher {
 
             if let id = await SteamGridDBClient.shared.gameID(for: displayName),
                let artURL = await SteamGridDBClient.shared.heroURL(for: id),
-               let data = try? Data(contentsOf: artURL),
+               let (data, _) = try? await URLSession.shared.data(from: artURL),
                let img = NSImage(data: data) {
                 cacheToDisk(img, path: cachedPath)
                 return img

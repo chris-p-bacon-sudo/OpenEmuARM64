@@ -74,7 +74,7 @@ actor IGDBClient {
         "openemu.system.jaguar":        62,
         "openemu.system.lynx":          61,
         "openemu.system.pce":           86,
-        "openemu.system.pcecd":         86,
+        "openemu.system.pcecd":        150,
         "openemu.system.ngp":          119,
         "openemu.system.ws":            57,
         "openemu.system.arcade":        52,
