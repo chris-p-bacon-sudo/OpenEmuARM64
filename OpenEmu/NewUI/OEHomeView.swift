@@ -32,7 +32,6 @@ struct OEHomeView: View {
     @StateObject private var store = OELibraryStore.shared
     @State private var selectedTab: OENavTab = .home
     @State private var selectedSection: OENavSection = .home
-    @State private var selectedSystem: OEDBSystem? = nil
     @State private var heroIndex: Int = 0
     @State private var sidebarOpen: Bool = false
     @State private var detailGame: OEDBGame? = nil
@@ -40,10 +39,6 @@ struct OEHomeView: View {
     @Binding var gameToLaunch: OEDBGame?
 
     private var heroGames: [OEDBGame] { Array(store.recentlyPlayedGames.prefix(3)) }
-    private var filteredSystems: [OEDBSystem] {
-        guard let filter = selectedSystem else { return store.systems }
-        return [filter]
-    }
 
     var body: some View {
         ZStack(alignment: .topLeading) {
@@ -120,6 +115,9 @@ struct OEHomeView: View {
                 default:              break
                 }
             }
+        }
+        .onChange(of: heroGames.count) { count in
+            if heroIndex >= count { heroIndex = max(0, count - 1) }
         }
     }
 
@@ -199,51 +197,74 @@ struct OEHomeView: View {
                     } onDotTap: { idx in
                         withAnimation(.easeInOut(duration: 0.3)) { heroIndex = idx }
                     }
-                    .padding(.bottom, -20)
                     .id(heroIndex)
                 }
 
-                // System filter chips
-                systemFilterRow
-                    .padding(.top, 14)
-                    .padding(.bottom, 10)
-
-                // Per-system game rows
-                ForEach(filteredSystems, id: \.objectID) { system in
-                    let games = store.games(for: system)
-                    if !games.isEmpty {
-                        OEGameRowView(system: system, games: games) { game in
-                            gameToLaunch = game
-                        } onSeeAll: { system in
-                            withAnimation(.easeInOut(duration: 0.2)) { libraryContent = .system(system) }
-                        } onSelectGame: { game in
-                            withAnimation(.easeInOut(duration: 0.2)) { detailGame = game }
-                        }
-                        .padding(.bottom, OESpacing.sectionGap)
+                // Continue Playing — icon strip
+                if !store.recentlyPlayedGames.isEmpty {
+                    OEContinuePlayingRow(games: store.recentlyPlayedGames) { game in
+                        withAnimation(.easeInOut(duration: 0.2)) { detailGame = game }
                     }
+                    .padding(.top, 28)
+                    .padding(.bottom, OESpacing.sectionGap)
+                }
+
+                // Recent Saves
+                if !store.saveStates.isEmpty {
+                    OERecentSavesSection(
+                        saves: store.saveStates,
+                        onResume: { state in
+                            if let game = state.rom?.game { gameToLaunch = game }
+                        },
+                        onSeeAll: {
+                            withAnimation(.easeInOut(duration: 0.2)) { libraryContent = .allGames }
+                        }
+                    )
+                    .padding(.bottom, OESpacing.sectionGap)
+                }
+
+                // Browse by Genre
+                OEBrowseByGenreSection(games: store.allGames)
+                    .padding(.bottom, OESpacing.sectionGap)
+
+                // Recently Added
+                if !store.recentlyAddedGames.isEmpty {
+                    OERecentlyAddedSection(
+                        games: store.recentlyAddedGames,
+                        onPlay: { gameToLaunch = $0 },
+                        onSelectGame: { game in
+                            withAnimation(.easeInOut(duration: 0.2)) { detailGame = game }
+                        },
+                        onSeeAll: {
+                            withAnimation(.easeInOut(duration: 0.2)) { libraryContent = .allGames }
+                        }
+                    )
+                    .padding(.bottom, OESpacing.sectionGap)
+                }
+
+                // Most Played
+                if !store.mostPlayedGames.isEmpty {
+                    OEMostPlayedSection(
+                        games: store.mostPlayedGames,
+                        onPlay: { gameToLaunch = $0 },
+                        onSelectGame: { game in
+                            withAnimation(.easeInOut(duration: 0.2)) { detailGame = game }
+                        },
+                        onSeeAll: {
+                            withAnimation(.easeInOut(duration: 0.2)) { libraryContent = .favorites }
+                        }
+                    )
+                    .padding(.bottom, OESpacing.sectionGap)
+                }
+
+                // Rediscover banner
+                if let game = store.rediscoverGame {
+                    OERediscoverBanner(game: game) { gameToLaunch = game }
+                        .padding(.bottom, OESpacing.sectionGap)
                 }
 
                 Spacer(minLength: 32)
             }
-        }
-    }
-
-    // MARK: - System filter chips
-
-    private var systemFilterRow: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                OEFilterChip(label: "All Systems", isSelected: selectedSystem == nil) {
-                    selectedSystem = nil
-                }
-                ForEach(store.systems, id: \.objectID) { system in
-                    OEFilterChip(label: system.name, isSelected: selectedSystem == system) {
-                        selectedSystem = system
-                    }
-                }
-            }
-            .padding(.horizontal, OESpacing.rowPadding)
-            .padding(.vertical, 4)
         }
     }
 }

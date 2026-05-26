@@ -163,6 +163,7 @@
 		F1A2B3C4D5E6F7A8B9C0D1E2 /* OEGameMetadataCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1F2A3B4C5D6E7F8A9B0C1D2 /* OEGameMetadataCache.swift */; };
 		AA11BB22CC33DD44EE55FF66 /* OEArtMediaCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB22CC33DD44EE55FF6677AA /* OEArtMediaCache.swift */; };
 		CC33DD44EE55FF6677AABB11 /* OEMediaGalleryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD44EE55FF6677AABB11CC22 /* OEMediaGalleryView.swift */; };
+		AB12CD34EF56AB12CD34EF56 /* OEHomeSections.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF6677AABB11CC33DD44EE55 /* OEHomeSections.swift */; };
 		EE55FF6677AABB11CC33DD44 /* OEScreenshotGalleryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF6677AABB11CC22DD33EE44 /* OEScreenshotGalleryView.swift */; };
 		B2C3D4E5F6A7B8C9D0E1F2A3 /* OERetroAchievementsDataStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2B3C4D5E6F7A8B9C0D1E2F3 /* OERetroAchievementsDataStore.swift */; };
 		E4F5A6B7C8D9E0F1A2B3C4D5 /* OELibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4E5F6A7B8C9D0E1F2A3B4C5 /* OELibraryView.swift */; };
@@ -1216,6 +1217,7 @@
 		E1F2A3B4C5D6E7F8A9B0C1D2 /* OEGameMetadataCache.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OEGameMetadataCache.swift; sourceTree = "<group>"; };
 		BB22CC33DD44EE55FF6677AA /* OEArtMediaCache.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OEArtMediaCache.swift; sourceTree = "<group>"; };
 		DD44EE55FF6677AABB11CC22 /* OEMediaGalleryView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OEMediaGalleryView.swift; sourceTree = "<group>"; };
+		FF6677AABB11CC33DD44EE55 /* OEHomeSections.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OEHomeSections.swift; sourceTree = "<group>"; };
 		FF6677AABB11CC22DD33EE44 /* OEScreenshotGalleryView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OEScreenshotGalleryView.swift; sourceTree = "<group>"; };
 		A2B3C4D5E6F7A8B9C0D1E2F3 /* OERetroAchievementsDataStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OERetroAchievementsDataStore.swift; sourceTree = "<group>"; };
 		D4E5F6A7B8C9D0E1F2A3B4C5 /* OELibraryView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OELibraryView.swift; sourceTree = "<group>"; };
@@ -3138,6 +3140,7 @@
 				F5A6B7C8D9E0F1A2B3C4D5E6 /* OEGameListRow.swift */,
 				138F03D7B3AC4F4F8419286E /* OEHeroView.swift */,
 				956243BD91771E0212552DC8 /* OEHomeView.swift */,
+				FF6677AABB11CC33DD44EE55 /* OEHomeSections.swift */,
 				D03F93A14A16D08C25E1C01F /* OENewMainWindowController.swift */,
 				31808D07275B16F27A4178AB /* OEHeroArtFetcher.swift */,
 				A7976555C6991BEAE053990F /* OESidebarView.swift */,
@@ -6534,6 +6537,7 @@
 				E4F5A6B7C8D9E0F1A2B3C4D5 /* OELibraryView.swift in Sources */,
 				A5B6C7D8E9F0A1B2C3D4E5F6 /* OEGameListRow.swift in Sources */,
 				1E14CA201B4C6412464FCF9E /* OEHeroView.swift in Sources */,
+				AB12CD34EF56AB12CD34EF56 /* OEHomeSections.swift in Sources */,
 				F77C5E2EF880198BB1EAC540 /* OEHomeView.swift in Sources */,
 				26A42C9678185296F3149D30 /* OENewMainWindowController.swift in Sources */,
 				A9A1C6DB741E12A2CE6F85D7 /* OEHeroArtFetcher.swift in Sources */,

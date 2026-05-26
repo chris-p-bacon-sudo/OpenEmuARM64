@@ -32,24 +32,14 @@ struct OEHeroView: View {
     let currentIndex: Int
     let totalCount: Int
     let onResume: () -> Void
+    var onSaveStates: (() -> Void)? = nil
     let onDotTap: (Int) -> Void
 
     @State private var heroImage: NSImage?
     @State private var coverImage: NSImage?
+    @State private var synopsis: String?
 
     var systemName: String { game.system?.name ?? "" }
-
-    var lastPlayedText: String {
-        guard let date = game.lastPlayed else { return "" }
-        let f = RelativeDateTimeFormatter()
-        f.unitsStyle = .short
-        return "Played \(f.localizedString(for: date, relativeTo: Date()))"
-    }
-
-    var totalPlayText: String {
-        let h = game.playTime / 3600
-        return h > 0 ? String(format: "%.1fh total", h) : ""
-    }
 
     var body: some View {
         // Use GeometryReader so we have explicit sizing for the background
@@ -100,15 +90,10 @@ struct OEHeroView: View {
                     // Text block
                     VStack(alignment: .leading, spacing: 10) {
                         // Tag
-                        HStack(spacing: 8) {
-                            Rectangle()
-                                .fill(OEColors.accent)
-                                .frame(width: 18, height: 1.5)
-                            Text("CONTINUE PLAYING")
-                                .font(.system(size: 10.5, weight: .bold))
-                                .kerning(1.5)
-                                .foregroundColor(OEColors.accent)
-                        }
+                        Text("\(systemName.uppercased()) · RECENTLY PLAYED")
+                            .font(.system(size: 10.5, weight: .bold))
+                            .kerning(1.2)
+                            .foregroundColor(.white.opacity(0.55))
 
                         // Title
                         Text(game.displayName)
@@ -118,25 +103,18 @@ struct OEHeroView: View {
                             .minimumScaleFactor(0.65)
                             .shadow(color: .black.opacity(0.5), radius: 12)
 
-                        // Metadata
-                        HStack(spacing: 10) {
-                            Text(systemName)
-                            if !lastPlayedText.isEmpty {
-                                dot
-                                Text(lastPlayedText)
-                            }
-                            if !totalPlayText.isEmpty {
-                                dot
-                                Text(totalPlayText)
-                            }
+                        // Synopsis tagline
+                        if let line = synopsis, !line.isEmpty {
+                            Text(line)
+                                .font(.system(size: 13))
+                                .foregroundColor(.white.opacity(0.65))
+                                .lineLimit(1)
                         }
-                        .font(.system(size: 13))
-                        .foregroundColor(.white.opacity(0.7))
 
                         // Actions
                         HStack(spacing: 10) {
                             Button(action: onResume) {
-                                Label("Resume", systemImage: "play.fill")
+                                Label("Play Now", systemImage: "play.fill")
                                     .font(.system(size: 13, weight: .semibold))
                                     .foregroundColor(Color(red: 0.04, green: 0.04, blue: 0.05))
                                     .padding(.horizontal, 22)
@@ -144,6 +122,18 @@ struct OEHeroView: View {
                                     .background(Color.white)
                                     .cornerRadius(18)
                                     .shadow(color: .black.opacity(0.25), radius: 14, y: 4)
+                            }
+                            .buttonStyle(.plain)
+
+                            Button(action: { onSaveStates?() }) {
+                                Text("Save States")
+                                    .font(.system(size: 13, weight: .medium))
+                                    .foregroundColor(.white.opacity(0.85))
+                                    .padding(.horizontal, 18)
+                                    .frame(height: 36)
+                                    .background(Color.white.opacity(0.08))
+                                    .cornerRadius(18)
+                                    .overlay(Capsule().stroke(Color.white.opacity(0.22), lineWidth: 0.5))
                             }
                             .buttonStyle(.plain)
                         }
@@ -176,16 +166,22 @@ struct OEHeroView: View {
         .onAppear { loadImages() }
     }
 
-    private var dot: some View {
-        Text("•").foregroundColor(.white.opacity(0.4))
-    }
-
     private func loadImages() {
         let md5 = game.defaultROM?.md5Hash?.lowercased() ?? ""
         let displayName = game.displayName
+        let systemID = game.system?.systemIdentifier
+        let romExt = game.defaultROM?.fileName.flatMap {
+            let ext = URL(fileURLWithPath: $0).pathExtension
+            return ext.isEmpty ? nil : ext
+        }
         Task(priority: .userInitiated) {
             coverImage = OECoverLoader.cover(for: game)
             heroImage = await OEHeroArtFetcher.shared.heroArt(md5: md5, displayName: displayName)
+            if let meta = await OEGameMetadataCache.shared.fetchOrCacheMetadata(
+                md5: md5, displayName: displayName, systemID: systemID, romExt: romExt
+            ) {
+                synopsis = meta.gameDescription.flatMap { $0.isEmpty ? nil : $0 }
+            }
         }
     }
 }

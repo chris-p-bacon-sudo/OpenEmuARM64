@@ -37,6 +37,8 @@ final class OELibraryStore: ObservableObject {
     @Published private(set) var allGames: [OEDBGame] = []
     @Published private(set) var favorites: [OEDBGame] = []
     @Published private(set) var saveStates: [OEDBSaveState] = []
+    @Published private(set) var recentlyAddedGames: [OEDBGame] = []
+    @Published private(set) var mostPlayedGames: [OEDBGame] = []
 
     private var notificationObserver: NSObjectProtocol?
 
@@ -93,6 +95,18 @@ final class OELibraryStore: ObservableObject {
             .sorted { ($0.timestamp ?? .distantPast) > ($1.timestamp ?? .distantPast) }
             .prefix(20)
             .map { $0 }
+
+        recentlyAddedGames = all
+            .filter { $0.importDate != nil }
+            .sorted { ($0.importDate ?? .distantPast) > ($1.importDate ?? .distantPast) }
+            .prefix(9)
+            .map { $0 }
+
+        mostPlayedGames = all
+            .filter { $0.playTime > 0 }
+            .sorted { $0.playTime > $1.playTime }
+            .prefix(5)
+            .map { $0 }
     }
 
     func games(for system: OEDBSystem) -> [OEDBGame] {
@@ -103,5 +117,10 @@ final class OELibraryStore: ObservableObject {
 
     var heroGame: OEDBGame? {
         recentlyPlayedGames.first
+    }
+
+    // A game played a while ago worth rediscovering — last item in recentlyPlayed, or oldest-played.
+    var rediscoverGame: OEDBGame? {
+        recentlyPlayedGames.last
     }
 }

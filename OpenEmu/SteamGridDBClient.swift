@@ -107,6 +107,21 @@ actor SteamGridDBClient {
         return URL(string: urlStr)
     }
 
+    func gridURL(for gameID: Int) async -> URL? {
+        guard var components = URLComponents(string: "\(base)/grids/game/\(gameID)") else { return nil }
+        components.queryItems = [URLQueryItem(name: "dimensions", value: "600x900")]
+        guard let url = components.url else { return nil }
+
+        var request = URLRequest(url: url)
+        request.setValue("Bearer \(SteamGridDBClient.apiKey)", forHTTPHeaderField: "Authorization")
+
+        guard let (data, _) = try? await URLSession.shared.data(for: request),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let dataArray = json["data"] as? [[String: Any]],
+              let urlStr = dataArray.first?["url"] as? String else { return nil }
+        return URL(string: urlStr)
+    }
+
     func fetchArtMedia(gameID: Int) async -> [SteamGridDBItem] {
         async let heroes = fetchArtItems(type: .hero, gameID: gameID)
         async let grids  = fetchArtItems(type: .grid, gameID: gameID)

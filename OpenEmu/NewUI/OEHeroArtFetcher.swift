@@ -40,12 +40,28 @@ actor OEHeroArtFetcher {
         return dir
     }()
 
+    private let iconCacheDir: URL = {
+        let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        let dir = support.appendingPathComponent("OpenEmu/IconArt", isDirectory: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir
+    }()
+
+    private let gridCacheDir: URL = {
+        let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        let dir = support.appendingPathComponent("OpenEmu/GridArt", isDirectory: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir
+    }()
+
     private final class ImageBox: @unchecked Sendable {
         let image: NSImage?
         init(_ image: NSImage?) { self.image = image }
     }
 
     private var inFlight: [String: Task<ImageBox, Never>] = [:]
+    private var iconInFlight: [String: Task<ImageBox, Never>] = [:]
+    private var gridInFlight: [String: Task<ImageBox, Never>] = [:]
 
     func heroArt(md5: String, displayName: String) async -> NSImage? {
         guard !md5.isEmpty else { return nil }
@@ -77,6 +93,50 @@ actor OEHeroArtFetcher {
         }
 
         inFlight[md5] = task
+        return await task.value.image
+    }
+
+    func iconArt(md5: String, displayName: String) async -> NSImage? {
+        guard !md5.isEmpty else { return nil }
+        let cachedPath = iconCacheDir.appendingPathComponent("\(md5).png")
+        if FileManager.default.fileExists(atPath: cachedPath.path),
+           let img = NSImage(contentsOf: cachedPath) { return img }
+        if let existing = iconInFlight[md5] { return await existing.value.image }
+        let task = Task<ImageBox, Never> {
+            defer { iconInFlight.removeValue(forKey: md5) }
+            guard !displayName.isEmpty else { return ImageBox(nil) }
+            if let id = await SteamGridDBClient.shared.gameID(for: displayName),
+               let artURL = await SteamGridDBClient.shared.iconURL(for: id),
+               let (data, _) = try? await URLSession.shared.data(from: artURL),
+               let img = NSImage(data: data) {
+                cacheToDisk(img, path: cachedPath)
+                return ImageBox(img)
+            }
+            return ImageBox(nil)
+        }
+        iconInFlight[md5] = task
+        return await task.value.image
+    }
+
+    func gridArt(md5: String, displayName: String) async -> NSImage? {
+        guard !md5.isEmpty else { return nil }
+        let cachedPath = gridCacheDir.appendingPathComponent("\(md5).png")
+        if FileManager.default.fileExists(atPath: cachedPath.path),
+           let img = NSImage(contentsOf: cachedPath) { return img }
+        if let existing = gridInFlight[md5] { return await existing.value.image }
+        let task = Task<ImageBox, Never> {
+            defer { gridInFlight.removeValue(forKey: md5) }
+            guard !displayName.isEmpty else { return ImageBox(nil) }
+            if let id = await SteamGridDBClient.shared.gameID(for: displayName),
+               let artURL = await SteamGridDBClient.shared.gridURL(for: id),
+               let (data, _) = try? await URLSession.shared.data(from: artURL),
+               let img = NSImage(data: data) {
+                cacheToDisk(img, path: cachedPath)
+                return ImageBox(img)
+            }
+            return ImageBox(nil)
+        }
+        gridInFlight[md5] = task
         return await task.value.image
     }
 
