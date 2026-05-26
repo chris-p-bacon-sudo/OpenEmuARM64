@@ -181,14 +181,11 @@ struct OEHeroView: View {
     }
 
     private func loadImages() {
-        Task.detached(priority: .userInitiated) {
-            // Cover art: box art as floating element
-            let cover = await OECoverLoader.cover(for: game)
-            await MainActor.run { coverImage = cover }
-
-            // Background art: fanart from ScreenScraper (cached), falls back to box art
-            let bg = await OEHeroArtFetcher.shared.heroArt(for: game)
-            await MainActor.run { heroImage = bg }
+        let md5 = game.defaultROM?.md5Hash?.lowercased() ?? ""
+        let displayName = game.displayName
+        Task(priority: .userInitiated) {
+            coverImage = OECoverLoader.cover(for: game)
+            heroImage = await OEHeroArtFetcher.shared.heroArt(md5: md5, displayName: displayName)
         }
     }
 }

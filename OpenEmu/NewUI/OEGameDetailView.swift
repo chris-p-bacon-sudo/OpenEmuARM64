@@ -38,6 +38,11 @@ struct OEGameDetailView: View {
     @State private var metadata: ScreenScraperResult?
     @State private var raSessionInfo: [String: Any]?
     @State private var artItems: [SteamGridDBItem] = []
+    @State private var showGallery = false
+    @State private var galleryStartIndex = 0
+    @State private var showScreenshotGallery = false
+    @State private var screenshotGalleryStartIndex = 0
+    @State private var artRefreshToken = 0
     @ObservedObject private var store = OELibraryStore.shared
 
     private var systemName: String { game.system?.name ?? "" }
@@ -115,6 +120,28 @@ struct OEGameDetailView: View {
             }
 
             detailNavBar
+
+            if showGallery && !artItems.isEmpty {
+                let md5 = game.defaultROM?.md5Hash?.lowercased() ?? ""
+                OEMediaGalleryView(
+                    items: artItems,
+                    gameMD5: md5,
+                    isPresented: $showGallery,
+                    selectedIndex: galleryStartIndex
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .zIndex(100)
+            }
+
+            if showScreenshotGallery, let urls = metadata?.screenshotURLs, !urls.isEmpty {
+                OEScreenshotGalleryView(
+                    items: urls,
+                    isPresented: $showScreenshotGallery,
+                    selectedIndex: screenshotGalleryStartIndex
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .zIndex(100)
+            }
         }
         .ignoresSafeArea()
         .preferredColorScheme(.dark)
@@ -122,6 +149,13 @@ struct OEGameDetailView: View {
             loadImages()
             loadMetadata()
             loadArtMedia()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .OEArtSelectionChanged)) { notification in
+            guard let notifMD5 = notification.object as? String,
+                  !notifMD5.isEmpty,
+                  notifMD5 == (game.defaultROM?.md5Hash?.lowercased() ?? "") else { return }
+            artRefreshToken += 1
+            reloadHeroFromPinnedSelection()
         }
     }
 
@@ -285,7 +319,22 @@ struct OEGameDetailView: View {
                     .font(.system(size: 20, weight: .bold))
                     .foregroundColor(OEColors.textPrimary)
                 Spacer()
-                if hasContent { seeAllButton("See All") }
+                if hasContent {
+                    Button {
+                        screenshotGalleryStartIndex = 0
+                        showScreenshotGallery = true
+                    } label: {
+                        HStack(spacing: 3) {
+                            Text("See All").font(.system(size: 12.5, weight: .medium))
+                            Image(systemName: "chevron.right").font(.system(size: 10, weight: .semibold))
+                        }
+                        .foregroundColor(OEColors.accent)
+                        .padding(.vertical, 8)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.trailing, OESpacing.rowPaddingDetail)
+                }
             }
             .frame(height: 40)
             .padding(.horizontal, OESpacing.rowPaddingDetail)
@@ -306,7 +355,13 @@ struct OEGameDetailView: View {
                         }
                     } else {
                         ForEach(Array(screenshotURLs.enumerated()), id: \.offset) { index, url in
-                            OEScreenshotThumbnail(url: url, label: "Screenshot \(index + 1)")
+                            Button {
+                                screenshotGalleryStartIndex = index
+                                showScreenshotGallery = true
+                            } label: {
+                                OEScreenshotThumbnail(url: url, label: "Screenshot \(index + 1)")
+                            }
+                            .buttonStyle(.plain)
                         }
                     }
                 }
@@ -612,10 +667,20 @@ struct OEGameDetailView: View {
                     .font(.system(size: 20, weight: .bold))
                     .foregroundColor(OEColors.textPrimary)
                 Spacer()
-                Button("Browse All") {}
-                    .font(.system(size: 13))
+                Button {
+                    galleryStartIndex = 0
+                    showGallery = true
+                } label: {
+                    HStack(spacing: 3) {
+                        Text("Browse All").font(.system(size: 12.5, weight: .medium))
+                        Image(systemName: "chevron.right").font(.system(size: 10, weight: .semibold))
+                    }
                     .foregroundColor(OEColors.accent)
-                    .buttonStyle(.plain)
+                    .padding(.vertical, 8)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .padding(.trailing, OESpacing.rowPaddingDetail)
             }
 
             artMosaic.padding(.top, 16)
@@ -627,11 +692,20 @@ struct OEGameDetailView: View {
     }
 
     private var artDisplayItems: [SteamGridDBItem] {
+        _ = artRefreshToken
+        let md5 = game.defaultROM?.md5Hash?.lowercased() ?? ""
+        let store = OEArtSelectionStore.shared
+        let pinnedHeroID = store.pinnedID(forMD5: md5, type: .hero)
+        let pinnedGridID = store.pinnedID(forMD5: md5, type: .grid)
         let heroes = artItems.filter { $0.type == .hero }
         let grids  = artItems.filter { $0.type == .grid }
         var display: [SteamGridDBItem] = []
-        if let h = heroes.first { display.append(h) }
-        if let g = grids.first  { display.append(g) }
+        if let pinned = heroes.first(where: { $0.sgdbID == pinnedHeroID }) {
+            display.append(pinned)
+        } else if let h = heroes.first { display.append(h) }
+        if let pinned = grids.first(where: { $0.sgdbID == pinnedGridID }) {
+            display.append(pinned)
+        } else if let g = grids.first { display.append(g) }
         let used = Set(display.map(\.id))
         let rest = artItems.filter { !used.contains($0.id) }
         display.append(contentsOf: rest.prefix(max(0, 5 - display.count)))
@@ -686,9 +760,16 @@ struct OEGameDetailView: View {
             if !row2.isEmpty {
                 HStack(spacing: gap) {
                     ForEach(row2) { item in
-                        OEArtTile(item: item)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: row2H)
+                        Button {
+                            galleryStartIndex = artItems.firstIndex(where: { $0.id == item.id }) ?? 0
+                            showGallery = true
+                        } label: {
+                            OEArtTile(item: item)
+                        }
+                        .buttonStyle(.plain)
+                        .id(item.id)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: row2H)
                     }
                 }
             }
@@ -700,7 +781,15 @@ struct OEGameDetailView: View {
     @ViewBuilder
     private func artTileOrPlaceholder(_ items: [SteamGridDBItem], index: Int) -> some View {
         if index < items.count {
-            OEArtTile(item: items[index])
+            let item = items[index]
+            Button {
+                galleryStartIndex = artItems.firstIndex(where: { $0.id == item.id }) ?? 0
+                showGallery = true
+            } label: {
+                OEArtTile(item: item)
+            }
+            .buttonStyle(.plain)
+            .id(item.id)
         } else {
             RoundedRectangle(cornerRadius: 10).fill(OEColors.surface)
         }
@@ -708,9 +797,11 @@ struct OEGameDetailView: View {
 
     private func loadArtMedia() {
         guard showArtAndMedia else { return }
+        let md5 = game.defaultROM?.md5Hash?.lowercased() ?? ""
+        let displayName = game.displayName
         Task {
-            let items = await OEArtMediaCache.shared.fetchOrCache(for: game)
-            await MainActor.run { artItems = items }
+            let items = await OEArtMediaCache.shared.fetchOrCache(md5: md5, displayName: displayName)
+            artItems = items
         }
     }
 
@@ -956,22 +1047,40 @@ struct OEGameDetailView: View {
         .buttonStyle(.plain)
     }
 
-    private func loadImages() {
-        Task.detached(priority: .userInitiated) {
-            let cover = await OECoverLoader.cover(for: game)
-            await MainActor.run { coverImage = cover }
+    private func reloadHeroFromPinnedSelection() {
+        let md5 = game.defaultROM?.md5Hash?.lowercased() ?? ""
+        guard !md5.isEmpty else { return }
+        let pinnedID = OEArtSelectionStore.shared.pinnedID(forMD5: md5, type: .hero)
+        guard let pinnedID,
+              let item = artItems.first(where: { $0.sgdbID == pinnedID && $0.type == .hero })
+        else { return }
+        Task {
+            let img = await OEHeroArtFetcher.shared.setHeroArt(url: item.url, forMD5: md5)
+            await MainActor.run { if let img { heroImage = img } }
+        }
+    }
 
-            let bg = await OEHeroArtFetcher.shared.heroArt(for: game)
-            await MainActor.run { heroImage = bg }
+    private func loadImages() {
+        let md5 = game.defaultROM?.md5Hash?.lowercased() ?? ""
+        let displayName = game.displayName
+        Task(priority: .userInitiated) {
+            coverImage = OECoverLoader.cover(for: game)
+            heroImage = await OEHeroArtFetcher.shared.heroArt(md5: md5, displayName: displayName)
         }
     }
 
     private func loadMetadata() {
         raSessionInfo = OERetroAchievementsDataStore.shared.sessionInfo(forGame: game)
-
+        let md5 = game.defaultROM?.md5Hash?.lowercased() ?? ""
+        let displayName = game.displayName
+        let systemID = game.system?.systemIdentifier
+        let romExt = game.defaultROM?.fileName.flatMap {
+            let ext = URL(fileURLWithPath: $0).pathExtension
+            return ext.isEmpty ? nil : ext
+        }
         Task {
-            let result = await OEGameMetadataCache.shared.fetchOrCacheMetadata(for: game)
-            await MainActor.run { metadata = result }
+            let result = await OEGameMetadataCache.shared.fetchOrCacheMetadata(md5: md5, displayName: displayName, systemID: systemID, romExt: romExt)
+            metadata = result
         }
     }
 }

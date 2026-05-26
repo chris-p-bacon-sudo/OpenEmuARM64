@@ -40,10 +40,14 @@ actor OEHeroArtFetcher {
         return dir
     }()
 
-    private var inFlight: [String: Task<NSImage?, Never>] = [:]
+    private final class ImageBox: @unchecked Sendable {
+        let image: NSImage?
+        init(_ image: NSImage?) { self.image = image }
+    }
 
-    func heroArt(for game: OEDBGame) async -> NSImage? {
-        let md5 = await MainActor.run { game.defaultROM?.md5Hash?.lowercased() ?? "" }
+    private var inFlight: [String: Task<ImageBox, Never>] = [:]
+
+    func heroArt(md5: String, displayName: String) async -> NSImage? {
         guard !md5.isEmpty else { return nil }
 
         let cachedPath = cacheDir.appendingPathComponent("\(md5).png")
@@ -53,29 +57,35 @@ actor OEHeroArtFetcher {
         }
 
         if let existing = inFlight[md5] {
-            return await existing.value
+            return await existing.value.image
         }
 
-        let displayName = await MainActor.run { game.displayName }
-
-        let task = Task<NSImage?, Never> {
+        let task = Task<ImageBox, Never> {
             defer { inFlight.removeValue(forKey: md5) }
 
-            guard !displayName.isEmpty else { return nil }
+            guard !displayName.isEmpty else { return ImageBox(nil) }
 
             if let id = await SteamGridDBClient.shared.gameID(for: displayName),
                let artURL = await SteamGridDBClient.shared.heroURL(for: id),
                let (data, _) = try? await URLSession.shared.data(from: artURL),
                let img = NSImage(data: data) {
                 cacheToDisk(img, path: cachedPath)
-                return img
+                return ImageBox(img)
             }
 
-            return nil
+            return ImageBox(nil)
         }
 
         inFlight[md5] = task
-        return await task.value
+        return await task.value.image
+    }
+
+    func setHeroArt(url: URL, forMD5 md5: String) async -> NSImage? {
+        guard let (data, _) = try? await URLSession.shared.data(from: url),
+              let img = NSImage(data: data) else { return nil }
+        let cachedPath = cacheDir.appendingPathComponent("\(md5).png")
+        cacheToDisk(img, path: cachedPath)
+        return img
     }
 
     // MARK: - Private
