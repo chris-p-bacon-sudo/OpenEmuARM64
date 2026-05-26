@@ -33,7 +33,17 @@ Releases/
 !Releases/*.md
 OpenEmu/OEGoogleDriveSecrets.swift
 OpenEmu/ScreenScraperDevCredentials.swift
+OpenEmu/APICredentials.swift
 
+
+# Xcode worktree build intermediates (end up at repo root when using custom derivedDataPath)
+CompilationCache.noindex/
+Index.noindex/
+Logs/
+ModuleCache.noindex/
+SDKStatCaches.noindex/
+SourcePackages/
+info.plist
 
 # Misc build artifacts committed to root
 hang_sample.txt

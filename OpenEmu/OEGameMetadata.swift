@@ -1,4 +1,4 @@
-// Copyright (c) 2020, OpenEmu Team
+// Copyright (c) 2026, OpenEmu Team
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -22,14 +22,23 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import Cocoa
+import Foundation
 
-final class OESearchField: NSSearchField {
-
-    // Force redraw of the search glyph after changing the menu to make sure the chevron is displayed.
-    override var searchMenuTemplate: NSMenu? {
-        didSet {
-            (cell as? NSSearchFieldCell)?.resetSearchButtonCell()
-        }
-    }
+struct OEGameMetadata: Codable {
+    var gameTitle: String?
+    var boxImageURL: URL?
+    var gameDescription: String?
+    var developer: String?
+    var publisher: String?
+    var releaseDate: String?
+    var genres: [String] = []
+    var players: String?
+    var region: String?
+    var screenshotURLs: [URL] = []
+    var videoURL: URL?
+    var criticRating: Double?
+    var criticRatingCount: Int?
+    var ageRating: String?
+    var franchise: String?
+    var gameModes: [String] = []
 }

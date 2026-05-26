@@ -50,33 +50,32 @@ final class GameInfoHelper {
             let md5 = gameInfo["md5"] as? String
             let url = gameInfo["URL"] as? URL
 
-            // ScreenScraper credentials — resolved lazily so we don't hit the Keychain
-            // on every ROM lookup (e.g. during a full library scan).
-            lazy var hasSScredentials: Bool = {
-                let user = UserDefaults.standard.string(forKey: "ScreenScraperUsername") ?? ""
-                guard !user.isEmpty else { return false }
-                return OECredentialStore.shared.has(.screenScraperPassword)
-            }()
-
             guard let database = database else {
-                // OpenVGDB unavailable.
-                // Priority 1: ScreenScraper when the user has credentials configured.
-                // If they have NOT logged in to ScreenScraper we return empty here;
-                // fuzzy logic requires OpenVGDB, so there is nothing else we can do.
-                guard hasSScredentials else { return [:] }
+                // OpenVGDB unavailable — fall back to IGDB by ROM filename.
+                let rawName = ((url?.lastPathComponent ?? "") as NSString).deletingPathExtension
+                let searchName = cleanROMName(rawName)
+                guard !searchName.isEmpty else { return [:] }
 
-                // FIX: preserve the file extension so ScreenScraper can disambiguate
-                // ROMs that share the same name across platforms (e.g. .n64 vs .sfc).
-                let romName = url?.lastPathComponent
-                let romSize = url?.fileSize ?? 0
+                let platformID = IGDBClient.igdbPlatformID(
+                    forSystemIdentifier: systemIdentifier,
+                    romFileExtension: url?.pathExtension
+                )
+
                 var fallback: [String: Any] = [:]
-                if case .success(let ss) = ScreenScraperClient.shared.fetchGameInfo(md5: md5, romName: romName, fileSize: romSize, systemIdentifier: systemIdentifier), let ss = ss {
-                    if let boxURL = ss.boxImageURL { fallback["boxImageURL"] = boxURL.absoluteString }
-                    if let title = ss.gameTitle   { fallback["gameTitle"] = title }
-                    if let desc  = ss.gameDescription { fallback["gameDescription"] = desc }
+                let semaphore = DispatchSemaphore(value: 0)
+                Task {
+                    if let igdbGame = await IGDBClient.shared.fetchGame(name: searchName, platformID: platformID) {
+                        if let coverURL = igdbGame.coverURL {
+                            fallback["boxImageURL"] = coverURL.absoluteString
+                        }
+                        if let title = igdbGame.name { fallback["gameTitle"] = title }
+                        if let desc  = igdbGame.summary { fallback["gameDescription"] = desc }
+                    }
+                    semaphore.signal()
                 }
+                semaphore.wait()
 
-                // Tier 3: libretro-thumbnails — no credentials, best-effort name match
+                // Libretro thumbnails as final fallback when IGDB returned no cover.
                 if fallback["boxImageURL"] == nil, let title = fallback["gameTitle"] as? String {
                     if let ltURL = LibretroThumbnailsClient.shared.fetchBoxArtURL(gameName: title, systemIdentifier: systemIdentifier) {
                         fallback["boxImageURL"] = ltURL
@@ -191,65 +190,54 @@ final class GameInfoHelper {
             var results = (try? database.executeQuery(sql)) ?? []
 
             // --- Region preference ---
-            var result: [String : Any]? = pickPreferredRegion(from: results)
+            let result: [String : Any]? = pickPreferredRegion(from: results)
 
             if var picked = result {
                 picked.removeValue(forKey: "region")
                 resultDict.merge(picked) { (_, new) in new }
             }
 
-            // --- ScreenScraper (Priority 1 when user is logged in) ---
-            // Only runs when the user HAS configured SS credentials AND OpenVGDB
-            // did not already return a complete result (title + box art).
-            // Skipping when art is already present avoids burning daily API quota
-            // on lookups that add no value, and prevents HTTP 430 rate-limit
-            // failures during large library imports.
+            // --- IGDB cover art fallback ---
+            // Runs when OpenVGDB did not return a box art URL. No user credentials required.
+            // Uses the game title from OpenVGDB when available; falls back to the cleaned ROM filename.
             let missingArt = (resultDict["boxImageURL"] as? String)?.isEmpty != false
-            if hasSScredentials && missingArt {
-                // FIX: pass full filename (including extension) so ScreenScraper
-                // can differentiate ROMs sharing names across systems.
-                // Also pass file size — significantly boosts SS match accuracy for
-                // ROMs whose MD5 doesn't match (headered/byte-swapped dumps).
-                let romName = url?.lastPathComponent
-                let romSize = url?.fileSize ?? 0
-                let ssResult = ScreenScraperClient.shared.fetchGameInfo(
-                    md5: md5,
-                    romName: romName,
-                    fileSize: romSize,
-                    systemIdentifier: systemIdentifier
-                )
-                if case .success(let ss) = ssResult, let ss = ss {
-                    if let boxURL = ss.boxImageURL {
-                        resultDict["boxImageURL"] = boxURL.absoluteString
+            if missingArt {
+                let rawName     = ((url?.lastPathComponent ?? "") as NSString).deletingPathExtension
+                let searchName  = (resultDict["gameTitle"] as? String) ?? cleanROMName(rawName)
+                if !searchName.isEmpty {
+                    let platformID = IGDBClient.igdbPlatformID(
+                        forSystemIdentifier: systemIdentifier,
+                        romFileExtension: url?.pathExtension
+                    )
+                    let semaphore = DispatchSemaphore(value: 0)
+                    Task {
+                        if let igdbGame = await IGDBClient.shared.fetchGame(name: searchName, platformID: platformID) {
+                            if let coverURL = igdbGame.coverURL {
+                                resultDict["boxImageURL"] = coverURL.absoluteString
+                            }
+                            if resultDict["gameTitle"] == nil, let title = igdbGame.name {
+                                resultDict["gameTitle"] = title
+                            }
+                            if resultDict["gameDescription"] == nil, let desc = igdbGame.summary {
+                                resultDict["gameDescription"] = desc
+                            }
+                        }
+                        semaphore.signal()
                     }
-                    if resultDict["gameTitle"] == nil, let title = ss.gameTitle {
-                        resultDict["gameTitle"] = title
-                    }
-                    if resultDict["gameDescription"] == nil, let desc = ss.gameDescription {
-                        resultDict["gameDescription"] = desc
-                    }
+                    semaphore.wait()
                 }
 
-                // Tier 3: libretro-thumbnails — runs when ScreenScraper found no box art
-                if resultDict["boxImageURL"] == nil,
+                // Libretro thumbnails — runs when IGDB also found no box art.
+                if (resultDict["boxImageURL"] as? String)?.isEmpty != false,
                    let title = resultDict["gameTitle"] as? String {
                     if let ltURL = LibretroThumbnailsClient.shared.fetchBoxArtURL(gameName: title, systemIdentifier: systemIdentifier) {
                         resultDict["boxImageURL"] = ltURL
                     }
                 }
-
-                // No early return: fuzzy OpenVGDB + libretro-thumbnails always get
-                // a chance to fill in missing art, whether SS succeeded with partial
-                // data, returned not-found, or failed outright. The fuzzy block below
-                // is gated on `missingBoxArt`, so it's a no-op when SS already provided art.
             }
 
             // --- Advanced fuzzy fallback (runs whenever box art is still missing) ---
-            // Previously gated on `!hasSScredentials`, but that left SS-logged-in users
-            // with nothing when SS didn't have a particular ROM. Now runs for everyone
-            // when art is missing — covers ROMs SS doesn't know about but OpenVGDB does.
-            // The libretro-thumbnails request inside this block provides a final 2D-art
-            // fallback for titles missing from both SS and OpenVGDB.
+            // Covers ROMs that IGDB doesn't know about but OpenVGDB does via fuzzy filename matching.
             let missingBoxArt = resultDict["boxImageURL"] == nil
                              || (resultDict["boxImageURL"] as? String)?.isEmpty == true
 
