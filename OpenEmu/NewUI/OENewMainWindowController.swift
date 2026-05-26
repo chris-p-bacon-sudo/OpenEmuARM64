@@ -130,8 +130,6 @@ final class OENewMainWindowController: NSWindowController {
         let openInSeparateWindow = defaults.bool(forKey: OEForcePopoutGameWindowKey)
         let fullScreen = defaults.bool(forKey: OEFullScreenGameWindowKey)
 
-        let saveState = game.autosaveForLastPlayedRom
-
         NSDocumentController.shared.openGameDocument(
             with: game,
             display: openInSeparateWindow,

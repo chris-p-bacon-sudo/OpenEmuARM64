@@ -118,10 +118,7 @@ struct OEGameCardView: View {
     }
 
     private func loadCover() {
-        Task.detached(priority: .userInitiated) {
-            let img = await OECoverLoader.cover(for: game)
-            await MainActor.run { coverImage = img }
-        }
+        coverImage = OECoverLoader.cover(for: game)
     }
 }
 
@@ -202,11 +199,8 @@ enum OESystemAspectRatio {
 
 /// Thin async cover art loader that hits the existing OE box image cache.
 enum OECoverLoader {
-    static func cover(for game: OEDBGame) async -> NSImage? {
-        await withCheckedContinuation { continuation in
-            DispatchQueue.main.async {
-                continuation.resume(returning: game.boxImage?.image)
-            }
-        }
+    @MainActor
+    static func cover(for game: OEDBGame) -> NSImage? {
+        game.boxImage?.image
     }
 }

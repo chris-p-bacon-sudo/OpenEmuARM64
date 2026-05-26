@@ -25,7 +25,7 @@
 import Cocoa
 import OpenEmuKit
 
-extension OEGameCorePluginError: LocalizedError {
+extension OEGameCorePluginError: @retroactive LocalizedError {
     
     public var failureReason: String? {
         switch self {

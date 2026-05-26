@@ -1121,18 +1121,21 @@ static NSString * const OEGameTableSortDescriptorsKey = @"OEGameTableSortDescrip
 }
 
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-implementations"
 - (BOOL)tableView:(NSTableView *)aTableView writeRowsWithIndexes:(NSIndexSet *)rowIndexes toPasteboard:(NSPasteboard *)pboard
 {
     if(aTableView == [self listView])
     {
         NSArray *objects = [[gamesController arrangedObjects] objectsAtIndexes:rowIndexes];
         [pboard writeObjects:objects];
-        
+
         return YES;
     }
-    
+
     return NO;
 }
+#pragma clang diagnostic pop
 
 #pragma mark - NSTableView Delegate
 - (void)tableView:(NSTableView *)aTableView willDisplayCell:(id)aCell forTableColumn:(NSTableColumn *)aTableColumn row:(NSInteger)rowIndex

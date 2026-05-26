@@ -48,7 +48,7 @@ final class OELibraryStore: ObservableObject {
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            self?.reload()
+            Task { @MainActor [weak self] in self?.reload() }
         }
     }
 

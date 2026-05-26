@@ -24,6 +24,7 @@
 
 import Foundation
 import OpenEmuKit
+import SwiftUI
 
 actor OEArtMediaCache {
 
@@ -51,10 +52,7 @@ actor OEArtMediaCache {
         try? data.write(to: path)
     }
 
-    func fetchOrCache(for game: OEDBGame) async -> [SteamGridDBItem] {
-        let (md5, displayName) = await MainActor.run {
-            (game.defaultROM?.md5Hash?.lowercased() ?? "", game.displayName)
-        }
+    func fetchOrCache(md5: String, displayName: String) async -> [SteamGridDBItem] {
         guard !md5.isEmpty else { return [] }
         if let cached = items(forMD5: md5) { return cached }
         guard !displayName.isEmpty else { return [] }
@@ -63,4 +61,30 @@ actor OEArtMediaCache {
         if !result.isEmpty { setItems(result, forMD5: md5) }
         return result
     }
+}
+
+// MARK: - Art Selection Store
+
+final class OEArtSelectionStore: ObservableObject {
+    static let shared = OEArtSelectionStore()
+    private let defaults = UserDefaults.standard
+
+    private func key(md5: String, type: SteamGridDBItemType) -> String {
+        "OEPinnedArt_\(md5)_\(type.rawValue)"
+    }
+
+    func pinnedID(forMD5 md5: String, type: SteamGridDBItemType) -> Int? {
+        let v = defaults.integer(forKey: key(md5: md5, type: type))
+        return v > 0 ? v : nil
+    }
+
+    func pin(_ item: SteamGridDBItem, forMD5 md5: String) {
+        objectWillChange.send()
+        defaults.set(item.sgdbID, forKey: key(md5: md5, type: item.type))
+        NotificationCenter.default.post(name: .OEArtSelectionChanged, object: md5)
+    }
+}
+
+extension Notification.Name {
+    static let OEArtSelectionChanged = Notification.Name("OEArtSelectionChanged")
 }

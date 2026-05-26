@@ -35,7 +35,10 @@ typedef enum
     IKImageBrowserDropNone = 2
 } ExtendedIKImageBrowserDropOperation;
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
 @interface OEGridView : IKImageBrowserView <NSTextFieldDelegate, NSViewToolTipOwner>
+#pragma clang diagnostic pop
 @property NSImage *proposedImage;
 @property (assign) IKImageBrowserDropOperation draggingOperation;
 

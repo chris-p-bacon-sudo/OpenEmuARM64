@@ -259,7 +259,6 @@ extension MainWindowController: LibraryControllerDelegate {
         openGameDocument(with: nil, saveState: saveState)
     }
     
-    @available(macOS, deprecated: 10.15, message: "Remove 'or \"User Reports\"' from alert (~line 392) and localizations, the term is not used in Catalina and above.")
     private func openGameDocument(with game: OEDBGame?, core: OECorePlugin? = nil, saveState state: OEDBSaveState?, secondAttempt retry: Bool = false, lockOnROM: OEDBRom? = nil, disableAutoReload noAutoReload: Bool = false) {
         
         guard let window = window else { return assertionFailure("MainWindow is nil") }

@@ -51,17 +51,7 @@ actor OEGameMetadataCache {
         try? data.write(to: path)
     }
 
-    func fetchOrCacheMetadata(for game: OEDBGame) async -> OEGameMetadata? {
-        let (md5, displayName, systemID, romExt) = await MainActor.run {
-            let md5         = game.defaultROM?.md5Hash?.lowercased() ?? ""
-            let displayName = game.displayName
-            let systemID    = game.system?.systemIdentifier
-            let romExt      = game.defaultROM?.fileName.flatMap {
-                                  URL(fileURLWithPath: $0).pathExtension.isEmpty ? nil
-                                      : URL(fileURLWithPath: $0).pathExtension
-                              }
-            return (md5, displayName, systemID, romExt)
-        }
+    func fetchOrCacheMetadata(md5: String, displayName: String, systemID: String?, romExt: String?) async -> OEGameMetadata? {
         guard !md5.isEmpty else { return nil }
 
         if let cached = metadata(forMD5: md5) { return cached }

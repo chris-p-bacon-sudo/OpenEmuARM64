@@ -172,16 +172,20 @@ struct OEGameListRow: View {
     }
 
     private func loadCover() {
-        Task.detached(priority: .userInitiated) {
-            let img = await OECoverLoader.cover(for: game)
-            await MainActor.run { coverImage = img }
-        }
+        coverImage = OECoverLoader.cover(for: game)
     }
 
     private func loadMetadata() {
+        let md5 = game.defaultROM?.md5Hash?.lowercased() ?? ""
+        let displayName = game.displayName
+        let systemID = game.system?.systemIdentifier
+        let romExt = game.defaultROM?.fileName.flatMap {
+            let ext = URL(fileURLWithPath: $0).pathExtension
+            return ext.isEmpty ? nil : ext
+        }
         Task {
-            let result = await OEGameMetadataCache.shared.fetchOrCacheMetadata(for: game)
-            await MainActor.run { metadata = result }
+            let result = await OEGameMetadataCache.shared.fetchOrCacheMetadata(md5: md5, displayName: displayName, systemID: systemID, romExt: romExt)
+            metadata = result
         }
     }
 }

@@ -45,8 +45,9 @@ final class OERetroAchievementsDataStore: ObservableObject {
             object: nil,
             queue: .main
         ) { [weak self] notification in
-            guard let self, let info = notification.userInfo as? [String: Any] else { return }
-            self.handleSessionChange(info, document: notification.object as? OEGameDocument)
+            guard let info = notification.userInfo as? [String: Any] else { return }
+            let document = notification.object as? OEGameDocument
+            Task { @MainActor [weak self] in self?.handleSessionChange(info, document: document) }
         }
     }
 
