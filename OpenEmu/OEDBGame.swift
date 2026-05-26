@@ -41,7 +41,21 @@ final class OEDBGame: OEDBItem {
     }
     
     static let displayGameTitleKey = "displayGameTitle"
-    
+
+    private static var _showGameTitle: Bool = UserDefaults.standard.bool(forKey: displayGameTitleKey)
+    private static var _prefObserver: NSObjectProtocol?
+
+    static func startObservingDisplayPreference() {
+        guard _prefObserver == nil else { return }
+        _prefObserver = NotificationCenter.default.addObserver(
+            forName: UserDefaults.didChangeNotification,
+            object: nil,
+            queue: .main
+        ) { _ in
+            _showGameTitle = UserDefaults.standard.bool(forKey: displayGameTitleKey)
+        }
+    }
+
     private var romDownload: Download?
     
     // MARK: - CoreDataProperties
@@ -198,14 +212,10 @@ final class OEDBGame: OEDBItem {
     
     var displayName: String {
         get {
-            if UserDefaults.standard.bool(forKey: OEDBGame.displayGameTitleKey) {
-                return gameTitle ?? name
-            } else {
-                return name
-            }
+            return OEDBGame._showGameTitle ? (gameTitle ?? name) : name
         }
         set {
-            if UserDefaults.standard.bool(forKey: OEDBGame.displayGameTitleKey) {
+            if OEDBGame._showGameTitle {
                 if gameTitle != nil {
                     gameTitle = newValue
                 } else {
