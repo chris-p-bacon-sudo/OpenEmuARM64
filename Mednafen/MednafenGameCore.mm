@@ -3372,6 +3372,20 @@ static void mednafen_rc_event_handler(const rc_client_event_t *event, rc_client_
     return rc_client_can_pause(_rcClient, framesRemaining) != 0;
 }
 
+- (NSData *)retroAchievementsSerializedProgress {
+    if (!_rcClient) return nil;
+    size_t size = rc_client_progress_size(_rcClient);
+    if (size == 0) return nil;
+    NSMutableData *data = [NSMutableData dataWithLength:size];
+    rc_client_serialize_progress(_rcClient, data.mutableBytes);
+    return data;
+}
+
+- (void)retroAchievementsDeserializeProgress:(NSData *)data {
+    if (!_rcClient) return;
+    rc_client_deserialize_progress(_rcClient, data ? data.bytes : NULL);
+}
+
 - (void)dealloc
 {
     for(unsigned i = 0; i < 13; i++)

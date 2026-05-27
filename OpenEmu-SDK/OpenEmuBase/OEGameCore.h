@@ -610,6 +610,15 @@ OE_EXPORTED_CLASS
 /// Returns whether a RetroAchievements hardcore session may pause right now.
 - (BOOL)canPauseRetroAchievementsHardcoreWithFramesRemaining:(uint32_t *_Nullable)framesRemaining;
 
+/// Returns a serialized rcheevos progress blob for the current session, or nil if not supported.
+/// Used to write a sidecar file alongside softcore save states so measured progress survives
+/// across save/load cycles.
+- (nullable NSData *)retroAchievementsSerializedProgress;
+
+/// Restores rcheevos measured progress from a previously serialized blob.
+/// Pass nil to reset progress cleanly — correct behavior for old save states with no sidecar.
+- (void)retroAchievementsDeserializeProgress:(nullable NSData *)data;
+
 /// When didExecute is called, will be the next wakeup time.
 @property (nonatomic, readonly) NSTimeInterval nextFrameTime;
 

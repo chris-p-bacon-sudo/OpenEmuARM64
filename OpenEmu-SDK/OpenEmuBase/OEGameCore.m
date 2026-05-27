@@ -650,6 +650,15 @@ static Class GameCoreClass = Nil;
 {
 }
 
+- (NSData *)retroAchievementsSerializedProgress
+{
+    return nil;
+}
+
+- (void)retroAchievementsDeserializeProgress:(NSData *)data
+{
+}
+
 - (BOOL)canPauseRetroAchievementsHardcoreWithFramesRemaining:(uint32_t *)framesRemaining
 {
     if (framesRemaining != NULL) {

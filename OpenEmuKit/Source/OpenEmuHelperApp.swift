@@ -601,10 +601,16 @@ extension OSLog {
 
     public func saveStateToFile(at fileURL: URL, completionHandler block: @escaping (Bool, Error?) -> Void) {
         gameCore.perform {
-            self.gameCore.saveStateToFile(at: fileURL, completionHandler: block)
+            self.gameCore.saveStateToFile(at: fileURL) { success, error in
+                if success, let blob = self.gameCore.retroAchievementsSerializedProgress() {
+                    let sidecarURL = fileURL.appendingPathExtension("raprogress")
+                    try? blob.write(to: sidecarURL)
+                }
+                block(success, error)
+            }
         }
     }
-    
+
     public func loadStateFromFile(at fileURL: URL, completionHandler block: @escaping (Bool, Error?) -> Void) {
         // Defense in depth: the document layer also blocks this with a user
         // alert, but the contract with RA is that the helper must never
@@ -617,7 +623,15 @@ extension OSLog {
             return
         }
         gameCore.perform {
-            self.gameCore.loadStateFromFile(at: fileURL, completionHandler: block)
+            self.gameCore.loadStateFromFile(at: fileURL) { success, error in
+                if success {
+                    let sidecarURL = fileURL.appendingPathExtension("raprogress")
+                    let blob = try? Data(contentsOf: sidecarURL)
+                    // nil = no sidecar (old save state) — rcheevos resets progress cleanly.
+                    self.gameCore.retroAchievementsDeserializeProgress(blob)
+                }
+                block(success, error)
+            }
         }
     }
 

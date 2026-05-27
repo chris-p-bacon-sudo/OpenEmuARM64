@@ -2066,7 +2066,15 @@ final class OEGameDocument: NSDocument {
                 handler?()
                 return
             }
-            
+
+            // Move the rcheevos progress sidecar written by the helper (at the temp path)
+            // into the save-state bundle alongside the State data file.
+            let sidecarTemp = temporaryStateFileURL.appendingPathExtension("raprogress")
+            let sidecarDest = state.dataFileURL.appendingPathExtension("raprogress")
+            if FileManager.default.fileExists(atPath: sidecarTemp.path) {
+                _ = try? FileManager.default.replaceItemAt(sidecarDest, withItemAt: sidecarTemp)
+            }
+
             let mainContext = state.managedObjectContext
             mainContext?.perform {
                 try? mainContext?.save()
