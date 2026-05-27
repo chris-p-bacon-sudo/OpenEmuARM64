@@ -229,13 +229,27 @@ void oeRetroAchievementsServerCall(const rc_api_request_t *request,
     char rcClause[64] = {0};
     rc_client_get_user_agent_clause(client, rcClause, sizeof(rcClause));
 
+    // rc_client userdata is always the OEGameCore subclass instance.
+    // Append core name + version so RA can identify the client per their spec.
+    void *userdata = rc_client_get_userdata(client);
+    NSString *coreSuffix = @"";
+    if (userdata) {
+        id coreObject = (__bridge id)userdata;
+        NSBundle *coreBundle = [NSBundle bundleForClass:[coreObject class]];
+        NSString *name = [coreBundle.bundlePath.lastPathComponent stringByDeletingPathExtension];
+        NSString *version = coreBundle.infoDictionary[@"CFBundleShortVersionString"] ?: @"0.0.0";
+        if (name.length > 0) {
+            coreSuffix = [NSString stringWithFormat:@" %@/%@", name, version];
+        }
+    }
+
     // RA expects an identifying User-Agent so they can correlate traffic to the host app.
-    // Format: OpenEmu-Silicon/<host-version> (macOS <os-version>) rcheevos/<...>
+    // Format: OpenEmu-Silicon/<host-version> (macOS <os-version>) rcheevos/<...> <Core>/<ver>
     NSString *hostVersion = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleShortVersionString"] ?: @"unknown";
     NSOperatingSystemVersion osv = [[NSProcessInfo processInfo] operatingSystemVersion];
     NSString *osVersion = [NSString stringWithFormat:@"%ld.%ld.%ld", (long)osv.majorVersion, (long)osv.minorVersion, (long)osv.patchVersion];
-    NSString *userAgent = [NSString stringWithFormat:@"OpenEmu-Silicon/%@ (macOS %@) %@",
-                            hostVersion, osVersion, [NSString stringWithUTF8String:rcClause]];
+    NSString *userAgent = [NSString stringWithFormat:@"OpenEmu-Silicon/%@ (macOS %@) %@%@",
+                            hostVersion, osVersion, [NSString stringWithUTF8String:rcClause], coreSuffix];
     [urlRequest setValue:userAgent forHTTPHeaderField:@"User-Agent"];
 
     if (request->post_data) {
