@@ -266,11 +266,19 @@ Native RA traffic uses the shared OpenEmu transport function:
 rc_client_create(<core>_rc_read_memory, oeRetroAchievementsServerCall)
 ```
 
-The shared transport builds the HTTP User-Agent as:
+As of PR #586, the shared transport builds the HTTP User-Agent as:
 
 ```text
-OpenEmu-Silicon/<host-version> (macOS <os-version>) <rcheevos user-agent clause>
+OpenEmu-Silicon/<host-version> (macOS <os-version>) rcheevos/<...> <CoreName>/<core-version>
 ```
+
+Example (Nestopia 1.53.0 on OpenEmu-Silicon 1.2.2, macOS 15.4.0):
+
+```text
+OpenEmu-Silicon/1.2.2 (macOS 15.4.0) rcheevos/11.5.0 Nestopia/1.53.0
+```
+
+Live sample: pending capture — take a network log from any RA session after PR #586 merges and record the verbatim string here.
 
 Reviewer-facing points:
 
@@ -312,7 +320,17 @@ This is an evidence matrix, not legal advice.
 | SNES9x | SNES | `https://github.com/snes9xgit/snes9x` | `SNES9x/src/LICENSE` | Confirmed | Contains non-commercial language: “Under no circumstances will commercial rights be given.” |
 | Stella | Atari 2600 | `http://sourceforge.net/projects/stella/` | BSD-style notices in wrapper/stub files; LGPL notices for NTSC filter files; no single top-level Stella license file found | Needs confirmation | Confirm main Stella core license in #539. |
 
-In-tree directories needing plugin-status/license confirmation are tracked in #539: Atari800, blueMSX, DeSmuME, PokeMini, VecXGL, VirtualJaguar, MAME.
+Previously unconfirmed in-tree directories now confirmed as shipped (all have `.xcodeproj` files in the workspace and built `.oecoreplugin` artifacts):
+
+| Core/plugin | System(s) | License evidence | Notes |
+| --- | --- | --- | --- |
+| Atari800 | Atari 800/XL/XE | No top-level COPYING found in `Atari800/atari800-src/` | Needs confirmation — atari800 is typically GPL. |
+| blueMSX | MSX | No top-level LICENSE found in `blueMSX/` | Needs confirmation — blueMSX is typically GPL. |
+| DeSmuME | Nintendo DS | `DeSmuME/COPYING` (GPL v2) | Confirmed. |
+| MAME | Arcade | No top-level COPYING found in `MAME/` | Needs confirmation — MAME has its own restrictive license. |
+| PokeMini | Pokémon Mini | `PokeMini/PokeMini/pokemini-code/LICENSE` (GPL) | Confirmed. |
+| VecXGL | Vectrex | No top-level COPYING found in `VecXGL/` | Needs confirmation. |
+| VirtualJaguar | Atari Jaguar | No top-level COPYING found in `VirtualJaguar/` | Needs confirmation — VirtualJaguar is typically GPL. |
 
 ---
 
@@ -320,22 +338,52 @@ In-tree directories needing plugin-status/license confirmation are tracked in #5
 
 ### #537 — save-state progress serialization
 
-- Save-state format/design documented for native RA cores.
-- Softcore save states persist/restore rcheevos runtime progress where supported.
-- Old save states without RA blobs reset progress cleanly.
-- Hardcore save-state loads remain blocked.
-- At least one measured-progress achievement is verified across softcore save/load.
+**Status: Implemented (pending live test)**
+
+Design: when saving a softcore state to `/path/foo.oesavestate`, a sidecar blob is written to `/path/foo.oesavestate.raprogress` containing the serialized rcheevos progress for measured achievements. On load, the sidecar is read back and deserialized. If no sidecar exists (old save states), `nil` is passed to `rc_client_deserialize_progress`, which resets progress cleanly.
+
+Implementation: `OEGameCore.retroAchievementsSerializedProgress` / `retroAchievementsDeserializeProgress:` (default no-ops in base class; implemented in all 9 native RA cores via `rc_client_serialize_progress` / `rc_client_deserialize_progress`). Hooked into `OpenEmuHelperApp.saveStateToFile` and `loadStateFromFile`.
+
+Live verification needed:
+
+- [ ] Save a softcore state mid-game with a measured-progress achievement partially complete.
+- [ ] Load the state — progress should restore to where it was, not reset to zero.
+- [ ] Load an old save state without sidecar — progress should reset cleanly (no crash).
+- [ ] Confirm hardcore load is still blocked (existing behavior; should be unaffected).
+
+Record the game, core, achievement, and result here after testing.
 
 ### #538 — offline close/session-purge behavior
 
-- Close-while-offline queued unlock behavior documented.
-- If rcheevos already purges/drops session-scoped queue data safely, record evidence.
-- If queued data persists/syncs after session close in a non-compliant way, implement lifecycle fix.
+**Status: Test protocol ready — needs live run**
+
+This is a read-and-document task; no code change is expected unless behavior is non-compliant.
+
+**Test steps:**
+
+1. Use the `nickybmon` test account with a game that has an easily-triggered early achievement (e.g. Super Mario Bros. — `Nestopia` scheme).
+2. Launch in **native RA hardcore**, confirm recognition and an unearned achievement is visible.
+3. Disconnect Wi-Fi (System Settings → Wi-Fi off, or block at OS level with Little Snitch / firewall rule).
+4. Trigger the unearned achievement while offline. The RA UI should show offline/pending state.
+5. Quit OpenEmu **without reconnecting**.
+6. Reconnect Wi-Fi and wait 60 seconds.
+7. Check the `nickybmon` RA profile — does the offline-earned achievement appear?
+
+**Expected outcomes and what to do:**
+
+| Observed | Interpretation | Action |
+| --- | --- | --- |
+| Achievement appears on RA profile after reconnect (even from next launch) | rcheevos queued the unlock and submitted it — compliant | Document here; no code change. |
+| Achievement does not appear and was silently dropped | rcheevos purged the queue on session close — also compliant per RA spec | Document here; no code change. |
+| Achievement appears only if OpenEmu is relaunched and reconnects from the same session data | Queue persists and syncs in a way that could be gamed cross-session | Implement session teardown purge in `OpenEmuHelperApp.stopEmulation` or the core's `stopEmulation`. File what you observe here and note the code path to fix. |
+
+Record the observed behavior and commit result here after the test run.
 
 ### #539 — final submission package
 
-- Reviewer-ready submission doc or issue comment exists.
-- All license matrix unresolved rows are resolved or scoped out as not shipped.
+- Reviewer-ready submission doc: `docs/retro-achievements/retroachievements-submission-package.md`.
+- License matrix "Needs confirmation" rows resolved or explicitly scoped as not RA-relevant.
 - Privacy/no-monetization/non-commercial/public-availability evidence is final.
-- Screenshots/video evidence is attached or linked.
-- RA client identity/User-Agent approval question is included.
+- Screenshots/video evidence attached or linked.
+- RA client identity/User-Agent approval question included.
+- Live UA sample string captured after PR #586 merges.
