@@ -36,6 +36,7 @@
 #include <rc_client.h>
 #include <rc_consoles.h>
 #import "OERetroAchievementsTransport.h"
+#import "OERetroAchievementsBridge.h"
 
 #include <NstBase.hpp>
 #include <NstApiEmulator.hpp>
@@ -88,16 +89,11 @@ static void NST_CALLBACK doEvent(void *userData, Nes::Api::Machine::Event event,
 
     NSMutableDictionary<NSString *, NSNumber *> *_cheatList;
     NSMutableArray <NSMutableDictionary <NSString *, id> *> *_availableDisplayModes;
-    rc_client_t *_rcClient;
-    id _raTokenObserver;
-    BOOL _raHardcoreEnabled;
-    id _raHardcoreObserver;
+    OERetroAchievementsBridge *_raBridge;
     int _rcConsole;
 }
 
 - (void)loadDisplayModeOptions;
-- (void)_beginLoadGame;
-- (void)_postRetroAchievementsSessionSnapshot;
 - (const uint8_t *)_nesRamBytesForRC;
 
 @end
@@ -110,7 +106,9 @@ static void NST_CALLBACK doEvent(void *userData, Nes::Api::Machine::Event event,
 static uint32_t nestopia_rc_read_memory(uint32_t address, uint8_t *buffer,
                                          uint32_t num_bytes, rc_client_t *client)
 {
-    NESGameCore *s = (__bridge NESGameCore *)rc_client_get_userdata(client);
+    OERetroAchievementsBridge *bridge = (__bridge OERetroAchievementsBridge *)rc_client_get_userdata(client);
+    NESGameCore *s = (NESGameCore *)bridge.core;
+    if (!s) { return 0; }
     const uint8_t *ram = [s _nesRamBytesForRC];
     if (!ram) { return 0; }
     for (uint32_t i = 0; i < num_bytes; i++) {
@@ -123,56 +121,9 @@ static uint32_t nestopia_rc_read_memory(uint32_t address, uint8_t *buffer,
     return num_bytes;
 }
 
-static void nestopia_rc_log(const char *message, const rc_client_t *client)
-{
-    os_log(OS_LOG_DEFAULT, "[rcheevos] %{public}s", message);
-}
 
-static void nestopia_rc_load_game_callback(int result, const char *error_message,
-                                            rc_client_t *client, void *userdata)
-{
-    NESGameCore *self = (__bridge NESGameCore *)userdata;
-    if (result != RC_OK) {
-        NSLog(@"[RA-Nestopia] game load failed — result=%d error=%s", result, error_message ?: "(none)");
-        oeRetroAchievementsPostSessionLoadFailure(result, error_message);
-        return;
-    }
-    [self _postRetroAchievementsSessionSnapshot];
-}
 
-static void nestopia_rc_login_callback(int result, const char *error_message,
-                                        rc_client_t *client, void *userdata)
-{
-    NESGameCore *s = (__bridge NESGameCore *)userdata;
-    if (result == RC_OK) {
-        [s _beginLoadGame];
-    } else {
-        oeRetroAchievementsPostLoginFailure(result, error_message);
-        NSLog(@"[RA-Nestopia] login failed — result=%d error=%s", result, error_message ?: "(none)");
-    }
-}
 
-static void nestopia_rc_event_handler(const rc_client_event_t *event, rc_client_t *client)
-{
-    oeRetroAchievementsPostEventNotification(event, client);
-    if (event->type != RC_CLIENT_EVENT_ACHIEVEMENT_TRIGGERED) { return; }
-    const rc_client_achievement_t *ach = event->achievement;
-    if (!ach) { return; }
-
-    NSDictionary *info = @{
-        OEAchievementIDKey:          @(ach->id),
-        OEAchievementTitleKey:       @(ach->title       ?: ""),
-        OEAchievementDescriptionKey: @(ach->description  ?: ""),
-        OEAchievementBadgeURLKey:    @(ach->badge_name   ?: ""),
-        OEAchievementPointsKey:      @(ach->points),
-    };
-    [[NSNotificationCenter defaultCenter]
-        postNotificationName:OEAchievementUnlockedNotification
-                      object:nil
-                    userInfo:info];
-    NESGameCore *core = (__bridge NESGameCore *)rc_client_get_userdata(client);
-    [core _postRetroAchievementsSessionSnapshot];
-}
 
 @implementation NESGameCore
 
@@ -198,142 +149,24 @@ static __weak NESGameCore *_current;
     return (const uint8_t *)machine.cpu.GetRam();
 }
 
-- (void)_beginLoadGame
-{
-    if (!_rcClient || !_romURL) { return; }
-    rc_client_begin_identify_and_load_game(_rcClient,
-                                           (uint32_t)_rcConsole,
-                                           _romURL.fileSystemRepresentation,
-                                           NULL, 0,
-                                           nestopia_rc_load_game_callback,
-                                           (__bridge void *)self);
-}
-
-- (void)_postRetroAchievementsSessionSnapshot
-{
-    if (!_rcClient || !rc_client_is_game_loaded(_rcClient)) { return; }
-    const rc_client_game_t *game = rc_client_get_game_info(_rcClient);
-    if (!game || game->id == 0) { return; }
-
-    rc_client_user_game_summary_t summary;
-    memset(&summary, 0, sizeof(summary));
-    rc_client_get_user_game_summary(_rcClient, &summary);
-
-    NSMutableDictionary *payload = [NSMutableDictionary dictionary];
-    payload[OERAGameIDKey] = @(game->id);
-    payload[OERAGameTitleKey] = [NSString stringWithUTF8String:game->title ?: ""];
-    payload[OERAGameHashKey] = [NSString stringWithUTF8String:game->hash ?: ""];
-    payload[OERAUnlockedCountKey] = @(summary.num_unlocked_achievements);
-    payload[OERAAchievementCountKey] = @(summary.num_core_achievements);
-    payload[OERAUnlockedPointsKey] = @(summary.points_unlocked);
-    payload[OERATotalPointsKey] = @(summary.points_core);
-
-    char gameImageURL[512];
-    if (rc_client_game_get_image_url(game, gameImageURL, sizeof(gameImageURL)) == RC_OK)
-        payload[OERAGameBadgeURLKey] = [NSString stringWithUTF8String:gameImageURL];
-
-    NSMutableArray *sets = [NSMutableArray array];
-    NSMutableDictionary<NSNumber *, NSString *> *setTitlesByID = [NSMutableDictionary dictionary];
-    rc_client_subset_list_t *subsetList = rc_client_create_subset_list(_rcClient);
-    if (subsetList) {
-        for (uint32_t i = 0; i < subsetList->num_subsets; i++) {
-            const rc_client_subset_t *subset = subsetList->subsets[i];
-            if (!subset) { continue; }
-            NSString *subsetTitle = [NSString stringWithUTF8String:subset->title ?: "Achievement Set"];
-            NSNumber *subsetID = @(subset->id);
-            setTitlesByID[subsetID] = subsetTitle;
-            NSMutableDictionary *setInfo = [NSMutableDictionary dictionary];
-            setInfo[OERASetIDKey] = subsetID;
-            setInfo[OERASetTitleKey] = subsetTitle;
-            setInfo[OERASetAchievementCountKey] = @(subset->num_achievements);
-            setInfo[OERASetLeaderboardCountKey] = @(subset->num_leaderboards);
-            if (subset->badge_url)
-                setInfo[OERASetBadgeURLKey] = [NSString stringWithUTF8String:subset->badge_url];
-            [sets addObject:setInfo];
-        }
-        rc_client_destroy_subset_list(subsetList);
-    }
-    if (sets.count == 0) {
-        NSNumber *gameID = @(game->id);
-        NSString *gameTitle = [NSString stringWithUTF8String:game->title ?: "Achievement Set"];
-        setTitlesByID[gameID] = gameTitle;
-        [sets addObject:@{
-            OERASetIDKey: gameID, OERASetTitleKey: gameTitle,
-            OERASetAchievementCountKey: @(summary.num_core_achievements),
-            OERASetLeaderboardCountKey: @0,
-        }];
-    }
-    payload[OERASetsKey] = sets;
-
-    NSMutableArray *achievements = [NSMutableArray array];
-    rc_client_achievement_list_t *list = rc_client_create_achievement_list(
-        _rcClient, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE,
-        RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_LOCK_STATE);
-    if (list) {
-        for (uint32_t b = 0; b < list->num_buckets; b++) {
-            const rc_client_achievement_bucket_t bucket = list->buckets[b];
-            NSString *bucketTitle = [NSString stringWithUTF8String:bucket.label ?: "Achievements"];
-            for (uint32_t a = 0; a < bucket.num_achievements; a++) {
-                const rc_client_achievement_t *ach = bucket.achievements[a];
-                if (!ach) { continue; }
-                NSNumber *subsetID = @(bucket.subset_id);
-                NSMutableDictionary *entry = [NSMutableDictionary dictionary];
-                entry[OERASetIDKey] = subsetID;
-                entry[OERASetTitleKey] = setTitlesByID[subsetID] ?: [NSString stringWithUTF8String:game->title ?: "Achievement Set"];
-                entry[OERABucketTitleKey] = bucketTitle;
-                entry[OERABucketTypeKey] = @(bucket.bucket_type);
-                entry[OEAchievementIDKey] = @(ach->id);
-                entry[OEAchievementTitleKey] = [NSString stringWithUTF8String:ach->title ?: ""];
-                entry[OEAchievementDescriptionKey] = [NSString stringWithUTF8String:ach->description ?: ""];
-                entry[OEAchievementPointsKey] = @(ach->points);
-                entry[OERAStateKey] = @(ach->state);
-                entry[OERATypeKey] = @(ach->type);
-                entry[OERAUnlockedKey] = @(ach->unlocked);
-                entry[OERARarityKey] = @(ach->rarity);
-                entry[OERAHardcoreRarityKey] = @(ach->rarity_hardcore);
-                entry[OERAMeasuredPercentKey] = @(ach->measured_percent);
-                entry[OERAMeasuredProgressKey] = [NSString stringWithUTF8String:ach->measured_progress];
-                if (ach->badge_url)
-                    entry[OEAchievementBadgeURLKey] = [NSString stringWithUTF8String:ach->badge_url];
-                if (ach->badge_locked_url)
-                    entry[OERABadgeLockedURLKey] = [NSString stringWithUTF8String:ach->badge_locked_url];
-                [achievements addObject:entry];
-            }
-        }
-        rc_client_destroy_achievement_list(list);
-    }
-    payload[OERAAchievementsKey] = achievements;
-    [[NSNotificationCenter defaultCenter] postNotificationName:OERASessionUpdatedNotification
-                                                        object:nil
-                                                      userInfo:payload];
-}
-
-
 - (void)retroAchievementsIdle
 {
-    if (_rcClient) {
-        rc_client_idle(_rcClient);
-    }
+    [_raBridge idle];
 }
 
 - (BOOL)canPauseRetroAchievementsHardcoreWithFramesRemaining:(uint32_t *)framesRemaining
 {
-    if (!_rcClient) { return YES; }
-    return rc_client_can_pause(_rcClient, framesRemaining) != 0;
+    return _raBridge ? [_raBridge canPauseWithFramesRemaining:framesRemaining] : YES;
 }
 
-- (NSData *)retroAchievementsSerializedProgress {
-    if (!_rcClient) return nil;
-    size_t size = rc_client_progress_size(_rcClient);
-    if (size == 0) return nil;
-    NSMutableData *data = [NSMutableData dataWithLength:size];
-    rc_client_serialize_progress(_rcClient, data.mutableBytes);
-    return data;
+- (NSData *)retroAchievementsSerializedProgress
+{
+    return [_raBridge serializeProgress];
 }
 
-- (void)retroAchievementsDeserializeProgress:(NSData *)data {
-    if (!_rcClient) return;
-    rc_client_deserialize_progress(_rcClient, data ? data.bytes : NULL);
+- (void)retroAchievementsDeserializeProgress:(NSData *)data
+{
+    [_raBridge deserializeProgress:data];
 }
 
 - (void)dealloc
@@ -441,50 +274,11 @@ static __weak NESGameCore *_current;
         ? RC_CONSOLE_FAMICOM_DISK_SYSTEM
         : RC_CONSOLE_NINTENDO;
 
-    _rcClient = rc_client_create(nestopia_rc_read_memory, oeRetroAchievementsServerCall);
-    if (_rcClient) {
-        rc_client_set_userdata(_rcClient, (__bridge void *)self);
-        rc_client_set_event_handler(_rcClient, nestopia_rc_event_handler);
-        _raHardcoreEnabled = YES;
-        rc_client_set_hardcore_enabled(_rcClient, _raHardcoreEnabled ? 1 : 0);
-        rc_client_set_allow_background_memory_reads(_rcClient, 0);
-        rc_client_enable_logging(_rcClient, RC_CLIENT_LOG_LEVEL_INFO, nestopia_rc_log);
-
-        __weak NESGameCore *weakSelf = self;
-        _raTokenObserver = [[NSNotificationCenter defaultCenter]
-            addObserverForName:OERetroAchievementsTokenDidChangeNotification
-                        object:nil
-                         queue:nil
-                    usingBlock:^(NSNotification *note) {
-            NESGameCore *s = weakSelf;
-            if (!s || !s->_rcClient) { return; }
-            NSString *token    = note.userInfo[OERetroAchievementsTokenKey];
-            NSString *username = note.userInfo[OERetroAchievementsUsernameKey];
-            if (token && username) {
-                rc_client_begin_login_with_token(s->_rcClient,
-                                                 username.UTF8String,
-                                                 token.UTF8String,
-                                                 nestopia_rc_login_callback,
-                                                 (__bridge void *)s);
-            } else {
-                rc_client_logout(s->_rcClient);
-            }
-        }];
-
-        _raHardcoreObserver = [[NSNotificationCenter defaultCenter]
-            addObserverForName:OEHardcoreModeDidChangeNotification
-                        object:nil
-                         queue:nil
-                    usingBlock:^(NSNotification *note) {
-            NSNumber *enabled = note.userInfo[OEHardcoreEnabledKey];
-            if (enabled) {
-                self->_raHardcoreEnabled = enabled.boolValue;
-                if (self->_rcClient) {
-                    rc_client_set_hardcore_enabled(self->_rcClient, self->_raHardcoreEnabled ? 1 : 0);
-                }
-            }
-        }];
-    }
+    _raBridge = [[OERetroAchievementsBridge alloc] initWithGameCore:self
+                                                        memoryReader:nestopia_rc_read_memory
+                                                           consoleID:(uint32_t)_rcConsole];
+    [_raBridge startWithROMPath:path];
+    [_raBridge markROMReady];
 
     return YES;
 }
@@ -549,16 +343,14 @@ static __weak NESGameCore *_current;
 {
     _emu.Execute(_nesVideo, _nesSound, _controls);
 
-    if (_rcClient)
-        rc_client_do_frame(_rcClient);
+    [_raBridge doFrame];
 
     [[self audioBufferAtIndex:0] write:_soundBuffer maxLength:self.channelCount * _bufFrameSize * sizeof(int16_t)];
 }
 
 - (void)resetEmulation
 {
-    if (_rcClient)
-        rc_client_reset(_rcClient);
+    [_raBridge reset];
 
     Nes::Api::Machine machine(_emu);
     machine.Reset(true);
@@ -574,19 +366,8 @@ static __weak NESGameCore *_current;
 
 - (void)stopEmulation
 {
-    if (_raTokenObserver) {
-        [[NSNotificationCenter defaultCenter] removeObserver:_raTokenObserver];
-        _raTokenObserver = nil;
-    }
-    if (_raHardcoreObserver) {
-        [[NSNotificationCenter defaultCenter] removeObserver:_raHardcoreObserver];
-        _raHardcoreObserver = nil;
-    }
-    if (_rcClient) {
-        rc_client_unload_game(_rcClient);
-        rc_client_destroy(_rcClient);
-        _rcClient = NULL;
-    }
+    [_raBridge shutdown];
+    _raBridge = nil;
 
     Nes::Api::Machine machine(_emu);
     //machine.Power(false);
@@ -766,8 +547,7 @@ static __weak NESGameCore *_current;
     // Notify the rcheevos client that emulator state has been externally replaced.
     // Without this, the RA library keeps evaluating achievement conditions against
     // stale pre-load state. Matches the reset already present in deserializeState:.
-    if (_rcClient)
-        rc_client_reset(_rcClient);
+    [_raBridge reset];
     block(YES, nil);
 }
 
@@ -856,8 +636,7 @@ static __weak NESGameCore *_current;
         return NO;
     }
 
-    if (_rcClient)
-        rc_client_reset(_rcClient);
+    [_raBridge reset];
 
     return YES;
 }

@@ -24,6 +24,7 @@
 
 import AudioToolbox
 import Foundation
+internal import os.log
 import OpenEmuBase
 import OpenEmuSystem
 import OpenEmuKitPrivate
@@ -103,6 +104,7 @@ extension OSLog {
     var _achievementObserver: Any?
     var _raSessionObserver: Any?
     var _raEventObserver: Any?
+    var _raUnrecognizedObserver: Any?
     var _raIdleTimer: DispatchSourceTimer?
 
     // frame rate debugging
@@ -384,6 +386,14 @@ extension OSLog {
                   let info = note.userInfo as? [String: Any] else { return }
             owner.retroAchievementsEvent?(info)
         }
+
+        _raUnrecognizedObserver = NotificationCenter.default.addObserver(
+            forName: .OERetroAchievementsEmulatorUnrecognized,
+            object: nil,
+            queue: nil
+        ) { [weak self] _ in
+            self?.gameCoreOwner?.retroAchievementsEmulatorUnrecognized?()
+        }
     }
     
     // MARK: - OEGameCoreOwner subclass handles
@@ -550,6 +560,10 @@ extension OSLog {
             NotificationCenter.default.removeObserver(observer)
             _raEventObserver = nil
         }
+        if let observer = _raUnrecognizedObserver {
+            NotificationCenter.default.removeObserver(observer)
+            _raUnrecognizedObserver = nil
+        }
 
         gameCore.stopEmulation {
             self._gameAudio.stopAudio()
@@ -627,7 +641,9 @@ extension OSLog {
                 if success {
                     let sidecarURL = fileURL.appendingPathExtension("raprogress")
                     let blob = try? Data(contentsOf: sidecarURL)
-                    // nil = no sidecar (old save state) — rcheevos resets progress cleanly.
+                    if blob == nil {
+                        os_log(.debug, "[RA] no .raprogress sidecar at %{public}@ — rcheevos progress will reset for this load.", sidecarURL.lastPathComponent)
+                    }
                     self.gameCore.retroAchievementsDeserializeProgress(blob)
                 }
                 block(success, error)

@@ -50,6 +50,7 @@
 #include <os/log.h>
 #define RC_CLIENT_SUPPORTS_HASH 1
 #include <rc_client.h>
+#import "OERetroAchievementsBridge.h"
 #include <rc_consoles.h>
 #import "OERetroAchievementsTransport.h"
 
@@ -107,18 +108,21 @@ namespace MDFN_IEN_VB
     NSMutableArray *_allCueSheetFiles;
     NSMutableArray <NSMutableDictionary <NSString *, id> *> *_availableDisplayModes;
 
-    rc_client_t *_rcClient;
-    id _raTokenObserver;
-    BOOL _raHardcoreEnabled;
-    id _raHardcoreObserver;
+    OERetroAchievementsBridge *_raBridge;
     NSString *_romPath;
     int _rcConsole;
     BOOL _isSystemPCECD;
+    // Owned C-string copy of the active console module name (e.g. "psx", "pce").
+    // Read from the RA memory-reader trampoline on the bridge's serial queue
+    // without holding ObjC refs, so we can't use _mednafenCoreModule.UTF8String
+    // directly — that pointer's lifetime is tied to autorelease-pool drains and
+    // could dangle silently if the backing NSString is ever built dynamically.
+    // strdup'd at loadFileAtPath; freed in stopEmulation and dealloc.
+    char *_cachedModule;
 }
 - (NSString *)mednafenCoreModule;
 - (BOOL)isSystemPCECD;
-- (void)_beginLoadGame;
-- (void)_postRetroAchievementsSessionSnapshot;
+- (const char *)oeRACachedModule;
 
 - (void)initializeMednafen;
 - (void)loadDisplayModeOptions;
@@ -149,11 +153,13 @@ static __weak MednafenGameCore *_current;
 static uint32_t mednafen_rc_read_memory(uint32_t address, uint8_t *buffer,
                                         uint32_t num_bytes, rc_client_t *client)
 {
-    MednafenGameCore *c = (__bridge MednafenGameCore *)rc_client_get_userdata(client);
-    NSString *mod = [c mednafenCoreModule];
+    OERetroAchievementsBridge *bridge = (__bridge OERetroAchievementsBridge *)rc_client_get_userdata(client);
+    MednafenGameCore *c = (MednafenGameCore *)bridge.core;
+    if (!c) { return 0; }
+    const char *mod = [c oeRACachedModule];
     if (!mod) { return 0; }
 
-    if ([mod isEqualToString:@"psx"]) {
+    if (strcmp(mod, "psx") == 0) {
         for (uint32_t i = 0; i < num_bytes; i++) {
             uint32_t a = address + i;
             if (a < 0x200000) {
@@ -168,14 +174,14 @@ static uint32_t mednafen_rc_read_memory(uint32_t address, uint8_t *buffer,
         }
         return num_bytes;
     }
-    if ([mod isEqualToString:@"pce"] && ![c isSystemPCECD]) {
+    if (strcmp(mod, "pce") == 0 && ![c isSystemPCECD]) {
         for (uint32_t i = 0; i < num_bytes; i++) {
             if (address + i >= 0x2000) { return i; }
             buffer[i] = MDFN_IEN_PCE::PCE_PeekMainRAM(address + i);
         }
         return num_bytes;
     }
-    if ([mod isEqualToString:@"pce"] && [c isSystemPCECD]) {
+    if (strcmp(mod, "pce") == 0 && [c isSystemPCECD]) {
         uint8_t *cdram     = MDFNPCE_GetCDRAMPointer();      // 64 KB,  may be NULL
         uint8_t *syscard   = MDFNPCE_GetSysCardRAMPointer(); // 192 KB, may be NULL
         uint8_t *saveram   = MDFNPCE_GetSaveRAMPointer();    // 2 KB,   always present
@@ -197,7 +203,7 @@ static uint32_t mednafen_rc_read_memory(uint32_t address, uint8_t *buffer,
         }
         return num_bytes;
     }
-    if ([mod isEqualToString:@"lynx"]) {
+    if (strcmp(mod, "lynx") == 0) {
         uint8_t *ram = MDFNLynx_GetRAMPointer();
         if (!ram) { return 0; }
         for (uint32_t i = 0; i < num_bytes; i++) {
@@ -206,7 +212,7 @@ static uint32_t mednafen_rc_read_memory(uint32_t address, uint8_t *buffer,
         }
         return num_bytes;
     }
-    if ([mod isEqualToString:@"ngp"]) {
+    if (strcmp(mod, "ngp") == 0) {
         uint8_t *ram = MDFNNGP_GetRAMPointer();
         if (!ram) { return 0; }
         for (uint32_t i = 0; i < num_bytes; i++) {
@@ -218,173 +224,11 @@ static uint32_t mednafen_rc_read_memory(uint32_t address, uint8_t *buffer,
     return 0;
 }
 
-static void mednafen_rc_log(const char *message, const rc_client_t *client)
-{
-    os_log(OS_LOG_DEFAULT, "[rcheevos] %{public}s", message);
-}
-
-static void mednafen_rc_load_game_callback(int result, const char *error_message,
-                                            rc_client_t *client, void *userdata)
-{
-    MednafenGameCore *self = (__bridge MednafenGameCore *)userdata;
-    if (result != RC_OK) {
-        NSLog(@"[RA-Mednafen] game load failed — result=%d error=%s", result, error_message ?: "(none)");
-        oeRetroAchievementsPostSessionLoadFailure(result, error_message);
-        return;
-    }
-    [self _postRetroAchievementsSessionSnapshot];
-}
-
-static void mednafen_rc_login_callback(int result, const char *error_message,
-                                        rc_client_t *client, void *userdata)
-{
-    MednafenGameCore *s = (__bridge MednafenGameCore *)userdata;
-    if (result == RC_OK) {
-        [s _beginLoadGame];
-    } else {
-        oeRetroAchievementsPostLoginFailure(result, error_message);
-        NSLog(@"[RA-Mednafen] login failed — result=%d error=%s", result, error_message ?: "(none)");
-    }
-}
-
-static void mednafen_rc_event_handler(const rc_client_event_t *event, rc_client_t *client)
-{
-    oeRetroAchievementsPostEventNotification(event, client);
-    if (event->type != RC_CLIENT_EVENT_ACHIEVEMENT_TRIGGERED) { return; }
-    const rc_client_achievement_t *ach = event->achievement;
-    if (!ach) { return; }
-
-    os_log(OS_LOG_DEFAULT, "[RA-Mednafen] achievement triggered: id=%u title=%{public}s", ach->id, ach->title ?: "");
-
-    NSDictionary *info = @{
-        OEAchievementIDKey:          @(ach->id),
-        OEAchievementTitleKey:       @(ach->title       ?: ""),
-        OEAchievementDescriptionKey: @(ach->description ?: ""),
-        OEAchievementBadgeURLKey:    @(ach->badge_name),
-        OEAchievementPointsKey:      @(ach->points),
-    };
-    [[NSNotificationCenter defaultCenter]
-        postNotificationName:OEAchievementUnlockedNotification
-                      object:nil
-                    userInfo:info];
-    MednafenGameCore *core = (__bridge MednafenGameCore *)rc_client_get_userdata(client);
-    [core _postRetroAchievementsSessionSnapshot];
-}
-
 @implementation MednafenGameCore
 
 - (NSString *)mednafenCoreModule { return _mednafenCoreModule; }
 - (BOOL)isSystemPCECD { return _isSystemPCECD; }
-
-- (void)_beginLoadGame
-{
-    if (!_rcClient || !_romPath) { return; }
-    rc_client_begin_identify_and_load_game(_rcClient,
-                                           (uint32_t)_rcConsole,
-                                           _romPath.fileSystemRepresentation,
-                                           NULL, 0,
-                                           mednafen_rc_load_game_callback,
-                                           (__bridge void *)self);
-}
-
-- (void)_postRetroAchievementsSessionSnapshot
-{
-    if (!_rcClient || !rc_client_is_game_loaded(_rcClient)) { return; }
-    const rc_client_game_t *game = rc_client_get_game_info(_rcClient);
-    if (!game || game->id == 0) { return; }
-
-    rc_client_user_game_summary_t summary;
-    memset(&summary, 0, sizeof(summary));
-    rc_client_get_user_game_summary(_rcClient, &summary);
-
-    NSMutableDictionary *payload = [NSMutableDictionary dictionary];
-    payload[OERAGameIDKey] = @(game->id);
-    payload[OERAGameTitleKey] = [NSString stringWithUTF8String:game->title ?: ""];
-    payload[OERAGameHashKey] = [NSString stringWithUTF8String:game->hash ?: ""];
-    payload[OERAUnlockedCountKey] = @(summary.num_unlocked_achievements);
-    payload[OERAAchievementCountKey] = @(summary.num_core_achievements);
-    payload[OERAUnlockedPointsKey] = @(summary.points_unlocked);
-    payload[OERATotalPointsKey] = @(summary.points_core);
-
-    char gameImageURL[512];
-    if (rc_client_game_get_image_url(game, gameImageURL, sizeof(gameImageURL)) == RC_OK)
-        payload[OERAGameBadgeURLKey] = [NSString stringWithUTF8String:gameImageURL];
-
-    NSMutableArray *sets = [NSMutableArray array];
-    NSMutableDictionary<NSNumber *, NSString *> *setTitlesByID = [NSMutableDictionary dictionary];
-    rc_client_subset_list_t *subsetList = rc_client_create_subset_list(_rcClient);
-    if (subsetList) {
-        for (uint32_t i = 0; i < subsetList->num_subsets; i++) {
-            const rc_client_subset_t *subset = subsetList->subsets[i];
-            if (!subset) { continue; }
-            NSString *subsetTitle = [NSString stringWithUTF8String:subset->title ?: "Achievement Set"];
-            NSNumber *subsetID = @(subset->id);
-            setTitlesByID[subsetID] = subsetTitle;
-            NSMutableDictionary *setInfo = [NSMutableDictionary dictionary];
-            setInfo[OERASetIDKey] = subsetID;
-            setInfo[OERASetTitleKey] = subsetTitle;
-            setInfo[OERASetAchievementCountKey] = @(subset->num_achievements);
-            setInfo[OERASetLeaderboardCountKey] = @(subset->num_leaderboards);
-            if (subset->badge_url)
-                setInfo[OERASetBadgeURLKey] = [NSString stringWithUTF8String:subset->badge_url];
-            [sets addObject:setInfo];
-        }
-        rc_client_destroy_subset_list(subsetList);
-    }
-    if (sets.count == 0) {
-        NSNumber *gameID = @(game->id);
-        NSString *gameTitle = [NSString stringWithUTF8String:game->title ?: "Achievement Set"];
-        setTitlesByID[gameID] = gameTitle;
-        [sets addObject:@{
-            OERASetIDKey: gameID, OERASetTitleKey: gameTitle,
-            OERASetAchievementCountKey: @(summary.num_core_achievements),
-            OERASetLeaderboardCountKey: @0,
-        }];
-    }
-    payload[OERASetsKey] = sets;
-
-    NSMutableArray *achievements = [NSMutableArray array];
-    rc_client_achievement_list_t *list = rc_client_create_achievement_list(
-        _rcClient, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE,
-        RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_LOCK_STATE);
-    if (list) {
-        for (uint32_t b = 0; b < list->num_buckets; b++) {
-            const rc_client_achievement_bucket_t bucket = list->buckets[b];
-            NSString *bucketTitle = [NSString stringWithUTF8String:bucket.label ?: "Achievements"];
-            for (uint32_t a = 0; a < bucket.num_achievements; a++) {
-                const rc_client_achievement_t *ach = bucket.achievements[a];
-                if (!ach) { continue; }
-                NSNumber *subsetID = @(bucket.subset_id);
-                NSMutableDictionary *entry = [NSMutableDictionary dictionary];
-                entry[OERASetIDKey] = subsetID;
-                entry[OERASetTitleKey] = setTitlesByID[subsetID] ?: [NSString stringWithUTF8String:game->title ?: "Achievement Set"];
-                entry[OERABucketTitleKey] = bucketTitle;
-                entry[OERABucketTypeKey] = @(bucket.bucket_type);
-                entry[OEAchievementIDKey] = @(ach->id);
-                entry[OEAchievementTitleKey] = [NSString stringWithUTF8String:ach->title ?: ""];
-                entry[OEAchievementDescriptionKey] = [NSString stringWithUTF8String:ach->description ?: ""];
-                entry[OEAchievementPointsKey] = @(ach->points);
-                entry[OERAStateKey] = @(ach->state);
-                entry[OERATypeKey] = @(ach->type);
-                entry[OERAUnlockedKey] = @(ach->unlocked);
-                entry[OERARarityKey] = @(ach->rarity);
-                entry[OERAHardcoreRarityKey] = @(ach->rarity_hardcore);
-                entry[OERAMeasuredPercentKey] = @(ach->measured_percent);
-                entry[OERAMeasuredProgressKey] = [NSString stringWithUTF8String:ach->measured_progress];
-                if (ach->badge_url)
-                    entry[OEAchievementBadgeURLKey] = [NSString stringWithUTF8String:ach->badge_url];
-                if (ach->badge_locked_url)
-                    entry[OERABadgeLockedURLKey] = [NSString stringWithUTF8String:ach->badge_locked_url];
-                [achievements addObject:entry];
-            }
-        }
-        rc_client_destroy_achievement_list(list);
-    }
-    payload[OERAAchievementsKey] = achievements;
-    [[NSNotificationCenter defaultCenter] postNotificationName:OERASessionUpdatedNotification
-                                                        object:nil
-                                                      userInfo:payload];
-}
+- (const char *)oeRACachedModule { return _cachedModule; }
 
 - (void)initializeMednafen
 {
@@ -3361,29 +3205,22 @@ static void mednafen_rc_event_handler(const rc_client_event_t *event, rc_client_
 
 - (void)retroAchievementsIdle
 {
-    if (_rcClient) {
-        rc_client_idle(_rcClient);
-    }
+    [_raBridge idle];
 }
 
 - (BOOL)canPauseRetroAchievementsHardcoreWithFramesRemaining:(uint32_t *)framesRemaining
 {
-    if (!_rcClient) { return YES; }
-    return rc_client_can_pause(_rcClient, framesRemaining) != 0;
+    return _raBridge ? [_raBridge canPauseWithFramesRemaining:framesRemaining] : YES;
 }
 
-- (NSData *)retroAchievementsSerializedProgress {
-    if (!_rcClient) return nil;
-    size_t size = rc_client_progress_size(_rcClient);
-    if (size == 0) return nil;
-    NSMutableData *data = [NSMutableData dataWithLength:size];
-    rc_client_serialize_progress(_rcClient, data.mutableBytes);
-    return data;
+- (NSData *)retroAchievementsSerializedProgress
+{
+    return [_raBridge serializeProgress];
 }
 
-- (void)retroAchievementsDeserializeProgress:(NSData *)data {
-    if (!_rcClient) return;
-    rc_client_deserialize_progress(_rcClient, data ? data.bytes : NULL);
+- (void)retroAchievementsDeserializeProgress:(NSData *)data
+{
+    [_raBridge deserializeProgress:data];
 }
 
 - (void)dealloc
@@ -3392,6 +3229,9 @@ static void mednafen_rc_event_handler(const rc_client_event_t *event, rc_client_
         free(_inputBuffer[i]);
 
     delete surf;
+
+    // Defensive: stopEmulation normally frees this; cover paths that bypass it.
+    if (_cachedModule) { free(_cachedModule); _cachedModule = NULL; }
 }
 
 # pragma mark - Execution
@@ -3760,54 +3600,13 @@ static void mednafen_rc_event_handler(const rc_client_event_t *event, rc_client_
 
     if (_rcConsole > 0) {
         _romPath = path;
-        _rcClient = rc_client_create(mednafen_rc_read_memory, oeRetroAchievementsServerCall);
-        if (_rcClient) {
-            rc_client_set_userdata(_rcClient, (__bridge void *)self);
-            rc_client_set_event_handler(_rcClient, mednafen_rc_event_handler);
-            _raHardcoreEnabled = YES;
-            rc_client_set_hardcore_enabled(_rcClient, _raHardcoreEnabled ? 1 : 0);
-            // Defer address validation to executeFrame so emulated RAM is live before rcheevos
-            // validates achievement memrefs. Without this, activation runs on the HTTP callback
-            // thread before Mednafen's core is fully started, returning 0 for every address and
-            // silently deactivating all achievements before the game begins.
-            rc_client_set_allow_background_memory_reads(_rcClient, 0);
-            rc_client_enable_logging(_rcClient, RC_CLIENT_LOG_LEVEL_WARN, mednafen_rc_log);
-
-            __weak MednafenGameCore *weakSelf = self;
-            _raTokenObserver = [[NSNotificationCenter defaultCenter]
-                addObserverForName:OERetroAchievementsTokenDidChangeNotification
-                            object:nil
-                             queue:nil
-                        usingBlock:^(NSNotification *note) {
-                MednafenGameCore *s = weakSelf;
-                if (!s || !s->_rcClient) { return; }
-                NSString *token    = note.userInfo[OERetroAchievementsTokenKey];
-                NSString *username = note.userInfo[OERetroAchievementsUsernameKey];
-                if (token && username) {
-                    rc_client_begin_login_with_token(s->_rcClient,
-                                                     username.UTF8String,
-                                                     token.UTF8String,
-                                                     mednafen_rc_login_callback,
-                                                     (__bridge void *)s);
-                } else {
-                    rc_client_logout(s->_rcClient);
-                }
-            }];
-
-            _raHardcoreObserver = [[NSNotificationCenter defaultCenter]
-                addObserverForName:OEHardcoreModeDidChangeNotification
-                            object:nil
-                             queue:nil
-                        usingBlock:^(NSNotification *note) {
-                NSNumber *enabled = note.userInfo[OEHardcoreEnabledKey];
-                if (enabled) {
-                    self->_raHardcoreEnabled = enabled.boolValue;
-                    if (self->_rcClient) {
-                        rc_client_set_hardcore_enabled(self->_rcClient, self->_raHardcoreEnabled ? 1 : 0);
-                    }
-                }
-            }];
-        }
+        const char *modCStr = _mednafenCoreModule.UTF8String;
+        if (modCStr) { _cachedModule = strdup(modCStr); }
+        _raBridge = [[OERetroAchievementsBridge alloc] initWithGameCore:self
+                                                            memoryReader:mednafen_rc_read_memory
+                                                               consoleID:(uint32_t)_rcConsole];
+        [_raBridge startWithROMPath:path];
+        [_raBridge markROMReady];
     }
 
     return YES;
@@ -3840,9 +3639,7 @@ static void mednafen_rc_event_handler(const rc_client_event_t *event, rc_client_
 
     MDFNI_Emulate(&spec);
 
-    if (_rcClient) {
-        rc_client_do_frame(_rcClient);
-    }
+    [_raBridge doFrame];
 
     _mednafenCoreTiming = _masterClock / spec.MasterCycles;
 
@@ -3870,26 +3667,14 @@ static void mednafen_rc_event_handler(const rc_client_event_t *event, rc_client_
     }
 
     MDFNI_Reset();
-    if (_rcClient) {
-        rc_client_reset(_rcClient);
-    }
+    [_raBridge reset];
 }
 
 - (void)stopEmulation
 {
-    if (_raTokenObserver) {
-        [[NSNotificationCenter defaultCenter] removeObserver:_raTokenObserver];
-        _raTokenObserver = nil;
-    }
-    if (_raHardcoreObserver) {
-        [[NSNotificationCenter defaultCenter] removeObserver:_raHardcoreObserver];
-        _raHardcoreObserver = nil;
-    }
-    if (_rcClient) {
-        rc_client_unload_game(_rcClient);
-        rc_client_destroy(_rcClient);
-        _rcClient = NULL;
-    }
+    [_raBridge shutdown];
+    _raBridge = nil;
+    if (_cachedModule) { free(_cachedModule); _cachedModule = NULL; }
     MDFNI_CloseGame();
 
     [super stopEmulation];
@@ -3960,8 +3745,8 @@ static void mednafen_rc_event_handler(const rc_client_event_t *event, rc_client_
 - (void)loadStateFromFileAtPath:(NSString *)fileName completionHandler:(void (^)(BOOL, NSError *))block
 {
     BOOL ok = MDFNI_LoadState(fileName.fileSystemRepresentation, "");
-    if (ok && _rcClient) {
-        rc_client_reset(_rcClient);
+    if (ok) {
+        [_raBridge reset];
     }
     block(ok, nil);
 }
@@ -4017,9 +3802,7 @@ static void mednafen_rc_event_handler(const rc_client_event_t *event, rc_client_
     }
     else
     {
-        if (_rcClient) {
-            rc_client_reset(_rcClient);
-        }
+        [_raBridge reset];
         return true;
     }
 }

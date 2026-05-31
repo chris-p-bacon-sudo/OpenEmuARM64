@@ -2460,8 +2460,18 @@ extension OEGameDocument: OESystemBindingsObserver {
         }
     }
 
+    func retroAchievementsEmulatorUnrecognized() {
+        DispatchQueue.main.async {
+            self.gameViewController?.showRetroAchievementsUnknownEmulatorNotice()
+        }
+    }
+
     func achievementUnlocked(id: UInt32, title: String, description: String, badgeURL: String, points: UInt32) {
         DispatchQueue.main.async {
+            // Defensive fallback: bridge intercepts id >= 101000001 and routes
+            // it via retroAchievementsEmulatorUnrecognized() instead, so this
+            // branch normally won't fire. Kept in case an older core ships the
+            // warning through the legacy path.
             if self.isRetroAchievementsUnknownEmulatorWarning(title: title) {
                 self.gameViewController?.showRetroAchievementsUnknownEmulatorNotice()
                 return

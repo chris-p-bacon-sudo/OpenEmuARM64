@@ -40,6 +40,16 @@
 #define OEHardcoreModeDidChangeNotification @"OEHardcoreModeDidChange"
 #define OEHardcoreEnabledKey                @"hardcoreEnabled"
 
+/// NSNotificationCenter name posted by OERetroAchievementsBridge when rcheevos
+/// fires a "warning achievement" (id >= RC_CLIENT_ACHIEVEMENT_WARNING_ID,
+/// currently 101000001). RA attaches these to sessions whose emulator client
+/// isn't on its recognized/hardcore-compliant list. The bridge suppresses the
+/// normal OEAchievementUnlockedNotification for these IDs and posts this
+/// instead so the host can surface a single, clear notice (placard) explaining
+/// hardcore unlocks will land as Softcore until OpenEmu-Silicon is approved.
+/// No userInfo.
+#define OERAEmulatorUnrecognizedNotification @"OERetroAchievementsEmulatorUnrecognized"
+
 /// NSNotificationCenter name posted by a core plugin when an achievement is unlocked.
 /// userInfo keys: `OEAchievementIDKey` (NSNumber UInt32), `OEAchievementTitleKey` (NSString),
 /// `OEAchievementDescriptionKey` (NSString), `OEAchievementBadgeURLKey` (NSString),

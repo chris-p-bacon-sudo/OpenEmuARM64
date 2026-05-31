@@ -272,10 +272,16 @@ void oeRetroAchievementsServerCall(const rc_api_request_t *request,
             dataTaskWithRequest:urlRequest
               completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
             if (error || !data) {
-                const char *message = error ? error.localizedDescription.UTF8String : "";
+                // Copy into a stack buffer so the message outlives any autorelease
+                // pool drain that may occur inside the rcheevos callback.
+                char errBuf[256] = {0};
+                if (error) {
+                    const char *u = error.localizedDescription.UTF8String;
+                    if (u) { strncpy(errBuf, u, sizeof(errBuf) - 1); }
+                }
                 rc_api_server_response_t err = {
-                    .body             = message,
-                    .body_length      = strlen(message),
+                    .body             = errBuf,
+                    .body_length      = strlen(errBuf),
                     .http_status_code = RC_API_SERVER_RESPONSE_RETRYABLE_CLIENT_ERROR
                 };
                 callback(&err, callback_data);

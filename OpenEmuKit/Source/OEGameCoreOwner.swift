@@ -95,4 +95,12 @@ public typealias OEContextID = UInt32
     /// indicator changes, leaderboard tracker updates, mastery, or server state.
     /// The payload contains property-list-safe values using `OERetroAchievementsEvent*Key` constants.
     @objc optional func retroAchievementsEvent(_ info: [String: Any])
+
+    /// Called once when rcheevos fires the "warning achievement"
+    /// (id >= 101000001), indicating RetroAchievements does not yet recognize
+    /// OpenEmu-Silicon as a hardcore-compliant emulator. Hardcore unlocks for
+    /// this session will land server-side as Softcore. Hosts should surface
+    /// a single, dismissible notice; the bridge already suppresses the fake
+    /// unlock banner.
+    @objc optional func retroAchievementsEmulatorUnrecognized()
 }

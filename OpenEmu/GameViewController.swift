@@ -145,6 +145,10 @@ final class GameViewController: NSViewController {
             achievementBannerView.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -24),
 
             retroAchievementsPlacardView.widthAnchor.constraint(lessThanOrEqualTo: view.widthAnchor, multiplier: 0.82),
+            // Absolute width cap: long warning copy wraps inside the placard
+            // instead of stretching it to whatever the host frame allows. Keeps
+            // the rendered game frame ratio stable.
+            retroAchievementsPlacardView.widthAnchor.constraint(lessThanOrEqualToConstant: 520),
             retroAchievementsPlacardView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             retroAchievementsPlacardView.topAnchor.constraint(equalTo: view.topAnchor, constant: 20),
 
@@ -441,7 +445,14 @@ extension GameViewController {
     }
 
     func showRetroAchievementsUnknownEmulatorNotice() {
-        retroAchievementsNoticeView.showUnknownEmulatorWarning()
+        // Replaces the older on-screen chip overlay (which overlapped the game
+        // video; see #579) with a placard that explains the consequence in
+        // plain language and auto-hides. RA attaches a "warning achievement"
+        // (id >= 101000001) when the connecting emulator isn't on its
+        // hardcore-compliant allowlist — server-side this means hardcore
+        // unlocks for the session save as Softcore until OpenEmu-Silicon is
+        // approved.
+        retroAchievementsPlacardView.showEmulatorUnrecognizedWarning()
     }
 
     func showRetroAchievementsOfflineNotice() {
@@ -503,13 +514,26 @@ private final class OERetroAchievementsPlacardView: NSVisualEffectView {
         imageView.layer?.masksToBounds = true
 
         titleLabel.font = .systemFont(ofSize: 20, weight: .semibold)
-        titleLabel.lineBreakMode = .byTruncatingTail
+        titleLabel.lineBreakMode = .byWordWrapping
+        titleLabel.maximumNumberOfLines = 2
+        titleLabel.cell?.wraps = true
+        titleLabel.cell?.isScrollable = false
+        titleLabel.preferredMaxLayoutWidth = 380
         titleLabel.textColor = .labelColor
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
 
         summaryLabel.font = .systemFont(ofSize: 14, weight: .medium)
         summaryLabel.textColor = .labelColor
         summaryLabel.translatesAutoresizingMaskIntoConstraints = false
+        // Wrap long warning copy (e.g. emulator-unrecognized notice) to at most
+        // 3 lines so the placard width stays bounded and doesn't push the
+        // surrounding layout. preferredMaxLayoutWidth seeds the intrinsic size
+        // calculation; the hard width cap on the placard itself does the rest.
+        summaryLabel.maximumNumberOfLines = 3
+        summaryLabel.lineBreakMode = .byWordWrapping
+        summaryLabel.cell?.wraps = true
+        summaryLabel.cell?.isScrollable = false
+        summaryLabel.preferredMaxLayoutWidth = 380
 
         modeLabel.font = .systemFont(ofSize: 14, weight: .bold)
         modeLabel.translatesAutoresizingMaskIntoConstraints = false
@@ -523,18 +547,34 @@ private final class OERetroAchievementsPlacardView: NSVisualEffectView {
         addSubview(imageView)
         addSubview(textStack)
 
+        // textStack drives placard height when text wraps to multiple lines;
+        // when the summary is short (e.g. boot placard "Logged in · …"), the
+        // minimum-height constraint below keeps the placard at least tall
+        // enough for the 72pt imageView plus padding. Using .defaultHigh on
+        // the `equalTo` pins lets AutoLayout relax them gracefully when the
+        // minimum height wins instead of triggering an unsatisfiable-
+        // constraints warning. Surfaced by the second adversarial-review pass.
+        let textTop = textStack.topAnchor.constraint(equalTo: topAnchor, constant: 12)
+        textTop.priority = .defaultHigh
+        let textBottom = textStack.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -12)
+        textBottom.priority = .defaultHigh
+
         NSLayoutConstraint.activate([
+            // Placard height floor: 72pt image + 12pt top + 12pt bottom.
+            heightAnchor.constraint(greaterThanOrEqualToConstant: 96),
+
             imageView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 12),
-            imageView.topAnchor.constraint(equalTo: topAnchor, constant: 12),
-            imageView.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -12),
             imageView.widthAnchor.constraint(equalToConstant: 72),
             imageView.heightAnchor.constraint(equalToConstant: 72),
+            imageView.centerYAnchor.constraint(equalTo: centerYAnchor),
 
             textStack.leadingAnchor.constraint(equalTo: imageView.trailingAnchor, constant: 12),
             textStack.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -14),
-            textStack.centerYAnchor.constraint(equalTo: imageView.centerYAnchor),
+            textStack.centerYAnchor.constraint(equalTo: centerYAnchor),
             textStack.topAnchor.constraint(greaterThanOrEqualTo: topAnchor, constant: 12),
             textStack.bottomAnchor.constraint(lessThanOrEqualTo: bottomAnchor, constant: -12),
+            textTop,
+            textBottom,
         ])
     }
 
@@ -590,6 +630,39 @@ private final class OERetroAchievementsPlacardView: NSVisualEffectView {
         }
         hideWorkItem = workItem
         DispatchQueue.main.asyncAfter(deadline: .now() + 5.0, execute: workItem)
+    }
+
+    /// Public placard variant for the RA "unknown emulator" warning, surfaced
+    /// when rcheevos sends a warning achievement (id >= 101000001). Auto-hides
+    /// like the boot placard. See #579 for why this replaces the chip overlay.
+    func showEmulatorUnrecognizedWarning() {
+        hideWorkItem?.cancel()
+        isHidden = false
+        imageView.image = NSImage(systemSymbolName: "exclamationmark.triangle.fill", accessibilityDescription: nil)
+        titleLabel.stringValue = NSLocalizedString(
+            "Emulator Awaiting Approval",
+            comment: "RetroAchievements unknown emulator placard title")
+        summaryLabel.stringValue = NSLocalizedString(
+            "Hardcore unlocks will save as Softcore until OpenEmu-Silicon is approved by RetroAchievements.",
+            comment: "RetroAchievements unknown emulator placard explanation")
+        modeLabel.stringValue = NSLocalizedString("Softcore enforced", comment: "RetroAchievements unknown emulator mode label")
+        modeLabel.textColor = .systemYellow
+
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.18
+            animator().alphaValue = 1
+        }
+
+        let workItem = DispatchWorkItem { [weak self] in
+            NSAnimationContext.runAnimationGroup { context in
+                context.duration = 0.25
+                self?.animator().alphaValue = 0
+            } completionHandler: {
+                self?.isHidden = true
+            }
+        }
+        hideWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + 6.0, execute: workItem)
     }
 
     private func sessionStatusTitle(_ status: String) -> String {

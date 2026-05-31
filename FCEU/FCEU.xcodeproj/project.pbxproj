@@ -277,6 +277,7 @@
 		C62301A61712264100576081 /* OpenEmuBase.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C6D120EF171130A200E868A8 /* OpenEmuBase.framework */; };
 		OE0FCEU0BUILDFILE000000001 /* rcheevos_build.c in Sources */ = {isa = PBXBuildFile; fileRef = OE0FCEU0FILEREF000000001 /* rcheevos_build.c */; settings = {COMPILER_FLAGS = "-DRC_NO_THREADS=1 -DRC_CLIENT_SUPPORTS_HASH=1"; }; };
 		OE0FCEU0BUILDFILE000000002 /* OERetroAchievementsTransport.m in Sources */ = {isa = PBXBuildFile; fileRef = OE0FCEU0FILEREF000000002 /* OERetroAchievementsTransport.m */; };
+		OE0FCEU0BUILDFILE000000003 /* OERetroAchievementsBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = OE0FCEU0FILEREF000000003 /* OERetroAchievementsBridge.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -681,6 +682,8 @@
 		D2F7E65807B2D6F200F64583 /* CoreData.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreData.framework; path = System/Library/Frameworks/CoreData.framework; sourceTree = SDKROOT; };
 		OE0FCEU0FILEREF000000001 /* rcheevos_build.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = rcheevos_build.c; path = ../Vendor/rcheevos/rcheevos_build.c; sourceTree = SOURCE_ROOT; };
 		OE0FCEU0FILEREF000000002 /* OERetroAchievementsTransport.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = OERetroAchievementsTransport.m; path = ../OpenEmuKit/Source/OERetroAchievementsTransport.m; sourceTree = SOURCE_ROOT; };
+		OE0FCEU0FILEREF000000003 /* OERetroAchievementsBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = OERetroAchievementsBridge.m; path = ../OpenEmuKit/Source/OERetroAchievementsBridge.m; sourceTree = SOURCE_ROOT; };
+		OE0FCEU0FILEREF000000004 /* OERetroAchievementsBridge.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = OERetroAchievementsBridge.h; path = ../OpenEmuKit/Source/OERetroAchievementsBridge.h; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -1307,6 +1310,7 @@
 				82EC40A30FD9EC5A0017FC19 /* FCEUGameCore.mm in Sources */,
 				OE0FCEU0BUILDFILE000000001 /* rcheevos_build.c in Sources */,
 				OE0FCEU0BUILDFILE000000002 /* OERetroAchievementsTransport.m in Sources */,
+				OE0FCEU0BUILDFILE000000003 /* OERetroAchievementsBridge.m in Sources */,
 				949BBB381A9EFF4A007B49CC /* asm.cpp in Sources */,
 				8F28FD5129FD3E7D008FC4A9 /* coolgirl.cpp in Sources */,
 				949BBB391A9EFF4A007B49CC /* cart.cpp in Sources */,

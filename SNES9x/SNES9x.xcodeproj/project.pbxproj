@@ -86,6 +86,7 @@
 		C6D120FB1711314D00E868A8 /* OpenEmuBase.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C6D120FA1711314D00E868A8 /* OpenEmuBase.framework */; };
 		OE0SNS90BUILDFILE000000001 /* rcheevos_build.c in Sources */ = {isa = PBXBuildFile; fileRef = OE0SNS90FILEREF000000001 /* rcheevos_build.c */; settings = {COMPILER_FLAGS = "-DRC_NO_THREADS=1 -DRC_CLIENT_SUPPORTS_HASH=1"; }; };
 		OE0SNS90BUILDFILE000000002 /* OERetroAchievementsTransport.m in Sources */ = {isa = PBXBuildFile; fileRef = OE0SNS90FILEREF000000002 /* OERetroAchievementsTransport.m */; };
+		OE0SNS90BUILDFILE000000003 /* OERetroAchievementsBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = OE0SNS90FILEREF000000003 /* OERetroAchievementsBridge.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -264,6 +265,8 @@
 		D2F7E65807B2D6F200F64583 /* CoreData.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreData.framework; path = System/Library/Frameworks/CoreData.framework; sourceTree = SDKROOT; };
 		OE0SNS90FILEREF000000001 /* rcheevos_build.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = rcheevos_build.c; path = ../Vendor/rcheevos/rcheevos_build.c; sourceTree = SOURCE_ROOT; };
 		OE0SNS90FILEREF000000002 /* OERetroAchievementsTransport.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = OERetroAchievementsTransport.m; path = ../OpenEmuKit/Source/OERetroAchievementsTransport.m; sourceTree = SOURCE_ROOT; };
+		OE0SNS90FILEREF000000003 /* OERetroAchievementsBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = OERetroAchievementsBridge.m; path = ../OpenEmuKit/Source/OERetroAchievementsBridge.m; sourceTree = SOURCE_ROOT; };
+		OE0SNS90FILEREF000000004 /* OERetroAchievementsBridge.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = OERetroAchievementsBridge.h; path = ../OpenEmuKit/Source/OERetroAchievementsBridge.h; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -643,6 +646,7 @@
 				826C1B1F0F420C2200FB9014 /* SNESGameCore.mm in Sources */,
 				OE0SNS90BUILDFILE000000001 /* rcheevos_build.c in Sources */,
 				OE0SNS90BUILDFILE000000002 /* OERetroAchievementsTransport.m in Sources */,
+				OE0SNS90BUILDFILE000000003 /* OERetroAchievementsBridge.m in Sources */,
 				94790D7A14C0C46900B30798 /* apu.cpp in Sources */,
 				8725B0B91E933E1B00F68CA5 /* sdsp.cpp in Sources */,
 				8725B0BB1E933E2B00F68CA5 /* smp.cpp in Sources */,

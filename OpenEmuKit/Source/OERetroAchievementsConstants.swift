@@ -126,3 +126,10 @@ public let OERetroAchievementsEventRankKey       = "eventRank"
 public let OERetroAchievementsEventTotalEntriesKey = "eventTotalEntries"
 public let OERetroAchievementsEventErrorMessageKey = "eventErrorMessage"
 public let OERetroAchievementsEventAPIKey        = "eventAPI"
+
+/// Posted inside the helper process by `OERetroAchievementsBridge` when rcheevos
+/// triggers a "warning achievement" (id >= 101000001), indicating RetroAchievements
+/// does not yet recognize OpenEmu-Silicon as a hardcore-compliant client. No payload.
+public extension Notification.Name {
+    static let OERetroAchievementsEmulatorUnrecognized = Notification.Name("OERetroAchievementsEmulatorUnrecognized")
+}

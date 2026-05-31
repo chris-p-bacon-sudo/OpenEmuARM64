@@ -305,7 +305,6 @@ private final class OERetroAchievementsChipLabel: NSView {
 }
 
 final class OERetroAchievementsNoticeView: NSStackView {
-    private let unknownEmulatorLabel = OERetroAchievementsChipLabel(labelWithString: "")
     private let offlineLabel = OERetroAchievementsChipLabel(labelWithString: "")
 
     override init(frame frameRect: NSRect) {
@@ -314,21 +313,17 @@ final class OERetroAchievementsNoticeView: NSStackView {
         alignment = .centerY
         spacing = 6
         isHidden = true
-        configureChip(unknownEmulatorLabel, color: .systemYellow)
         configureChip(offlineLabel, color: .systemRed)
-        unknownEmulatorLabel.isHidden = true
         offlineLabel.isHidden = true
-        addArrangedSubview(unknownEmulatorLabel)
         addArrangedSubview(offlineLabel)
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
-    func showUnknownEmulatorWarning() {
-        unknownEmulatorLabel.stringValue = NSLocalizedString("RA: Unknown emulator", comment: "RetroAchievements unknown emulator compact notice")
-        unknownEmulatorLabel.isHidden = false
-        updateVisibility()
-    }
+    // showUnknownEmulatorWarning() previously surfaced the "RA: Unknown
+    // emulator" chip here. The chip overlapped the video (see #579); the host
+    // now shows an auto-hiding placard via
+    // GameViewController.showRetroAchievementsUnknownEmulatorNotice() instead.
 
     func showOfflineWarning() {
         offlineLabel.stringValue = NSLocalizedString("RA: Offline", comment: "RetroAchievements offline compact notice")
@@ -342,7 +337,6 @@ final class OERetroAchievementsNoticeView: NSStackView {
     }
 
     func clear() {
-        unknownEmulatorLabel.isHidden = true
         offlineLabel.isHidden = true
         updateVisibility()
     }
@@ -360,7 +354,7 @@ final class OERetroAchievementsNoticeView: NSStackView {
     }
 
     private func updateVisibility() {
-        isHidden = unknownEmulatorLabel.isHidden && offlineLabel.isHidden
+        isHidden = offlineLabel.isHidden
     }
 }
 
