@@ -164,6 +164,25 @@ fi
 
 "$SCRIPT_DIR/verify-sentry-symbols.sh" "${SYMBOL_ARGS[@]}"
 
+# ── 1.6. Register release in Sentry ──────────────────────────────────────────
+# Sentry uses this marker to show "First seen in vX.Y.Z" on issues, link
+# suspect commits between the previous tag and HEAD, and track per-release
+# crash-free session rates. The release name must match options.releaseName
+# in SentryService.swift exactly: "openemu-silicon@<version>+<build>".
+step "Registering release marker in Sentry"
+
+SENTRY_RELEASE="openemu-silicon@${VERSION}+${PLIST_BUILD_VERSION}"
+sentry-cli releases new "$SENTRY_RELEASE" \
+  --org openemu-silicon --project openemu-silicon \
+  || echo "WARNING: sentry-cli releases new failed — Sentry crash tracking will work but release metadata won't show."
+sentry-cli releases set-commits "$SENTRY_RELEASE" --auto \
+  --org openemu-silicon --project openemu-silicon \
+  || echo "WARNING: sentry-cli releases set-commits failed — suspect commit linking won't work for this release."
+sentry-cli releases finalize "$SENTRY_RELEASE" \
+  --org openemu-silicon --project openemu-silicon \
+  || echo "WARNING: sentry-cli releases finalize failed."
+ok "Sentry release marker: $SENTRY_RELEASE"
+
 # ── 2. Notarize (re-sign + notarize + DMG + staple) ──────────────────────────
 step "2/5  Re-signing, notarizing, and creating DMG"
 

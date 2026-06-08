@@ -125,6 +125,8 @@ done
 
 If any cores show up as needing a release, report them to the user and ask whether to proceed with the app release now and handle the cores separately, or pause here. Do not block the app release — cores and app releases are independent — but make sure the user is aware.
 
+Also remind the user: if any of the currently-deployed cores haven't had a `package-core.sh` run since they were last released, their dSYMs may not be in Sentry. To backfill: `./Scripts/upload-core-dsyms.sh` (builds all cores in Release and uploads their dSYMs). Only worth doing if you suspect a gap — routine releases via `/release-core` handle this automatically.
+
 ## Step 5 — Build check
 
 Use Release config — Debug config has a pre-existing codesign issue with the test target.

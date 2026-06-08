@@ -137,16 +137,18 @@ didn't make it into the build. Most likely cause: `CURRENT_PROJECT_VERSION`
 in the `.xcodeproj` file overrides the plist literal (see the warning in
 Step 3). Fix it there, rebuild (Step 5), then re-run this step.
 
-**dSYM upload is non-fatal:** the script warns and continues if `sentry-cli`
-is absent or unauthenticated. But Sentry will produce unsymbolicated crash
-traces for this core until the dSYM is uploaded. Upload it manually if the
-automatic step fails:
+**dSYM upload is enforced:** `package-core.sh` calls `verify-sentry-symbols.sh`
+which will exit with an error if `sentry-cli` is absent or unauthenticated.
+If that check fails, fix the auth issue and re-run — do not skip it.
+Shipping a core without its dSYM means Sentry crash reports for that core
+will have unreadable stack traces until the dSYM is uploaded.
 
+To verify auth before starting: `sentry-cli info`
+To re-upload manually if needed:
 ```bash
-sentry-cli debug-files upload \
-  --org openemu-silicon \
-  --project openemu-silicon \
-  ~/Library/Developer/Xcode/DerivedData/OpenEmu-metal-*/Build/Products/Release/<CoreName>.oecoreplugin.dSYM
+./Scripts/verify-sentry-symbols.sh --upload --wait-for 120 \
+  --binary-root ~/Library/Developer/Xcode/DerivedData/OpenEmu-metal-*/Build/Products/Release/<CoreName>.oecoreplugin \
+  --dsym-root ~/Library/Developer/Xcode/DerivedData/OpenEmu-metal-*/Build/Products/Release
 ```
 
 Note the zip path (`/tmp/<CoreName>.oecoreplugin.zip`) and byte count printed
@@ -222,8 +224,7 @@ git commit -m "chore: bump <CoreName> to <NewVersion>, update appcast for <NEXT_
 
 <One sentence describing the fix being shipped.>
 
-Related to #<issue-number>
-Assisted by Claude (Sonnet 4.6)"
+Related to #<issue-number>"
 
 git push -u origin chore/<corename-lowercase>-<version>-release
 ```
