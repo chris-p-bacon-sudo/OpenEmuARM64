@@ -157,23 +157,17 @@ final class PrefCoresController: NSViewController {
         warning.textColor = .systemOrange
         warning.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
         warning.isHidden = true
-        warning.translatesAutoresizingMaskIntoConstraints = false
         self.warningBanner = warning
 
-        let container = NSView()
-        container.addSubview(scroll)
-        container.addSubview(warning)
-        scroll.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            warning.topAnchor.constraint(equalTo: container.topAnchor, constant: 6),
-            warning.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 8),
-            warning.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -8),
-            scroll.topAnchor.constraint(equalTo: warning.bottomAnchor, constant: 4),
-            scroll.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-            scroll.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-            scroll.bottomAnchor.constraint(equalTo: container.bottomAnchor),
-        ])
-        self.view = container
+        // NSStackView collapses hidden views to zero height automatically,
+        // so the table fills the full space when no collision banner is shown.
+        let stack = NSStackView(views: [warning, scroll])
+        stack.orientation = .vertical
+        stack.alignment = .leading
+        stack.distribution = .fill
+        stack.spacing = 4
+        stack.edgeInsets = NSEdgeInsets(top: 6, left: 8, bottom: 0, right: 8)
+        self.view = stack
     }
 
     override func viewDidLayout() {

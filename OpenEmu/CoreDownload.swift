@@ -175,7 +175,7 @@ extension CoreDownload {
             // Check for an existing valid signature before potentially overwriting it.
             let check = Process()
             check.executableURL = URL(fileURLWithPath: "/usr/bin/codesign")
-            check.arguments = ["--verify", "--deep", bundleURL.path]
+            check.arguments = ["--verify", bundleURL.path]
             check.standardOutput = FileHandle.nullDevice
             check.standardError = FileHandle.nullDevice
             if (try? check.run()) != nil {
