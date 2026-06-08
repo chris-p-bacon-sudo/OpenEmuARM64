@@ -438,6 +438,7 @@ final class GameControlsBar: NSWindow {
                 if hardcoreOn { cheatItem.isEnabled = false }
 
                 let submenu = NSMenu()
+                if hardcoreOn { submenu.autoenablesItems = false }
 
                 let toggleItem = NSMenuItem(title: NSLocalizedString("Enabled", comment: "Cheat submenu toggle"), action: #selector(OEGameDocument.toggleCheat(_:)), keyEquivalent: "")
                 toggleItem.representedObject = cheat

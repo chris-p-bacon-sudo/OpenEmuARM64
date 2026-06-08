@@ -1704,7 +1704,7 @@ final class OEGameDocument: NSDocument {
     @IBAction func editCheat(_ sender: AnyObject) {
         if isHardcoreModeEnabled { return }
         guard let cheat = sender.representedObject as? Cheat,
-              let index = cheats.firstIndex(where: { $0 === cheat })
+              cheats.contains(where: { $0 === cheat })
         else { return }
 
         let alert = OEAlert()
@@ -1723,14 +1723,19 @@ final class OEGameDocument: NSDocument {
         alert.inputLimit = 1000
 
         if alert.runModal() == .alertFirstButtonReturn {
-            let edited = Cheat(code: alert.stringValue, type: cheat.type, name: alert.otherStringValue)
+            let newCode = alert.stringValue.trimmingCharacters(in: .whitespaces)
+            guard !newCode.isEmpty else { return }
+
+            guard let currentIndex = cheats.firstIndex(where: { $0 === cheat }) else { return }
+
+            let edited = Cheat(code: newCode, type: cheat.type, name: alert.otherStringValue)
             edited.isEnabled = cheat.isEnabled
             edited.isUserAdded = true
 
             if cheat.isEnabled {
                 gameCoreManager?.setCheat(cheat.code, withType: cheat.type, enabled: false)
             }
-            cheats[index] = edited
+            cheats[currentIndex] = edited
             if edited.isEnabled {
                 setCheat(edited)
             }
