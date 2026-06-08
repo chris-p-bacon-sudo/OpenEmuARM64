@@ -111,6 +111,7 @@ final class PrefCoresController: NSViewController {
 
     private var tableView: NSTableView!
     private var scrollView: NSScrollView!
+    private var warningBanner: NSTextField!
 
     private var entries: [SystemEntry] = []
     private var coreListObservation: NSKeyValueObservation?
@@ -151,7 +152,28 @@ final class PrefCoresController: NSViewController {
         scroll.documentView = table
         self.tableView  = table
         self.scrollView = scroll
-        self.view = scroll
+
+        let warning = NSTextField(wrappingLabelWithString: "")
+        warning.textColor = .systemOrange
+        warning.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
+        warning.isHidden = true
+        warning.translatesAutoresizingMaskIntoConstraints = false
+        self.warningBanner = warning
+
+        let container = NSView()
+        container.addSubview(scroll)
+        container.addSubview(warning)
+        scroll.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            warning.topAnchor.constraint(equalTo: container.topAnchor, constant: 6),
+            warning.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 8),
+            warning.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -8),
+            scroll.topAnchor.constraint(equalTo: warning.bottomAnchor, constant: 4),
+            scroll.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            scroll.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            scroll.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+        ])
+        self.view = container
     }
 
     override func viewDidLayout() {
@@ -188,6 +210,14 @@ final class PrefCoresController: NSViewController {
     }
 
     private func applyEntries(retroArchCores allRetroArch: [RetroArchCore]) {
+        let collisions = OECorePlugin.collidingBundleIdentifiers
+        if collisions.isEmpty {
+            warningBanner.isHidden = true
+        } else {
+            let names = collisions.sorted().joined(separator: ", ")
+            warningBanner.stringValue = "⚠ Duplicate core bundles detected: \(names). Open ~/Library/Application Support/OpenEmu/Cores/ and remove the extra copy of each affected core."
+            warningBanner.isHidden = false
+        }
         var map: [String: (name: String, cores: [CoreDownload])] = [:]
         for core in CoreUpdater.shared.coreList {
             for sysID in core.systemIdentifiers {

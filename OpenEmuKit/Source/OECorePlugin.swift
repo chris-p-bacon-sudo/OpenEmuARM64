@@ -24,6 +24,7 @@
 
 import Foundation
 import OpenEmuBase
+internal import os.log
 
 public class OECorePlugin: OEPlugin {
     
@@ -37,7 +38,33 @@ public class OECorePlugin: OEPlugin {
     
     @objc public class var allPlugins: [OECorePlugin] {
         // swiftlint:disable:next force_cast
-        return plugins() as! [OECorePlugin]
+        let all = plugins() as! [OECorePlugin]
+        var seen: [String: OECorePlugin] = [:]
+        for plugin in all {
+            let id = plugin.bundleIdentifier
+            if let existing = seen[id] {
+                os_log(.error, "OECorePlugin: CFBundleIdentifier collision — '%{public}@' is claimed by both '%{public}@' and '%{public}@'. The first one found will be used; remove the duplicate from ~/Library/Application Support/OpenEmu/Cores/ to restore correct behaviour.",
+                       id, existing.url.lastPathComponent, plugin.url.lastPathComponent)
+            } else {
+                seen[id] = plugin
+            }
+        }
+        return all
+    }
+
+    /// Bundle identifiers for which more than one .oecoreplugin is present in the
+    /// Cores folder. Non-empty means at least one core has an ambiguous install that
+    /// may cause silent failures (black screen, wrong version loaded, etc.).
+    public class var collidingBundleIdentifiers: Set<String> {
+        var seen = Set<String>()
+        var collisions = Set<String>()
+        for plugin in allPlugins {
+            let id = plugin.bundleIdentifier
+            if !seen.insert(id).inserted {
+                collisions.insert(id)
+            }
+        }
+        return collisions
     }
     
     required init(bundleAtURL bundleURL: URL, name: String?) throws {

@@ -166,20 +166,37 @@ extension CoreDownload: URLSessionDownloadDelegate {
 
 extension CoreDownload {
 
-    /// Ad-hoc signs the plugin bundle so macOS 26+ will load it.
-    /// Downloaded cores arrive unsigned; the OS refuses to dlopen them even
-    /// with disable-library-validation unless they carry at least an ad-hoc signature.
+    /// Ensure the downloaded plugin has at least an ad-hoc signature so macOS 26+
+    /// will dlopen it. If the plugin already arrives signed (the standard case for
+    /// cores published from our release pipeline, which Developer-ID-signs every
+    /// build), the existing signature is preserved unchanged.
     private func adHocSign(_ bundleURL: URL, completion: @escaping () -> Void) {
         DispatchQueue.global(qos: .userInitiated).async {
-            let task = Process()
-            task.executableURL = URL(fileURLWithPath: "/usr/bin/codesign")
-            task.arguments = ["--force", "--sign", "-", bundleURL.path]
+            // Check for an existing valid signature before potentially overwriting it.
+            let check = Process()
+            check.executableURL = URL(fileURLWithPath: "/usr/bin/codesign")
+            check.arguments = ["--verify", "--deep", bundleURL.path]
+            check.standardOutput = FileHandle.nullDevice
+            check.standardError = FileHandle.nullDevice
+            if (try? check.run()) != nil {
+                check.waitUntilExit()
+                if check.terminationStatus == 0 {
+                    // Already has a valid signature — preserve it.
+                    DispatchQueue.main.async { completion() }
+                    return
+                }
+            }
+
+            // No valid signature found — apply ad-hoc so the OS will load the bundle.
+            let sign = Process()
+            sign.executableURL = URL(fileURLWithPath: "/usr/bin/codesign")
+            sign.arguments = ["--force", "--sign", "-", bundleURL.path]
 
             do {
-                try task.run()
-                task.waitUntilExit()
-                if task.terminationStatus != 0 {
-                    DLog("codesign exited with status \(task.terminationStatus) for \(bundleURL.lastPathComponent)")
+                try sign.run()
+                sign.waitUntilExit()
+                if sign.terminationStatus != 0 {
+                    DLog("codesign exited with status \(sign.terminationStatus) for \(bundleURL.lastPathComponent)")
                 }
             } catch {
                 DLog("Failed to run codesign for \(bundleURL.lastPathComponent): \(error)")
