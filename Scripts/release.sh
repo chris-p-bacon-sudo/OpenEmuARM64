@@ -181,7 +181,7 @@ sentry-cli releases set-commits "$SENTRY_RELEASE" --auto \
 sentry-cli releases finalize "$SENTRY_RELEASE" \
   --org openemu-silicon --project openemu-silicon \
   || echo "WARNING: sentry-cli releases finalize failed."
-ok "Sentry release marker: $SENTRY_RELEASE"
+echo "OK: Sentry release marker: $SENTRY_RELEASE"
 
 # ── 2. Notarize (re-sign + notarize + DMG + staple) ──────────────────────────
 step "2/5  Re-signing, notarizing, and creating DMG"
