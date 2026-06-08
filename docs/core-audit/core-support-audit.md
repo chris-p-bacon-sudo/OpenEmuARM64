@@ -1,6 +1,6 @@
 # Core Support Gap Analysis
 
-_Last updated: 2026-05-18_
+_Last updated: 2026-06-08_
 
 This document explains what OpenEmu-Silicon currently supports, what appears to be missing from upstream OpenEmu history, and what work should be prioritized next.
 
@@ -64,7 +64,7 @@ These systems have local native core coverage and appcast/update metadata:
 | Game Boy / Game Boy Color | Gambatte |
 | Game Boy Advance | mGBA |
 | GameCube / Wii | Dolphin |
-| Game Gear / Master System / SG-1000 / Genesis / Sega CD | Genesis Plus GX |
+| Game Gear / Master System / SG-1000 / Genesis / Sega CD/Mega CD | Genesis Plus GX |
 | Intellivision | Bliss |
 | MSX | blueMSX |
 | Neo Geo Pocket | Mednafen |
@@ -73,10 +73,11 @@ These systems have local native core coverage and appcast/update metadata:
 | Nintendo DS | DeSmuME |
 | Odyssey² | O2EM |
 | PC Engine / PC Engine CD / PC-FX | Mednafen |
-| PlayStation / Saturn / Virtual Boy / WonderSwan | Mednafen |
+| PlayStation / Virtual Boy / WonderSwan | Mednafen |
 | Pokémon Mini | PokeMini |
 | PSP | PPSSPP |
 | Sega 32X | Picodrive |
+| Saturn | Mednafen |
 | SNES | SNES9x, BSNES |
 | Supervision | Potator |
 | Vectrex | VecXGL |
@@ -193,21 +194,21 @@ Recommendation:
 
 ### 5. Metadata cleanup
 
-The audit found a few mismatches that should be fixed or intentionally documented:
+The audit found several mismatches. All have been resolved (as of 2026-06-08):
 
-| Mismatch | Recommendation |
+| Mismatch | Resolution |
 |---|---|
-| Mednafen plist registers Saturn, but `oecores.xml` does not advertise Saturn under Mednafen. | Decide whether Saturn should be exposed in the downloader and update metadata accordingly. |
-| `oecores.xml` advertises Picodrive for Sega CD, but Picodrive plist only registers 32X. | Remove Picodrive from Sega CD metadata unless Picodrive is actually intended to support Sega CD in this fork. |
-| Flycast appcast URL differs by `?v=2` between `oecores.xml` and plugin plist. | Normalize unless the cache-busting query is intentional and documented. |
-| `.gitmodules` has stale Reicast/Frodo/VirtualC64 entries. | Either remove stale entries or document why they remain. |
+| Mednafen plist registers Saturn, but `oecores.xml` did not advertise it. | Saturn added to Mednafen's system list and description in `oecores.xml`. |
+| `oecores.xml` advertised Picodrive for Sega CD, but Picodrive source plist only registers 32X. Sega CD is covered by Genesis Plus GX. | Removed Sega CD from Picodrive in `oecores.xml`; updated description to "Sega 32X emulator". |
+| Flycast appcast URL had `?v=2` in `oecores.xml` but not in the plugin plist. | Removed `?v=2` from `oecores.xml`; URL now matches the plugin plist and the actual filename. |
+| `.gitmodules` had stale entries for Reicast, Frodo-Core, and VirtualC64-Core with no corresponding directories. | All three entries removed from `.gitmodules`. |
 
 ## Suggested issues
 
 1. **Arcade — finish native MAME/UME-Core integration and updater path** — #500
 2. **Commodore 64 — investigate native VICE-Core integration** — #542; follow-up port issue #546
-3. **Core metadata — reconcile `oecores.xml`, appcasts, and core plists** — #543
-4. **System plugins — classify UI-visible systems without native cores** — #544
+3. **Core metadata — reconcile `oecores.xml`, appcasts, and core plists** — #543 _(resolved 2026-06-08)_
+4. **System plugins — classify UI-visible systems without native cores** — #544 _(resolved 2026-06-08)_
 
 ## Bottom line
 
