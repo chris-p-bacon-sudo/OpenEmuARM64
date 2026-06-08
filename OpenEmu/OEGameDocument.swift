@@ -1700,6 +1700,63 @@ final class OEGameDocument: NSDocument {
         if cheat.isUserAdded { saveUserCheats() }
     }
 
+    /// expects `sender.representedObject` to be a `Cheat` object
+    @IBAction func editCheat(_ sender: AnyObject) {
+        if isHardcoreModeEnabled { return }
+        guard let cheat = sender.representedObject as? Cheat,
+              cheats.contains(where: { $0 === cheat })
+        else { return }
+
+        let alert = OEAlert()
+
+        alert.otherInputLabelText = NSLocalizedString("Title:", comment: "")
+        alert.showsOtherInputField = true
+        alert.otherStringValue = cheat.name
+
+        alert.inputLabelText = NSLocalizedString("Code:", comment: "")
+        alert.showsInputField = true
+        alert.stringValue = cheat.code
+
+        alert.defaultButtonTitle = NSLocalizedString("Save Cheat", comment: "")
+        alert.alternateButtonTitle = NSLocalizedString("Cancel", comment: "")
+
+        alert.inputLimit = 1000
+
+        if alert.runModal() == .alertFirstButtonReturn {
+            let newCode = alert.stringValue.trimmingCharacters(in: .whitespaces)
+            guard !newCode.isEmpty else { return }
+
+            guard let currentIndex = cheats.firstIndex(where: { $0 === cheat }) else { return }
+
+            let edited = Cheat(code: newCode, type: cheat.type, name: alert.otherStringValue)
+            edited.isEnabled = cheat.isEnabled
+            edited.isUserAdded = true
+
+            if cheat.isEnabled {
+                gameCoreManager?.setCheat(cheat.code, withType: cheat.type, enabled: false)
+            }
+            cheats[currentIndex] = edited
+            if edited.isEnabled {
+                setCheat(edited)
+            }
+            saveUserCheats()
+        }
+    }
+
+    /// expects `sender.representedObject` to be a `Cheat` object
+    @IBAction func removeCheat(_ sender: AnyObject) {
+        if isHardcoreModeEnabled { return }
+        guard let cheat = sender.representedObject as? Cheat,
+              let index = cheats.firstIndex(where: { $0 === cheat })
+        else { return }
+
+        if cheat.isEnabled {
+            gameCoreManager?.setCheat(cheat.code, withType: cheat.type, enabled: false)
+        }
+        cheats.remove(at: index)
+        saveUserCheats()
+    }
+
     func setCheat(_ cheat: Cheat) {
         if isHardcoreModeEnabled { return }
         gameCoreManager?.setCheat(cheat.code, withType: cheat.type, enabled: cheat.isEnabled)

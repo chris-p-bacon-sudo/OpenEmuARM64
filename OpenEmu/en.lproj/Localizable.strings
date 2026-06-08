@@ -252,8 +252,12 @@
 	<string>This plugin is currently unsupported</string>
 	<key>Edit Game Controls…</key>
 	<string>Edit Game Controls…</string>
+	<key>Edit…</key>
+	<string>Edit…</string>
 	<key>Enable now</key>
 	<string>Enable now</string>
+	<key>Enabled</key>
+	<string>Enabled</string>
 	<key>Error!</key>
 	<string>Error!</string>
 	<key>Everything</key>
@@ -474,6 +478,8 @@ If not, hold down buttons ①+②.</string>
 	<string>Recently Added</string>
 	<key>Recovered Auto Save</key>
 	<string>Recovered Auto Save</string>
+	<key>Remove</key>
+	<string>Remove</string>
 	<key>Remove Collection</key>
 	<string>Remove Collection</string>
 	<key>Remove Game</key>
@@ -514,6 +520,8 @@ If not, hold down buttons ①+②.</string>
 	<string>Share…</string>
 	<key>Save As:</key>
 	<string>Save As:</string>
+	<key>Save Cheat</key>
+	<string>Save Cheat</string>
 	<key>Save Current Game…</key>
 	<string>Save Current Game…</string>
 	<key>Save Game</key>

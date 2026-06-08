@@ -433,12 +433,35 @@ final class GameControlsBar: NSWindow {
             menu.addItem(.separator())
 
             for cheat in cheats {
-                let item = NSMenuItem(title: cheat.name, action: #selector(OEGameDocument.toggleCheat(_:)), keyEquivalent: "")
-                item.representedObject = cheat
-                item.state = cheat.isEnabled ? .on : .off
-                if hardcoreOn { item.isEnabled = false }
+                let cheatItem = NSMenuItem(title: cheat.name, action: nil, keyEquivalent: "")
+                cheatItem.state = cheat.isEnabled ? .on : .off
+                if hardcoreOn { cheatItem.isEnabled = false }
 
-                menu.addItem(item)
+                let submenu = NSMenu()
+                if hardcoreOn { submenu.autoenablesItems = false }
+
+                let toggleItem = NSMenuItem(title: NSLocalizedString("Enabled", comment: "Cheat submenu toggle"), action: #selector(OEGameDocument.toggleCheat(_:)), keyEquivalent: "")
+                toggleItem.representedObject = cheat
+                toggleItem.state = cheat.isEnabled ? .on : .off
+                if hardcoreOn { toggleItem.isEnabled = false }
+                submenu.addItem(toggleItem)
+
+                if cheat.isUserAdded {
+                    submenu.addItem(.separator())
+
+                    let editItem = NSMenuItem(title: NSLocalizedString("Edit…", comment: "Cheat submenu edit"), action: #selector(OEGameDocument.editCheat(_:)), keyEquivalent: "")
+                    editItem.representedObject = cheat
+                    if hardcoreOn { editItem.isEnabled = false }
+                    submenu.addItem(editItem)
+
+                    let removeItem = NSMenuItem(title: NSLocalizedString("Remove", comment: "Cheat submenu remove"), action: #selector(OEGameDocument.removeCheat(_:)), keyEquivalent: "")
+                    removeItem.representedObject = cheat
+                    if hardcoreOn { removeItem.isEnabled = false }
+                    submenu.addItem(removeItem)
+                }
+
+                cheatItem.submenu = submenu
+                menu.addItem(cheatItem)
             }
         }
 

@@ -198,7 +198,7 @@
   <core
     id="org.openemu.Flycast"
     name="Flycast"
-    appcastURL="https://raw.githubusercontent.com/nickybmon/OpenEmu-Silicon/main/Appcasts/flycast.xml?v=2">
+    appcastURL="https://raw.githubusercontent.com/nickybmon/OpenEmu-Silicon/main/Appcasts/flycast.xml">
     <description>Dreamcast emulator</description>
     <systems>
       <system id="openemu.system.dc">Dreamcast</system>
@@ -221,9 +221,10 @@
     id="org.openemu.Mednafen"
     name="Mednafen"
     appcastURL="https://raw.githubusercontent.com/nickybmon/OpenEmu-Silicon/main/Appcasts/mednafen.xml">
-    <description>Multi-system emulator (PSX, PC Engine, Lynx, WonderSwan, Virtual Boy, Neo Geo Pocket, PC-FX)</description>
+    <description>Multi-system emulator (PSX, Saturn, PC Engine, Lynx, WonderSwan, Virtual Boy, Neo Geo Pocket, PC-FX)</description>
     <systems>
       <system id="openemu.system.psx">PlayStation</system>
+      <system id="openemu.system.saturn">Saturn</system>
       <system id="openemu.system.pce">PC Engine</system>
       <system id="openemu.system.pcecd">PC Engine CD</system>
       <system id="openemu.system.pcfx">PC-FX</system>
@@ -328,10 +329,9 @@
     id="org.openemu.Picodrive"
     name="Picodrive"
     appcastURL="https://raw.githubusercontent.com/nickybmon/OpenEmu-Silicon/main/Appcasts/picodrive.xml">
-    <description>Sega 32X and Sega CD emulator</description>
+    <description>Sega 32X emulator</description>
     <systems>
       <system id="openemu.system.32x">Sega 32X</system>
-      <system id="openemu.system.scd">Sega CD/Mega CD</system>
     </systems>
   </core>
 
