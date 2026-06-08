@@ -72,7 +72,8 @@ step "Verifying and uploading dSYM to Sentry"
   --upload \
   --wait-for 120 \
   --binary-root "$PLUGIN" \
-  --dsym-root "$DERIVED_DATA/Build/Products/Release"
+  --dsym-root "$DERIVED_DATA/Build/Products/Release" \
+  --allow-missing '\.so$'
 
 # ── 5. Zip with ditto ────────────────────────────────────────────────────────
 step "Creating zip"
