@@ -6,8 +6,8 @@ Only the latest release receives security fixes. Older versions are not patched.
 
 | Version | Supported |
 |---------|-----------|
-| 1.2.2 (latest) | ✅ |
-| < 1.2.2 | ❌ |
+| 1.2.3 (latest) | ✅ |
+| < 1.2.3 | ❌ |
 
 ## Reporting a Vulnerability
 

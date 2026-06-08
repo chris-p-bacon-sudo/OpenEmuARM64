@@ -5,7 +5,36 @@
     <link>https://github.com/nickybmon/OpenEmu-Silicon/releases</link>
     <description>Most recent changes with links to updates.</description>
     <language>en</language>
-                                                <item>
+                                                    <item>
+      <title>OpenEmu-Silicon 1.2.3</title>
+      <description>
+        <![CDATA[
+        <h2>OpenEmu-Silicon 1.2.3</h2>
+        <h3>What's New in 1.2.3</h3>
+        <ul>
+        <li>Cheats can now be edited and removed without leaving the game — tap the cheat menu in the controls bar to modify existing codes on the fly</li>
+        <li>RetroAchievements: Hardcore mode progress is now preserved across sessions, and achievements earned offline are queued and submitted automatically when connectivity is restored</li>
+        <li>The Preferences window now floats above the game so you can adjust settings without interrupting play</li>
+        </ul>
+        <h3>Bug Fixes</h3>
+        <ul>
+        <li>Fixed a freeze that could occur while scrolling or searching the game library</li>
+        <li>Fixed a RetroAchievements crash and state loss that could occur when switching between games (thanks @tao-bioinfo, #579)</li>
+        <li>Core updates installed through the in-app updater now correctly preserve Developer ID signatures — previously the updater would overwrite a properly-signed core with an ad-hoc signature; also added a warning when duplicate core bundles are detected in the cores folder</li>
+        </ul>
+        ]]>
+      </description>
+      <pubDate>Mon, 08 Jun 2026 14:51:42 +0000</pubDate>
+      <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
+      <enclosure
+        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/v1.2.3/OpenEmu-Silicon.dmg"
+        sparkle:version="19"
+        sparkle:shortVersionString="1.2.3"
+        sparkle:edSignature="040NIcv+O6EbrD/RIzW9+eIZmIxrQ7buNfj7ZAcaTPTWXwxvyhdJDwaY65SoY0Qy64DA0FhZydv4r+mdTV2kAw=="
+        length="49514834"
+        type="application/octet-stream"/>
+    </item>
+<item>
       <title>OpenEmu-Silicon 1.2.2</title>
       <description>
         <![CDATA[
