@@ -115,11 +115,6 @@ static ATR800GameCore *_currentCore;
 
 - (BOOL)loadFileAtPath:(NSString *)path error:(NSError **)error
 {
-    // Set the default palette (NTSC)
-    NSString *palettePath = [[[NSBundle bundleForClass:[self class]] resourcePath] stringByAppendingPathComponent:@"Default.act"];
-    strcpy(COLOURS_NTSC_external.filename, palettePath.fileSystemRepresentation);
-    COLOURS_NTSC_external.loaded = TRUE;
-
     Atari800_tv_mode = Atari800_TV_NTSC;
 
     /* It is necessary because of the CARTRIDGE_ColdStart (there must not be the
@@ -130,19 +125,28 @@ static ATR800GameCore *_currentCore;
 
     if([[self systemIdentifier] isEqualToString:@"openemu.system.5200"])
     {
+        // Set machine type before any palette/colour setup so libatari800
+        // initialises 5200 colour state correctly. The 8-bit Default.act
+        // palette is not appropriate for the 5200's GTIA output.
+        Atari800_SetMachineType(Atari800_MACHINE_5200);
+        MEMORY_ram_size = 16;
+
+        COLOURS_NTSC_external.loaded = FALSE;
+
         // Set 5200.rom BIOS path
         char biosFileName[2048];
         NSString *biosPath = [self biosDirectoryPath];
         strcpy(biosFileName, [[biosPath stringByAppendingPathComponent:@"5200.rom"] fileSystemRepresentation]);
 
         SYSROM_SetPath(biosFileName, 1, SYSROM_5200);
-
-        // Setup machine type
-        Atari800_SetMachineType(Atari800_MACHINE_5200);
-        MEMORY_ram_size = 16;
     }
     else if([[self systemIdentifier] isEqualToString:@"openemu.system.atari8bit"])
     {
+        // Custom NTSC palette for Atari 8-bit
+        NSString *palettePath = [[[NSBundle bundleForClass:[self class]] resourcePath] stringByAppendingPathComponent:@"Default.act"];
+        strcpy(COLOURS_NTSC_external.filename, palettePath.fileSystemRepresentation);
+        COLOURS_NTSC_external.loaded = TRUE;
+
         char basicFileName[2048], osbFileName[2048], xlFileName[2048];
         NSString *biosPath = [self biosDirectoryPath];
         strcpy(basicFileName, [[biosPath stringByAppendingPathComponent:@"ataribas.rom"] fileSystemRepresentation]);
