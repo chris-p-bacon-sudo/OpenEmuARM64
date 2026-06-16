@@ -234,12 +234,22 @@ final class OEDBImage: OEDBItem {
         }
     }
     
+    private var _cachedImageURL: URL?
+    private var _cachedImageURLRelativePath: String?
+
     var imageURL: URL? {
-        if let relativePath = relativePath {
-            return libraryDatabase.coverFolderURL.appendingPathComponent(relativePath, isDirectory: false)
-        } else {
+        guard let relativePath = relativePath else {
+            _cachedImageURL = nil
+            _cachedImageURLRelativePath = nil
             return nil
         }
+        if let cached = _cachedImageURL, _cachedImageURLRelativePath == relativePath {
+            return cached
+        }
+        let url = libraryDatabase.coverFolderURL.appendingPathComponent(relativePath, isDirectory: false)
+        _cachedImageURL = url
+        _cachedImageURLRelativePath = relativePath
+        return url
     }
     
     var sourceURL: URL? {
@@ -255,7 +265,23 @@ final class OEDBImage: OEDBItem {
         }
     }
     
+    private var _cachedIsLocalImageAvailable: Bool?
+    private var _cachedIsLocalImageAvailableRelativePath: String?
+
     var isLocalImageAvailable: Bool {
-        return (try? imageURL?.checkResourceIsReachable()) ?? false
+        let currentRelativePath = relativePath
+        if let cached = _cachedIsLocalImageAvailable,
+           _cachedIsLocalImageAvailableRelativePath == currentRelativePath {
+            return cached
+        }
+        let value = (try? imageURL?.checkResourceIsReachable()) ?? false
+        _cachedIsLocalImageAvailable = value
+        _cachedIsLocalImageAvailableRelativePath = currentRelativePath
+        return value
+    }
+
+    func invalidateLocalImageAvailabilityCache() {
+        _cachedIsLocalImageAvailable = nil
+        _cachedIsLocalImageAvailableRelativePath = nil
     }
 }
