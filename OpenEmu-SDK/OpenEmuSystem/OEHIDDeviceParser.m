@@ -604,7 +604,7 @@ typedef enum {
 
 - (void)dealloc
 {
-    if (_device != NULL) CFRelease(_device);
+    CFRelease(_device);
     if (_elements != NULL) CFRelease(_elements);
 }
 
@@ -626,8 +626,10 @@ typedef enum {
     // in on a low-memory system). Without a non-nil element list there's no
     // device to parse, and proceeding would leave _elements NULL — which would
     // then crash in dealloc on CFRelease(NULL). Bail out so the caller can skip.
-    if (_elements == NULL)
+    if (_elements == NULL) {
+        NSLog(@"OEHIDDeviceParser: IOHIDDeviceCopyMatchingElements returned NULL for device %p; skipping parse.", device);
         return nil;
+    }
 
     NSMutableDictionary<NSValue *, NSValue *> *elementTree = [NSMutableDictionary dictionary];
     for(id e in (__bridge NSArray *)_elements) {
