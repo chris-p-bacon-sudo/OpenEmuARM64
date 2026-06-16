@@ -604,8 +604,8 @@ typedef enum {
 
 - (void)dealloc
 {
-    CFRelease(_device);
-    CFRelease(_elements);
+    if (_device != NULL) CFRelease(_device);
+    if (_elements != NULL) CFRelease(_elements);
 }
 
 - (instancetype)init
@@ -620,6 +620,14 @@ typedef enum {
 
     _device = (IOHIDDeviceRef)CFRetain(device);
     _elements = IOHIDDeviceCopyMatchingElements(_device, NULL, 0);
+
+    // IOHIDDeviceCopyMatchingElements can return NULL under memory pressure or
+    // when the device is torn down by IOKit mid-call (e.g. a controller plugged
+    // in on a low-memory system). Without a non-nil element list there's no
+    // device to parse, and proceeding would leave _elements NULL — which would
+    // then crash in dealloc on CFRelease(NULL). Bail out so the caller can skip.
+    if (_elements == NULL)
+        return nil;
 
     NSMutableDictionary<NSValue *, NSValue *> *elementTree = [NSMutableDictionary dictionary];
     for(id e in (__bridge NSArray *)_elements) {
