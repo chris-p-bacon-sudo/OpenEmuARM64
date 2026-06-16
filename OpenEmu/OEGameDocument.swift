@@ -1661,6 +1661,7 @@ final class OEGameDocument: NSDocument {
 
         var presetCode = ""
         var presetName = ""
+        var presetEnable = false
 
         while true {
             let alert = OEAlert()
@@ -1680,6 +1681,7 @@ final class OEGameDocument: NSDocument {
 
             alert.showsSuppressionButton = true
             alert.suppressionLabelText = NSLocalizedString("Enable now", comment: "Cheats button label")
+            alert.suppressionButtonState = presetEnable
 
             alert.inputLimit = 1000
 
@@ -1701,6 +1703,7 @@ final class OEGameDocument: NSDocument {
                 case .alertFirstButtonReturn:
                     presetCode = code
                     presetName = name
+                    presetEnable = shouldEnable
                     continue
                 case .alertSecondButtonReturn:
                     break
