@@ -83,8 +83,13 @@
 	<key>OEFileSuffixes</key>
 	<array>
 		<string>atr</string>
+		<string>atx</string>
 		<string>bas</string>
+		<string>car</string>
+		<string>cas</string>
 		<string>com</string>
+		<string>dcm</string>
+		<string>pro</string>
 		<string>rom</string>
 		<string>xex</string>
 		<string>xfd</string>
