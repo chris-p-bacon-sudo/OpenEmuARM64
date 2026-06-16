@@ -1445,7 +1445,7 @@ static int32 VIP_VideoProcessingTime(void)
    if(object_group_id < 0)
    {
     object_group_id = 3;
-    time += 28896;
+    time += 28956;
    }
    const int start_index = object_group_id == 0 ? 1023 : (SPT[object_group_id - 1] & 1023);
    int i = SPT[object_group_id] & 1023;
@@ -1628,7 +1628,7 @@ v810_timestamp_t MDFN_FASTCALL VIP_Update(const v810_timestamp_t timestamp)
       GameFrameCounter = 0;
      }
 
-     if(!skip && InstantDisplayHack && !DrawingActive)
+     if(!skip && InstantDisplayHack)
      {
 	// Ugly kludge, fix in the future.
 	int32 save_DisplayRegion = DisplayRegion;
