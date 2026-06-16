@@ -1657,35 +1657,129 @@ final class OEGameDocument: NSDocument {
     
     @IBAction func addCheat(_ sender: Any?) {
         if isHardcoreModeEnabled { return }
-        let alert = OEAlert()
+        let format = Self.cheatFormat(for: systemPlugin.systemIdentifier)
 
-        alert.otherInputLabelText = NSLocalizedString("Title:", comment: "")
-        alert.showsOtherInputField = true
-        alert.otherInputPlaceholderText = NSLocalizedString("Cheat Description", comment: "")
-        
-        alert.inputLabelText = NSLocalizedString("Code:", comment: "")
-        alert.showsInputField = true
-        alert.inputPlaceholderText = NSLocalizedString("Join multi-line cheats with '+' e.g. 000-000+111-111", comment: "")
-        
-        alert.defaultButtonTitle = NSLocalizedString("Add Cheat", comment: "")
-        alert.alternateButtonTitle = NSLocalizedString("Cancel", comment: "")
-        
-        alert.showsSuppressionButton = true
-        alert.suppressionLabelText = NSLocalizedString("Enable now", comment: "Cheats button label")
-        
-        alert.inputLimit = 1000
-        
-        if alert.runModal() == .alertFirstButtonReturn {
-            let cheat = Cheat(code: alert.stringValue, type: "GameShark", name: alert.otherStringValue)
+        var presetCode = ""
+        var presetName = ""
+        var presetEnable = false
+
+        while true {
+            let alert = OEAlert()
+
+            alert.otherInputLabelText = NSLocalizedString("Title:", comment: "")
+            alert.showsOtherInputField = true
+            alert.otherInputPlaceholderText = NSLocalizedString("Cheat Description", comment: "")
+            alert.otherStringValue = presetName
+
+            alert.inputLabelText = NSLocalizedString("Code:", comment: "")
+            alert.showsInputField = true
+            alert.inputPlaceholderText = format.placeholder
+            alert.stringValue = presetCode
+
+            alert.defaultButtonTitle = NSLocalizedString("Add Cheat", comment: "")
+            alert.alternateButtonTitle = NSLocalizedString("Cancel", comment: "")
+
+            alert.showsSuppressionButton = true
+            alert.suppressionLabelText = NSLocalizedString("Enable now", comment: "Cheats button label")
+            alert.suppressionButtonState = presetEnable
+
+            alert.inputLimit = 1000
+
+            guard alert.runModal() == .alertFirstButtonReturn else { return }
+
+            let code = alert.stringValue
+            let name = alert.otherStringValue
+            let shouldEnable = alert.suppressionButtonState
+
+            if let validate = format.validator, !validate(code) {
+                let warn = OEAlert()
+                warn.messageText = NSLocalizedString("This code doesn't match a known cheat format for this system.", comment: "Add Cheat validation alert title")
+                warn.informativeText = format.validationHint
+                warn.defaultButtonTitle = NSLocalizedString("Edit", comment: "Add Cheat validation alert: return to the cheat dialog to fix the code")
+                warn.alternateButtonTitle = NSLocalizedString("Save Anyway", comment: "Add Cheat validation alert: save the unrecognized code as-is")
+                warn.otherButtonTitle = NSLocalizedString("Cancel", comment: "")
+
+                switch warn.runModal() {
+                case .alertFirstButtonReturn:
+                    presetCode = code
+                    presetName = name
+                    presetEnable = shouldEnable
+                    continue
+                case .alertSecondButtonReturn:
+                    break
+                default:
+                    return
+                }
+            }
+
+            let cheat = Cheat(code: code, type: "GameShark", name: name)
             cheat.isUserAdded = true
 
-            if alert.suppressionButtonState {
+            if shouldEnable {
                 cheat.isEnabled = true
                 setCheat(cheat)
             }
 
             cheats.append(cheat)
             saveUserCheats()
+            return
+        }
+    }
+
+    private struct CheatFormat {
+        let placeholder: String
+        let validationHint: String
+        let validator: ((String) -> Bool)?
+    }
+
+    private static let defaultCheatFormat = CheatFormat(
+        placeholder: NSLocalizedString("Join multi-line cheats with '+' e.g. 000-000+111-111", comment: "Add Cheat dialog placeholder for systems without a specific format hint"),
+        validationHint: "",
+        validator: nil
+    )
+
+    private static func cheatFormat(for systemIdentifier: String) -> CheatFormat {
+        switch systemIdentifier {
+        case "openemu.system.n64":
+            return CheatFormat(
+                placeholder: NSLocalizedString("12 hex chars per code, e.g. 8033B21D0064. Join multi-line cheats with '+'.", comment: "Add Cheat dialog placeholder, N64"),
+                validationHint: NSLocalizedString("N64 codes must be 12 hex characters (8-char address + 4-char value), e.g. 8033B21D0064. Longer 16-char GameShark Pro / Action Replay codes are not supported by the Mupen64Plus core.", comment: "Add Cheat validation hint, N64"),
+                validator: { code in
+                    let parts = code.replacingOccurrences(of: " ", with: "")
+                                    .replacingOccurrences(of: "\n", with: "")
+                                    .split(separator: "+")
+                    guard !parts.isEmpty else { return false }
+                    return parts.allSatisfy { p in
+                        p.count == 12 && p.allSatisfy { $0.isHexDigit }
+                    }
+                }
+            )
+        case "openemu.system.nes", "openemu.system.fds":
+            return CheatFormat(
+                placeholder: NSLocalizedString("Game Genie or raw hex (XXXX:YY). Join multi-line cheats with '+'.", comment: "Add Cheat dialog placeholder, NES"),
+                validationHint: "",
+                validator: nil
+            )
+        case "openemu.system.snes":
+            return CheatFormat(
+                placeholder: NSLocalizedString("Game Genie or PAR codes. Join multi-line cheats with '+'.", comment: "Add Cheat dialog placeholder, SNES"),
+                validationHint: "",
+                validator: nil
+            )
+        case "openemu.system.gb", "openemu.system.gba":
+            return CheatFormat(
+                placeholder: NSLocalizedString("GameShark (no dash) or Game Genie (with dash). Join multi-line cheats with '+'.", comment: "Add Cheat dialog placeholder, Game Boy / GBA"),
+                validationHint: "",
+                validator: nil
+            )
+        case "openemu.system.sg", "openemu.system.sms", "openemu.system.gg", "openemu.system.32x", "openemu.system.scd":
+            return CheatFormat(
+                placeholder: NSLocalizedString("Game Genie or Action Replay. Join multi-line cheats with '+'.", comment: "Add Cheat dialog placeholder, Sega"),
+                validationHint: "",
+                validator: nil
+            )
+        default:
+            return defaultCheatFormat
         }
     }
     

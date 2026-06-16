@@ -1257,6 +1257,218 @@ static void CopyFBColumnToTarget_HLI(void)
 }
 
 
+// =====================================================================
+// OpenEmu-Silicon local deviation from upstream Mednafen — see issue #439
+// and red-viper PR https://github.com/skyfloogle/red-viper/issues/27
+// (commit cc4cadbd). Upstream Mednafen never raises INT_TIME_ERR on VIP
+// render overrun and uses a content-independent DrawingCounter, so games
+// that busywait on TIME_ERR (Golf, others) render visibly too fast. The
+// helper below is ported from red-viper's videoProcessingTime() and the
+// GAMESTART block has been reshaped to set INT_TIME_ERR when a draw
+// overruns the game frame. World descriptors live in DRAM at byte
+// offset 0x1D800 (Mednafen mirrors the VIP's 512KB display RAM into a
+// 128KB array; 0x3D800 & 0x1FFFF == 0x1D800).
+// =====================================================================
+static int32 VIP_VideoProcessingTime(void)
+{
+ const uint32 WORLD_BASE = 0x1D800;
+ int32 time = 54688;
+ int object_group_id = 3;
+
+ for(int wrld = 31; wrld >= 0; wrld--)
+ {
+  const uint32 wbase = WORLD_BASE + wrld * 32;
+  const uint16 head = ne16_rbo_le<uint16>(DRAM, wbase + 0);
+
+  const bool w_end = (head >> 6) & 1;
+  const uint8 bgm = (head >> 12) & 3;
+  const uint8 on  = (head >> 14) & 3;
+
+  if(w_end)
+  {
+   time += 308;
+   break;
+  }
+
+  if(on == 0)
+  {
+   // dummy world
+   time += 561;
+   continue;
+  }
+
+  if(bgm != 3)
+  {
+   // background world
+   const uint16 raw_w  = ne16_rbo_le<uint16>(DRAM, wbase + 14);
+   const uint16 raw_h  = ne16_rbo_le<uint16>(DRAM, wbase + 16);
+   const int16  raw_gy = (int16)ne16_rbo_le<uint16>(DRAM, wbase + 6);
+   const uint16 raw_mx = ne16_rbo_le<uint16>(DRAM, wbase + 8);
+   const uint16 raw_mp_u = ne16_rbo_le<uint16>(DRAM, wbase + 10);
+   const uint16 raw_my_u = ne16_rbo_le<uint16>(DRAM, wbase + 12);
+   const uint16 param  = ne16_rbo_le<uint16>(DRAM, wbase + 18);
+
+   const int w = (raw_w & 0x1fff) + 1;
+   const int h = raw_h + 1;
+   const int gy = raw_gy;
+   const int mx = raw_mx & 0xfff;
+   // sign-extend 15-bit mp, 13-bit my (matches red-viper's <<1>>1 / <<3>>3)
+   const int mp = ((int16)(raw_mp_u << 1)) >> 1;
+   const int my = ((int16)(raw_my_u << 3)) >> 3;
+   const int abs_mp = mp < 0 ? -mp : mp;
+
+   if(gy > 0)
+    time += (gy < 28 ? gy : 28) * 5;
+
+   switch(bgm)
+   {
+    case 0:
+    {
+     // normal world
+     time += 880;
+     const int wstart = mx - abs_mp;
+     const int wend = mx + abs_mp + w + 1;
+     const int wtiles = (((wend + 7) & ~7) - (wstart & ~7)) >> 3;
+     const int offset = (gy - my) & 7;
+     for(int y = 0; y < 224; y += 8)
+     {
+      if(gy + h + 1 <= y) break;
+      if(y == 216) time -= 9;
+      if(gy >= y + 8)
+      {
+       time += 4 + (y != 216);
+       continue;
+      }
+
+      const bool start = gy >= y;
+      const bool end = gy + h + 1 <= y + 8;
+      time += start ? 12 : (end ? 13 : 16);
+      if(y == 0 && !start) time += 6 - 2 * !end;
+
+      int rows;
+      if(gy + h + 1 < y + 8 && !start)
+       rows = (gy + h + 1) & 7;
+      else
+      {
+       rows = y + 8 - gy;
+       if(rows > 8) rows = 8;
+      }
+      time += 2 * rows * wtiles;
+      const int tileloads = 1 + (
+       offset != 0 &&
+       (!start || gy < y + offset) &&
+       (!end || start || gy + h + 1 > y + offset)
+      );
+      time += tileloads * (91 + 2 * wtiles);
+     }
+     break;
+    }
+    case 1:
+    {
+     // h-bias world; param table is at 0x20000 in display RAM, which is
+     // offset 0 in Mednafen's mirrored DRAM array.
+     const uint32 params_base = (param * 2) & 0x1FFFF;
+     time += 880;
+     for(int y = 0; y < 224; y += 8)
+     {
+      if(gy + h + 1 <= y) break;
+      if(y == 216) time -= 9;
+      if(gy >= y + 8)
+      {
+       time += 4 + (y != 216);
+       continue;
+      }
+
+      const bool start = gy >= y;
+      const bool end = gy + h + 1 <= y + 8;
+      time += start ? 12 : (end ? 13 : 16);
+      if(y == 0 && !start) time += 6 - 2 * !end;
+
+      for(int yy = y; yy < y + 8; yy++)
+      {
+       if(yy < gy) continue;
+       if(!start && yy >= gy + h + 1) break;
+
+       const int hofstl = (int16)ne16_rbo_le<uint16>(DRAM, (params_base + ((yy - gy) * 4)) & 0x1FFFF);
+       const int hofstr = (int16)ne16_rbo_le<uint16>(DRAM, (params_base + ((yy - gy) * 4) + 2) & 0x1FFFF);
+
+       const int left = mx - mp - hofstl;
+       const int right = mx + mp + hofstr;
+       const int wstart = left < right ? left : right;
+       const int wend = (left > right ? left : right) + w + 1;
+       const int wtiles = (((wend + 7) & ~7) - (wstart & ~7)) >> 3;
+       time += 98 + 4 * wtiles;
+      }
+     }
+     break;
+    }
+    case 2:
+    {
+     // affine world
+     time += 908;
+     for(int y = 0; y < 224; y += 8)
+     {
+      if(gy + h + 1 <= y) break;
+      if(y == 216) time -= 12;
+      if(gy >= y + 8)
+      {
+       time += 5 + 2 * (y == 216);
+       continue;
+      }
+
+      const bool start = gy >= y;
+
+      time += start ? 13 : 14;
+
+      if(y == 0 && !start) time += 5;
+      if(y == 216 && gy + h + 1 > y + 8) time += 3;
+
+      int startrow = gy;
+      if(startrow < y) startrow = y;
+      else if(startrow > y + 8) startrow = y + 8;
+
+      int endrow = gy + h + 1;
+      if(endrow < y) endrow = y;
+      else if(endrow > y + 8) endrow = y + 8;
+
+      const int rows = endrow - startrow;
+      time += rows * (80 + 4 * (w + 1));
+     }
+     break;
+    }
+   }
+  }
+  else
+  {
+   // object world
+   time += 757;
+   if(object_group_id < 0)
+   {
+    object_group_id = 3;
+    time += 28956;
+   }
+   const int start_index = object_group_id == 0 ? 1023 : (SPT[object_group_id - 1] & 1023);
+   int i = SPT[object_group_id] & 1023;
+   do
+   {
+    // OAM entries are 8 bytes at 0x3E000 (Mednafen: 0x1E000); Y is low
+    // byte of JY at +4.
+    const uint32 obj_off = (0x1E004 + 8 * i) & 0x1FFFF;
+    const int y = ne16_rbo_le<uint8>(DRAM, obj_off);
+    if(y > 0xf0)        time += 27 + 43 + 5 + 2 * ((y + 8) & 0xff);
+    else if(y >= 0xe0)  time += 28;
+    else if(y > 0xd8)   time += 27 + 43 + 2 * (0xe0 - y);
+    else if((y & 7) == 0) time += 27 + 43 + 2 * 8;
+    else                time += 26 + 43 + 5 + 43 + 2 * 8;
+    i = (i - 1) & 1023;
+   } while(i != start_index);
+  }
+ }
+
+ return time;
+}
+
+
 v810_timestamp_t MDFN_FASTCALL VIP_Update(const v810_timestamp_t timestamp)
 {
  int32 clocks = timestamp - last_ts;
@@ -1394,12 +1606,23 @@ v810_timestamp_t MDFN_FASTCALL VIP_Update(const v810_timestamp_t timestamp)
 
       if(XPCTRL & XPCTRL_XP_EN)
       {
-       DisplayFB ^= 1;
+       if(DrawingActive)
+       {
+        // Previous frame's draw didn't finish in time — real hardware
+        // raises TIME_ERR and lets the in-progress draw run to
+        // completion; it does NOT restart drawing. (red-viper#27)
+        InterruptPending |= INT_TIME_ERR;
+        CheckIRQ();
+       }
+       else
+       {
+        DisplayFB ^= 1;
 
-       DrawingBlock = 0;
-       DrawingActive = true;
-       DrawingCounter = 1120 * 4;
-       DrawingFB = DisplayFB ^ 1;
+        DrawingBlock = 0;
+        DrawingActive = true;
+        DrawingCounter = VIP_VideoProcessingTime();
+        DrawingFB = DisplayFB ^ 1;
+       }
       }
 
       GameFrameCounter = 0;
