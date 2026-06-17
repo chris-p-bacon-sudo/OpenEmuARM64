@@ -564,12 +564,23 @@ final class OELibraryDatabase: NSObject {
         return result.standardized
     }
     
+    private var _cachedCoverFolderURL: URL?
+    private var _cachedCoverFolderBase: URL?
+    private let _coverFolderLock = NSLock()
+
     var coverFolderURL: URL {
-        let coverFolderURL = databaseFolderURL.appendingPathComponent("Artwork", isDirectory: true)
-        
+        let base = databaseFolderURL
+        _coverFolderLock.lock()
+        defer { _coverFolderLock.unlock() }
+        if let cached = _cachedCoverFolderURL, _cachedCoverFolderBase == base {
+            return cached
+        }
+        let coverFolderURL = base.appendingPathComponent("Artwork", isDirectory: true)
         try? FileManager.default.createDirectory(at: coverFolderURL, withIntermediateDirectories: true)
-        
-        return coverFolderURL.standardized
+        let standardized = coverFolderURL.standardized
+        _cachedCoverFolderURL = standardized
+        _cachedCoverFolderBase = base
+        return standardized
     }
     
     var importQueueURL: URL {
