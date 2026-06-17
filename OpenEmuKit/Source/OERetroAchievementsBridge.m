@@ -41,6 +41,7 @@ static const void *const kOERABridgeQueueKey = &kOERABridgeQueueKey;
     OERetroAchievementsMemoryReader             _memoryReader;
     uint32_t                                    _consoleID;
     NSString                                   *_romPath;
+    NSString                                   *_coreUserAgentClause;
 
     dispatch_queue_t                            _serialQueue;
     dispatch_queue_t                            _snapshotQueue;
@@ -65,6 +66,29 @@ static const void *const kOERABridgeQueueKey = &kOERABridgeQueueKey;
         _core            = core;
         _memoryReader    = reader;
         _consoleID       = consoleID;
+
+        // Capture the core's name + version now, while `core` is guaranteed
+        // alive. The network path runs later off a weak ref that can have
+        // niled out by request time. RetroAchievements wants the emulator core
+        // identified in the User-Agent, matching RetroArch's
+        // "<frontend>/<ver> (<os>) <core_name>/<core_version>" form — spaces in
+        // the core name become underscores so the clause stays a single token.
+        // Several cores (e.g. Gambatte, Nestopia) ship only CFBundleVersion,
+        // not CFBundleShortVersionString, so fall back to it — otherwise the
+        // version silently drops for those cores.
+        NSString *coreName    = core.pluginName;
+        NSBundle *coreBundle  = core.owner.bundle;
+        NSString *coreVersion = [coreBundle objectForInfoDictionaryKey:@"CFBundleShortVersionString"]
+                             ?: [coreBundle objectForInfoDictionaryKey:@"CFBundleVersion"];
+        if (coreName.length) {
+            NSString *safeName = [coreName stringByReplacingOccurrencesOfString:@" " withString:@"_"];
+            _coreUserAgentClause = coreVersion.length
+                ? [NSString stringWithFormat:@"%@/%@ ", safeName, coreVersion]
+                : [NSString stringWithFormat:@"%@ ", safeName];
+        } else {
+            _coreUserAgentClause = @"";
+        }
+
         _serialQueue     = dispatch_queue_create("com.openemu.ra-bridge.serial", DISPATCH_QUEUE_SERIAL);
         _snapshotQueue   = dispatch_queue_create("com.openemu.ra-bridge.snapshot", DISPATCH_QUEUE_SERIAL);
         // Tag _serialQueue so we can detect "already running on this bridge's
@@ -219,9 +243,9 @@ static void oe_ra_bridge_server_call(const rc_api_request_t *request,
     rc_client_get_user_agent_clause(_rcClient, rcClause, sizeof(rcClause));
     NSString *hostVersion = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleShortVersionString"] ?: @"unknown";
     NSOperatingSystemVersion osv = [[NSProcessInfo processInfo] operatingSystemVersion];
-    NSString *userAgent = [NSString stringWithFormat:@"OpenEmu-Silicon/%@ (macOS %ld.%ld.%ld) %s",
+    NSString *userAgent = [NSString stringWithFormat:@"OpenEmu-Silicon/%@ (macOS %ld.%ld.%ld) %@%s",
                             hostVersion, (long)osv.majorVersion, (long)osv.minorVersion,
-                            (long)osv.patchVersion, rcClause];
+                            (long)osv.patchVersion, _coreUserAgentClause ?: @"", rcClause];
     [req setValue:userAgent forHTTPHeaderField:@"User-Agent"];
 
     if (postBody) {
