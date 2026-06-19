@@ -59,9 +59,9 @@ final class HardcoreModePolicyTests: XCTestCase {
                        "RA spec: rewind must be blocked in hardcore.")
     }
 
-    func testHardcoreBlocksFastForward() {
-        XCTAssertFalse(HardcoreModePolicy.allows(.fastForward, hardcoreEnabled: true),
-                       "RA spec: fast-forward must be blocked in hardcore.")
+    func testHardcoreAllowsFastForward() {
+        XCTAssertTrue(HardcoreModePolicy.allows(.fastForward, hardcoreEnabled: true),
+                      "RA spec: fast-forward is allowed in hardcore — only slowdown and frame advance are restricted.")
     }
 
     func testHardcoreBlocksFrameStep() {

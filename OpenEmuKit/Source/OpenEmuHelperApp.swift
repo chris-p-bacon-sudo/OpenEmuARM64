@@ -970,7 +970,7 @@ extension OSLog {
     }
     
     public func fastForwardGameplay(_ enable: Bool) {
-        if _hardcoreEnabled { return }
+        if !HardcoreModePolicy.allows(.fastForward, hardcoreEnabled: _hardcoreEnabled) { return }
         // Required so that _videoLayer.nextDrawable() vends frames faster than the display refresh rate
         // Fixes: https://github.com/OpenEmu/OpenEmu/issues/4780
         _videoLayer.displaySyncEnabled = !enable
