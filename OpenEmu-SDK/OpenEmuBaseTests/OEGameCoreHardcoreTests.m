@@ -96,7 +96,7 @@
 
 #pragma mark - fastForward:
 
-- (void)testFastForwardBlockedWhenHardcoreEnabled
+- (void)testFastForwardAllowedWhenHardcoreEnabled
 {
     OEGameCore *core = [[OEGameCore alloc] init];
     core.rate = 1.0f;
@@ -104,8 +104,8 @@
 
     [core fastForward:YES];
 
-    XCTAssertEqualWithAccuracy(core.rate, 1.0f, 0.0001f,
-                               @"fastForward: must be a no-op when hardcoreEnabled is YES — the rate must not change.");
+    XCTAssertEqualWithAccuracy(core.rate, 5.0f, 0.0001f,
+                               @"fastForward: must speed up even when hardcoreEnabled is YES — RA's hardcore spec permits fast-forward.");
 }
 
 - (void)testFastForwardAllowedWhenHardcoreDisabled
@@ -120,7 +120,7 @@
                          @"fastForward: must increase rate when hardcoreEnabled is NO (sanity check that the gate is the only thing blocking).");
 }
 
-- (void)testFastForwardAtSpeedBlockedWhenHardcoreEnabled
+- (void)testFastForwardAtSpeedAllowedWhenHardcoreEnabled
 {
     OEGameCore *core = [[OEGameCore alloc] init];
     core.rate = 1.0f;
@@ -128,8 +128,8 @@
 
     [core fastForwardAtSpeed:4.0f];
 
-    XCTAssertEqualWithAccuracy(core.rate, 1.0f, 0.0001f,
-                               @"fastForwardAtSpeed: must be a no-op when hardcoreEnabled is YES — latent analog bindings must not bypass hardcore.");
+    XCTAssertEqualWithAccuracy(core.rate, 4.0f, 0.0001f,
+                               @"fastForwardAtSpeed: must set the requested rate even when hardcoreEnabled is YES — analog fast-forward is permitted in hardcore.");
 }
 
 - (void)testFastForwardAtSpeedAllowedWhenHardcoreDisabled
@@ -296,7 +296,7 @@
                    @"setHardcoreEnabled: must clear pending frame-step immediately.");
 }
 
-- (void)testEnablingHardcoreClearsActiveFastForwardRate
+- (void)testEnablingHardcorePreservesActiveFastForwardRate
 {
     OEGameCore *core = [[OEGameCore alloc] init];
     core.hardcoreEnabled = NO;
@@ -306,8 +306,8 @@
 
     core.hardcoreEnabled = YES;
 
-    XCTAssertEqualWithAccuracy(core.rate, 1.0f, 0.0001f,
-                               @"setHardcoreEnabled: must return active fast-forward to normal speed immediately.");
+    XCTAssertEqualWithAccuracy(core.rate, 4.0f, 0.0001f,
+                               @"setHardcoreEnabled: must preserve an active fast-forward rate — fast-forward is permitted in hardcore.");
 }
 
 - (void)testEnablingHardcoreClearsActiveSlowMotionRate
@@ -324,7 +324,7 @@
                                @"setHardcoreEnabled: must return active slow motion to normal speed immediately.");
 }
 
-- (void)testEnablingHardcoreClearsPausedFastForwardResumeRate
+- (void)testEnablingHardcorePreservesPausedFastForwardResumeRate
 {
     OEGameCore *core = [[OEGameCore alloc] init];
     core.hardcoreEnabled = NO;
@@ -336,8 +336,8 @@
     core.hardcoreEnabled = YES;
     [core setPauseEmulation:NO];
 
-    XCTAssertEqualWithAccuracy(core.rate, 1.0f, 0.0001f,
-                               @"setHardcoreEnabled: must clear paused fast-forward resume rate before unpausing.");
+    XCTAssertEqualWithAccuracy(core.rate, 4.0f, 0.0001f,
+                               @"setHardcoreEnabled: must preserve the paused fast-forward resume rate — fast-forward is permitted in hardcore.");
 }
 
 - (void)testToggleReEnablesAffordances
