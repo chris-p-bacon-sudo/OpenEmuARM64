@@ -15269,7 +15269,10 @@
 					MACOSX,
 					_DARWIN_C_SOURCE,
 				);
-				HEADER_SEARCH_PATHS = $SRCROOT/dolphin/Externals/miniupnpc/miniupnp/miniupnpc/include;
+				HEADER_SEARCH_PATHS = (
+					"$SRCROOT/dolphin/Externals/miniupnpc/miniupnp/miniupnpc/include",
+					"$SRCROOT/Compatibility/miniunpnpc",
+				);
 				INSTALL_PATH = "";
 				LIBRARY_STYLE = STATIC;
 				OTHER_CFLAGS = (
@@ -15358,7 +15361,10 @@
 					MACOSX,
 					_DARWIN_C_SOURCE,
 				);
-				HEADER_SEARCH_PATHS = $SRCROOT/dolphin/Externals/miniupnpc/miniupnp/miniupnpc/include;
+				HEADER_SEARCH_PATHS = (
+					"$SRCROOT/dolphin/Externals/miniupnpc/miniupnp/miniupnpc/include",
+					"$SRCROOT/Compatibility/miniunpnpc",
+				);
 				INSTALL_PATH = "";
 				LIBRARY_STYLE = STATIC;
 				OTHER_CFLAGS = (
@@ -16176,6 +16182,10 @@
 		EE98BE2324B8F60B00FFFDD7 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"ZSTD_DISABLE_ASM=1",
+				);
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				EXECUTABLE_PREFIX = lib;
 				EXECUTABLE_SUFFIX = .a;
@@ -16216,6 +16226,10 @@
 		EE98BE2424B8F60B00FFFDD7 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"ZSTD_DISABLE_ASM=1",
+				);
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				EXECUTABLE_PREFIX = lib;
 				EXECUTABLE_SUFFIX = .a;

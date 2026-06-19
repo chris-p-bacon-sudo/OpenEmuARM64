@@ -1,0 +1,34 @@
+---
+Checks: "-*,\
+boost-*,\
+bugprone-*,\
+-bugprone-easily-swappable-parameters,\
+-bugprone-narrowing-conversions,\
+-bugprone-signed-char-misuse,\
+-bugprone-switch-missing-default-case,\
+clang-analyzer-*,\
+-clang-analyzer-core.NullDereference,\
+-clang-analyzer-deadcode.DeadStores,\
+-clang-analyzer-optin.portability.UnixAPI,\
+-clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling,\
+-clang-analyzer-security.insecureAPI.strcpy,\
+-clang-analyzer-unix.Malloc,\
+misc-*,\
+-misc-no-recursion,\
+-misc-include-cleaner,\
+modernize-*,\
+-modernize-macro-to-enum,\
+performance-*,\
+-performance-no-int-to-ptr,\
+-performance-type-promotion-in-math-fn,\
+portability-*,\
+readability-*,\
+-readability-braces-around-statements,\
+-readability-else-after-return,\
+-readability-identifier-length,\
+-readability-function-cognitive-complexity,\
+-readability-isolate-declaration,\
+-readability-magic-numbers,\
+"
+#WarningsAsErrors: "*"
+...

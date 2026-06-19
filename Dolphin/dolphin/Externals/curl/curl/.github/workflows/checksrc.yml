@@ -1,0 +1,159 @@
+# Copyright (C) Daniel Stenberg, <daniel@haxx.se>, et al.
+#
+# SPDX-License-Identifier: curl
+
+# This workflow contains checks at the source code level only.
+
+name: 'Source'
+
+'on':
+  push:
+    branches:
+      - master
+      - '*/ci'
+    paths-ignore:
+      - '**/*.md'
+      - '.circleci/**'
+      - 'appveyor.*'
+      - 'Dockerfile'
+      - 'plan9/**'
+      - 'tests/data/**'
+      - 'winbuild/**'
+  pull_request:
+    branches:
+      - master
+    paths-ignore:
+      - '**/*.md'
+      - '.circleci/**'
+      - 'appveyor.*'
+      - 'Dockerfile'
+      - 'plan9/**'
+      - 'tests/data/**'
+      - 'winbuild/**'
+
+permissions: {}
+
+jobs:
+  checksrc:
+    name: 'checksrc'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+        with:
+          persist-credentials: false
+
+      - name: 'check'
+        run: scripts/checksrc-all.pl
+
+  codespell-cmakelint-pytype-ruff:
+    name: 'codespell, cmakelint, pytype, ruff'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+        with:
+          persist-credentials: false
+
+      - name: 'install'
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          sudo rm -f /etc/apt/sources.list.d/microsoft-prod.list
+          sudo apt-get -o Dpkg::Use-Pty=0 update
+          sudo rm -f /var/lib/man-db/auto-update
+          sudo apt-get -o Dpkg::Use-Pty=0 install \
+            codespell python3-pip python3-networkx python3-pydot python3-yaml \
+            python3-toml python3-markupsafe python3-jinja2 python3-tabulate \
+            python3-typing-extensions python3-libcst python3-impacket \
+            python3-websockets python3-pytest python3-filelock python3-pytest-xdist
+          python3 -m pip install --break-system-packages cmakelang==0.6.13 pytype==2024.10.11 ruff==0.11.9
+
+      - name: 'spellcheck'
+        run: |
+          codespell \
+            --skip scripts/mk-ca-bundle.pl \
+            --skip src/tool_hugehelp.c \
+            --skip scripts/wcurl \
+            -I .github/scripts/codespell-ignore.txt \
+            CMake include m4 scripts src lib
+
+      - name: 'cmakelint'
+        run: scripts/cmakelint.sh
+
+      - name: 'pytype'
+        run: find . -name '*.py' -exec pytype -j auto -k {} +
+
+      - name: 'ruff'
+        run: scripts/pythonlint.sh
+
+  reuse:
+    name: 'REUSE'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+        with:
+          persist-credentials: false
+
+      - name: 'check'
+        uses: fsfe/reuse-action@bb774aa972c2a89ff34781233d275075cbddf542 # v5
+
+  complexity:
+    name: 'complexity'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+        with:
+          persist-credentials: false
+
+      - name: 'install pmccabe'
+        run: |
+          sudo rm -f /etc/apt/sources.list.d/microsoft-prod.list
+          sudo apt-get -o Dpkg::Use-Pty=0 update
+          sudo rm -f /var/lib/man-db/auto-update
+          sudo apt-get -o Dpkg::Use-Pty=0 install \
+            pmccabe
+
+      - name: 'check scores'
+        run: ./scripts/top-complexity
+
+  miscchecks:
+    name: 'misc checks'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: 'install prereqs'
+        run: /home/linuxbrew/.linuxbrew/bin/brew install shellcheck zizmor
+
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+        with:
+          persist-credentials: false
+
+      - name: 'zizmor GHA'
+        run: |
+          eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+          zizmor --pedantic .github/workflows/*.yml
+
+      - name: 'shellcheck CI'
+        run: |
+          eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+          shellcheck --version
+          .github/scripts/shellcheck-ci.sh
+
+      - name: 'shellcheck'
+        run: |
+          eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+          shellcheck --version
+          .github/scripts/shellcheck.sh
+
+      - name: 'spacecheck'
+        run: .github/scripts/spacecheck.pl
+
+      - name: 'yamlcheck'
+        run: .github/scripts/yamlcheck.sh
+
+      # we allow some extra in source code
+      - name: 'badwords'
+        run: |
+          # shellcheck disable=SC2046
+          grep -Ev '(\\bwill| url | dir )' .github/scripts/badwords.txt | \
+          .github/scripts/badwords.pl $(git ls-files -- src lib include)

@@ -6,6 +6,20 @@ on:
     branches: [main]
 
 jobs:
+  core-sources:
+    # Fast guard (no Xcode): catches a flattened core submodule that was
+    # committed without its vendored upstream source — the regression that
+    # silently broke the Dolphin build for months because CI never compiled it.
+    # Runs on every PR; it takes seconds and needs no build toolchain.
+    name: Core sources present
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check vendored core externals are populated
+        run: ./Scripts/check-core-sources.sh
+
   build:
     name: Build (arm64)
     runs-on: macos-latest

@@ -1,0 +1,553 @@
+# Copyright (C) Daniel Stenberg, <daniel@haxx.se>, et al.
+#
+# SPDX-License-Identifier: curl
+
+name: 'Linux HTTP/3'
+
+'on':
+  push:
+    branches:
+      - master
+      - '*/ci'
+    paths-ignore:
+      - '**/*.md'
+      - '.circleci/**'
+      - 'appveyor.*'
+      - 'Dockerfile'
+      - 'packages/**'
+      - 'plan9/**'
+      - 'projects/**'
+      - 'winbuild/**'
+  pull_request:
+    branches:
+      - master
+    paths-ignore:
+      - '**/*.md'
+      - '.circleci/**'
+      - 'appveyor.*'
+      - 'Dockerfile'
+      - 'packages/**'
+      - 'plan9/**'
+      - 'projects/**'
+      - 'winbuild/**'
+
+concurrency:
+  # Hardcoded workflow filename as workflow name above is just Linux again
+  group: http3-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
+permissions: {}
+
+env:
+  MAKEFLAGS: -j 5
+  CURL_CI: github
+  # handled in renovate.json
+  OPENSSL_VERSION: 3.5.1
+  # handled in renovate.json
+  QUICTLS_VERSION: 3.3.0
+  # renovate: datasource=github-tags depName=gnutls/gnutls versioning=semver registryUrl=https://github.com
+  GNUTLS_VERSION: 3.8.10
+  # renovate: datasource=github-tags depName=wolfSSL/wolfssl versioning=semver extractVersion=^v?(?<version>.+)-stable$ registryUrl=https://github.com
+  WOLFSSL_VERSION: 5.8.0
+  # renovate: datasource=github-tags depName=ngtcp2/nghttp3 versioning=semver registryUrl=https://github.com
+  NGHTTP3_VERSION: 1.10.1
+  # renovate: datasource=github-tags depName=ngtcp2/ngtcp2 versioning=semver registryUrl=https://github.com
+  NGTCP2_VERSION: 1.13.0
+  # renovate: datasource=github-tags depName=nghttp2/nghttp2 versioning=semver registryUrl=https://github.com
+  NGHTTP2_VERSION: 1.66.0
+  # renovate: datasource=github-tags depName=cloudflare/quiche versioning=semver registryUrl=https://github.com
+  QUICHE_VERSION: 0.24.4
+
+jobs:
+  build-cache:
+    name: 'Build caches'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 'cache openssl'
+        uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # v4
+        id: cache-openssl-http3
+        env:
+          cache-name: cache-openssl-http3
+        with:
+          path: ~/openssl/build
+          key: ${{ runner.os }}-http3-build-${{ env.cache-name }}-${{ env.OPENSSL_VERSION }}
+
+      - name: 'cache quictls'
+        uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # v4
+        id: cache-quictls-no-deprecated
+        env:
+          cache-name: cache-quictls-no-deprecated
+        with:
+          path: ~/quictls/build
+          key: ${{ runner.os }}-http3-build-${{ env.cache-name }}-${{ env.QUICTLS_VERSION }}-quic1
+
+      - name: 'cache gnutls'
+        uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # v4
+        id: cache-gnutls
+        env:
+          cache-name: cache-gnutls
+        with:
+          path: ~/gnutls/build
+          key: ${{ runner.os }}-http3-build-${{ env.cache-name }}-${{ env.GNUTLS_VERSION }}
+
+      - name: 'cache wolfssl'
+        uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # v4
+        id: cache-wolfssl
+        env:
+          cache-name: cache-wolfssl
+        with:
+          path: ~/wolfssl/build
+          key: ${{ runner.os }}-http3-build-${{ env.cache-name }}-${{ env.WOLFSSL_VERSION }}
+
+      - name: 'cache nghttp3'
+        uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # v4
+        id: cache-nghttp3
+        env:
+          cache-name: cache-nghttp3
+        with:
+          path: ~/nghttp3/build
+          key: ${{ runner.os }}-http3-build-${{ env.cache-name }}-${{ env.NGHTTP3_VERSION }}
+
+      - name: 'cache ngtcp2'
+        uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # v4
+        id: cache-ngtcp2
+        env:
+          cache-name: cache-ngtcp2
+        with:
+          path: ~/ngtcp2/build
+          key: ${{ runner.os }}-http3-build-${{ env.cache-name }}-${{ env.NGTCP2_VERSION }}-${{ env.OPENSSL_VERSION }}-${{ env.QUICTLS_VERSION }}-${{ env.GNUTLS_VERSION }}-${{ env.WOLFSSL_VERSION }}
+
+      - name: 'cache nghttp2'
+        uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # v4
+        id: cache-nghttp2
+        env:
+          cache-name: cache-nghttp2
+        with:
+          path: ~/nghttp2/build
+          key: ${{ runner.os }}-http3-build-${{ env.cache-name }}-${{ env.NGHTTP2_VERSION }}-${{ env.QUICTLS_VERSION }}-${{ env.NGTCP2_VERSION }}-${{ env.NGHTTP3_VERSION }}
+
+      - id: settings
+        if: >-
+          ${{ steps.cache-openssl-http3.outputs.cache-hit != 'true' ||
+              steps.cache-quictls-no-deprecated.outputs.cache-hit != 'true' ||
+              steps.cache-gnutls.outputs.cache-hit != 'true' ||
+              steps.cache-wolfssl.outputs.cache-hit != 'true' ||
+              steps.cache-nghttp3.outputs.cache-hit != 'true' ||
+              steps.cache-ngtcp2.outputs.cache-hit != 'true' ||
+              steps.cache-nghttp2.outputs.cache-hit != 'true' }}
+
+        run: echo 'needs-build=true' >> "$GITHUB_OUTPUT"
+
+      - name: 'install build prereqs'
+        if: ${{ steps.settings.outputs.needs-build == 'true' }}
+        run: |
+          sudo rm -f /etc/apt/sources.list.d/microsoft-prod.list
+          sudo apt-get -o Dpkg::Use-Pty=0 update
+          sudo rm -f /var/lib/man-db/auto-update
+          sudo apt-get -o Dpkg::Use-Pty=0 install \
+            libtool autoconf automake pkgconf stunnel4 \
+            libpsl-dev libbrotli-dev libzstd-dev zlib1g-dev libev-dev libc-ares-dev \
+            nettle-dev libp11-kit-dev libtspi-dev libunistring-dev guile-2.2-dev libtasn1-bin \
+            libtasn1-6-dev libidn2-0-dev gawk gperf libtss2-dev dns-root-data bison gtk-doc-tools \
+            texinfo texlive texlive-extra-utils autopoint libev-dev \
+            apache2 apache2-dev libnghttp2-dev
+          echo 'CC=gcc-12' >> "$GITHUB_ENV"
+          echo 'CXX=g++-12' >> "$GITHUB_ENV"
+
+      - name: 'build openssl'
+        if: ${{ steps.cache-openssl-http3.outputs.cache-hit != 'true' }}
+        run: |
+          cd ~
+          git clone --quiet --depth=1 -b "openssl-${OPENSSL_VERSION}" https://github.com/openssl/openssl
+          cd openssl
+          ./config --prefix="$PWD"/build --libdir=lib no-makedepend no-apps no-docs no-tests
+          make
+          make -j1 install_sw
+
+      - name: 'build quictls'
+        if: ${{ steps.cache-quictls-no-deprecated.outputs.cache-hit != 'true' }}
+        run: |
+          cd ~
+          git clone --quiet --depth=1 -b "openssl-${QUICTLS_VERSION}-quic1" https://github.com/quictls/openssl quictls
+          cd quictls
+          ./config no-deprecated --prefix="$PWD"/build --libdir=lib no-makedepend no-apps no-docs no-tests
+          make
+          make -j1 install_sw
+
+      - name: 'build gnutls'
+        if: ${{ steps.cache-gnutls.outputs.cache-hit != 'true' }}
+        run: |
+          cd ~
+          git clone --quiet --depth=1 -b "${GNUTLS_VERSION}" https://github.com/gnutls/gnutls.git
+          cd gnutls
+          ./bootstrap
+          ./configure --disable-dependency-tracking --prefix="$PWD"/build \
+            LDFLAGS="-Wl,-rpath,$PWD/build/lib -L$PWD/build/lib" \
+            --with-included-libtasn1 --with-included-unistring \
+            --disable-guile --disable-doc --disable-tests --disable-tools
+          make
+          make install
+
+      - name: 'build wolfssl'
+        if: ${{ steps.cache-wolfssl.outputs.cache-hit != 'true' }}
+        run: |
+          cd ~
+          git clone --quiet --depth=1 -b "v${WOLFSSL_VERSION}-stable" https://github.com/wolfSSL/wolfssl.git
+          cd wolfssl
+          ./autogen.sh
+          ./configure --disable-dependency-tracking --enable-all --enable-quic \
+            --disable-benchmark --disable-crypttests --disable-examples --prefix="$PWD"/build
+          make
+          make install
+
+      - name: 'build nghttp3'
+        if: ${{ steps.cache-nghttp3.outputs.cache-hit != 'true' }}
+        run: |
+          cd ~
+          git clone --quiet --depth=1 -b "v${NGHTTP3_VERSION}" https://github.com/ngtcp2/nghttp3
+          cd nghttp3
+          git submodule update --init --depth=1
+          autoreconf -fi
+          ./configure --disable-dependency-tracking --prefix="$PWD"/build --enable-lib-only
+          make
+          make install
+
+      - name: 'build ngtcp2'
+        if: ${{ steps.cache-ngtcp2.outputs.cache-hit != 'true' }}
+        # building twice to get crypto libs for ossl and quictls installed
+        run: |
+          cd ~
+          git clone --quiet --depth=1 -b "v${NGTCP2_VERSION}" https://github.com/ngtcp2/ngtcp2
+          cd ngtcp2
+          autoreconf -fi
+          ./configure --disable-dependency-tracking --prefix="$PWD"/build \
+            PKG_CONFIG_PATH=/home/runner/quictls/build/lib/pkgconfig --enable-lib-only --with-quictls
+          make install
+          make clean
+          ./configure --disable-dependency-tracking --prefix="$PWD"/build \
+            PKG_CONFIG_PATH=/home/runner/openssl/build/lib/pkgconfig:/home/runner/gnutls/build/lib/pkgconfig:/home/runner/wolfssl/build/lib/pkgconfig \
+            --enable-lib-only --with-openssl --with-gnutls --with-wolfssl
+          make install
+
+      - name: 'build nghttp2'
+        if: ${{ steps.cache-nghttp2.outputs.cache-hit != 'true' }}
+        run: |
+          cd ~
+          git clone --quiet --depth=1 -b "v${NGHTTP2_VERSION}" https://github.com/nghttp2/nghttp2
+          cd nghttp2
+          git submodule update --init --depth=1
+          autoreconf -fi
+          ./configure --disable-dependency-tracking --prefix="$PWD"/build \
+            PKG_CONFIG_PATH=/home/runner/quictls/build/lib/pkgconfig:/home/runner/nghttp3/build/lib/pkgconfig:/home/runner/ngtcp2/build/lib/pkgconfig \
+            LDFLAGS=-Wl,-rpath,/home/runner/quictls/build/lib \
+            --enable-http3
+          make install
+
+  linux:
+    name: ${{ matrix.build.generate && 'CM' || 'AM' }} ${{ matrix.build.name }}
+    needs:
+      - build-cache
+    runs-on: 'ubuntu-latest'
+    timeout-minutes: 45
+    env:
+      MATRIX_BUILD: ${{ matrix.build.generate && 'cmake' || 'autotools' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        build:
+          - name: 'openssl'
+            PKG_CONFIG_PATH: /home/runner/openssl/build/lib/pkgconfig:/home/runner/nghttp3/build/lib/pkgconfig:/home/runner/ngtcp2/build/lib/pkgconfig:/home/runner/nghttp2/build/lib/pkgconfig
+            configure: >-
+              LDFLAGS=-Wl,-rpath,/home/runner/openssl/build/lib
+              --with-ngtcp2=/home/runner/ngtcp2/build --enable-warnings --enable-werror --enable-debug --disable-ntlm
+              --with-test-nghttpx=/home/runner/nghttp2/build/bin/nghttpx
+              --with-openssl=/home/runner/openssl/build --enable-ssls-export
+              --with-libuv
+
+          - name: 'quictls'
+            PKG_CONFIG_PATH: /home/runner/quictls/build/lib/pkgconfig:/home/runner/nghttp3/build/lib/pkgconfig:/home/runner/ngtcp2/build/lib/pkgconfig:/home/runner/nghttp2/build/lib/pkgconfig
+            configure: >-
+              LDFLAGS=-Wl,-rpath,/home/runner/quictls/build/lib
+              --with-ngtcp2=/home/runner/ngtcp2/build --enable-warnings --enable-werror --enable-debug --disable-ntlm
+              --with-test-nghttpx=/home/runner/nghttp2/build/bin/nghttpx
+              --with-openssl=/home/runner/quictls/build --enable-ssls-export
+              --with-libuv
+
+          - name: 'gnutls'
+            PKG_CONFIG_PATH: /home/runner/gnutls/build/lib/pkgconfig:/home/runner/nghttp3/build/lib/pkgconfig:/home/runner/ngtcp2/build/lib/pkgconfig:/home/runner/nghttp2/build/lib/pkgconfig
+            configure: >-
+              LDFLAGS=-Wl,-rpath,/home/runner/gnutls/build/lib
+              --with-ngtcp2=/home/runner/ngtcp2/build --enable-warnings --enable-werror --enable-debug
+              --with-test-nghttpx=/home/runner/nghttp2/build/bin/nghttpx
+              --with-gnutls=/home/runner/gnutls/build --enable-ssls-export
+              --with-libuv
+
+          - name: 'wolfssl'
+            PKG_CONFIG_PATH: /home/runner/wolfssl/build/lib/pkgconfig:/home/runner/nghttp3/build/lib/pkgconfig:/home/runner/ngtcp2/build/lib/pkgconfig:/home/runner/nghttp2/build/lib/pkgconfig
+            configure: >-
+              LDFLAGS=-Wl,-rpath,/home/runner/wolfssl/build/lib
+              --with-ngtcp2=/home/runner/ngtcp2/build --enable-warnings --enable-werror --enable-debug
+              --with-test-nghttpx=/home/runner/nghttp2/build/bin/nghttpx
+              --with-wolfssl=/home/runner/wolfssl/build
+              --enable-ech --enable-ssls-export
+              --with-libuv
+
+          - name: 'wolfssl'
+            PKG_CONFIG_PATH: /home/runner/wolfssl/build/lib/pkgconfig:/home/runner/nghttp3/build/lib/pkgconfig:/home/runner/ngtcp2/build/lib/pkgconfig:/home/runner/nghttp2/build/lib/pkgconfig
+            generate: >-
+              -DCURL_USE_WOLFSSL=ON -DUSE_NGTCP2=ON -DENABLE_DEBUG=ON
+              -DTEST_NGHTTPX=/home/runner/nghttp2/build/bin/nghttpx
+              -DHTTPD_NGHTTPX=/home/runner/nghttp2/build/bin/nghttpx
+              -DUSE_ECH=ON
+              -DCURL_USE_LIBUV=ON
+
+          - name: 'openssl-quic'
+            PKG_CONFIG_PATH: /home/runner/openssl/build/lib/pkgconfig
+            configure: >-
+              LDFLAGS=-Wl,-rpath,/home/runner/openssl/build/lib
+              --enable-warnings --enable-werror --enable-debug --disable-ntlm
+              --with-test-nghttpx=/home/runner/nghttp2/build/bin/nghttpx
+              --with-openssl=/home/runner/openssl/build --with-openssl-quic
+              --with-nghttp3=/home/runner/nghttp3/build
+              --with-libuv
+
+          - name: 'quiche'
+            configure: >-
+              LDFLAGS=-Wl,-rpath,/home/runner/quiche/target/release
+              --with-openssl=/home/runner/quiche/quiche/deps/boringssl/src
+              --enable-warnings --enable-werror --enable-debug
+              --with-quiche=/home/runner/quiche/target/release
+              --with-test-nghttpx=/home/runner/nghttp2/build/bin/nghttpx
+              --with-ca-fallback
+              --with-libuv
+
+          - name: 'quiche'
+            PKG_CONFIG_PATH: /home/runner/quiche/target/release
+            generate: >-
+              -DOPENSSL_ROOT_DIR=/home/runner/quiche/quiche/deps/boringssl/src -DENABLE_DEBUG=ON
+              -DUSE_QUICHE=ON
+              -DTEST_NGHTTPX=/home/runner/nghttp2/build/bin/nghttpx
+              -DHTTPD_NGHTTPX=/home/runner/nghttp2/build/bin/nghttpx
+              -DCURL_CA_FALLBACK=ON
+              -DCURL_USE_LIBUV=ON
+
+    steps:
+      - name: 'install prereqs'
+        run: |
+          sudo rm -f /etc/apt/sources.list.d/microsoft-prod.list
+          sudo apt-get -o Dpkg::Use-Pty=0 update
+          sudo rm -f /var/lib/man-db/auto-update
+          sudo apt-get -o Dpkg::Use-Pty=0 install \
+            libtool autoconf automake pkgconf stunnel4 \
+            libpsl-dev libbrotli-dev libzstd-dev zlib1g-dev libev-dev libc-ares-dev \
+            nettle-dev libp11-kit-dev libtspi-dev libunistring-dev guile-2.2-dev libtasn1-bin \
+            libtasn1-6-dev libidn2-0-dev gawk gperf libtss2-dev dns-root-data bison gtk-doc-tools \
+            texinfo texlive texlive-extra-utils autopoint libev-dev libuv1-dev \
+            apache2 apache2-dev libnghttp2-dev vsftpd
+          python3 -m venv ~/venv
+          echo 'CC=gcc-12' >> "$GITHUB_ENV"
+          echo 'CXX=g++-12' >> "$GITHUB_ENV"
+
+      - name: 'cache openssl'
+        if: ${{ matrix.build.name == 'openssl' || matrix.build.name == 'openssl-quic' }}
+        uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # v4
+        id: cache-openssl-http3
+        env:
+          cache-name: cache-openssl-http3
+        with:
+          path: ~/openssl/build
+          key: ${{ runner.os }}-http3-build-${{ env.cache-name }}-${{ env.OPENSSL_VERSION }}
+          fail-on-cache-miss: true
+
+      - name: 'cache quictls'
+        uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # v4
+        id: cache-quictls-no-deprecated
+        env:
+          cache-name: cache-quictls-no-deprecated
+        with:
+          path: ~/quictls/build
+          key: ${{ runner.os }}-http3-build-${{ env.cache-name }}-${{ env.QUICTLS_VERSION }}-quic1
+          fail-on-cache-miss: true
+
+      - name: 'cache gnutls'
+        if: ${{ matrix.build.name == 'gnutls' }}
+        uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # v4
+        id: cache-gnutls
+        env:
+          cache-name: cache-gnutls
+        with:
+          path: ~/gnutls/build
+          key: ${{ runner.os }}-http3-build-${{ env.cache-name }}-${{ env.GNUTLS_VERSION }}
+          fail-on-cache-miss: true
+
+      - name: 'cache wolfssl'
+        if: ${{ matrix.build.name == 'wolfssl' }}
+        uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # v4
+        id: cache-wolfssl
+        env:
+          cache-name: cache-wolfssl
+        with:
+          path: ~/wolfssl/build
+          key: ${{ runner.os }}-http3-build-${{ env.cache-name }}-${{ env.WOLFSSL_VERSION }}
+          fail-on-cache-miss: true
+
+      - name: 'cache nghttp3'
+        uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # v4
+        id: cache-nghttp3
+        env:
+          cache-name: cache-nghttp3
+        with:
+          path: ~/nghttp3/build
+          key: ${{ runner.os }}-http3-build-${{ env.cache-name }}-${{ env.NGHTTP3_VERSION }}
+          fail-on-cache-miss: true
+
+      - name: 'cache ngtcp2'
+        uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # v4
+        id: cache-ngtcp2
+        env:
+          cache-name: cache-ngtcp2
+        with:
+          path: ~/ngtcp2/build
+          key: ${{ runner.os }}-http3-build-${{ env.cache-name }}-${{ env.NGTCP2_VERSION }}-${{ env.OPENSSL_VERSION }}-${{ env.QUICTLS_VERSION }}-${{ env.GNUTLS_VERSION }}-${{ env.WOLFSSL_VERSION }}
+          fail-on-cache-miss: true
+
+      - name: 'cache nghttp2'
+        uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # v4
+        id: cache-nghttp2
+        env:
+          cache-name: cache-nghttp2
+        with:
+          path: ~/nghttp2/build
+          key: ${{ runner.os }}-http3-build-${{ env.cache-name }}-${{ env.NGHTTP2_VERSION }}-${{ env.QUICTLS_VERSION }}-${{ env.NGTCP2_VERSION }}-${{ env.NGHTTP3_VERSION }}
+          fail-on-cache-miss: true
+
+      - name: 'cache quiche'
+        if: ${{ matrix.build.name == 'quiche' }}
+        uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # v4
+        id: cache-quiche
+        env:
+          cache-name: cache-quiche
+        with:
+          path: ~/quiche
+          key: ${{ runner.os }}-http3-build-${{ env.cache-name }}-${{ env.QUICHE_VERSION }}
+
+      - name: 'build quiche and boringssl'
+        if: ${{ matrix.build.name == 'quiche' && steps.cache-quiche.outputs.cache-hit != 'true' }}
+        run: |
+          cd ~
+          git clone --quiet --depth=1 -b "${QUICHE_VERSION}" --recursive https://github.com/cloudflare/quiche.git
+          cd quiche
+          #### Work-around https://github.com/curl/curl/issues/7927 #######
+          #### See https://github.com/alexcrichton/cmake-rs/issues/131 ####
+          sed -i -e 's/cmake = "0.1"/cmake = "=0.1.45"/' quiche/Cargo.toml
+
+          cargo build -v --package quiche --release --features ffi,pkg-config-meta,qlog --verbose
+          ln -s libquiche.so target/release/libquiche.so.0
+          mkdir -v quiche/deps/boringssl/src/lib
+          # shellcheck disable=SC2046
+          ln -vnf $(find target/release -name libcrypto.a -o -name libssl.a) quiche/deps/boringssl/src/lib/
+
+          # include dir
+          # /home/runner/quiche/quiche/deps/boringssl/src/include
+          # lib dir
+          # /home/runner/quiche/quiche/deps/boringssl/src/lib
+
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+        with:
+          persist-credentials: false
+
+      - name: 'autoreconf'
+        if: ${{ matrix.build.configure }}
+        run: autoreconf -fi
+
+      - name: 'configure'
+        env:
+          MATRIX_CONFIGURE: '${{ matrix.build.configure }}'
+          MATRIX_GENERATE: '${{ matrix.build.generate }}'
+          MATRIX_PKG_CONFIG_PATH: '${{ matrix.build.PKG_CONFIG_PATH }}'
+        run: |
+          [ -n "${MATRIX_PKG_CONFIG_PATH}" ] && export PKG_CONFIG_PATH="${MATRIX_PKG_CONFIG_PATH}"
+          if [ "${MATRIX_BUILD}" = 'cmake' ]; then
+            cmake -B bld -G Ninja \
+              -DCMAKE_C_COMPILER_TARGET="$(uname -m)-pc-linux-gnu" -DBUILD_STATIC_LIBS=ON \
+              -DCMAKE_UNITY_BUILD=ON -DCURL_WERROR=ON \
+              ${MATRIX_GENERATE}
+          else
+            mkdir bld && cd bld && ../configure --enable-unity --enable-warnings --enable-werror \
+              --disable-dependency-tracking \
+              ${MATRIX_CONFIGURE}
+          fi
+
+      - name: 'configure log'
+        if: ${{ !cancelled() }}
+        run: cat bld/config.log bld/CMakeFiles/CMakeConfigureLog.yaml 2>/dev/null || true
+
+      - name: 'curl_config.h'
+        run: |
+          echo '::group::raw'; cat bld/lib/curl_config.h || true; echo '::endgroup::'
+          grep -F '#define' bld/lib/curl_config.h | sort || true
+
+      - name: 'test configs'
+        run: grep -H -v '^#' bld/tests/config bld/tests/http/config.ini || true
+
+      - name: 'build'
+        run: |
+          if [ "${MATRIX_BUILD}" = 'cmake' ]; then
+            cmake --build bld --verbose
+          else
+            make -C bld V=1
+          fi
+
+      - name: 'check curl -V output'
+        run: bld/src/curl -V
+
+      - name: 'build tests'
+        run: |
+          if [ "${MATRIX_BUILD}" = 'cmake' ]; then
+            cmake --build bld --verbose --target testdeps
+          else
+            make -C bld V=1 -C tests
+          fi
+
+      - name: 'install test prereqs'
+        run: |
+          source ~/venv/bin/activate
+          python3 -m pip install -r tests/requirements.txt
+
+      - name: 'run tests'
+        env:
+          TFLAGS: '${{ matrix.build.tflags }}'
+        run: |
+          source ~/venv/bin/activate
+          if [ "${MATRIX_BUILD}" = 'cmake' ]; then
+            cmake --build bld --verbose --target test-ci
+          else
+            make -C bld V=1 test-ci
+          fi
+
+      - name: 'install pytest prereqs'
+        run: |
+          source ~/venv/bin/activate
+          python3 -m pip install -r tests/http/requirements.txt
+
+      - name: 'run pytest event based'
+        env:
+          CURL_TEST_EVENT: 1
+          PYTEST_ADDOPTS: '--color=yes'
+          PYTEST_XDIST_AUTO_NUM_WORKERS: 4
+        run: |
+          source ~/venv/bin/activate
+          if [ "${MATRIX_BUILD}" = 'cmake' ]; then
+            cmake --build bld --verbose --target curl-pytest-ci
+          else
+            make -C bld V=1 pytest-ci
+          fi
+
+      - name: 'build examples'
+        run: |
+          if [ "${MATRIX_BUILD}" = 'cmake' ]; then
+            cmake --build bld --verbose --target curl-examples
+          else
+            make -C bld V=1 examples
+          fi

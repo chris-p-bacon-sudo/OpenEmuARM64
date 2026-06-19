@@ -1,0 +1,77 @@
+#! /usr/bin/env bash
+# shellcheck disable=SC2064
+# SC2064: Intentional use of early expansion for trap.
+# shellcheck disable=SC2001
+# SC2001: In this case, we can't use variable replacement
+# because the `bash` on Windows doesn't support it and we
+# are replacing special characters anyway.
+# shellcheck disable=SC2317
+# SC2317: Command can be reached.
+
+beganat=$(date -u +"%Y-%m-%dT%H:%M:%SZ") # or date --iso=ns -u on non-bsd
+builddir=$( (cd "$(dirname "$0")/../../out" && pwd) )
+testdir=$builddir/tst-$beganat
+export testdir
+
+trap "cd '$PWD' ; rm -rf '$testdir' '$testdir.json'" EXIT
+mkdir -p "$testdir" || exit 1
+cd "$testdir" || exit 1
+
+PATH=$builddir/this/Debug:$PATH
+
+# Otherwise, the Darwin watcher will the testdir's creation event
+[ "$(uname -s)" = Darwin ] && sleep 0.2
+
+watch-async() {
+  watcher-via-nix() { nix run --quiet .\#watcher -- "$@"; }
+  watcher=$(command -v wtr.watcher || echo 'watcher-via-nix')
+
+  "$watcher" "$@" &
+  sleep 0.1
+}
+export -f watch-async
+
+show-output() {
+  d=$1
+  f=$d.json
+
+  {  test -n "$1" \
+  && test -d "$d" \
+  && test -f "$f" \
+  && which jq > /dev/null
+  } || return 1
+
+  sed "s|$d|d|g" "$f" \
+  | jq '
+    { path_type: .path_type
+    , path_name: .path_name
+    , effect_type: .effect_type
+    , effect_time: .effect_time
+    , associated: .associated
+    }' \
+  | jq --slurp -S
+}
+export -f show-output
+
+show-events() {
+  show-output "$@" | jq
+}
+export -f show-events
+
+without-effect-time() {
+ sed '/"effect_time":/d'
+}
+export -f without-effect-time
+
+check-result() {
+  [[ -z "$1" || -z "$2" ]] && return 1
+  expect=$1
+  actual=$2
+  lhs() { echo "$expect" | jq -S; }
+  rhs() { echo "$actual" | jq -S | sed '/"associated": null,/d'; }
+  if diff <(lhs) <(rhs) &> /dev/null
+  then echo ':) ok'
+  else echo 'oops :(' && diff --side-by-side <(lhs) <(rhs)
+  fi
+}
+export -f check-result

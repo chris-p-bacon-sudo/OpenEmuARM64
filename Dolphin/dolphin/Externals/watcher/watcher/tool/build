@@ -1,0 +1,464 @@
+#!/usr/bin/env bash
+# shellcheck disable=SC2001
+# shellcheck disable=SC2068
+# shellcheck disable=SC2086
+# SC2001: GH Runners don't always have variable replacement.
+# SC2068: The arrays we're expanding are intended to be re-split.
+# SC2068: Prefer not to quote every integer.
+
+LAST_DIR="$PWD"
+cd "$(dirname "$0")/.." \
+  || return $?
+trap 'cd "$LAST_DIR"' EXIT
+
+GLOARGS=$@
+
+inargs() {
+  # Nothing is in nothing?
+  [ $# -lt 2    ] && return 1
+  [ "$1" = "$2" ] && return 0
+  inargs $1 ${@:3}
+}
+# "Flag in args"
+fia() {
+  inargs $1 $GLOARGS
+}
+
+#
+#  Precedence goes highest -> lowest
+#  'sh' stands for 'spreadsheet'
+#  A row's 'in' expression -> 'out' result
+#
+# ---------------------------------------------------------------------------------------------------------------------------------------------
+#                                                     in                                                                  #        out        #
+# ----------------------------------------------------------------------------------------------------------------------- #                   #
+#                     negative                    #                                   positive                            #                   #
+# ----------------------------------------------- # --------------------------------------------------------------------- #                   #
+#           item          #        group          #           item           #        group       #       default         #                   #
+#                         #                       #                          #                    #                       #                   #
+fia --no-platform-android || fia --no-platform || ! { fia --platform-android || fia --platform-all                     ; }; PLATFORM_ANDROID=$?
+fia --no-platform-windows || fia --no-platform || ! { fia --platform-windows || fia --platform-all                     ; }; PLATFORM_WINDOWS=$?
+fia   --no-platform-linux || fia --no-platform || ! { fia   --platform-linux || fia --platform-all                     ; };   PLATFORM_LINUX=$?
+fia   --no-platform-macos || fia --no-platform || ! { fia   --platform-macos || fia --platform-all                     ; };   PLATFORM_MACOS=$?
+fia    --no-platform-this || fia --no-platform || ! { fia    --platform-this || fia --platform-all || ! fia --platform ; };    PLATFORM_THIS=$?
+fia     --no-platform-ios || fia --no-platform || ! { fia     --platform-ios || fia --platform-all                     ; };     PLATFORM_IOS=$?
+fia    --no-build-release || fia    --no-build || ! { fia    --build-release || fia    --build-all || ! fia    --build ; };    BUILD_RELEASE=$?
+fia      --no-build-debug || fia    --no-build || ! { fia      --build-debug || fia    --build-all || ! fia    --build ; };      BUILD_DEBUG=$?
+fia       --no-build-test || fia    --no-build || ! { fia       --build-test || fia    --build-all || ! fia    --build ; };       BUILD_TEST=$?
+fia         --no-run-unit || fia      --no-run || ! { fia         --run-unit || fia      --run-all || ! fia      --run ; };         RUN_UNIT=$?
+fia         --no-run-perf || fia      --no-run || ! { fia         --run-perf || fia      --run-all || ! fia      --run ; };         RUN_PERF=$?
+                                                  ! { fia          --install                                           ; };          INSTALL=$?
+                                                  ! { fia            --clean                                           ; };            CLEAN=$?
+                                                  ! { fia             --help                                           ; };             HELP=$?
+                                                  ! { fia          --verbose                                           ; };          VERBOSE=$?
+                                                  ! { fia   --show-artifacts                                           ; };   SHOW_ARTIFACTS=$?
+# ---------------------------------------------------------------------------------------------------------------------------------------------
+
+valid-flags() {
+  echo -- --platform-android
+  echo -- --platform-windows
+  echo -- --platform-linux
+  echo -- --platform-macos
+  echo -- --platform-this
+  echo -- --platform-ios
+  echo -- --platform-all
+  echo -- --no-platform-android
+  echo -- --no-platform-windows
+  echo -- --no-platform-linux
+  echo -- --no-platform-macos
+  echo -- --no-platform-this
+  echo -- --no-platform-ios
+  echo -- --no-platform
+  echo -- --build-release
+  echo -- --build-debug
+  echo -- --build-test
+  echo -- --build-all
+  echo -- --no-build-release
+  echo -- --no-build-debug
+  echo -- --no-build-test
+  echo -- --no-build
+  echo -- --run-all
+  echo -- --no-run-unit
+  echo -- --no-run-perf
+  echo -- --clean
+  echo -- --help
+  echo -- --verbose
+  echo -- --show-artifacts
+}
+
+flags-are-valid() {
+  echo "${GLOARGS[*]}" | tr ' ' '\n' | while read -r given
+  do
+    valid-flags | grep -cqo -- "$given" || {
+      echo "Unexpected option: '$given'"
+      return 1
+    }
+  done
+}
+
+inspect-all-options() {
+  echo "PLATFORM_ANDROID=$PLATFORM_ANDROID"
+  echo "PLATFORM_WINDOWS=$PLATFORM_WINDOWS"
+  echo "  PLATFORM_LINUX=$PLATFORM_LINUX"
+  echo "  PLATFORM_MACOS=$PLATFORM_MACOS"
+  echo "   PLATFORM_THIS=$PLATFORM_THIS"
+  echo "    PLATFORM_IOS=$PLATFORM_IOS"
+  echo "   BUILD_RELEASE=$BUILD_RELEASE"
+  echo "     BUILD_DEBUG=$BUILD_DEBUG"
+  echo "      BUILD_TEST=$BUILD_TEST"
+  echo "        RUN_UNIT=$RUN_UNIT"
+  echo "        RUN_PERF=$RUN_PERF"
+  echo "         INSTALL=$INSTALL"
+  echo "           CLEAN=$CLEAN"
+  echo "            HELP=$HELP"
+}
+
+inspect-options() {
+  echo "[$(\
+    to-lowercase \
+    "$(inspect-all-options \
+      | sed 's/.*=0$//' \
+      | shellstrip \
+      | sed 's/=1//g')")]"
+}
+
+help() {
+  echo "
+$0
+  Build the Watcher.
+  This file is a collection of shorthands for CMake invocations
+  which eases over some platform-specific configuration, cross-
+  compilation, and the many, many build targets:
+    tests, sanitized builds, debug builds, release builds,
+    installation targets, etc, etc, etc.
+
+Usage
+  $0 [--help | --clean | [PLATFORM_OPTIONS] [BUILD_OPTIONS] [RUN_OPTIONS]]
+
+Default
+  $0 --platform-this --build-all --run-unit
+
+Platform Options
+$(valid-flags | sed 's/ /\n  /g' | grep platform)
+
+Build Options
+$(valid-flags | sed 's/ /\n  /g' | grep build)
+
+Run Options
+$(valid-flags | sed 's/ /\n  /g' | grep run)
+
+Examples
+  $0 --build-all --no-run-perf --verbose
+  $0 --no-run --build-all --platform-all
+  $0 --build-release --install
+  $0 --run-perf
+  $0 --clean"
+}
+just-help() { help; exit 0; }
+
+clean() {
+  cmd="rm -rf '$PWD/out'"
+  [ "$VERBOSE" = 1 ] && echo "$cmd"
+  eval "$cmd"
+}
+just-clean() { clean; exit 0; }
+
+# we need to use `tr` here because the bash on
+# some github runners reject the ${var,,} syntax
+to-uppercase() { echo "$1"   | tr '[:lower:]' '[:upper:]'          ; }
+to-lowercase() { echo "$1"   | tr '[:upper:]' '[:lower:]'          ; }
+shellstrip()   { tr '\n' ' ' | sed 's/\r\r/\r/g' | sed 's/  */ /g' ; }
+guess-num-lcpu() {
+  if [ "$(uname)" == Linux ]
+  then
+    if [ -f /proc/cpuinfo ] && grep -q 'cpu cores' /proc/cpuinfo
+    then
+      cat /proc/cpuinfo \
+      | grep 'cpu cores' \
+      | sed -E 's/.*: ([0-9]+)/\1/g' \
+      | while read -r n
+        do tot=$((tot + n))
+        done
+      echo $tot
+    elif [ -f /proc/cpuinfo ] && grep -q 'processor' /proc/cpuinfo
+    then
+      cat /proc/cpuinfo \
+      | grep 'processor' \
+      | wc -l
+    else nproc 2> /dev/null \
+      || echo 1
+    fi
+  elif [ "$(uname)" == Darwin ]
+  then sysctl -n hw.logicalcpu 2> /dev/null \
+    || echo 1
+  else echo 1
+  fi
+}
+all-platforms() {
+  echo android
+  echo windows
+  echo linux
+  echo macos
+  echo this
+  echo ios
+}
+opt-platforms() {
+  [ "$PLATFORM_ANDROID" = 1 ] && echo android
+  [ "$PLATFORM_WINDOWS" = 1 ] && echo windows
+  [ "$PLATFORM_LINUX"   = 1 ] && echo linux
+  [ "$PLATFORM_MACOS"   = 1 ] && echo macos
+  [ "$PLATFORM_THIS"    = 1 ] && echo this
+  [ "$PLATFORM_IOS"     = 1 ] && echo ios
+  return 0
+}
+out-path-of() {
+  [ -n "$1" ] || return 1
+  case "$1" in
+    android) echo -n "$PWD/out/android" ;;
+    windows) echo -n "$PWD/out/windows" ;;
+    linux)   echo -n "$PWD/out/linux"   ;;
+    macos)   echo -n "$PWD/out/macos"   ;;
+    this)    echo -n "$PWD/out/this"    ;;
+    ios)     echo -n "$PWD/out/ios"     ;;
+    *)                              return 1  ;; esac
+  if [ -n "$2" ]
+  then
+    case "$1" in
+      windows) echo "/$2.exe" ;;
+      *)       echo "/$2"     ;; esac
+  else echo
+  fi
+}
+infer-sysname-of() {
+  [ -n "$1" ] || return 1
+  case "$1" in
+    darwin*) echo macos   ;;
+    linux*)  echo linux   ;;
+    mingw*)  echo windows ;;
+    *)       echo "$1"    ;; esac
+}
+infer-sysname() {
+  if [[ -n "$1" && "$1" != this ]]
+  then infer-sysname-of "$1"
+  else infer-sysname-of "$(to-lowercase "$(uname)")"
+  fi
+}
+# Unused, but useful ...
+# platform-out-paths() {
+#   opt-platforms | while read -r platform
+#   do path-of "$platform" || return 1
+#   done
+# }
+# bestguess-cmake-generator-of-platform() {
+#   case "$(infer-sysname "$(to-lowercase "$1")")" in
+#     android) echo "-G 'Unix Makefiles'" ;;
+#     windows) echo "-G 'Unix Makefiles'" ;;
+#     linux)   echo "-G 'Unix Makefiles'" ;;
+#     macos)   echo "-G 'Xcode'"          ;;
+#     ios)     echo "-G 'Xcode'"          ;;
+#     *)       echo "-G 'Unix Makefiles'" ;; esac ; }
+cmake-targetsys-of-platform() {
+  # Darwin isn't listed in:
+  # https://cmake.org/cmake/help/latest/manual/cmake-toolchains.7.html
+  # So... Keep an eye out. The others should be fine, but WindowsStore
+  # might need some tinkering -- Is it really universal?
+  case "$(infer-sysname "$(to-lowercase "$1")")" in
+    windows) echo WindowsStore ;;
+    android) echo Android      ;;
+    linux)   echo Linux        ;;
+    macos)   echo Darwin       ;;
+    ios)     echo iOS          ;;
+    *)       return 1          ;; esac
+}
+all-buildtargets() {
+  echo wtr.watcher
+  echo wtr.watcher
+  echo wtr.test_watcher
+}
+all-base-targets() {
+  echo wtr.watcher
+  echo wtr.test_watcher
+}
+all-sanitizers() {
+  echo asan
+  echo msan
+  echo tsan
+  echo ubsan
+}
+all-buildcfgs() {
+  echo Debug
+  echo Release
+}
+all-buildtargets() {
+     all-base-targets | while read -r target
+  do echo "$target"
+  done
+     all-base-targets | while read -r target
+  do all-sanitizers   | while read -r sanitizer
+  do echo "$target.$sanitizer"
+  done
+  done
+}
+all-buildtarget-paths() {
+     all-platforms    | while read -r platform
+  do all-buildcfgs    | while read -r buildcfg
+  do all-buildtargets | while read -r target
+  do echo "$(out-path-of "$platform" "$buildcfg")/$target"
+  done
+  done
+  done
+}
+all-existing-buildtarget-paths() {
+    all-buildtarget-paths \
+  | while read -r tp
+    do if [ -f "$tp" ]
+       then echo "$tp"
+       fi
+    done
+}
+# Target configs and names from an argument to this program
+opt-buildcfgs() {
+  [ "$BUILD_DEBUG"   = 1 ] && echo Debug
+  [ "$BUILD_RELEASE" = 1 ] && echo Release
+}
+opt-buildtargets() {
+  [ "$BUILD_DEBUG"   = 1 ] && echo wtr.watcher
+  [ "$BUILD_RELEASE" = 1 ] && echo wtr.watcher
+  [ "$BUILD_TEST"    = 1 ] && echo wtr.test_watcher
+}
+existing-targets-of-platform() {
+  [ -n "$1" ] || return 1 ; platform=$1
+  opo() { out-path-of "$platform" "$1" ; }
+  # find has no equivalent of -x
+    all-buildcfgs \
+  | while read -r buildcfg
+    do find "$(opo "$buildcfg")" -maxdepth 1 -name 'wtr*' -or -name 'tw*' -or -name 'libw*' \
+  | while read -r target
+    do if [[ -x "$target" && -f "$target" ]]
+       then echo "$target"
+       fi
+    done
+    done
+}
+existing-matching-targets-in-pathptrn() {
+    while read -r full_pathptrn
+    do
+    target_basepath=$(dirname "$full_pathptrn")
+    target_pattern=$(basename "$full_pathptrn")
+    find "$target_basepath" -maxdepth 1 -name "$target_pattern" \
+  | while read -r target_binpath
+    do if test -x "$target_binpath"
+       then echo "$target_binpath"
+       fi
+    done
+    done
+}
+show-buildcmd-of() {
+  [ $# -eq 2 ] || return 1 ; platform=$1 ; buildcfg=$2
+  echo "\
+    [ ! -d '$(out-path-of "$platform" "$buildcfg")' ]
+    && cmake
+      -S '$PWD'
+      -B '$(out-path-of "$platform" "$buildcfg")'
+      -G 'Unix Makefiles'
+      -DBUILD_LIB=ON
+      -DBUILD_BIN=ON
+      -DBUILD_HDR=ON
+      -DBUILD_TESTING=ON
+      -DBUILD_SAN=ON
+      -DCMAKE_BUILD_TYPE='$buildcfg' $(
+      [ "$platform" = android ] \
+        && echo "-DCMAKE_ANDROID_NDK='$ANDROID_NDK_HOME'")
+      $(targetsysname=$(cmake-targetsys-of-platform "$platform") \
+        && echo "-DCMAKE_SYSTEM_NAME='$targetsysname'")
+    ;
+    cmake
+      --build '$(out-path-of "$platform" "$buildcfg")'
+      --config '$buildcfg'
+      --parallel $(guess-num-lcpu)
+    ;" \
+    | sed -E 's/^  *//g'
+}
+opt-show-each-buildcmd() {
+     opt-platforms | while read -r platform
+  do opt-buildcfgs | while read -r buildcfg
+  do show-buildcmd-of "$platform" "$buildcfg"
+  done
+  done
+}
+opt-build-each() {
+  [ "$VERBOSE" = 1 ] && opt-show-each-buildcmd
+  opt-show-each-buildcmd | shellstrip | bash -e
+}
+# Accessing variables outside of a
+# subshell or a pipeline is evidently
+# not portable. Instead, we'll echo
+# a unique message and grep for it.
+# The match count is the return value.
+uniq_msg=b5c02513073841751ea8628d2b45e1e1
+run-unit() {
+  nfailed=$(
+    all-existing-buildtarget-paths \
+    | grep -i this/debug/wtr.test_watcher \
+    | existing-matching-targets-in-pathptrn \
+    | while read -r target
+      do
+        echo "$(basename "$target")" 1>&2
+        "$target" '[not-perf]' 1>&2 || echo "$uniq_msg"
+      done \
+    | grep -c "$uniq_msg"
+  )
+  if [ "$nfailed" -eq 0 ]
+  then echo "All test suites passed"
+       return 0
+  elif [ "$nfailed" -eq 1 ]
+  then echo "$nfailed test suite failed"
+       return "$nfailed"
+  else echo "$nfailed test suites failed"
+       return "$nfailed"
+  fi
+}
+run-perf() {
+  nfailed=$(
+    all-existing-buildtarget-paths \
+    | grep -i this/debug/wtr.test_watcher \
+    | existing-matching-targets-in-pathptrn \
+    | while read -r target
+      do
+        echo "$(basename "$target")" 1>&2
+        "$target" '[perf]' 1>&2 || echo "$uniq_msg"
+      done \
+    | grep -c "$uniq_msg"
+  )
+  if [ "$nfailed" -eq 0 ]
+  then echo "All test suites passed"
+       return 0
+  elif [ "$nfailed" -eq 1 ]
+  then echo "$nfailed test suite failed"
+       return "$nfailed"
+  else echo "$nfailed test suites failed"
+       return "$nfailed"
+  fi
+}
+show-artifacts() {
+  opt-platforms | while read -r platform
+  do existing-targets-of-platform "$platform"
+  done
+  echo "$PWD/include"
+  echo "$PWD/src"
+}
+
+#
+#  Actual work
+#
+
+flags-are-valid     || { help ; exit 1 ; }
+[ 1 = "$VERBOSE"  ] && { inspect-options ; }
+[ 1 = "$HELP"     ] && { help ; exit 0 ; }
+[ 1 = "$CLEAN"    ] && { clean || exit 1 ; }
+[ 1 = "$SHOW_ARTIFACTS"  ] && { show-artifacts ; exit 0 ; }
+opt-build-each      || { exit 1 ; }
+[ 1 = "$RUN_UNIT" ] && { run-unit || exit 1 ; }
+[ 1 = "$RUN_PERF" ] && { run-perf || exit 1 ; }
+[ 1 = "$VERBOSE"  ] && { show-artifacts ; }
+exit 0
