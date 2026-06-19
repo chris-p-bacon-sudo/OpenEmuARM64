@@ -17,4 +17,4 @@
 
 Huge thanks to everyone who reported bugs, shared logs and reproduction steps, tested fixes, and suggested improvements this release: @cwscws, @CamberwelK, @alfonsico, @gingerbeardman, @Ekamekia, and @openemugirl.
 
-And a special thank-you to the **RetroAchievements team** for reviewing OpenEmu-Silicon for official compliance and approving all supported systems for hardcore mode.
+And a special thank-you to the **RetroAchievements team** — @LiquifiedSnow and @wescopeland — for reviewing OpenEmu-Silicon for official compliance and approving all supported systems for hardcore mode.
