@@ -276,13 +276,13 @@ static void bsnes_rc_event_handler(const rc_client_event_t *event, rc_client_t *
     size_t size = rc_client_progress_size(_rcClient);
     if (size == 0) return nil;
     NSMutableData *data = [NSMutableData dataWithLength:size];
-    rc_client_serialize_progress(_rcClient, data.mutableBytes);
+    rc_client_serialize_progress(_rcClient, (uint8_t *)data.mutableBytes);
     return data;
 }
 
 - (void)retroAchievementsDeserializeProgress:(NSData *)data {
     if (!_rcClient) return;
-    rc_client_deserialize_progress(_rcClient, data ? data.bytes : NULL);
+    rc_client_deserialize_progress(_rcClient, data ? (const uint8_t *)data.bytes : NULL);
 }
 
 - (void)dealloc

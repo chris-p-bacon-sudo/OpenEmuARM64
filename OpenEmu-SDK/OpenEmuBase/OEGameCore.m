@@ -89,8 +89,13 @@ static Class GameCoreClass = Nil;
     if (hardcoreEnabled) {
         isRewinding = NO;
         singleFrameStep = NO;
-        lastRate = 1.0;
-        if (_rate != 0) {
+        // Clear an active slow-motion rate (slowdown stays blocked in hardcore)
+        // while preserving fast-forward (permitted per RA's hardcore spec).
+        // Normalize both the live rate and the stored resume rate used when paused.
+        if (lastRate > 0.0 && lastRate < 1.0) {
+            lastRate = 1.0;
+        }
+        if (_rate > 0.0 && _rate < 1.0) {
             self.rate = 1.0;
         }
     }
@@ -598,7 +603,8 @@ static Class GameCoreClass = Nil;
 #pragma clang diagnostic ignored "-Wdeprecated-implementations"
 - (void)fastForward:(BOOL)flag
 {
-    if (self.hardcoreEnabled) return;
+    // Fast-forward is permitted in hardcore mode per RA's hardcore-compliance
+    // spec (only slowdown and frame advance are restricted, not speed-up).
     float newrate = flag ? 5.0 : 1.0;
 
     if (self.isEmulationPaused) {
@@ -669,7 +675,8 @@ static Class GameCoreClass = Nil;
 
 - (void)fastForwardAtSpeed:(CGFloat)fastForwardSpeed;
 {
-    if (self.hardcoreEnabled) return;
+    // Fast-forward is permitted in hardcore mode per RA's hardcore-compliance
+    // spec (only slowdown and frame advance are restricted, not speed-up).
     [self setRate:fastForwardSpeed];
 }
 

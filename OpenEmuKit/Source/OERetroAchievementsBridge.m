@@ -18,6 +18,7 @@
 
 #import "OERetroAchievementsBridge.h"
 #import "OERetroAchievementsTransport.h"
+#import <OpenEmuBase/OpenEmuBase.h> // full OEGameCore + OEGameCoreController interfaces (core.pluginName/owner.bundle)
 #import <os/log.h>
 
 // Bridge owns its own copy of the OERetroAchievements* notification names
@@ -241,7 +242,7 @@ static void oe_ra_bridge_server_call(const rc_api_request_t *request,
 
     char rcClause[64] = {0};
     rc_client_get_user_agent_clause(_rcClient, rcClause, sizeof(rcClause));
-    NSString *hostVersion = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleShortVersionString"] ?: @"unknown";
+    NSString *hostVersion = OEHostAppVersion();
     NSOperatingSystemVersion osv = [[NSProcessInfo processInfo] operatingSystemVersion];
     NSString *userAgent = [NSString stringWithFormat:@"OpenEmu-Silicon/%@ (macOS %ld.%ld.%ld) %@%s",
                             hostVersion, (long)osv.majorVersion, (long)osv.minorVersion,

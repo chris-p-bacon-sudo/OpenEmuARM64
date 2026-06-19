@@ -272,6 +272,9 @@ final class PrefCoresController: NSViewController {
     }
 
     private func displayName(for sysID: String, fallback: String) -> String {
+        // OpenEmu models Game Boy and Game Boy Color as one system (openemu.system.gb);
+        // Gambatte handles both. Make the dual coverage explicit in the UI.
+        if sysID == "openemu.system.gb" { return "Game Boy / Game Boy Color" }
         guard fallback == sysID else { return fallback }
         let last = sysID.components(separatedBy: ".").last ?? sysID
         return last

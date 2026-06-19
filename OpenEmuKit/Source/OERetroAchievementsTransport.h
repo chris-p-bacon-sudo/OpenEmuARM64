@@ -131,6 +131,17 @@ void oeRetroAchievementsServerCall(const rc_api_request_t *request,
                                     rc_client_t *client);
 
 /**
+ * Returns the host app's marketing version (CFBundleShortVersionString) for the
+ * RetroAchievements User-Agent. The RA client runs in the emulator helper
+ * process, where -[NSBundle mainBundle] does not resolve to OpenEmu.app and
+ * reports no version — which RA rejects as non-numeric ("unknown"). This
+ * resolves the version from the enclosing .app of the running executable, so
+ * the real shipped version is always sent regardless of process. Falls back to
+ * the main bundle, then "unknown".
+ */
+NSString *OEHostAppVersion(void);
+
+/**
  * Posts a property-list-safe OERAEventNotification for rcheevos gameplay UI
  * events. Core event handlers should call this before handling achievement
  * unlocks or refreshing session snapshots.
