@@ -36,9 +36,9 @@ The goal is to honor the original OpenEmu spirit — a beautifully designed, fir
 
 ## Language and Tooling
 
-- **Swift 6.2.4** — strict concurrency is enforced. Use `@MainActor`, `Sendable`, and structured concurrency correctly.
+- **Swift 6.3.2** — strict concurrency is enforced. Use `@MainActor`, `Sendable`, and structured concurrency correctly.
 - **Objective-C** — many core files are ObjC. Bridge headers are in place. Don't break them.
-- **Xcode 26.3** — use `xcodebuild` for CLI builds. The primary workspace is `OpenEmu-metal.xcworkspace`.
+- **Xcode 26.5** — use `xcodebuild` for CLI builds. The primary workspace is `OpenEmu-metal.xcworkspace`.
 - **No package manager** — no SPM, no CocoaPods, no Carthage. Dependencies are vendored or flattened submodules.
 
 ---
@@ -66,6 +66,14 @@ xcodebuild \
 
 **A clean `verify.sh` run is the definition of "passing."** Run it before every push touching source files. The pre-push git hook in `.githooks/pre-push` enforces this mechanically — install it once per clone with `./Scripts/install-hooks.sh`.
 
+### Setup and Credentials Pre-Requisites
+
+Before compiling for the first time, you must generate the local gitignored secrets/credentials files from their templates:
+```bash
+cp OpenEmu/ScreenScraperDevCredentials.template.swift OpenEmu/ScreenScraperDevCredentials.swift
+cp OpenEmu/OEGoogleDriveSecrets.template.swift OpenEmu/OEGoogleDriveSecrets.swift
+```
+
 ---
 
 ## File Organization
@@ -87,6 +95,7 @@ xcodebuild \
 | System | Core(s) |
 |--------|---------|
 | 3DO | 4DO |
+| Arcade | MAME |
 | Atari 2600 | Stella |
 | Atari 5200 | Atari800 |
 | Atari 7800 | ProSystem |
@@ -98,7 +107,7 @@ xcodebuild \
 | Famicom Disk System | Nestopia |
 | Game Boy / GBC | Gambatte |
 | Game Boy Advance | mGBA |
-| Game Gear | Genesis Plus GX |
+| Game Gear | Genesis Plus GX (GenesisPlus) |
 | GameCube | Dolphin |
 | Intellivision | Bliss |
 | MSX | blueMSX |
@@ -112,15 +121,15 @@ xcodebuild \
 | PC-FX | Mednafen |
 | Pokémon Mini | PokeMini |
 | Sega 32X | Picodrive |
-| Sega CD / Mega CD | Genesis Plus GX |
+| Sega CD / Mega CD | Genesis Plus GX (GenesisPlus) |
 | Sega Dreamcast | Flycast |
-| Sega Genesis / Mega Drive | Genesis Plus GX |
-| Sega Master System | Genesis Plus GX |
+| Sega Genesis / Mega Drive | Genesis Plus GX (GenesisPlus) |
+| Sega Master System | Genesis Plus GX (GenesisPlus) |
 | Sega Saturn | Mednafen |
 | Sony PlayStation | Mednafen |
 | Sony PSP | PPSSPP |
 | Super Nintendo (SNES) | SNES9x (default), BSNES |
-| Supervision | Potator |
+| Supervision | Potator (Potator-Core) |
 | Vectrex | VecXGL |
 | Virtual Boy | Mednafen |
 | Wii | Dolphin |
@@ -252,7 +261,7 @@ The issue tracker at `nickybmon/OpenEmu-Silicon` is the primary place for bug re
 - Do not remove or rename existing core directories — they are referenced by the Xcode project
 - Do not commit the `build_*.log` files that exist at root — they are legacy artifacts
 - Do not change `MACOSX_DEPLOYMENT_TARGET` below `11.0` — this is the ARM64 baseline
-- Do not commit `OEGoogleDriveSecrets.swift` — it is gitignored for a reason; it holds real OAuth credentials
+- Do not commit secrets (like `OEGoogleDriveSecrets.swift` or `ScreenScraperDevCredentials.swift`) — they are gitignored for a reason; they hold real OAuth credentials or API keys
 - Do not add debug `+load` / `+initialize` methods that write to `/tmp` or hardcode local paths
 - Do not commit large binaries (`.zip`, `.tar.gz`, compiled executables) — these belong in GitHub Releases
 - Do not commit directly to `main` under any circumstances
