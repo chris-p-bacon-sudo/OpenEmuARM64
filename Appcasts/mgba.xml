@@ -4,7 +4,18 @@
   xmlns:dc="http://purl.org/dc/elements/1.1/">
   <channel>
     <title>mGBA</title>
-                        <item>
+                            <item>
+      <title>mGBA 0.10.10</title>
+      <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
+      <enclosure
+        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.3.6/mGBA.oecoreplugin.zip"
+        sparkle:version="0.10.10"
+        sparkle:shortVersionString="0.10.10"
+        length="381713"
+        sparkle:edSignature="jv+M0xpw6wKnT03+B0Spbl9j8h8YFHcvh0TD6s+R+0k8JtJge0NA39Lesh9VXxiJjszvoG3s2LlM8CR5THk4DQ=="
+        type="application/octet-stream" />
+    </item>
+<item>
       <title>mGBA 0.10.9</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
