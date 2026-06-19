@@ -5,7 +5,39 @@
     <link>https://github.com/nickybmon/OpenEmu-Silicon/releases</link>
     <description>Most recent changes with links to updates.</description>
     <language>en</language>
-                                                    <item>
+                                                        <item>
+      <title>OpenEmu-Silicon 1.2.4</title>
+      <description>
+        <![CDATA[
+        <h2>OpenEmu-Silicon 1.2.4</h2>
+        <h3>What's New in 1.2.4</h3>
+        <ul>
+        <li><strong>RetroAchievements hardcore is now fully supported.</strong> OpenEmu-Silicon now reports its version correctly to RetroAchievements — it previously sent "unknown," which RetroAchievements rejected and which blocked hardcore unlocks. Fast-forward is now allowed during hardcore sessions (rewind, slow-motion, and frame-step stay disabled, as RetroAchievements requires).</li>
+        <li>The import dialog now accepts more Atari 8-bit formats — `.xex`, `.car`, and `.atr` (thanks @cwscws, #581).</li>
+        </ul>
+        <h3>Bug Fixes</h3>
+        <ul>
+        <li>Atari 5200 games now render video correctly on the bundled Atari800 core (thanks @CamberwelK, #432).</li>
+        <li>Fixed a crash that could occur when connecting a controller during Nintendo 64 games.</li>
+        <li>Virtual Boy games that rely on render-time effects (such as Golf) now display correctly.</li>
+        <li>The Add Cheat dialog now shows the right format guidance per system, and Nintendo 64 cheat codes in unsupported formats are flagged instead of being silently rejected.</li>
+        <li>The game library grid scrolls more smoothly.</li>
+        <li>The Settings window no longer stays on top of other windows.</li>
+        <li>Game Boy and Game Boy Color preferences are now labeled correctly.</li>
+        </ul>
+        ]]>
+      </description>
+      <pubDate>Fri, 19 Jun 2026 15:44:44 +0000</pubDate>
+      <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
+      <enclosure
+        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/v1.2.4/OpenEmu-Silicon.dmg"
+        sparkle:version="20"
+        sparkle:shortVersionString="1.2.4"
+        sparkle:edSignature="PZQ38l+c5x5A0qowGQCJm8+DYEJQ/GTjTG1hfoThvxt9r5vw4bcHtFwDjM3zfriJNEuK1By8T4QbvzlSO5/PCg=="
+        length="49524382"
+        type="application/octet-stream"/>
+    </item>
+<item>
       <title>OpenEmu-Silicon 1.2.3</title>
       <description>
         <![CDATA[
