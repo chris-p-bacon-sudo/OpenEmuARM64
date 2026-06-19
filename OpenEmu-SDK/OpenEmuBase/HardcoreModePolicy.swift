@@ -50,8 +50,12 @@ public enum HardcoreModePolicy {
         guard hardcoreEnabled else { return true }
 
         switch action {
-        case .loadState, .rewind, .fastForward, .slowMotion, .frameStep, .cheats:
+        case .loadState, .rewind, .slowMotion, .frameStep, .cheats:
             return false
+        case .fastForward:
+            // Fast-forward is permitted in hardcore. RA's hardcore-compliance
+            // spec restricts only slowdown and frame advance, not speed-up.
+            return true
         case .saveState:
             // Saving is permitted; RA only restricts restoring prior state.
             return true

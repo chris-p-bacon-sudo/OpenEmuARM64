@@ -598,7 +598,8 @@ static Class GameCoreClass = Nil;
 #pragma clang diagnostic ignored "-Wdeprecated-implementations"
 - (void)fastForward:(BOOL)flag
 {
-    if (self.hardcoreEnabled) return;
+    // Fast-forward is permitted in hardcore mode per RA's hardcore-compliance
+    // spec (only slowdown and frame advance are restricted, not speed-up).
     float newrate = flag ? 5.0 : 1.0;
 
     if (self.isEmulationPaused) {

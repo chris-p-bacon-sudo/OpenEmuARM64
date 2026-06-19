@@ -450,11 +450,13 @@ static __weak GenPlusGameCore *_current;
         bram_load();
 
     // Determine RA console from the system this ROM was identified as.
+    // NOTE: openemu.system.sg is Genesis/Mega Drive; openemu.system.sg1000 is the SG-1000.
+    // The names are misleading — see oecores.xml — so map both explicitly.
     if ([self.systemIdentifier isEqualToString:@"openemu.system.sms"])
         _rcConsole = RC_CONSOLE_MASTER_SYSTEM;
     else if ([self.systemIdentifier isEqualToString:@"openemu.system.gg"])
         _rcConsole = RC_CONSOLE_GAME_GEAR;
-    else if ([self.systemIdentifier isEqualToString:@"openemu.system.sg"])
+    else if ([self.systemIdentifier isEqualToString:@"openemu.system.sg1000"])
         _rcConsole = RC_CONSOLE_SG1000;
     else if ([self.systemIdentifier isEqualToString:@"openemu.system.scd"])
         _rcConsole = RC_CONSOLE_SEGA_CD;

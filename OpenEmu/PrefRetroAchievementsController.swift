@@ -281,8 +281,11 @@ final class PrefRetroAchievementsController: NSViewController {
         let systems: [(name: String, icon: NSImage)] = supportedIDs
             .compactMap { id -> (String, NSImage)? in
                 guard let sys = OESystemPlugin.systemPlugin(forIdentifier: id) else { return nil }
-                let name = sys.systemName
+                var name = sys.systemName
                     .replacingOccurrences(of: #"\s*\([^)]+\)"#, with: "", options: .regularExpression)
+                // OpenEmu models Game Boy and Game Boy Color as one system (openemu.system.gb);
+                // Gambatte detects the cartridge type and earns GBC achievements. Show both.
+                if id == "openemu.system.gb" { name = "Game Boy / Game Boy Color" }
                 return (name, sys.systemIcon)
             }
             .sorted { $0.0 < $1.0 }

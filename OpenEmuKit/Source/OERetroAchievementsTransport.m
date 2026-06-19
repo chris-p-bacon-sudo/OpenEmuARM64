@@ -25,6 +25,8 @@
 
 #import <Foundation/Foundation.h>
 #import <string.h>
+#import <limits.h>
+#import <mach-o/dyld.h>
 #import "OERetroAchievementsTransport.h"
 
 static NSString *OEStringFromCString(const char *string)
@@ -32,6 +34,37 @@ static NSString *OEStringFromCString(const char *string)
     if (!string) { return @""; }
     NSString *value = [NSString stringWithCString:string encoding:NSUTF8StringEncoding];
     return value ?: @"";
+}
+
+NSString *OEHostAppVersion(void)
+{
+    // In the host app process the main bundle carries the version. The RA client
+    // runs in the emulator helper process (OpenEmu.app/Contents/MacOS/
+    // OpenEmuHelperApp), where -mainBundle yields no version. Core plugins also
+    // load from outside the app bundle, so the plugin bundle is no anchor either.
+    // The one stable anchor in either process is the running executable, which
+    // always lives inside OpenEmu.app — walk up from it to the enclosing .app.
+    NSString *version = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleShortVersionString"];
+    if (version.length > 0) { return version; }
+
+    char execPath[PATH_MAX] = {0};
+    uint32_t size = (uint32_t)sizeof(execPath);
+    NSString *path = (_NSGetExecutablePath(execPath, &size) == 0)
+        ? [NSString stringWithUTF8String:execPath]
+        : nil;
+    while (path.length > 1 && ![path.pathExtension isEqualToString:@"app"]) {
+        path = [path stringByDeletingLastPathComponent];
+    }
+    if ([path.pathExtension isEqualToString:@"app"]) {
+        // Read Contents/Info.plist directly. In the helper process
+        // -[NSBundle bundleWithPath: objectForInfoDictionaryKey:] returns nil
+        // for this bundle even though the file is readable, so go to disk.
+        NSString *plistPath = [path stringByAppendingPathComponent:@"Contents/Info.plist"];
+        NSDictionary *info = [NSDictionary dictionaryWithContentsOfFile:plistPath];
+        version = info[@"CFBundleShortVersionString"];
+        if (version.length > 0) { return version; }
+    }
+    return @"unknown";
 }
 
 static void OEPostSessionStatus(NSString *status, int result, const char *error_message)
@@ -245,7 +278,7 @@ void oeRetroAchievementsServerCall(const rc_api_request_t *request,
 
     // RA expects an identifying User-Agent so they can correlate traffic to the host app.
     // Format: OpenEmu-Silicon/<host-version> (macOS <os-version>) rcheevos/<...> <Core>/<ver>
-    NSString *hostVersion = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleShortVersionString"] ?: @"unknown";
+    NSString *hostVersion = OEHostAppVersion();
     NSOperatingSystemVersion osv = [[NSProcessInfo processInfo] operatingSystemVersion];
     NSString *osVersion = [NSString stringWithFormat:@"%ld.%ld.%ld", (long)osv.majorVersion, (long)osv.minorVersion, (long)osv.patchVersion];
     NSString *userAgent = [NSString stringWithFormat:@"OpenEmu-Silicon/%@ (macOS %@) %@%@",
