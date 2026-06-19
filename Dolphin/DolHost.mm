@@ -223,15 +223,21 @@ bool DolHost::LoadFileAtPath()
         wsi.render_surface = (__bridge void*)m_metalLayer;
     }
 
-    if (!BootManager::BootCore(system, BootParameters::GenerateFromFile(_gamePath), wsi))
-        return false;
-   
-    // Initialize Input
+    // Initialize input BEFORE booting. EmuThread (spawned by BootCore) asserts
+    // g_controller_interface.IsInit() during its early init, so the controller
+    // interface must already be initialized when BootCore starts the emu thread.
+    // Doing this after BootCore races the emu thread and hard-traps on first boot
+    // (issue #615); on a retry the global was already initialized by the first
+    // attempt, which is why the second launch "worked". This matches upstream
+    // Dolphin's frontend ordering (host initializes input, then boots).
     Input::Openemu_Input_Init();
-    
+
     //Add 4 Joypads
     for (int i = 0; i < 4; i++)
         Input::openemu_set_controller_port_device(i, OEDolDevJoy);
+
+    if (!BootManager::BootCore(system, BootParameters::GenerateFromFile(_gamePath), wsi))
+        return false;
 
     init_Callback();
     
