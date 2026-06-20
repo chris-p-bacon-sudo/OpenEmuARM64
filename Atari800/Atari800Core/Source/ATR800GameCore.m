@@ -79,6 +79,7 @@ typedef struct {
 @interface ATR800GameCore () <OEA8SystemResponderClient, OE5200SystemResponderClient>
 {
 	uint8_t *_videoBuffer;
+    uint8_t *_renderTarget;
     uint8_t *_soundBuffer;
 	ATR5200ControllerState controllerStates[4];
 }
@@ -244,13 +245,31 @@ static ATR800GameCore *_currentCore;
 {
     Atari800_Frame();
 
+    // Convert palette-indexed Screen_atari to BGRA directly into the Metal-accessible
+    // render target set by getVideoBufferWithHint:. Doing this here (after Atari800_Frame)
+    // rather than inside getVideoBufferWithHint: ensures the buffer is always current in
+    // Release builds, where willExecuteFrame's assert is stripped and getVideoBufferWithHint:
+    // is never called again after the initial setup.
+    uint8_t *dest = _renderTarget ? _renderTarget : _videoBuffer;
+    if (dest) {
+        UBYTE *source = (UBYTE *)(Screen_atari);
+        UBYTE *destination = dest;
+        for (int i = 0; i < Screen_HEIGHT; i++) {
+            for (int j = 0; j < Screen_WIDTH; j++) {
+                UBYTE r = Colours_GetR(*source);
+                UBYTE g = Colours_GetG(*source);
+                UBYTE b = Colours_GetB(*source);
+                *destination++ = b;
+                *destination++ = g;
+                *destination++ = r;
+                *destination++ = 0xff;
+                source++;
+            }
+        }
+    }
+
     unsigned int size = 44100 / (Atari800_tv_mode == Atari800_TV_NTSC ? 59.9 : 50) * 2;
-
     Sound_Callback(_soundBuffer, size);
-
-    //NSLog(@"Sound_desired.channels %d frag_frames %d freq %d sample_size %d", Sound_desired.channels, Sound_desired.frag_frames, Sound_desired.freq, Sound_desired.sample_size);
-    //NSLog(@"Sound_out.channels %d frag_frames %d freq %d sample_size %d", Sound_out.channels, Sound_out.frag_frames, Sound_out.freq, Sound_out.sample_size);
-
     [[self ringBufferAtIndex:0] write:_soundBuffer maxLength:size];
 }
 
@@ -275,30 +294,10 @@ static ATR800GameCore *_currentCore;
 {
     if (!hint) {
         if (!_videoBuffer) _videoBuffer = (uint8_t *)malloc(Screen_WIDTH * Screen_HEIGHT * 4);
-        hint = _videoBuffer;
+        _renderTarget = _videoBuffer;
+        return _videoBuffer;
     }
-
-    // TODO: support paletted video in OE
-    int i, j;
-    UBYTE *source = (UBYTE *)(Screen_atari);
-    UBYTE *destination = (uint8_t*)hint;
-    for (i = 0; i < Screen_HEIGHT; i++)
-    {
-        for (j = 0; j < Screen_WIDTH; j++)
-        {
-            UBYTE r,g,b;
-            r = Colours_GetR(*source);
-            g = Colours_GetG(*source);
-            b = Colours_GetB(*source);
-            *destination++ = b;
-            *destination++ = g;
-            *destination++ = r;
-            *destination++ = 0xff;
-            source++;
-        }
-        //		source += Screen_WIDTH - ATARI_VISIBLE_WIDTH;
-    }
-
+    _renderTarget = (uint8_t *)hint;
     return hint;
 }
 
