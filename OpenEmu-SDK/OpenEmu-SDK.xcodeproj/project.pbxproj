@@ -30,6 +30,7 @@
 		0442B0041A2F4E6C00442004 /* HardcoreModePolicyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0442B0051A2F4E6C00442005 /* HardcoreModePolicyTests.swift */; };
 		05F2F90824EA029900BFAF18 /* Controller-Database.plist in Resources */ = {isa = PBXBuildFile; fileRef = 05F2F90724EA029900BFAF18 /* Controller-Database.plist */; };
 		05FC85B1295E49FE003DED0C /* NSDataCategoryTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 05FC85B0295E49FE003DED0C /* NSDataCategoryTests.m */; };
+		A17E9F012F1A000100000001 /* OEDeviceManagerTests.m in Sources */ = {isa = PBXBuildFile; fileRef = A17E9F022F1A000100000002 /* OEDeviceManagerTests.m */; };
 		05FC85B2295E49FE003DED0C /* OpenEmuSystem.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C6772A8C1710CD7E00ED580A /* OpenEmuSystem.framework */; };
 		05FF41B822B08C5F00BB7283 /* OELogging.m in Sources */ = {isa = PBXBuildFile; fileRef = 05FF41B622B08C5F00BB7283 /* OELogging.m */; };
 		05FF41B922B08C5F00BB7283 /* OELogging.h in Headers */ = {isa = PBXBuildFile; fileRef = 05FF41B722B08C5F00BB7283 /* OELogging.h */; };
@@ -172,6 +173,7 @@
 		05F2F90724EA029900BFAF18 /* Controller-Database.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "Controller-Database.plist"; sourceTree = "<group>"; };
 		05FC85AE295E49FE003DED0C /* OpenEmuSystemTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = OpenEmuSystemTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		05FC85B0295E49FE003DED0C /* NSDataCategoryTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = NSDataCategoryTests.m; sourceTree = "<group>"; };
+		A17E9F022F1A000100000002 /* OEDeviceManagerTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = OEDeviceManagerTests.m; sourceTree = "<group>"; };
 		05FF41B622B08C5F00BB7283 /* OELogging.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = OELogging.m; sourceTree = "<group>"; };
 		05FF41B722B08C5F00BB7283 /* OELogging.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OELogging.h; sourceTree = "<group>"; };
 		27FC95161A92F12700CF1DC6 /* OEDiffQueue.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OEDiffQueue.h; sourceTree = "<group>"; };
@@ -317,6 +319,7 @@
 			isa = PBXGroup;
 			children = (
 				05FC85B0295E49FE003DED0C /* NSDataCategoryTests.m */,
+				A17E9F022F1A000100000002 /* OEDeviceManagerTests.m */,
 			);
 			path = OpenEmuSystemTests;
 			sourceTree = "<group>";
@@ -776,6 +779,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				05FC85B1295E49FE003DED0C /* NSDataCategoryTests.m in Sources */,
+				A17E9F012F1A000100000001 /* OEDeviceManagerTests.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
