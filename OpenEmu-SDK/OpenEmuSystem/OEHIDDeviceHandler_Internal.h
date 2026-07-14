@@ -1,4 +1,4 @@
-// Copyright (c) 2019, OpenEmu Team
+// Copyright (c) 2026, OpenEmu Team
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -22,12 +22,18 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#import "OEDeviceManager.h"
+#import <Foundation/Foundation.h>
+#import <IOKit/hid/IOHIDLib.h>
+#import <IOKit/hid/IOHIDUsageTables.h>
 
-@interface OEDeviceManager ()
+NS_INLINE BOOL OEHIDDeviceConformanceIsKeyboardOnly(BOOL isKeyboard, BOOL isJoystick, BOOL isGamepad)
+{
+    return isKeyboard && !isJoystick && !isGamepad;
+}
 
-- (void)OE_removeDeviceHandler:(__kindof OEDeviceHandler *)handler;
-- (BOOL)OE_hasSingleGameControllerSupportedHIDDeviceMatchingDevice:(IOHIDDeviceRef)device;
-
-@end
-
+NS_INLINE BOOL OEHIDDeviceIsKeyboardOnly(IOHIDDeviceRef device)
+{
+    return OEHIDDeviceConformanceIsKeyboardOnly(IOHIDDeviceConformsTo(device, kHIDPage_GenericDesktop, kHIDUsage_GD_Keyboard),
+                                                IOHIDDeviceConformsTo(device, kHIDPage_GenericDesktop, kHIDUsage_GD_Joystick),
+                                                IOHIDDeviceConformsTo(device, kHIDPage_GenericDesktop, kHIDUsage_GD_GamePad));
+}

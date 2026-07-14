@@ -31,6 +31,7 @@
 #import "OEControlDescription.h"
 #import "OEControlDescription.h"
 #import "OEDeviceDescription.h"
+#import "OEGameControllerHIDDeviceHandler.h"
 #import "OEMultiHIDDeviceHandler.h"
 #import "OEPS3HIDDeviceHandler.h"
 #import "OEPS4HIDDeviceHandler.h"
@@ -319,7 +320,8 @@ typedef NS_ENUM(NSInteger, OEElementType) {
         return nil;
 
     if([rootJoysticks count] == 1) {
-        _OEHIDDeviceAttributes *attributes = [[_OEHIDDeviceAttributes alloc] initWithDeviceHandlerClass:[OEHIDDeviceHandler class]];
+        Class handlerClass = [OEGameControllerHIDDeviceHandler canHandleDevice:device] ? [OEGameControllerHIDDeviceHandler class] : [OEHIDDeviceHandler class];
+        _OEHIDDeviceAttributes *attributes = [[_OEHIDDeviceAttributes alloc] initWithDeviceHandlerClass:handlerClass];
 
         [self OE_parseJoystickElement:VALUE_TO_ELEM(rootJoysticks[0]) intoControllerDescription:controllerDesc attributes:attributes deviceIdentifier:nil usingElementTree:tree];
 

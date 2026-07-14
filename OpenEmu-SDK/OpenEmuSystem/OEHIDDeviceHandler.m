@@ -25,6 +25,7 @@
  */
 
 #import "OEHIDDeviceHandler.h"
+#import "OEHIDDeviceHandler_Internal.h"
 #import "OEControllerDescription.h"
 #import "OEDeviceDescription.h"
 #import "OEControlDescription.h"
@@ -187,7 +188,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (BOOL)isKeyboardDevice;
 {
-    return IOHIDDeviceConformsTo(_device, kHIDPage_GenericDesktop, kHIDUsage_GD_Keyboard);
+    return OEHIDDeviceIsKeyboardOnly(_device);
 }
 
 - (BOOL)isFunctionKeyPressed

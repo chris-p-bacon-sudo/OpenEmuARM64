@@ -30,6 +30,10 @@
 		0442B0041A2F4E6C00442004 /* HardcoreModePolicyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0442B0051A2F4E6C00442005 /* HardcoreModePolicyTests.swift */; };
 		05F2F90824EA029900BFAF18 /* Controller-Database.plist in Resources */ = {isa = PBXBuildFile; fileRef = 05F2F90724EA029900BFAF18 /* Controller-Database.plist */; };
 		05FC85B1295E49FE003DED0C /* NSDataCategoryTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 05FC85B0295E49FE003DED0C /* NSDataCategoryTests.m */; };
+		A17EB1012F2B000100000001 /* OEHIDDeviceClassificationTests.m in Sources */ = {isa = PBXBuildFile; fileRef = A17EB1022F2B000100000002 /* OEHIDDeviceClassificationTests.m */; };
+		A17EB1052F2B000100000005 /* OEGameControllerHIDDeviceHandlerTests.m in Sources */ = {isa = PBXBuildFile; fileRef = A17EB1062F2B000100000006 /* OEGameControllerHIDDeviceHandlerTests.m */; };
+		A17EB1082F2B000100000008 /* GameController.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A17EB1072F2B000100000007 /* GameController.framework */; };
+		A17EB1092F2B000100000009 /* GameController.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A17EB1072F2B000100000007 /* GameController.framework */; };
 		05FC85B2295E49FE003DED0C /* OpenEmuSystem.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C6772A8C1710CD7E00ED580A /* OpenEmuSystem.framework */; };
 		05FF41B822B08C5F00BB7283 /* OELogging.m in Sources */ = {isa = PBXBuildFile; fileRef = 05FF41B622B08C5F00BB7283 /* OELogging.m */; };
 		05FF41B922B08C5F00BB7283 /* OELogging.h in Headers */ = {isa = PBXBuildFile; fileRef = 05FF41B722B08C5F00BB7283 /* OELogging.h */; };
@@ -89,7 +93,9 @@
 		C6772BB81710E28900ED580A /* OEDeviceHandler.h in Headers */ = {isa = PBXBuildFile; fileRef = C6772BA31710E28900ED580A /* OEDeviceHandler.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		C6772BB91710E28900ED580A /* OEDeviceHandler.m in Sources */ = {isa = PBXBuildFile; fileRef = C6772BA41710E28900ED580A /* OEDeviceHandler.m */; };
 		C6772BBA1710E28900ED580A /* OEHIDDeviceHandler.h in Headers */ = {isa = PBXBuildFile; fileRef = C6772BA51710E28900ED580A /* OEHIDDeviceHandler.h */; };
+		A17EB1032F2B000100000003 /* OEHIDDeviceHandler_Internal.h in Headers */ = {isa = PBXBuildFile; fileRef = A17EB1042F2B000100000004 /* OEHIDDeviceHandler_Internal.h */; };
 		C6772BBB1710E28900ED580A /* OEHIDDeviceHandler.m in Sources */ = {isa = PBXBuildFile; fileRef = C6772BA61710E28900ED580A /* OEHIDDeviceHandler.m */; };
+		A17EB10C2F2B00010000000C /* OEGameControllerHIDDeviceHandler.m in Sources */ = {isa = PBXBuildFile; fileRef = A17EB10B2F2B00010000000B /* OEGameControllerHIDDeviceHandler.m */; };
 		C6772BBC1710E28900ED580A /* OEMultiHIDDeviceHandler.h in Headers */ = {isa = PBXBuildFile; fileRef = C6772BA71710E28900ED580A /* OEMultiHIDDeviceHandler.h */; };
 		C6772BBD1710E28900ED580A /* OEMultiHIDDeviceHandler.m in Sources */ = {isa = PBXBuildFile; fileRef = C6772BA81710E28900ED580A /* OEMultiHIDDeviceHandler.m */; };
 		C6772BBE1710E28900ED580A /* OEWiimoteHIDDeviceHandler.h in Headers */ = {isa = PBXBuildFile; fileRef = C6772BA91710E28900ED580A /* OEWiimoteHIDDeviceHandler.h */; };
@@ -172,6 +178,9 @@
 		05F2F90724EA029900BFAF18 /* Controller-Database.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "Controller-Database.plist"; sourceTree = "<group>"; };
 		05FC85AE295E49FE003DED0C /* OpenEmuSystemTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = OpenEmuSystemTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		05FC85B0295E49FE003DED0C /* NSDataCategoryTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = NSDataCategoryTests.m; sourceTree = "<group>"; };
+		A17EB1022F2B000100000002 /* OEHIDDeviceClassificationTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = OEHIDDeviceClassificationTests.m; sourceTree = "<group>"; };
+		A17EB1062F2B000100000006 /* OEGameControllerHIDDeviceHandlerTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = OEGameControllerHIDDeviceHandlerTests.m; sourceTree = "<group>"; };
+		A17EB1072F2B000100000007 /* GameController.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = GameController.framework; path = System/Library/Frameworks/GameController.framework; sourceTree = SDKROOT; };
 		05FF41B622B08C5F00BB7283 /* OELogging.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = OELogging.m; sourceTree = "<group>"; };
 		05FF41B722B08C5F00BB7283 /* OELogging.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OELogging.h; sourceTree = "<group>"; };
 		27FC95161A92F12700CF1DC6 /* OEDiffQueue.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OEDiffQueue.h; sourceTree = "<group>"; };
@@ -236,7 +245,10 @@
 		C6772BA31710E28900ED580A /* OEDeviceHandler.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OEDeviceHandler.h; sourceTree = "<group>"; };
 		C6772BA41710E28900ED580A /* OEDeviceHandler.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = OEDeviceHandler.m; sourceTree = "<group>"; };
 		C6772BA51710E28900ED580A /* OEHIDDeviceHandler.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OEHIDDeviceHandler.h; sourceTree = "<group>"; };
+		A17EB1042F2B000100000004 /* OEHIDDeviceHandler_Internal.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OEHIDDeviceHandler_Internal.h; sourceTree = "<group>"; };
 		C6772BA61710E28900ED580A /* OEHIDDeviceHandler.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = OEHIDDeviceHandler.m; sourceTree = "<group>"; };
+		A17EB10A2F2B00010000000A /* OEGameControllerHIDDeviceHandler.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OEGameControllerHIDDeviceHandler.h; sourceTree = "<group>"; };
+		A17EB10B2F2B00010000000B /* OEGameControllerHIDDeviceHandler.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = OEGameControllerHIDDeviceHandler.m; sourceTree = "<group>"; };
 		C6772BA71710E28900ED580A /* OEMultiHIDDeviceHandler.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OEMultiHIDDeviceHandler.h; sourceTree = "<group>"; };
 		C6772BA81710E28900ED580A /* OEMultiHIDDeviceHandler.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = OEMultiHIDDeviceHandler.m; sourceTree = "<group>"; };
 		C6772BA91710E28900ED580A /* OEWiimoteHIDDeviceHandler.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OEWiimoteHIDDeviceHandler.h; sourceTree = "<group>"; };
@@ -282,6 +294,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				05FC85B2295E49FE003DED0C /* OpenEmuSystem.framework in Frameworks */,
+				A17EB1092F2B000100000009 /* GameController.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -297,6 +310,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				C6772BE11710E72A00ED580A /* OpenEmuBase.framework in Frameworks */,
+				A17EB1082F2B000100000008 /* GameController.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -317,6 +331,8 @@
 			isa = PBXGroup;
 			children = (
 				05FC85B0295E49FE003DED0C /* NSDataCategoryTests.m */,
+				A17EB1022F2B000100000002 /* OEHIDDeviceClassificationTests.m */,
+				A17EB1062F2B000100000006 /* OEGameControllerHIDDeviceHandlerTests.m */,
 			);
 			path = OpenEmuSystemTests;
 			sourceTree = "<group>";
@@ -338,6 +354,7 @@
 				C6772A8E1710CD7E00ED580A /* OpenEmuSystem */,
 				0109BBA3209F25EB002419C1 /* OpenEmuBaseTests */,
 				05FC85AF295E49FE003DED0C /* OpenEmuSystemTests */,
+				A17EB1072F2B000100000007 /* GameController.framework */,
 				C6772A271710A4BA00ED580A /* Products */,
 			);
 			indentWidth = 4;
@@ -492,7 +509,10 @@
 				C6772BAB1710E28900ED580A /* OEHIDDeviceParser.h */,
 				C6772BAC1710E28900ED580A /* OEHIDDeviceParser.m */,
 				C6772BA51710E28900ED580A /* OEHIDDeviceHandler.h */,
+				A17EB1042F2B000100000004 /* OEHIDDeviceHandler_Internal.h */,
 				C6772BA61710E28900ED580A /* OEHIDDeviceHandler.m */,
+				A17EB10A2F2B00010000000A /* OEGameControllerHIDDeviceHandler.h */,
+				A17EB10B2F2B00010000000B /* OEGameControllerHIDDeviceHandler.m */,
 				C6772BA71710E28900ED580A /* OEMultiHIDDeviceHandler.h */,
 				C6772BA81710E28900ED580A /* OEMultiHIDDeviceHandler.m */,
 				C6772BA91710E28900ED580A /* OEWiimoteHIDDeviceHandler.h */,
@@ -597,6 +617,7 @@
 				C6772B971710E25300ED580A /* OEBindingsController_Internal.h in Headers */,
 				C6772BD31710E29C00ED580A /* OEControllerDescription_Internal.h in Headers */,
 				C6772BBA1710E28900ED580A /* OEHIDDeviceHandler.h in Headers */,
+				A17EB1032F2B000100000003 /* OEHIDDeviceHandler_Internal.h in Headers */,
 				C6772BC01710E28900ED580A /* OEHIDDeviceParser.h in Headers */,
 				C6772BC61710E28900ED580A /* OEHIDUsageToVK.h in Headers */,
 				C6772BBC1710E28900ED580A /* OEMultiHIDDeviceHandler.h in Headers */,
@@ -776,6 +797,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				05FC85B1295E49FE003DED0C /* NSDataCategoryTests.m in Sources */,
+				A17EB1012F2B000100000001 /* OEHIDDeviceClassificationTests.m in Sources */,
+				A17EB1052F2B000100000005 /* OEGameControllerHIDDeviceHandlerTests.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -823,6 +846,7 @@
 				C6772BB91710E28900ED580A /* OEDeviceHandler.m in Sources */,
 				01AFC70D2364E327005EEB08 /* DataProtocol+HexString.swift in Sources */,
 				C6772BBB1710E28900ED580A /* OEHIDDeviceHandler.m in Sources */,
+				A17EB10C2F2B00010000000C /* OEGameControllerHIDDeviceHandler.m in Sources */,
 				C6772BBD1710E28900ED580A /* OEMultiHIDDeviceHandler.m in Sources */,
 				C6772BBF1710E28900ED580A /* OEWiimoteHIDDeviceHandler.m in Sources */,
 				C6772BC11710E28900ED580A /* OEHIDDeviceParser.m in Sources */,

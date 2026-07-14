@@ -29,6 +29,7 @@
 #import "OEDeviceHandler.h"
 #import "OEControllerDescription.h"
 #import "OEHIDDeviceHandler.h"
+#import "OEHIDDeviceHandler_Internal.h"
 #import "OEMultiHIDDeviceHandler.h"
 #import "OEWiimoteHIDDeviceHandler.h"
 #import "OEPS3HIDDeviceHandler.h"
@@ -38,6 +39,8 @@
 #import "OEHIDEvent_Internal.h"
 
 #import <objc/runtime.h>
+#import <IOKit/IOKitLib.h>
+#import <GameController/GameController.h>
 
 #import <IOBluetooth/IOBluetooth.h>
 #import <IOBluetooth/objc/IOBluetoothDeviceInquiry.h>
@@ -61,6 +64,31 @@ NSString *const OEDeviceManagerDeviceHandlerUserInfoKey           = @"OEDeviceMa
 @end
 
 static void OEHandle_DeviceMatchingCallback(void *inContext, IOReturn inResult, void *inSender, IOHIDDeviceRef inIOHIDDeviceRef);
+
+static NSNumber * _Nullable OERegistryEntryIDForHIDDevice(IOHIDDeviceRef device)
+{
+    if(device == NULL)
+        return nil;
+
+    io_service_t service = IOHIDDeviceGetService(device);
+    uint64_t registryEntryID = 0;
+    if(service == IO_OBJECT_NULL ||
+       IORegistryEntryGetRegistryEntryID(service, &registryEntryID) != KERN_SUCCESS)
+        return nil;
+
+    return @(registryEntryID);
+}
+
+static NSString * _Nullable OERegistryIdentityForHIDDevice(IOHIDDeviceRef device)
+{
+    if(device == NULL)
+        return nil;
+
+    NSNumber *registryEntryID = OERegistryEntryIDForHIDDevice(device);
+    return registryEntryID != nil
+         ? [NSString stringWithFormat:@"registry:%@", registryEntryID]
+         : [NSString stringWithFormat:@"pointer:%p", (void *)device];
+}
 
 static const void * kOEBluetoothDevicePairSyncStyleKey = &kOEBluetoothDevicePairSyncStyleKey;
 
@@ -122,6 +150,36 @@ static const void * kOEBluetoothDevicePairSyncStyleKey = &kOEBluetoothDevicePair
     });
 
     return sharedHIDManager;
+}
+
+- (BOOL)OE_hasSingleGameControllerSupportedHIDDeviceMatchingDevice:(IOHIDDeviceRef)expectedDevice
+{
+    if(_hidManager == NULL || expectedDevice == NULL)
+        return NO;
+
+    if(@available(macOS 11.0, *)) {
+        CFSetRef devices = IOHIDManagerCopyDevices(_hidManager);
+        if(devices == NULL)
+            return NO;
+
+        NSMutableSet<NSString *> *identities = [NSMutableSet set];
+        for(id object in (__bridge NSSet *)devices) {
+            IOHIDDeviceRef device = (__bridge IOHIDDeviceRef)object;
+            BOOL isGameController = IOHIDDeviceConformsTo(device, kHIDPage_GenericDesktop, kHIDUsage_GD_Joystick) ||
+                                    IOHIDDeviceConformsTo(device, kHIDPage_GenericDesktop, kHIDUsage_GD_GamePad);
+            if(isGameController && [GCController supportsHIDDevice:device]) {
+                NSString *identity = OERegistryIdentityForHIDDevice(device);
+                if(identity != nil)
+                    [identities addObject:identity];
+            }
+        }
+
+        CFRelease(devices);
+        NSString *expectedIdentity = OERegistryIdentityForHIDDevice(expectedDevice);
+        return expectedIdentity != nil && identities.count == 1 && [identities containsObject:expectedIdentity];
+    }
+
+    return NO;
 }
 
 - (instancetype)init
@@ -467,7 +525,7 @@ static const void * kOEBluetoothDevicePairSyncStyleKey = &kOEBluetoothDevicePair
     NSAssert(device != NULL, @"Passing NULL device.");
 
     OEHIDDeviceHandler *handler = nil;
-    if(IOHIDDeviceConformsTo(device, kHIDPage_GenericDesktop, kHIDUsage_GD_Keyboard)) {
+    if(OEHIDDeviceIsKeyboardOnly(device)) {
         if (!istouchbar)
             handler = [[OEHIDDeviceHandler alloc] initWithIOHIDDevice:device deviceDescription:nil];
         else
@@ -519,18 +577,42 @@ static const void * kOEBluetoothDevicePairSyncStyleKey = &kOEBluetoothDevicePair
     [[NSNotificationCenter defaultCenter] postNotificationName:OEDeviceManagerDidAddDeviceHandlerNotification object:self userInfo:@{ OEDeviceManagerDeviceHandlerUserInfoKey : handler }];
 }
 
-- (BOOL)OE_hasDeviceHandlerForDeviceRef:(IOHIDDeviceRef)deviceRef
+- (nullable NSNumber *)OE_registryEntryIDForDeviceHandler:(OEDeviceHandler *)handler
 {
-    __block BOOL didFoundDevice = NO;
+    if(![handler isKindOfClass:[OEHIDDeviceHandler class]])
+        return nil;
+
+    return OERegistryEntryIDForHIDDevice([(OEHIDDeviceHandler *)handler device]);
+}
+
+- (BOOL)OE_hasDeviceHandlerForDeviceRef:(nullable IOHIDDeviceRef)deviceRef
+                        registryEntryID:(nullable NSNumber *)registryEntryID
+{
+    __block BOOL didFindDevice = NO;
     [self OE_enumerateDevicesUsingBlock:^(OEDeviceHandler *handler, BOOL *stop) {
-        if(![handler isKindOfClass:[OEHIDDeviceHandler class]] || [(OEHIDDeviceHandler *)handler device] != deviceRef)
+        BOOL hasSameDeviceRef =
+            deviceRef != NULL &&
+            [handler isKindOfClass:[OEHIDDeviceHandler class]] &&
+            [(OEHIDDeviceHandler *)handler device] == deviceRef;
+        NSNumber *handlerRegistryEntryID = [self OE_registryEntryIDForDeviceHandler:handler];
+        BOOL hasSameRegistryEntryID =
+            registryEntryID != nil &&
+            handlerRegistryEntryID != nil &&
+            [handlerRegistryEntryID isEqualToNumber:registryEntryID];
+        if(!hasSameDeviceRef && !hasSameRegistryEntryID)
             return;
 
-        didFoundDevice = YES;
+        didFindDevice = YES;
         *stop = YES;
     }];
 
-    return didFoundDevice;
+    return didFindDevice;
+}
+
+- (BOOL)OE_hasDeviceHandlerForDeviceRef:(IOHIDDeviceRef)deviceRef
+{
+    return [self OE_hasDeviceHandlerForDeviceRef:deviceRef
+                                registryEntryID:OERegistryEntryIDForHIDDevice(deviceRef)];
 }
 
 - (void)OE_removeDeviceHandler:(__kindof OEDeviceHandler *)handler
