@@ -492,15 +492,19 @@ final class OERetroAchievementsIndicatorStackView: NSStackView {
 
     /// Rebuilds the stack's arranged subviews from current state: the single
     /// most-recently-active challenge chip (if any), followed by transient
-    /// progress/leaderboard chips.
+    /// progress/leaderboard chips. The progress toast is suppressed entirely
+    /// while a challenge is active — a challenge is the thing worth the
+    /// player's attention, and stacking a progress ping on top of it just
+    /// reintroduces the clutter this indicator is meant to avoid.
     private func updateArrangedSubviews() {
         for view in arrangedSubviews { removeArrangedSubview(view); view.removeFromSuperview() }
 
-        if let currentChallengeID = challengeOrder.last, let title = challengeTitles[currentChallengeID] {
+        let hasActiveChallenge = !challengeOrder.isEmpty
+        if hasActiveChallenge, let currentChallengeID = challengeOrder.last, let title = challengeTitles[currentChallengeID] {
             challengeChip.stringValue = "Challenge: \(title)"
             addArrangedSubview(challengeChip)
         }
-        if !progressLabel.isHidden { addArrangedSubview(progressLabel) }
+        if !progressLabel.isHidden && !hasActiveChallenge { addArrangedSubview(progressLabel) }
         for label in leaderboardViews.values { addArrangedSubview(label) }
 
         isHidden = arrangedSubviews.isEmpty
