@@ -477,10 +477,16 @@ final class OERetroAchievementsIndicatorStackView: NSStackView {
         chips.append(contentsOf: challengeViews.values)
         chips.append(contentsOf: leaderboardViews.values)
 
-        let visible = chips.prefix(Self.maxVisibleChips)
-        let overflowCount = chips.count - visible.count
+        // When overflow is needed, the overflow chip itself counts toward the
+        // cap so the total number of stacked items never exceeds maxVisibleChips.
+        let hasOverflow = chips.count > Self.maxVisibleChips
+        let visibleCount = hasOverflow ? Self.maxVisibleChips - 1 : chips.count
+        let visible = chips.prefix(visibleCount)
         for chip in visible { addArrangedSubview(chip) }
-        if overflowCount > 0 {
+
+        overflowLabel.isHidden = !hasOverflow
+        if hasOverflow {
+            let overflowCount = chips.count - visible.count
             overflowLabel.stringValue = String(format: NSLocalizedString("+%d more", comment: "RetroAchievements indicator overflow chip"), overflowCount)
             addArrangedSubview(overflowLabel)
         }
