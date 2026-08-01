@@ -378,6 +378,12 @@ final class OERetroAchievementsIndicatorStackView: NSStackView {
     private var leaderboardTimers: [UInt32: Timer] = [:]
     private let progressLabel = OERetroAchievementsChipLabel(labelWithString: "")
     private var progressTimer: Timer?
+    /// The latest progress text, kept even while suppressed by an active
+    /// challenge so it can be revealed (with a fresh dismiss clock) once the
+    /// challenge ends, instead of expiring unseen in the background.
+    private var pendingProgressText: String?
+
+    private var hasActiveChallenge: Bool { !challengeOrder.isEmpty }
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -407,6 +413,14 @@ final class OERetroAchievementsIndicatorStackView: NSStackView {
     func hideChallenge(id: UInt32) {
         guard challengeTitles.removeValue(forKey: id) != nil else { return }
         challengeOrder.removeAll { $0 == id }
+        // Reveal any progress that arrived (and was suppressed) while a
+        // challenge was active, giving it a fresh full dismiss window now
+        // that the player can actually see it.
+        if !hasActiveChallenge, let text = pendingProgressText {
+            progressLabel.stringValue = text
+            progressLabel.isHidden = false
+            resetProgressDismissTimer()
+        }
         updateArrangedSubviews()
     }
 
@@ -444,14 +458,22 @@ final class OERetroAchievementsIndicatorStackView: NSStackView {
         let text = progress.isEmpty ? title : "\(title): \(progress)"
         // RA can re-send the same progress value on a cadence of its own even
         // when nothing has actually changed. Only treat this as a fresh,
-        // pertinent update (and restart the dismiss clock) if the displayed
-        // text is different or the chip isn't currently showing — otherwise
-        // a steady drip of unchanged pings would keep the chip on screen
-        // indefinitely instead of letting it disappear.
-        let isNewUpdate = progressLabel.isHidden || progressLabel.stringValue != text
-        progressLabel.stringValue = text
-        progressLabel.isHidden = false
-        if isNewUpdate {
+        // pertinent update if the value is different from what's already
+        // pending — otherwise a steady drip of unchanged pings would keep
+        // resetting the dismiss clock and the chip would never disappear.
+        guard pendingProgressText != text else { return }
+        pendingProgressText = text
+
+        if hasActiveChallenge {
+            // Don't start the dismiss clock on a toast the player can't even
+            // see yet — it would expire in the background and never be
+            // shown at all. hideChallenge(id:) reveals it once possible.
+            progressTimer?.invalidate()
+            progressTimer = nil
+            progressLabel.isHidden = true
+        } else {
+            progressLabel.stringValue = text
+            progressLabel.isHidden = false
             resetProgressDismissTimer()
         }
         updateArrangedSubviews()
@@ -460,6 +482,7 @@ final class OERetroAchievementsIndicatorStackView: NSStackView {
     func hideProgress() {
         progressTimer?.invalidate()
         progressTimer = nil
+        pendingProgressText = nil
         progressLabel.isHidden = true
         updateArrangedSubviews()
     }
@@ -469,6 +492,7 @@ final class OERetroAchievementsIndicatorStackView: NSStackView {
         leaderboardTimers.removeAll()
         progressTimer?.invalidate()
         progressTimer = nil
+        pendingProgressText = nil
         challengeTitles.removeAll()
         challengeOrder.removeAll()
         leaderboardViews.removeAll()
@@ -493,18 +517,18 @@ final class OERetroAchievementsIndicatorStackView: NSStackView {
     /// Rebuilds the stack's arranged subviews from current state: the single
     /// most-recently-active challenge chip (if any), followed by transient
     /// progress/leaderboard chips. The progress toast is suppressed entirely
-    /// while a challenge is active — a challenge is the thing worth the
-    /// player's attention, and stacking a progress ping on top of it just
-    /// reintroduces the clutter this indicator is meant to avoid.
+    /// while a challenge is active (kept hidden by showProgress/hideChallenge
+    /// above) — a challenge is the thing worth the player's attention, and
+    /// stacking a progress ping on top of it just reintroduces the clutter
+    /// this indicator is meant to avoid.
     private func updateArrangedSubviews() {
         for view in arrangedSubviews { removeArrangedSubview(view); view.removeFromSuperview() }
 
-        let hasActiveChallenge = !challengeOrder.isEmpty
-        if hasActiveChallenge, let currentChallengeID = challengeOrder.last, let title = challengeTitles[currentChallengeID] {
+        if let currentChallengeID = challengeOrder.last, let title = challengeTitles[currentChallengeID] {
             challengeChip.stringValue = "Challenge: \(title)"
             addArrangedSubview(challengeChip)
         }
-        if !progressLabel.isHidden && !hasActiveChallenge { addArrangedSubview(progressLabel) }
+        if !progressLabel.isHidden { addArrangedSubview(progressLabel) }
         for label in leaderboardViews.values { addArrangedSubview(label) }
 
         isHidden = arrangedSubviews.isEmpty
