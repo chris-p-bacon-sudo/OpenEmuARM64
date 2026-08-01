@@ -359,9 +359,24 @@ final class OERetroAchievementsNoticeView: NSStackView {
 }
 
 final class OERetroAchievementsIndicatorStackView: NSStackView {
+    /// Maximum number of individual chips shown at once. Beyond this, the
+    /// remainder are collapsed into a single "+N more" chip so the stack
+    /// can never grow tall enough to overlap the video (see #638).
+    private static let maxVisibleChips = 4
+
+    /// A leaderboard tracker chip is considered stale, and is removed, if it
+    /// goes this long without a `leaderboardTrackerUpdate` event. Active
+    /// trackers are updated frequently by RA, so this only fires when a
+    /// matching hide event was missed. Challenge chips have no equivalent
+    /// heartbeat (a challenge can legitimately stay active for an entire
+    /// session), so they are not auto-timed-out.
+    private static let leaderboardStaleInterval: TimeInterval = 30
+
     private var challengeViews: [UInt32: OERetroAchievementsChipLabel] = [:]
     private var leaderboardViews: [UInt32: OERetroAchievementsChipLabel] = [:]
+    private var leaderboardStaleTimers: [UInt32: Timer] = [:]
     private let progressLabel = OERetroAchievementsChipLabel(labelWithString: "")
+    private let overflowLabel = OERetroAchievementsChipLabel(labelWithString: "")
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -371,25 +386,28 @@ final class OERetroAchievementsIndicatorStackView: NSStackView {
         isHidden = true
         configureChip(progressLabel, color: .systemGreen)
         progressLabel.isHidden = true
+        configureChip(overflowLabel, color: .systemGray)
+        overflowLabel.isHidden = true
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    deinit {
+        for timer in leaderboardStaleTimers.values { timer.invalidate() }
+    }
 
     func showChallenge(id: UInt32, title: String) {
         let label = challengeViews[id] ?? makeChip(color: .systemOrange)
         label.stringValue = "Challenge: \(title)"
         if challengeViews[id] == nil {
             challengeViews[id] = label
-            addArrangedSubview(label)
         }
-        updateVisibility()
+        updateArrangedSubviews()
     }
 
     func hideChallenge(id: UInt32) {
-        guard let label = challengeViews.removeValue(forKey: id) else { return }
-        removeArrangedSubview(label)
-        label.removeFromSuperview()
-        updateVisibility()
+        guard challengeViews.removeValue(forKey: id) != nil else { return }
+        updateArrangedSubviews()
     }
 
     func showLeaderboard(id: UInt32, display: String) {
@@ -397,53 +415,77 @@ final class OERetroAchievementsIndicatorStackView: NSStackView {
         label.stringValue = "Leaderboard: \(display)"
         if leaderboardViews[id] == nil {
             leaderboardViews[id] = label
-            addArrangedSubview(label)
         }
-        updateVisibility()
+        resetLeaderboardStaleTimer(id: id)
+        updateArrangedSubviews()
     }
 
     func updateLeaderboard(id: UInt32, display: String) {
         guard let label = leaderboardViews[id] else { return }
         label.stringValue = "Leaderboard: \(display)"
-        updateVisibility()
+        resetLeaderboardStaleTimer(id: id)
+        updateArrangedSubviews()
     }
 
     func hideLeaderboard(id: UInt32) {
-        guard let label = leaderboardViews.removeValue(forKey: id) else { return }
-        removeArrangedSubview(label)
-        label.removeFromSuperview()
-        updateVisibility()
+        leaderboardStaleTimers.removeValue(forKey: id)?.invalidate()
+        guard leaderboardViews.removeValue(forKey: id) != nil else { return }
+        updateArrangedSubviews()
     }
 
     func hideAllLeaderboards() {
-        for label in leaderboardViews.values {
-            removeArrangedSubview(label)
-            label.removeFromSuperview()
-        }
+        for timer in leaderboardStaleTimers.values { timer.invalidate() }
+        leaderboardStaleTimers.removeAll()
         leaderboardViews.removeAll()
-        updateVisibility()
+        updateArrangedSubviews()
     }
 
     func showProgress(title: String, progress: String) {
-        if progressLabel.superview == nil { addArrangedSubview(progressLabel) }
         progressLabel.stringValue = progress.isEmpty ? title : "\(title): \(progress)"
         progressLabel.isHidden = false
-        updateVisibility()
+        updateArrangedSubviews()
     }
 
     func hideProgress() {
         progressLabel.isHidden = true
-        updateVisibility()
+        updateArrangedSubviews()
     }
 
     func clear() {
-        for label in Array(challengeViews.values) + Array(leaderboardViews.values) {
-            removeArrangedSubview(label)
-            label.removeFromSuperview()
-        }
+        for timer in leaderboardStaleTimers.values { timer.invalidate() }
+        leaderboardStaleTimers.removeAll()
         challengeViews.removeAll()
         leaderboardViews.removeAll()
-        hideProgress()
+        progressLabel.isHidden = true
+        updateArrangedSubviews()
+    }
+
+    private func resetLeaderboardStaleTimer(id: UInt32) {
+        leaderboardStaleTimers.removeValue(forKey: id)?.invalidate()
+        leaderboardStaleTimers[id] = Timer.scheduledTimer(withTimeInterval: Self.leaderboardStaleInterval, repeats: false) { [weak self] _ in
+            self?.hideLeaderboard(id: id)
+        }
+    }
+
+    /// Rebuilds the stack's arranged subviews from current state, applying
+    /// the visible-chip cap and folding any overflow into a single chip.
+    private func updateArrangedSubviews() {
+        for view in arrangedSubviews { removeArrangedSubview(view); view.removeFromSuperview() }
+
+        var chips: [OERetroAchievementsChipLabel] = []
+        if !progressLabel.isHidden { chips.append(progressLabel) }
+        chips.append(contentsOf: challengeViews.values)
+        chips.append(contentsOf: leaderboardViews.values)
+
+        let visible = chips.prefix(Self.maxVisibleChips)
+        let overflowCount = chips.count - visible.count
+        for chip in visible { addArrangedSubview(chip) }
+        if overflowCount > 0 {
+            overflowLabel.stringValue = String(format: NSLocalizedString("+%d more", comment: "RetroAchievements indicator overflow chip"), overflowCount)
+            addArrangedSubview(overflowLabel)
+        }
+
+        isHidden = chips.isEmpty
     }
 
     private func makeChip(color: NSColor) -> OERetroAchievementsChipLabel {
@@ -462,10 +504,6 @@ final class OERetroAchievementsIndicatorStackView: NSStackView {
         label.maximumNumberOfLines = 1
         label.translatesAutoresizingMaskIntoConstraints = false
         label.widthAnchor.constraint(lessThanOrEqualToConstant: 340).isActive = true
-    }
-
-    private func updateVisibility() {
-        isHidden = challengeViews.isEmpty && leaderboardViews.isEmpty && progressLabel.isHidden
     }
 }
 
