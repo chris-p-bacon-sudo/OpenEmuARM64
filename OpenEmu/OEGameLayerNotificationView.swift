@@ -441,9 +441,19 @@ final class OERetroAchievementsIndicatorStackView: NSStackView {
     }
 
     func showProgress(title: String, progress: String) {
-        progressLabel.stringValue = progress.isEmpty ? title : "\(title): \(progress)"
+        let text = progress.isEmpty ? title : "\(title): \(progress)"
+        // RA can re-send the same progress value on a cadence of its own even
+        // when nothing has actually changed. Only treat this as a fresh,
+        // pertinent update (and restart the dismiss clock) if the displayed
+        // text is different or the chip isn't currently showing — otherwise
+        // a steady drip of unchanged pings would keep the chip on screen
+        // indefinitely instead of letting it disappear.
+        let isNewUpdate = progressLabel.isHidden || progressLabel.stringValue != text
+        progressLabel.stringValue = text
         progressLabel.isHidden = false
-        resetProgressDismissTimer()
+        if isNewUpdate {
+            resetProgressDismissTimer()
+        }
         updateArrangedSubviews()
     }
 
