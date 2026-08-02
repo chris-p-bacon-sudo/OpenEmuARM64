@@ -220,7 +220,6 @@ final class PrefCloudSyncController: NSViewController {
 
             bkStatusLabel.centerYAnchor.constraint(equalTo: bkStatusDot.centerYAnchor),
             bkStatusLabel.leadingAnchor.constraint(equalTo: bkStatusDot.trailingAnchor, constant: 6),
-            bkStatusLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -36),
 
             bkFolderPathLabel.topAnchor.constraint(equalTo: bkStatusDot.bottomAnchor, constant: 10),
             bkFolderPathLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 36),
