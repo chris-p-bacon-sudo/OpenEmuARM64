@@ -35,13 +35,15 @@ final class ArtworkImportReviewViewController: NSViewController {
 
     private let matches: [ArtworkFolderMatcher.Match]
     private let unmatchedFileCount: Int
+    private let selectedGameCount: Int
     private var includedIndices: Set<Int>
 
     private var tableView: NSTableView!
 
-    @objc(initWithMatches:unmatchedFileCount:) init(matches: [ArtworkFolderMatcher.Match], unmatchedFileCount: Int) {
+    @objc(initWithMatches:unmatchedFileCount:selectedGameCount:) init(matches: [ArtworkFolderMatcher.Match], unmatchedFileCount: Int, selectedGameCount: Int) {
         self.matches = matches
         self.unmatchedFileCount = unmatchedFileCount
+        self.selectedGameCount = selectedGameCount
         self.includedIndices = Set(matches.indices)
         super.init(nibName: nil, bundle: nil)
     }
@@ -54,7 +56,7 @@ final class ArtworkImportReviewViewController: NSViewController {
 
         let headline = NSTextField(labelWithString: matches.isEmpty
             ? NSLocalizedString("No matching artwork found.", comment: "")
-            : String(format: NSLocalizedString("Found artwork for %ld of %ld games.", comment: ""), matches.count, matches.count + unmatchedFileCount))
+            : String(format: NSLocalizedString("Found artwork for %ld of %ld selected games.", comment: ""), matches.count, selectedGameCount))
         headline.font = .boldSystemFont(ofSize: 13)
 
         let subheadline = NSTextField(labelWithString: unmatchedFileCount > 0

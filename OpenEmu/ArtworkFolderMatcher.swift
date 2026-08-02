@@ -52,24 +52,31 @@ final class ArtworkFolderMatcher: NSObject {
     }
 
     private static func normalize(_ name: String) -> String {
-        (name as NSString).deletingPathExtension.lowercased()
+        (name as NSString).deletingPathExtension
+            .precomposedStringWithCanonicalMapping
+            .lowercased()
     }
 
     /// Scans `folderURL` (non-recursively) for image files and matches each one
     /// to a game in `games` whose display name normalizes to the same string.
+    ///
+    /// If more than one file normalizes to the same game (e.g. `Sonic.png` and
+    /// `sonic.jpg`), only the first one encountered is matched; the rest are
+    /// reported as unmatched rather than silently overwriting one another.
     @objc(matchWithFolderURL:games:) static func match(folderURL: URL, games: [OEDBGame]) -> Result {
         let imageTypes = Set(NSImage.imageTypes)
 
         let fileURLs = (try? FileManager.default.contentsOfDirectory(
             at: folderURL,
-            includingPropertiesForKeys: [.isRegularFileKey],
+            includingPropertiesForKeys: [.isRegularFileKey, .typeIdentifierKey],
             options: [.skipsHiddenFiles, .skipsSubdirectoryDescendants]
         )) ?? []
 
         let imageFileURLs = fileURLs.filter { url in
-            guard let uti = try? url.resourceValues(forKeys: [.typeIdentifierKey]).typeIdentifier else {
-                return false
-            }
+            let resourceValues = try? url.resourceValues(forKeys: [.isRegularFileKey, .typeIdentifierKey])
+            guard resourceValues?.isRegularFile == true,
+                  let uti = resourceValues?.typeIdentifier
+            else { return false }
             return imageTypes.contains(uti)
         }
 
@@ -80,11 +87,13 @@ final class ArtworkFolderMatcher: NSObject {
 
         var matches: [Match] = []
         var unmatchedFileURLs: [URL] = []
+        var matchedNormalizedNames: Set<String> = []
 
         for fileURL in imageFileURLs {
             let key = normalize(fileURL.lastPathComponent)
-            if let game = gamesByNormalizedName[key] {
+            if let game = gamesByNormalizedName[key], !matchedNormalizedNames.contains(key) {
                 matches.append(Match(game: game, fileURL: fileURL))
+                matchedNormalizedNames.insert(key)
             } else {
                 unmatchedFileURLs.append(fileURL)
             }

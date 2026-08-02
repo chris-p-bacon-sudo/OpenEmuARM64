@@ -528,7 +528,7 @@ static NSString * const OEGameTableSortDescriptorsKey = @"OEGameTableSortDescrip
         NSArray<OEDBGame *> *selectedGames = [strongSelf selectedGames];
         OEArtworkFolderMatcherResult *matchResult = [OEArtworkFolderMatcher matchWithFolderURL:[openPanel URL] games:selectedGames];
 
-        OEArtworkImportReviewViewController *reviewController = [[OEArtworkImportReviewViewController alloc] initWithMatches:matchResult.matches unmatchedFileCount:matchResult.unmatchedFileURLs.count];
+        OEArtworkImportReviewViewController *reviewController = [[OEArtworkImportReviewViewController alloc] initWithMatches:matchResult.matches unmatchedFileCount:matchResult.unmatchedFileURLs.count selectedGameCount:selectedGames.count];
         reviewController.onApply = ^(NSArray<OEArtworkFolderMatcherMatch *> *confirmedMatches) {
             typeof(self) strongSelf = weakSelf;
             if(strongSelf == nil || confirmedMatches.count == 0)
