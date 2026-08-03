@@ -145,6 +145,7 @@
 		086769691B96E936006545DA /* Controller-Preferences.plist in Resources */ = {isa = PBXBuildFile; fileRef = 086769681B96E936006545DA /* Controller-Preferences.plist */; };
 		0867696B1B96E93F006545DA /* Controller-Mappings.plist in Resources */ = {isa = PBXBuildFile; fileRef = 0867696A1B96E93F006545DA /* Controller-Mappings.plist */; };
 		08D786151B95870000CCC1A3 /* OpenEmuSystem.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C6D120C417112E1300E868A8 /* OpenEmuSystem.framework */; };
+		09A018F48F34B8D5484BA9FF /* Pokemon mini.oesystemplugin in Copy System Plugins to App Plugins */ = {isa = PBXBuildFile; fileRef = 081A46261B95744A00565444 /* Pokemon mini.oesystemplugin */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		0E026D7220704B74B7A5E66C /* Wii.oesystemplugin in Copy System Plugins to App Plugins */ = {isa = PBXBuildFile; fileRef = AC6CB8F335B64A48AE857C59 /* Wii.oesystemplugin */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		12EDAEC64C70D710AF8B8065 /* OEGoogleDriveConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BAF3ECDABF5A2D068218C7F /* OEGoogleDriveConfig.swift */; };
 		141554211442B7B100A01683 /* OEN64SystemResponder.m in Sources */ = {isa = PBXBuildFile; fileRef = 141554201442B7B100A01683 /* OEN64SystemResponder.m */; };
@@ -251,6 +252,7 @@
 		5AC349311D89E4EB0089B26F /* NSDocumentController+Additions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5AC349301D89E4EB0089B26F /* NSDocumentController+Additions.swift */; };
 		5AC349331D89EB7B0089B26F /* GameIntegralScalingDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5AC349321D89EB7B0089B26F /* GameIntegralScalingDelegate.swift */; };
 		5AFD06BD2058893B00DFE765 /* GameScannerViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5AFD06BC2058893B00DFE765 /* GameScannerViewController.swift */; };
+		652650A1DBD8666E615946FC /* Supervision.oesystemplugin in Copy System Plugins to App Plugins */ = {isa = PBXBuildFile; fileRef = 837964E11A6149C000A8DE5C /* Supervision.oesystemplugin */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		6DAB96D7C11047B4AA72206A /* Controller-Mappings.plist in Resources */ = {isa = PBXBuildFile; fileRef = 68416A57049F48B997026285 /* Controller-Mappings.plist */; };
 		8227756B1489471A00B19E27 /* OEGGSystemResponder.m in Sources */ = {isa = PBXBuildFile; fileRef = 8227755C1489471A00B19E27 /* OEGGSystemResponder.m */; };
 		82C2909114840024007C0214 /* OENGPSystemResponder.m in Sources */ = {isa = PBXBuildFile; fileRef = 820EB7571483F9D3008EC398 /* OENGPSystemResponder.m */; };
@@ -583,6 +585,7 @@
 		94DEA000171896AE00073397 /* NDS.oesystemplugin in Copy System Plugins to App Plugins */ = {isa = PBXBuildFile; fileRef = 94D7E8C915073BA000FBDD85 /* NDS.oesystemplugin */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		94E6C304166DB15900082F27 /* Controller-Mappings.plist in Resources */ = {isa = PBXBuildFile; fileRef = 94E6C303166DB15900082F27 /* Controller-Mappings.plist */; };
 		9ACAEF142DD44E2AACFFB26F /* OEWiiSystemResponder.m in Sources */ = {isa = PBXBuildFile; fileRef = 4C5E668B27CE43FF88AE57AF /* OEWiiSystemResponder.m */; };
+		B0AE59BFF66F969F8E586EBA /* Jaguar.oesystemplugin in Copy System Plugins to App Plugins */ = {isa = PBXBuildFile; fileRef = 943C80121708A62E00D8D93E /* Jaguar.oesystemplugin */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		C3A0FE0857AF614EBC218749 /* OpenEmuLibretroBridge.oecoreplugin in Copy Libretro Bridge to App PlugIns */ = {isa = PBXBuildFile; fileRef = C44B2D2208894931909A8618 /* OpenEmuLibretroBridge.oecoreplugin */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		C6252DAC14E752E300350A13 /* Controller-Preferences.plist in Resources */ = {isa = PBXBuildFile; fileRef = C6252DAA14E752E300350A13 /* Controller-Preferences.plist */; };
 		C6252DAE14E7556800350A13 /* Controller-Preferences.plist in Resources */ = {isa = PBXBuildFile; fileRef = C6252DAD14E7556800350A13 /* Controller-Preferences.plist */; };
@@ -658,10 +661,11 @@
 		CC0011223344556901900001 /* PrefScreenScraperController.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0011223344556801900001 /* PrefScreenScraperController.swift */; };
 		CC0011223344556B01900001 /* LibretroThumbnailsClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0011223344556A01900001 /* LibretroThumbnailsClient.swift */; };
 		CC0011223344557101900001 /* ScreenScraperDevCredentials.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0011223344557001900001 /* ScreenScraperDevCredentials.swift */; };
-		DEAAB8E598494A97A260F43C84A6B563 /* Dreamcast.oesystemplugin in Copy System Plugins to App Plugins */ = {isa = PBXBuildFile; fileRef = 87DF04FE1BCE2D100060E2C2 /* Dreamcast.oesystemplugin */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		CEA508990AF842369046D92D /* OEFolderBackupManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9964A7D7B3C4438D9BE62654 /* OEFolderBackupManager.swift */; };
+		DEAAB8E598494A97A260F43C84A6B563 /* Dreamcast.oesystemplugin in Copy System Plugins to App Plugins */ = {isa = PBXBuildFile; fileRef = 87DF04FE1BCE2D100060E2C2 /* Dreamcast.oesystemplugin */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		DFDDE95A9D47B0C0B525780A /* OESaveSyncManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F74677D2124A2E934C10038 /* OESaveSyncManager.swift */; };
 		E0D3D5AF068C48148780583F /* Keyboard-Mappings.plist in Resources */ = {isa = PBXBuildFile; fileRef = C6534A32E31642F3805D9A90 /* Keyboard-Mappings.plist */; };
+		E66ED795617D681F41CFA7BD /* MSX.oesystemplugin in Copy System Plugins to App Plugins */ = {isa = PBXBuildFile; fileRef = FEB6625B187B791800D14713 /* MSX.oesystemplugin */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		E96D97FB8B2AA2119A472430 /* OpenEmuBase.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C6D120C317112E1300E868A8 /* OpenEmuBase.framework */; };
 		EB3D03D02A24B3C100EBABCD /* 3DO.oesystemplugin in Copy System Plugins to App Plugins */ = {isa = PBXBuildFile; fileRef = 943F99B31707DF3700270E89 /* 3DO.oesystemplugin */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		EF2FDBEB14CFFE06002A64F2 /* ControlsKeyButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8396CC5514068DA90096F791 /* ControlsKeyButton.swift */; };
@@ -1096,6 +1100,10 @@
 				948E54131571D78D002D26E0 /* GameBoy Advance.oesystemplugin in Copy System Plugins to App Plugins */,
 				948E54141571D78D002D26E0 /* NeoGeo Pocket.oesystemplugin in Copy System Plugins to App Plugins */,
 				948E54151571D78D002D26E0 /* GameGear.oesystemplugin in Copy System Plugins to App Plugins */,
+				B0AE59BFF66F969F8E586EBA /* Jaguar.oesystemplugin in Copy System Plugins to App Plugins */,
+				E66ED795617D681F41CFA7BD /* MSX.oesystemplugin in Copy System Plugins to App Plugins */,
+				09A018F48F34B8D5484BA9FF /* Pokemon mini.oesystemplugin in Copy System Plugins to App Plugins */,
+				652650A1DBD8666E615946FC /* Supervision.oesystemplugin in Copy System Plugins to App Plugins */,
 			);
 			name = "Copy System Plugins to App Plugins";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -1331,7 +1339,6 @@
 		669734CE138046AC84F66296 /* OEWiiSystemController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OEWiiSystemController.h; sourceTree = "<group>"; };
 		68416A57049F48B997026285 /* Controller-Mappings.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "Controller-Mappings.plist"; sourceTree = "<group>"; };
 		6F74677D2124A2E934C10038 /* OESaveSyncManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OESaveSyncManager.swift; sourceTree = "<group>"; };
-		9964A7D7B3C4438D9BE62654 /* OEFolderBackupManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OEFolderBackupManager.swift; sourceTree = "<group>"; };
 		6FAD47F297164AD6B87C99DF /* OECoreMigration.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = OECoreMigration.swift; sourceTree = "<group>"; };
 		7699EC921D6303EB005BC437 /* ca */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.strings; name = ca; path = ca.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		7699EC931D6303EC005BC437 /* ca */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.strings; name = ca; path = ca.lproj/Localizable.strings; sourceTree = "<group>"; };
@@ -1836,6 +1843,7 @@
 		94D7E8E215073E3800FBDD85 /* OENDSSystemResponderClient.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OENDSSystemResponderClient.h; sourceTree = "<group>"; };
 		94E6C303166DB15900082F27 /* Controller-Mappings.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "Controller-Mappings.plist"; sourceTree = "<group>"; };
 		99574CB1B5EE4AE89B192EBD /* OEWiiSystemResponder.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OEWiiSystemResponder.h; sourceTree = "<group>"; };
+		9964A7D7B3C4438D9BE62654 /* OEFolderBackupManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OEFolderBackupManager.swift; sourceTree = "<group>"; };
 		9BAF3ECDABF5A2D068218C7F /* OEGoogleDriveConfig.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OEGoogleDriveConfig.swift; sourceTree = "<group>"; };
 		AC6CB8F335B64A48AE857C59 /* Wii.oesystemplugin */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = Wii.oesystemplugin; sourceTree = BUILT_PRODUCTS_DIR; };
 		AEF58A5A63D543529C6A8983 /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Images.xcassets; sourceTree = "<group>"; };
