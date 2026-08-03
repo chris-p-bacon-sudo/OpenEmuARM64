@@ -586,6 +586,7 @@
 		94E6C304166DB15900082F27 /* Controller-Mappings.plist in Resources */ = {isa = PBXBuildFile; fileRef = 94E6C303166DB15900082F27 /* Controller-Mappings.plist */; };
 		9ACAEF142DD44E2AACFFB26F /* OEWiiSystemResponder.m in Sources */ = {isa = PBXBuildFile; fileRef = 4C5E668B27CE43FF88AE57AF /* OEWiiSystemResponder.m */; };
 		B0AE59BFF66F969F8E586EBA /* Jaguar.oesystemplugin in Copy System Plugins to App Plugins */ = {isa = PBXBuildFile; fileRef = 943C80121708A62E00D8D93E /* Jaguar.oesystemplugin */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		C0D2C87DC8E70B924B0364B8 /* ArtworkFolderMatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5948C5F42D3088794677A8C0 /* ArtworkFolderMatcher.swift */; };
 		C3A0FE0857AF614EBC218749 /* OpenEmuLibretroBridge.oecoreplugin in Copy Libretro Bridge to App PlugIns */ = {isa = PBXBuildFile; fileRef = C44B2D2208894931909A8618 /* OpenEmuLibretroBridge.oecoreplugin */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		C6252DAC14E752E300350A13 /* Controller-Preferences.plist in Resources */ = {isa = PBXBuildFile; fileRef = C6252DAA14E752E300350A13 /* Controller-Preferences.plist */; };
 		C6252DAE14E7556800350A13 /* Controller-Preferences.plist in Resources */ = {isa = PBXBuildFile; fileRef = C6252DAD14E7556800350A13 /* Controller-Preferences.plist */; };
@@ -662,6 +663,7 @@
 		CC0011223344556B01900001 /* LibretroThumbnailsClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0011223344556A01900001 /* LibretroThumbnailsClient.swift */; };
 		CC0011223344557101900001 /* ScreenScraperDevCredentials.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0011223344557001900001 /* ScreenScraperDevCredentials.swift */; };
 		CEA508990AF842369046D92D /* OEFolderBackupManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9964A7D7B3C4438D9BE62654 /* OEFolderBackupManager.swift */; };
+		D3360575D5430005882E67D6 /* ArtworkImportReviewViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44117B42E921F7FC91F8889D /* ArtworkImportReviewViewController.swift */; };
 		DEAAB8E598494A97A260F43C84A6B563 /* Dreamcast.oesystemplugin in Copy System Plugins to App Plugins */ = {isa = PBXBuildFile; fileRef = 87DF04FE1BCE2D100060E2C2 /* Dreamcast.oesystemplugin */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		DFDDE95A9D47B0C0B525780A /* OESaveSyncManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F74677D2124A2E934C10038 /* OESaveSyncManager.swift */; };
 		E0D3D5AF068C48148780583F /* Keyboard-Mappings.plist in Resources */ = {isa = PBXBuildFile; fileRef = C6534A32E31642F3805D9A90 /* Keyboard-Mappings.plist */; };
@@ -1248,6 +1250,7 @@
 		3E3511CE1C35DA920063E8CA /* nl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.strings; name = nl; path = nl.lproj/Localizable.strings; sourceTree = "<group>"; };
 		3E3511CF1C35DA920063E8CA /* nl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.strings; name = nl; path = nl.lproj/ControlLabels.strings; sourceTree = "<group>"; };
 		42A14B489D09FD1B597AD586 /* OECredentialStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OECredentialStore.swift; sourceTree = "<group>"; };
+		44117B42E921F7FC91F8889D /* ArtworkImportReviewViewController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ArtworkImportReviewViewController.swift; sourceTree = "<group>"; };
 		4C5E668B27CE43FF88AE57AF /* OEWiiSystemResponder.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = OEWiiSystemResponder.m; sourceTree = "<group>"; };
 		53439A8A13B92C4A005C0CC8 /* OELibraryDatabase.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OELibraryDatabase.h; sourceTree = "<group>"; };
 		53439A9313B92C97005C0CC8 /* OEDBAllGamesCollection.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = OEDBAllGamesCollection.swift; sourceTree = "<group>"; };
@@ -1308,6 +1311,7 @@
 		55D2C55E2B2A8BCD005E4B02 /* tr */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = tr; path = tr.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		55D2C55F2B2A8BD2005E4B02 /* tr */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = tr; path = tr.lproj/Debug.strings; sourceTree = "<group>"; };
 		55D2C5602B2A8BD6005E4B02 /* tr */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = tr; path = tr.lproj/MainMenu.strings; sourceTree = "<group>"; };
+		5948C5F42D3088794677A8C0 /* ArtworkFolderMatcher.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ArtworkFolderMatcher.swift; sourceTree = "<group>"; };
 		5A2CE899206EA61B00790F89 /* NSArray+OEAdditions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NSArray+OEAdditions.swift"; sourceTree = "<group>"; };
 		5A3BB0381D964A4500E10F27 /* CenteredTextFieldCell.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = CenteredTextFieldCell.swift; sourceTree = "<group>"; };
 		5A3DB1681D8C93C3009445EC /* PreferencesControlsBox.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PreferencesControlsBox.swift; sourceTree = "<group>"; };
@@ -3131,6 +3135,8 @@
 				8F2F92A92519A9E700699691 /* GameScannerButton.swift */,
 				8306CD0E1BD3AC180025BC6C /* LibraryGamesViewController.swift */,
 				8F5074751C10BCEC00F52B83 /* LibraryGamesViewController.xib */,
+				5948C5F42D3088794677A8C0 /* ArtworkFolderMatcher.swift */,
+				44117B42E921F7FC91F8889D /* ArtworkImportReviewViewController.swift */,
 			);
 			name = "Games Library";
 			sourceTree = "<group>";
@@ -6447,6 +6453,8 @@
 				1E0E90051A8932BB72161909 /* PrefCloudSyncController.swift in Sources */,
 				170AA9A84CF138836883E194 /* OEGoogleDriveSecrets.template.swift in Sources */,
 				F2E3C43668DB03A494D5B16E /* OECredentialStore.swift in Sources */,
+				C0D2C87DC8E70B924B0364B8 /* ArtworkFolderMatcher.swift in Sources */,
+				D3360575D5430005882E67D6 /* ArtworkImportReviewViewController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -115,7 +115,6 @@ void DolHost::Init(std::string supportDirectoryPath, std::string cpath)
     Config::SetBase(Config::MAIN_USE_BUILT_IN_TITLE_DATABASE, true);
     
     //Setup the CPU Settings
-    Config::SetBase(Config::MAIN_MMU, true);
     Config::SetBase(Config::MAIN_ENABLE_CHEATS, true);
     SConfig::GetInstance().bBootToPause = false;
     
