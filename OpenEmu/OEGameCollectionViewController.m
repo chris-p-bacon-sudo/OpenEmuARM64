@@ -506,6 +506,49 @@ static NSString * const OEGameTableSortDescriptorsKey = @"OEGameTableSortDescrip
     }];
 }
 
+- (void)importArtworkFromFolder:(id)sender
+{
+    NSOpenPanel *openPanel = [NSOpenPanel openPanel];
+
+    [openPanel setAllowsMultipleSelection:NO];
+    [openPanel setCanChooseDirectories:YES];
+    [openPanel setCanChooseFiles:NO];
+    [openPanel setPrompt:NSLocalizedString(@"Choose", @"")];
+    [openPanel setMessage:NSLocalizedString(@"Choose a folder of artwork images. Files are matched to games by exact name.", @"")];
+
+    __weak typeof(self) weakSelf = self;
+    [openPanel beginWithCompletionHandler:^(NSInteger result) {
+        if(result != NSModalResponseOK)
+            return;
+
+        typeof(self) strongSelf = weakSelf;
+        if(strongSelf == nil)
+            return;
+
+        NSArray<OEDBGame *> *selectedGames = [strongSelf selectedGames];
+        OEArtworkFolderMatcherResult *matchResult = [OEArtworkFolderMatcher matchWithFolderURL:[openPanel URL] games:selectedGames];
+
+        OEArtworkImportReviewViewController *reviewController = [[OEArtworkImportReviewViewController alloc] initWithMatches:matchResult.matches unmatchedFileCount:matchResult.unmatchedFileURLs.count selectedGameCount:selectedGames.count];
+        reviewController.onApply = ^(NSArray<OEArtworkFolderMatcherMatch *> *confirmedMatches) {
+            typeof(self) strongSelf = weakSelf;
+            if(strongSelf == nil || confirmedMatches.count == 0)
+                return;
+
+            NSManagedObjectContext *context = nil;
+            for(OEArtworkFolderMatcherMatch *match in confirmedMatches)
+            {
+                [match.game setBoxImageByURL:match.fileURL];
+                context = match.game.managedObjectContext;
+            }
+            [context save:nil];
+
+            [strongSelf reloadDataIndexes:[strongSelf selectionIndexes]];
+        };
+
+        [strongSelf presentViewControllerAsSheet:reviewController];
+    }];
+}
+
 - (void)addSaveStateFromFile:(id)sender
 {
     [self doesNotImplementSelector:_cmd];
@@ -729,6 +772,7 @@ static NSString * const OEGameTableSortDescriptorsKey = @"OEGameTableSortDescrip
             [menu addItemWithTitle:NSLocalizedString(@"Cancel Cover Art Download", @"") action:@selector(cancelCoverArtDownload:) keyEquivalent:@""];
 
         [menu addItemWithTitle:NSLocalizedString(@"Add Cover Art from File…", @"") action:@selector(addCoverArtFromFile:) keyEquivalent:@""];
+        [menu addItemWithTitle:NSLocalizedString(@"Import Artwork from Folder…", @"") action:@selector(importArtworkFromFolder:) keyEquivalent:@""];
         if(hasLocalFiles)
             [menu addItemWithTitle:NSLocalizedString(@"Consolidate Files…", @"") action:@selector(consolidateFiles:) keyEquivalent:@""];
 
@@ -772,6 +816,7 @@ static NSString * const OEGameTableSortDescriptorsKey = @"OEGameTableSortDescrip
 
         [menu addItemWithTitle:NSLocalizedString(@"Download Cover Art", @"") action:@selector(downloadCoverArt:) keyEquivalent:@""];
         [menu addItemWithTitle:NSLocalizedString(@"Add Cover Art from File…", @"") action:@selector(addCoverArtFromFile:) keyEquivalent:@""];
+        [menu addItemWithTitle:NSLocalizedString(@"Import Artwork from Folder…", @"") action:@selector(importArtworkFromFolder:) keyEquivalent:@""];
         [menu addItemWithTitle:NSLocalizedString(@"Consolidate Files…", @"") action:@selector(consolidateFiles:) keyEquivalent:@""];
 
         [menu addItem:[NSMenuItem separatorItem]];
