@@ -41,6 +41,7 @@ extern NSNotificationName const OEGameCollectionViewControllerDidSetSelectionInd
 - (void)downloadCoverArt:(nullable id)sender;
 - (void)cancelCoverArtDownload:(nullable id)sender;
 - (void)addCoverArtFromFile:(nullable id)sender;
+- (void)importArtworkFromFolder:(nullable id)sender;
 - (void)addSaveStateFromFile:(nullable id)sender;
 - (void)consolidateFiles:(nullable id)sender;
 
