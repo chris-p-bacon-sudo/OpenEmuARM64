@@ -259,7 +259,13 @@ public extension OECorePlugin {
         let options = coreOptions[systemIdentifier]
         return options?[OEGameCoreSupportsCheatCodeKey] as? Bool ?? false
     }
-    
+
+    func supportsCheatSearch(forSystemIdentifier systemIdentifier: String) -> Bool {
+        guard supportsCheatCode(forSystemIdentifier: systemIdentifier) else { return false }
+        let options = coreOptions[systemIdentifier]
+        return options?[OEGameCoreSupportsCheatSearchKey] as? Bool ?? false
+    }
+
     func hasGlitches(forSystemIdentifier systemIdentifier: String) -> Bool {
         let options = coreOptions[systemIdentifier]
         return options?[OEGameCoreHasGlitchesKey] as? Bool ?? false

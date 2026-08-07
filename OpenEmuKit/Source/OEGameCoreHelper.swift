@@ -78,6 +78,7 @@ import AudioToolbox
     func saveStateToFile(at fileURL: URL, completionHandler block: @escaping (Bool, Error?) -> Void)
     func loadStateFromFile(at fileURL: URL, completionHandler block: @escaping (Bool, Error?) -> Void)
     func setCheat(_ cheatCode: String, withType type: String, enabled: Bool)
+    func readableMemoryRegions(completionHandler block: @escaping ([[String: Any]]) -> Void)
     func setDisc(_ discNumber: UInt)
     func changeDisplay(withMode displayMode: String)
     func insertFile(at url: URL, completionHandler block: @escaping (Bool, Error?) -> Void)
