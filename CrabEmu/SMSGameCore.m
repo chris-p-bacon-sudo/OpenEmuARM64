@@ -26,6 +26,8 @@
 
 #import "SMSGameCore.h"
 #import <OpenEmuBase/OERingBuffer.h>
+#import <OpenEmuBase/OEMemoryRegionDescriptor.h>
+#import <OpenEmuBase/OESystemConstants.h>
 #import <OpenGL/gl.h>
 #import "OESMSSystemResponderClient.h"
 #import "OEGGSystemResponderClient.h"
@@ -41,6 +43,8 @@
 #include "colecovision.h"
 #include "colecomem.h"
 #include "cheats.h"
+
+extern uint8 *sms_read_map[256];
 #include "console.h"
 
 #if MAC_OS_X_VERSION_MIN_REQUIRED < __MAC_10_13
@@ -437,6 +441,7 @@ const int ColecoVisionMap[] = {COLECOVISION_UP, COLECOVISION_DOWN, COLECOVISION_
 
     // Remove address-value separator
     code = [code stringByReplacingOccurrencesOfString:@"-" withString:@""];
+    code = [code stringByReplacingOccurrencesOfString:@":" withString:@""];
 
     if (enabled)
         [cheatList setValue:@YES forKey:code];
@@ -481,6 +486,20 @@ const int ColecoVisionMap[] = {COLECOVISION_UP, COLECOVISION_DOWN, COLECOVISION_
             }
         }
     }
+}
+
+- (NSArray<OEMemoryRegionDescriptor *> *)readableMemoryRegions
+{
+    uint8 *ramBase = sms_read_map[0xC0];
+    if (!ramBase) return @[];
+
+    NSData *ramData = [NSData dataWithBytes:ramBase length:8 * 1024];
+    return @[
+        [OEMemoryRegionDescriptor descriptorWithName:@"Work RAM"
+                                            address:0xC000
+                                       addressBytes:3
+                                               data:ramData]
+    ];
 }
 
 @end
