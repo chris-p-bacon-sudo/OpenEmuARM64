@@ -1810,8 +1810,8 @@ final class OEGameDocument: NSDocument {
             )
         case OESystemIdentifierPSX:
             return CheatFormat(
-                placeholder: NSLocalizedString("12 hex chars per code, e.g. 80097BA0270F. Join multi-line cheats with '+'.", comment: "Add Cheat dialog placeholder, PSX"),
-                validationHint: NSLocalizedString("PSX GameShark codes must be 12 hex characters (e.g. 80097BA0270F). Type byte: 30=8-bit, 80=16-bit.", comment: "Add Cheat validation hint, PSX"),
+                placeholder: NSLocalizedString("12 hex chars per code, e.g. 80097BA0 270F. Join multi-line cheats with '+'.", comment: "Add Cheat dialog placeholder, PSX"),
+                validationHint: NSLocalizedString("PSX GameShark codes must be 12 hex characters (e.g. 80097BA0 270F). Type byte: 30=8-bit, 80=16-bit.", comment: "Add Cheat validation hint, PSX"),
                 validator: { code in
                     let parts = code.replacingOccurrences(of: " ", with: "")
                                     .split(separator: "+")
