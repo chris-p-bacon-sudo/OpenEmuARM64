@@ -705,5 +705,40 @@ You can go to the Controls preferences to check which associations were affected
 	<string>成功移動遊戲庫。</string>
 	<key>this guide</key>
 	<string>本指南</string>
+	<key>Add Cheat</key>
+	<string>新增金手指</string>
+	<key>Cheat Search…</key>
+	<string>搜尋金手指…</string>
+	<key>Cheat Search</key>
+	<string>搜尋金手指</string>
+	<key>Store Values</key>
+	<string>儲存值</string>
+	<key>Comparison</key>
+	<string>比較</string>
+	<key>Unsigned (&gt;=0)</key>
+	<string>無符號 (&gt;=0)</string>
+	<key>Signed (+/-)</key>
+	<string>有符號 (+/-)</string>
+	<key>Hexadecimal</key>
+	<string>十六進位</string>
+	<key>Data Size</key>
+	<string>資料大小</string>
+	<key>1 byte</key>
+	<string>1位元組</string>
+	<key>2 bytes</key>
+	<string>2位元組</string>
+	<key>3 bytes</key>
+	<string>3位元組</string>
+	<key>4 bytes</key>
+	<string>4位元組</string>
+	<key>Stored Value</key>
+	<string>已儲存值</string>
+	<key>Previous Value</key>
+	<string>前一個值</string>
+	<key>This Value:</key>
+	<string>此值:</string>
+	<key>Cheat Description</key>
+	<string>金手指描述</string>
+
 </dict>
 </plist>

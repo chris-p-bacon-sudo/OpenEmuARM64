@@ -708,5 +708,40 @@ Puoi andare nelle Preferenze Controlli per verificare quali impostazioni sono st
 	<string>La tua Libreria è stata spostata con successo.</string>
 	<key>this guide</key>
 	<string>la guida</string>
+	<key>Add Cheat</key>
+	<string>Aggiungi trucco</string>
+	<key>Cheat Search…</key>
+	<string>Cerca trucchi…</string>
+	<key>Cheat Search</key>
+	<string>Cerca trucchi</string>
+	<key>Store Values</key>
+	<string>Memorizza valori</string>
+	<key>Comparison</key>
+	<string>Confronto</string>
+	<key>Unsigned (&gt;=0)</key>
+	<string>Senza segno (&gt;=0)</string>
+	<key>Signed (+/-)</key>
+	<string>Con segno (+/-)</string>
+	<key>Hexadecimal</key>
+	<string>Esadecimale</string>
+	<key>Data Size</key>
+	<string>Dimensione dati</string>
+	<key>1 byte</key>
+	<string>1 byte</string>
+	<key>2 bytes</key>
+	<string>2 bytes</string>
+	<key>3 bytes</key>
+	<string>3 bytes</string>
+	<key>4 bytes</key>
+	<string>4 bytes</string>
+	<key>Stored Value</key>
+	<string>Valore memorizzato</string>
+	<key>Previous Value</key>
+	<string>Valore precedente</string>
+	<key>This Value:</key>
+	<string>Questo valore:</string>
+	<key>Cheat Description</key>
+	<string>Descrizione trucco</string>
+
 </dict>
 </plist>

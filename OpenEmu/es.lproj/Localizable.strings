@@ -704,5 +704,40 @@ You can go to the Controls preferences to check which associations were affected
 	<string>Su biblioteca fue movida correctamente.</string>
 	<key>this guide</key>
 	<string>esta guía</string>
+	<key>Add Cheat</key>
+	<string>Añadir truco</string>
+	<key>Cheat Search…</key>
+	<string>Buscar trucos…</string>
+	<key>Cheat Search</key>
+	<string>Buscar trucos</string>
+	<key>Store Values</key>
+	<string>Almacenar valores</string>
+	<key>Comparison</key>
+	<string>Comparación</string>
+	<key>Unsigned (&gt;=0)</key>
+	<string>Sin signo (&gt;=0)</string>
+	<key>Signed (+/-)</key>
+	<string>Con signo (+/-)</string>
+	<key>Hexadecimal</key>
+	<string>Hexadecimal</string>
+	<key>Data Size</key>
+	<string>Tamaño de dato</string>
+	<key>1 byte</key>
+	<string>1 byte</string>
+	<key>2 bytes</key>
+	<string>2 bytes</string>
+	<key>3 bytes</key>
+	<string>3 bytes</string>
+	<key>4 bytes</key>
+	<string>4 bytes</string>
+	<key>Stored Value</key>
+	<string>Valor almacenado</string>
+	<key>Previous Value</key>
+	<string>Valor anterior</string>
+	<key>This Value:</key>
+	<string>Este valor:</string>
+	<key>Cheat Description</key>
+	<string>Descripción de truco</string>
+
 </dict>
 </plist>

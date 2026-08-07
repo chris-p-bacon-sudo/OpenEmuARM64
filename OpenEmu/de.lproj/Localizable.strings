@@ -704,5 +704,40 @@ Du kannst die Tastenbelegung in den Einstellungen unter „Steuerung“ überpr�
 	<string>Die Mediathek wurde erfolgreich verschoben.</string>
 	<key>this guide</key>
 	<string>dieser Anleitung</string>
+	<key>Add Cheat</key>
+	<string>Cheat hinzufügen</string>
+	<key>Cheat Search…</key>
+	<string>Cheat-Suche…</string>
+	<key>Cheat Search</key>
+	<string>Cheat-Suche</string>
+	<key>Store Values</key>
+	<string>Werte speichern</string>
+	<key>Comparison</key>
+	<string>Vergleich</string>
+	<key>Unsigned (&gt;=0)</key>
+	<string>Ohne Vorzeichen (&gt;=0)</string>
+	<key>Signed (+/-)</key>
+	<string>Mit Vorzeichen (+/-)</string>
+	<key>Hexadecimal</key>
+	<string>Hexadezimal</string>
+	<key>Data Size</key>
+	<string>Datengröße</string>
+	<key>1 byte</key>
+	<string>1 Byte</string>
+	<key>2 bytes</key>
+	<string>2 Bytes</string>
+	<key>3 bytes</key>
+	<string>3 Bytes</string>
+	<key>4 bytes</key>
+	<string>4 Bytes</string>
+	<key>Stored Value</key>
+	<string>Gespeicherter Wert</string>
+	<key>Previous Value</key>
+	<string>Vorheriger Wert</string>
+	<key>This Value:</key>
+	<string>Dieser Wert:</string>
+	<key>Cheat Description</key>
+	<string>Cheat-Beschreibung</string>
+
 </dict>
 </plist>

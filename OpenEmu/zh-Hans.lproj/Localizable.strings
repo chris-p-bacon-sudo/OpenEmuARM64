@@ -705,5 +705,40 @@ You can go to the Controls preferences to check which associations were affected
 	<string>移动游戏库成功。</string>
 	<key>this guide</key>
 	<string>本指南</string>
+	<key>Add Cheat</key>
+	<string>添加金手指</string>
+	<key>Cheat Search…</key>
+	<string>搜索金手指…</string>
+	<key>Cheat Search</key>
+	<string>搜索金手指</string>
+	<key>Store Values</key>
+	<string>存储值</string>
+	<key>Comparison</key>
+	<string>比较</string>
+	<key>Unsigned (&gt;=0)</key>
+	<string>无符号 (&gt;=0)</string>
+	<key>Signed (+/-)</key>
+	<string>有符号 (+/-)</string>
+	<key>Hexadecimal</key>
+	<string>十六进制</string>
+	<key>Data Size</key>
+	<string>数据大小</string>
+	<key>1 byte</key>
+	<string>1字节</string>
+	<key>2 bytes</key>
+	<string>2字节</string>
+	<key>3 bytes</key>
+	<string>3字节</string>
+	<key>4 bytes</key>
+	<string>4字节</string>
+	<key>Stored Value</key>
+	<string>已存储值</string>
+	<key>Previous Value</key>
+	<string>前一个值</string>
+	<key>This Value:</key>
+	<string>此值:</string>
+	<key>Cheat Description</key>
+	<string>金手指描述</string>
+
 </dict>
 </plist>

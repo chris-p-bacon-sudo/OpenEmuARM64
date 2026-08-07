@@ -701,5 +701,40 @@ You can go to the Controls preferences to check which associations were affected
 	<string>ライブラリの移動が正常に完了しました。</string>
 	<key>this guide</key>
 	<string>ガイド</string>
+	<key>Add Cheat</key>
+	<string>チートコードを追加</string>
+	<key>Cheat Search…</key>
+	<string>チート検索…</string>
+	<key>Cheat Search</key>
+	<string>チート検索</string>
+	<key>Store Values</key>
+	<string>値を保存</string>
+	<key>Comparison</key>
+	<string>比較</string>
+	<key>Unsigned (&gt;=0)</key>
+	<string>符号なし (&gt;=0)</string>
+	<key>Signed (+/-)</key>
+	<string>符号付き (+/-)</string>
+	<key>Hexadecimal</key>
+	<string>16進数</string>
+	<key>Data Size</key>
+	<string>データサイズ</string>
+	<key>1 byte</key>
+	<string>1バイト</string>
+	<key>2 bytes</key>
+	<string>2バイト</string>
+	<key>3 bytes</key>
+	<string>3バイト</string>
+	<key>4 bytes</key>
+	<string>4バイト</string>
+	<key>Stored Value</key>
+	<string>保存済みの値</string>
+	<key>Previous Value</key>
+	<string>前回の値</string>
+	<key>This Value:</key>
+	<string>この値:</string>
+	<key>Cheat Description</key>
+	<string>チートの説明</string>
+
 </dict>
 </plist>

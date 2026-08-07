@@ -705,5 +705,40 @@ You can go to the Controls preferences to check which associations were affected
 	<string>Uw bibliotheek werd succesvol verplaatst.</string>
 	<key>this guide</key>
 	<string>deze handleiding</string>
+	<key>Add Cheat</key>
+	<string>Voeg cheat toe</string>
+	<key>Cheat Search…</key>
+	<string>Cheat zoeken…</string>
+	<key>Cheat Search</key>
+	<string>Cheat zoeken</string>
+	<key>Store Values</key>
+	<string>Waarden opslaan</string>
+	<key>Comparison</key>
+	<string>Vergelijking</string>
+	<key>Unsigned (&gt;=0)</key>
+	<string>Unsigned (&gt;=0)</string>
+	<key>Signed (+/-)</key>
+	<string>Signed (+/-)</string>
+	<key>Hexadecimal</key>
+	<string>Hexadecimaal</string>
+	<key>Data Size</key>
+	<string>Gegevensgrootte</string>
+	<key>1 byte</key>
+	<string>1 byte</string>
+	<key>2 bytes</key>
+	<string>2 bytes</string>
+	<key>3 bytes</key>
+	<string>3 bytes</string>
+	<key>4 bytes</key>
+	<string>4 bytes</string>
+	<key>Stored Value</key>
+	<string>Opgeslagen waarde</string>
+	<key>Previous Value</key>
+	<string>Vorige waarde</string>
+	<key>This Value:</key>
+	<string>Deze waarde:</string>
+	<key>Cheat Description</key>
+	<string>Beschrijving van cheat</string>
+
 </dict>
 </plist>

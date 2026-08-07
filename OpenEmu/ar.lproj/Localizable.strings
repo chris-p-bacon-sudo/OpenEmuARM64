@@ -676,5 +676,40 @@ You can go to the Controls preferences to check which associations were affected
 	<string>تم نقل مكتبتك بنجاح.</string>
 	<key>this guide</key>
 	<string>هذا الدليل</string>
+	<key>Add Cheat</key>
+	<string>أضف الغش</string>
+	<key>Cheat Search…</key>
+	<string>بحث عن شفرات غش…</string>
+	<key>Cheat Search</key>
+	<string>بحث عن شفرات غش</string>
+	<key>Store Values</key>
+	<string>تخزين القيم</string>
+	<key>Comparison</key>
+	<string>المقارنة</string>
+	<key>Unsigned (&gt;=0)</key>
+	<string>بدون إشارة (&gt;=0)</string>
+	<key>Signed (+/-)</key>
+	<string>بإشارة (+/-)</string>
+	<key>Hexadecimal</key>
+	<string>ستعشري</string>
+	<key>Data Size</key>
+	<string>حجم البيانات</string>
+	<key>1 byte</key>
+	<string>1 بايت</string>
+	<key>2 bytes</key>
+	<string>2 بايت</string>
+	<key>3 bytes</key>
+	<string>3 بايت</string>
+	<key>4 bytes</key>
+	<string>4 بايت</string>
+	<key>Stored Value</key>
+	<string>القيمة المخزنة</string>
+	<key>Previous Value</key>
+	<string>القيمة السابقة</string>
+	<key>This Value:</key>
+	<string>هذه القيمة:</string>
+	<key>Cheat Description</key>
+	<string>وصف الغش</string>
+
 </dict>
 </plist>

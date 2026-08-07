@@ -702,5 +702,40 @@ Vous pouvez aller dans les préférences Contrôles pour vérifier les associati
 	<string>Votre bibliothèque a été déplacée avec succès.</string>
 	<key>this guide</key>
 	<string>ce guide</string>
+	<key>Add Cheat</key>
+	<string>Ajouter un code</string>
+	<key>Cheat Search…</key>
+	<string>Recherche de codes…</string>
+	<key>Cheat Search</key>
+	<string>Recherche de codes</string>
+	<key>Store Values</key>
+	<string>Stocker les valeurs</string>
+	<key>Comparison</key>
+	<string>Comparaison</string>
+	<key>Unsigned (&gt;=0)</key>
+	<string>Non signé (&gt;=0)</string>
+	<key>Signed (+/-)</key>
+	<string>Signé (+/-)</string>
+	<key>Hexadecimal</key>
+	<string>Hexadécimal</string>
+	<key>Data Size</key>
+	<string>Taille des données</string>
+	<key>1 byte</key>
+	<string>1 octet</string>
+	<key>2 bytes</key>
+	<string>2 octets</string>
+	<key>3 bytes</key>
+	<string>3 octets</string>
+	<key>4 bytes</key>
+	<string>4 octets</string>
+	<key>Stored Value</key>
+	<string>Valeur stockée</string>
+	<key>Previous Value</key>
+	<string>Valeur précédente</string>
+	<key>This Value:</key>
+	<string>Cette valeur :</string>
+	<key>Cheat Description</key>
+	<string>Description du code</string>
+
 </dict>
 </plist>
