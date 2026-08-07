@@ -1,5 +1,6 @@
 /*
- Copyright (c) 2011, OpenEmu Team
+ Copyright (c) 2026, OpenEmu Team
+ Author: Leonardo Kasperavičius
 
  Redistribution and use in source and binary forms, with or without
  modification, are permitted provided that the following conditions are met:
@@ -25,26 +26,30 @@
  */
 
 #import <Foundation/Foundation.h>
-#if TARGET_OS_OSX
-#import <Cocoa/Cocoa.h>
-#endif
 
-#if !__has_feature(objc_arc)
-#error OEGameCores will probably not function without ARC
-#endif
+NS_ASSUME_NONNULL_BEGIN
 
-#import <OpenEmuBase/NSDictionary+OpenEmuSDK.h>
-#import <OpenEmuBase/OEAbstractAdditions.h>
-#import <OpenEmuBase/OEGameCore.h>
-#import <OpenEmuBase/OELibretroCoreTranslator.h>
-#import <OpenEmuBase/OEGameCoreController.h>
-#import <OpenEmuBase/OERingBuffer.h>
-#import <OpenEmuBase/OESystemResponderClient.h>
-#import <OpenEmuBase/OETimingUtils.h>
-#import <OpenEmuBase/TPCircularBuffer.h>
-#import <OpenEmuBase/OEAudioBuffer.h>
-#import <OpenEmuBase/NSUserDefaults+OpenEmuSDK.h>
-#import <OpenEmuBase/OEGameCoreDisplayModes.h>
-#import <OpenEmuBase/OEMemoryRegionDescriptor.h>
-#import <OpenEmuBase/OESystemConstants.h>
-#import <OpenEmuBase/OELibretroCoreTranslator.h>
+// MARK: - System Identifiers
+
+extern NSString *const OESystemIdentifierNES;
+extern NSString *const OESystemIdentifierFDS;
+extern NSString *const OESystemIdentifierSNES;
+extern NSString *const OESystemIdentifierN64;
+extern NSString *const OESystemIdentifierGB;
+extern NSString *const OESystemIdentifierGBA;
+extern NSString *const OESystemIdentifierNDS;
+extern NSString *const OESystemIdentifierGenesis;
+extern NSString *const OESystemIdentifierSMS;
+extern NSString *const OESystemIdentifierGameGear;
+extern NSString *const OESystemIdentifierSegaCD;
+extern NSString *const OESystemIdentifierSega32X;
+extern NSString *const OESystemIdentifierAtari2600;
+
+// MARK: - Cheat Code Type Strings
+
+extern NSString *const OECheatTypeGameShark;
+extern NSString *const OECheatTypeActionReplay;
+extern NSString *const OECheatTypeGameGenie;
+extern NSString *const OECheatTypeUnknown;
+
+NS_ASSUME_NONNULL_END

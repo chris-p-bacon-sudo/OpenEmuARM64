@@ -1782,7 +1782,146 @@ final class OEGameDocument: NSDocument {
             return defaultCheatFormat
         }
     }
-    
+
+    // MARK: - Cheat Search Code Conversion
+
+    struct ConvertedCheat {
+        let code: String
+        let type: String
+    }
+
+    /// Converts a raw cheat search code (ADDRESS:VALUE) to the native format expected by the core.
+    static func convertCheatSearchCode(_ code: String, for systemIdentifier: String, addressBytes: UInt8, minDataBytes: UInt8) -> ConvertedCheat {
+        switch systemIdentifier {
+        case OESystemIdentifierN64:
+            return ConvertedCheat(code: Self.convertToGameSharkN64(code), type: OECheatTypeGameShark)
+        case OESystemIdentifierGB, OESystemIdentifierGBA:
+            return ConvertedCheat(code: Self.convertToGameSharkGB(code), type: OECheatTypeGameShark)
+        case OESystemIdentifierNDS:
+            return ConvertedCheat(code: Self.convertToActionReplayDS(code), type: OECheatTypeActionReplay)
+        default:
+            return ConvertedCheat(code: Self.convertToPatch(code, addressBytes: addressBytes, minDataBytes: minDataBytes), type: OECheatTypeActionReplay)
+        }
+    }
+
+    // MARK: Patch format (ADDRESS:VALUE with padding and multi-byte splitting)
+
+    private static func convertToPatch(_ code: String, addressBytes: UInt8, minDataBytes: UInt8) -> String {
+        guard let colonIdx = code.firstIndex(of: ":") else { return code }
+        let addressPart = String(code[code.startIndex..<colonIdx])
+        let valuePart = String(code[code.index(after: colonIdx)...])
+
+        let hexDigits = Int(addressBytes) * 2
+        let address = UInt64(addressPart, radix: 16) ?? 0
+        let value = UInt64(valuePart, radix: 16) ?? 0
+        let byteCount = max(1, (valuePart.count + 1) / 2)
+
+        if byteCount <= Int(minDataBytes) {
+            let mask: UInt64 = (1 << (UInt64(minDataBytes) * 8)) - 1
+            let addrStr = String(format: "%0\(hexDigits)llX", address)
+            let valStr = String(format: "%0\(Int(minDataBytes) * 2)X", UInt32(value & mask))
+            return "\(addrStr):\(valStr)"
+        }
+
+        let chunkCount = (byteCount + Int(minDataBytes) - 1) / Int(minDataBytes)
+        let chunkMask: UInt64 = (1 << (UInt64(minDataBytes) * 8)) - 1
+        var codes: [String] = []
+        for i in 0..<chunkCount {
+            let chunk = UInt32((value >> (UInt64(i) * UInt64(minDataBytes) * 8)) & chunkMask)
+            let addr = address + UInt64(i) * UInt64(minDataBytes)
+            let addrStr = String(format: "%0\(hexDigits)llX", addr)
+            let valStr = String(format: "%0\(Int(minDataBytes) * 2)X", chunk)
+            codes.append("\(addrStr):\(valStr)")
+        }
+        return codes.joined(separator: "+")
+    }
+
+    // MARK: Game Boy GameShark (01VVLLHH)
+
+    private static func convertToGameSharkGB(_ code: String) -> String {
+        guard let colonIdx = code.firstIndex(of: ":") else { return code }
+        let addressPart = String(code[code.startIndex..<colonIdx])
+        let valuePart = String(code[code.index(after: colonIdx)...])
+
+        let address = UInt16(addressPart, radix: 16) ?? 0
+        let value = UInt64(valuePart, radix: 16) ?? 0
+        let byteCount = max(1, (valuePart.count + 1) / 2)
+
+        var codes: [String] = []
+        for i in 0..<byteCount {
+            let byte = UInt8((value >> (i * 8)) & 0xFF)
+            let addr = address &+ UInt16(i)
+            codes.append(String(format: "01%02X%02X%02X", byte, addr & 0xFF, (addr >> 8) & 0xFF))
+        }
+        return codes.joined(separator: "+")
+    }
+
+    // MARK: NDS Action Replay DS
+
+    private static func convertToActionReplayDS(_ code: String) -> String {
+        guard let colonIdx = code.firstIndex(of: ":") else { return code }
+        let addressPart = String(code[code.startIndex..<colonIdx])
+        let valuePart = String(code[code.index(after: colonIdx)...])
+
+        let address = UInt64(addressPart, radix: 16) ?? 0
+        let value = UInt64(valuePart, radix: 16) ?? 0
+        let byteCount = max(1, (valuePart.count + 1) / 2)
+
+        var codes: [String] = []
+        var offset = 0
+        while offset < byteCount {
+            let remaining = byteCount - offset
+            let addr28 = UInt32((address + UInt64(offset)) & 0x0FFFFFFF)
+            let shifted = value >> (offset * 8)
+
+            if remaining >= 4 && (addr28 % 4 == 0) {
+                let val32 = UInt32(shifted & 0xFFFFFFFF)
+                codes.append(String(format: "%08X %08X", 0x00000000 | addr28, val32))
+                offset += 4
+            } else if remaining >= 2 && (addr28 % 2 == 0) {
+                let val16 = UInt32(shifted & 0xFFFF)
+                codes.append(String(format: "%08X %08X", 0x10000000 | addr28, val16))
+                offset += 2
+            } else {
+                let val8 = UInt32(shifted & 0xFF)
+                codes.append(String(format: "%08X %08X", 0x20000000 | addr28, val8))
+                offset += 1
+            }
+        }
+        return codes.joined(separator: "\n")
+    }
+
+    // MARK: N64 GameShark (TTXXXXXX YYYY)
+
+    private static func convertToGameSharkN64(_ code: String) -> String {
+        guard let colonIdx = code.firstIndex(of: ":") else { return code }
+        let addressPart = String(code[code.startIndex..<colonIdx])
+        let valuePart = String(code[code.index(after: colonIdx)...])
+
+        let address = UInt64(addressPart, radix: 16) ?? 0
+        let value = UInt64(valuePart, radix: 16) ?? 0
+        let byteCount = max(1, (valuePart.count + 1) / 2)
+
+        let baseAddr = UInt32(address & 0x00FFFFFF)
+        var codes: [String] = []
+        var offset = 0
+        while offset < byteCount {
+            let remaining = byteCount - offset
+            let addr = baseAddr + UInt32(offset)
+
+            if remaining >= 2 && (addr % 2 == 0) {
+                let val16 = UInt16((value >> ((byteCount - offset - 2) * 8)) & 0xFFFF)
+                codes.append(String(format: "%08X%04X", 0x81000000 | addr, val16))
+                offset += 2
+            } else {
+                let val8 = UInt8((value >> ((byteCount - offset - 1) * 8)) & 0xFF)
+                codes.append(String(format: "%08X%04X", 0x80000000 | addr, UInt16(val8)))
+                offset += 1
+            }
+        }
+        return codes.joined(separator: "+")
+    }
+
     /// expects `sender.representedObject` to be a `Cheat` object
     @IBAction func toggleCheat(_ sender: AnyObject) {
         if isHardcoreModeEnabled { return }
