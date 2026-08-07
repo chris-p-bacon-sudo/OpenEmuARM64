@@ -1825,7 +1825,7 @@ final class OEGameDocument: NSDocument {
         switch systemIdentifier {
         case OESystemIdentifierN64:
             return ConvertedCheat(code: Self.convertToGameSharkN64(code), type: OECheatTypeGameShark)
-        case OESystemIdentifierGB, OESystemIdentifierGBA:
+        case OESystemIdentifierGB:
             return ConvertedCheat(code: Self.convertToGameSharkGB(code), type: OECheatTypeGameShark)
         case OESystemIdentifierNDS:
             return ConvertedCheat(code: Self.convertToActionReplayDS(code), type: OECheatTypeActionReplay)
