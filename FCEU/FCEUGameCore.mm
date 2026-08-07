@@ -26,6 +26,7 @@
 
 #import "FCEUGameCore.h"
 #import <OpenEmuBase/OERingBuffer.h>
+#import <OpenEmuBase/OEMemoryRegionDescriptor.h>
 #import "OENESSystemResponderClient.h"
 #import <OpenGL/gl.h>
 
@@ -929,6 +930,16 @@ void FCEUD_PrintError(const char *s)
 void FCEUD_Message(const char *s)
 {
     NSLog(@"[FCEUX] message: %s", s);
+}
+
+- (NSArray<OEMemoryRegionDescriptor *> *)readableMemoryRegions
+{
+    NSData *data = [NSData dataWithBytes:RAM length:0x800];
+    OEMemoryRegionDescriptor *descriptor = [OEMemoryRegionDescriptor descriptorWithName:@"RAM"
+                                                                              address:0x0000
+                                                                         addressBytes:2
+                                                                                 data:data];
+    return @[descriptor];
 }
 
 @end
