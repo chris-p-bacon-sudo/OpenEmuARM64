@@ -27,6 +27,7 @@
 
 #import "StellaGameCore.h"
 #import <OpenEmuBase/OERingBuffer.h>
+#import <OpenEmuBase/OEMemoryRegionDescriptor.h>
 #import "OE2600SystemResponderClient.h"
 #import <OpenGL/gl.h>
 
@@ -528,6 +529,20 @@ void stellaOESetPalette(const uInt32 *palette)
         _cheatList[code] = @YES;
     else
         [_cheatList removeObjectForKey:code];
+}
+
+- (NSArray<OEMemoryRegionDescriptor *> *)readableMemoryRegions
+{
+    uint8_t ram[128];
+    for (int i = 0; i < 128; i++)
+        ram[i] = console->system().peek((uInt16)(0x80 + i));
+
+    NSData *data = [NSData dataWithBytes:ram length:128];
+    OEMemoryRegionDescriptor *descriptor = [OEMemoryRegionDescriptor descriptorWithName:@"RAM"
+                                                                              address:0x80
+                                                                         addressBytes:1
+                                                                                 data:data];
+    return @[descriptor];
 }
 
 @end
