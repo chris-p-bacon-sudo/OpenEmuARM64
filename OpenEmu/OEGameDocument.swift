@@ -1808,6 +1808,19 @@ final class OEGameDocument: NSDocument {
                 validationHint: "",
                 validator: nil
             )
+        case "openemu.system.psx":
+            return CheatFormat(
+                placeholder: NSLocalizedString("12 hex chars per code, e.g. 80097BA0270F. Join multi-line cheats with '+'.", comment: "Add Cheat dialog placeholder, PSX"),
+                validationHint: NSLocalizedString("PSX GameShark codes must be 12 hex characters (e.g. 80097BA0270F). Type byte: 30=8-bit, 80=16-bit.", comment: "Add Cheat validation hint, PSX"),
+                validator: { code in
+                    let parts = code.replacingOccurrences(of: " ", with: "")
+                                    .split(separator: "+")
+                    guard !parts.isEmpty else { return false }
+                    return parts.allSatisfy { p in
+                        p.count == 12 && p.allSatisfy { $0.isHexDigit }
+                    }
+                }
+            )
         default:
             return defaultCheatFormat
         }

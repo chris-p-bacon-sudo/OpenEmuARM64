@@ -32,6 +32,7 @@
 #include "MemoryStream.h"
 #include "mednafen/psx/psx.h"
 #include "mednafen/pce/pce.h"
+#include "mednafen/mempatcher-driver.h"
 
 #import "MednafenGameCore.h"
 #import <OpenEmuBase/OERingBuffer.h>
@@ -4246,6 +4247,49 @@ const int WSMap[]   = { 0, 2, 3, 1, 4, 6, 7, 5, 9, 10, 8, 11 };
 
     _mouseScaledX = aPoint.x * (CGFloat)scaledRatio.width;
     _mouseScaledY = aPoint.y * (CGFloat)scaledRatio.height;
+}
+
+#pragma mark - Cheats
+
+- (void)setCheat:(NSString *)code setType:(NSString *)type setEnabled:(BOOL)enabled
+{
+    code = [code stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    code = [code stringByReplacingOccurrencesOfString:@" " withString:@""];
+
+    Mednafen::MemoryPatch patch;
+    patch.status = enabled;
+    patch.type = 'R';
+    patch.bigendian = false;
+
+    NSArray<NSString *> *codes = [code componentsSeparatedByString:@"+"];
+    for (NSString *singleCode in codes) {
+        NSRange colonRange = [singleCode rangeOfString:@":"];
+        if (colonRange.location != NSNotFound) {
+            // Raw format: ADDR:VALUE
+            unsigned int addr = 0, val = 0;
+            [[NSScanner scannerWithString:[singleCode substringToIndex:colonRange.location]] scanHexInt:&addr];
+            [[NSScanner scannerWithString:[singleCode substringFromIndex:colonRange.location + 1]] scanHexInt:&val];
+            patch.addr = addr;
+            patch.val = val;
+            patch.length = 1;
+            Mednafen::MDFNI_AddCheat(patch);
+        } else if (singleCode.length == 12) {
+            // PSX GameShark: TTAAAAAAVVVV (decoded by Mednafen's CheatFormats)
+            unsigned long long raw = strtoull(singleCode.UTF8String, NULL, 16);
+            uint8_t codeType = (raw >> 40) & 0xFF;
+            uint32_t addr = (raw >> 16) & 0xFFFFFF;
+            uint16_t val = raw & 0xFFFF;
+            patch.addr = addr;
+            if (codeType == 0x30) {
+                patch.val = val & 0xFF;
+                patch.length = 1;
+            } else {
+                patch.val = val;
+                patch.length = 2;
+            }
+            Mednafen::MDFNI_AddCheat(patch);
+        }
+    }
 }
 
 @end
