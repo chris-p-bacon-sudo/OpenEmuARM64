@@ -28,6 +28,8 @@
 #import <OpenGL/gl.h>
 #import "BSNESGameCore.h"
 #import "OESNESSystemResponderClient.h"
+#import <OpenEmuBase/OESystemConstants.h>
+#import <OpenEmuBase/OEMemoryRegionDescriptor.h>
 
 #define SYS_PARAM_H__BSD BSD
 #undef BSD
@@ -379,7 +381,7 @@ static void bsnes_rc_event_handler(const rc_client_event_t *event, rc_client_t *
 
 - (void)setCheat:(NSString *)code setType:(NSString *)type setEnabled:(BOOL)enabled
 {
-    if ([type isEqual:@"Action Replay"])
+    if ([type isEqual:OECheatTypeActionReplay] || [type isEqual:OECheatTypeRaw])
         code = [code stringByReplacingOccurrencesOfString:@":" withString:@""];
     NSArray <NSString *> *codes = [code componentsSeparatedByString:@"+"];
     if (enabled)
@@ -684,5 +686,19 @@ static void bsnes_rc_event_handler(const rc_client_event_t *event, rc_client_t *
     return Emulator::audio.channels();
 }
 
+- (NSArray<OEMemoryRegionDescriptor *> *)readableMemoryRegions
+{
+    const NSUInteger wramSize = 128 * 1024;
+    NSMutableData *data = [NSMutableData dataWithLength:wramSize];
+    uint8_t *bytes = (uint8_t *)data.mutableBytes;
+    for (NSUInteger i = 0; i < wramSize; i++) {
+        bytes[i] = emulator->read(0x7E0000 + i);
+    }
+    OEMemoryRegionDescriptor *wram = [OEMemoryRegionDescriptor descriptorWithName:@"WRAM"
+                                                                          address:0x7E0000
+                                                                     addressBytes:3
+                                                                             data:data];
+    return @[wram];
+}
 
 @end

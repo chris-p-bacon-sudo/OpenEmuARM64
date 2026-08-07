@@ -50,6 +50,7 @@ extern NSString *const OESystemIdentifierAtari2600;
 extern NSString *const OECheatTypeGameShark;
 extern NSString *const OECheatTypeActionReplay;
 extern NSString *const OECheatTypeGameGenie;
+extern NSString *const OECheatTypeRaw;
 extern NSString *const OECheatTypeUnknown;
 
 NS_ASSUME_NONNULL_END

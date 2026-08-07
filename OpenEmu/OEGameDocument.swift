@@ -1830,13 +1830,13 @@ final class OEGameDocument: NSDocument {
         case OESystemIdentifierNDS:
             return ConvertedCheat(code: Self.convertToActionReplayDS(code), type: OECheatTypeActionReplay)
         default:
-            return ConvertedCheat(code: Self.convertToPatch(code, addressBytes: addressBytes, minDataBytes: minDataBytes), type: OECheatTypeActionReplay)
+            return ConvertedCheat(code: Self.convertToRaw(code, addressBytes: addressBytes, minDataBytes: minDataBytes), type: OECheatTypeRaw)
         }
     }
 
-    // MARK: Patch format (ADDRESS:VALUE with padding and multi-byte splitting)
+    // MARK: Raw format (ADDRESS:VALUE with padding and multi-byte splitting)
 
-    private static func convertToPatch(_ code: String, addressBytes: UInt8, minDataBytes: UInt8) -> String {
+    private static func convertToRaw(_ code: String, addressBytes: UInt8, minDataBytes: UInt8) -> String {
         guard let colonIdx = code.firstIndex(of: ":") else { return code }
         let addressPart = String(code[code.startIndex..<colonIdx])
         let valuePart = String(code[code.index(after: colonIdx)...])

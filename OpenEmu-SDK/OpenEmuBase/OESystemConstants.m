@@ -48,4 +48,5 @@ NSString *const OESystemIdentifierAtari2600  = @"openemu.system.2600";
 NSString *const OECheatTypeGameShark    = @"GameShark";
 NSString *const OECheatTypeActionReplay = @"Action Replay";
 NSString *const OECheatTypeGameGenie    = @"Game Genie";
+NSString *const OECheatTypeRaw          = @"Raw";
 NSString *const OECheatTypeUnknown      = @"Unknown";
