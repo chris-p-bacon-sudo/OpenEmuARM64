@@ -16,6 +16,8 @@
  */
 
 #import <OpenEmuBase/OERingBuffer.h>
+#import <OpenEmuBase/OEMemoryRegionDescriptor.h>
+#include "../../../MMU.h"
 
 #import "NDSGameCore.h"
 #import "OESoundInterface.h"
@@ -1688,6 +1690,17 @@ void UpdateDisplayPropertiesFromStates(uint64_t displayModeStates, ClientDisplay
 	
 	ClientExecutionControl::UpdateNDSFrameInfoInput(_inputHandler, _ndsFrameInfo);
 	_cdp->SetHUDInfo(_clientFrameInfo, _ndsFrameInfo);
+}
+
+- (NSArray<OEMemoryRegionDescriptor *> *)readableMemoryRegions
+{
+	uint32_t ramSize = _MMU_MAIN_MEM_MASK + 1;
+	NSData *data = [NSData dataWithBytes:MMU.MAIN_MEM length:ramSize];
+	OEMemoryRegionDescriptor *descriptor = [OEMemoryRegionDescriptor descriptorWithName:@"Main RAM"
+	                                                                          address:0x02000000
+	                                                                     addressBytes:4
+	                                                                             data:data];
+	return @[descriptor];
 }
 
 @end
