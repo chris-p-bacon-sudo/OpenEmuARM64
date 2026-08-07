@@ -161,6 +161,7 @@ final class OEGameDocument: NSDocument {
     private(set) var displayModes: [[String: Any]] = []
     
     private var gameCoreManager: GameCoreManager?
+    private var cheatSearchWindowController: CheatSearchWindowController?
     private var retroAchievementsWindowController: NSWindowController?
     @objc dynamic private(set) var retroAchievementsSessionInfo: [String: Any]?
     private var retroAchievementsSuppressedUnlockIDs = Set<UInt32>()
@@ -659,7 +660,10 @@ final class OEGameDocument: NSDocument {
                 self.didShowRetroAchievementsBootPlacard = false
                 
                 self.gameCoreManager = nil
-                
+
+                self.cheatSearchWindowController?.close()
+                self.cheatSearchWindowController = nil
+
                 if let lastPlayStartDate = self.lastPlayStartDate {
                     self.rom.addTimeIntervalToPlayTime(abs(lastPlayStartDate.timeIntervalSinceNow))
                 }
@@ -1617,6 +1621,32 @@ final class OEGameDocument: NSDocument {
     
     var supportsCheats: Bool {
         return corePlugin.supportsCheatCode(forSystemIdentifier: systemPlugin.systemIdentifier)
+    }
+
+    var supportsCheatSearch: Bool {
+        return corePlugin.supportsCheatSearch(forSystemIdentifier: systemPlugin.systemIdentifier)
+    }
+
+    func fetchReadableMemoryRegions(completionHandler block: @escaping ([OEMemoryRegionDescriptor]) -> Void) {
+        gameCoreManager?.readableMemoryRegionDescriptors(completionHandler: block)
+    }
+
+    @IBAction func openCheatSearch(_ sender: Any?) {
+        if cheatSearchWindowController == nil {
+            cheatSearchWindowController = CheatSearchWindowController(document: self)
+        }
+        cheatSearchWindowController?.showWindow(self)
+    }
+
+    func addCheatFromSearch(code: String, type: String, name: String, enabled: Bool) {
+        let cheat = Cheat(code: code, type: type, name: name)
+        cheat.isUserAdded = true
+        if enabled {
+            cheat.isEnabled = true
+            setCheat(cheat)
+        }
+        cheats.append(cheat)
+        saveUserCheats()
     }
     
     /// In order to load cheats, we need the core plugin and the ROM to be set.

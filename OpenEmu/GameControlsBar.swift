@@ -428,6 +428,12 @@ final class GameControlsBar: NSWindow {
         if hardcoreOn { item.isEnabled = false }
         menu.addItem(item)
 
+        if gameViewController.supportsCheatSearch {
+            let searchItem = NSMenuItem(title: NSLocalizedString("Cheat Search…", comment: ""), action: #selector(OEGameDocument.openCheatSearch(_:)), keyEquivalent: "")
+            if hardcoreOn { searchItem.isEnabled = false }
+            menu.addItem(searchItem)
+        }
+
         let cheats = gameViewController.document.cheats
         if !cheats.isEmpty {
             menu.addItem(.separator())

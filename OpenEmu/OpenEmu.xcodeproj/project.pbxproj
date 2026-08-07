@@ -668,6 +668,7 @@
 		DFDDE95A9D47B0C0B525780A /* OESaveSyncManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F74677D2124A2E934C10038 /* OESaveSyncManager.swift */; };
 		E0D3D5AF068C48148780583F /* Keyboard-Mappings.plist in Resources */ = {isa = PBXBuildFile; fileRef = C6534A32E31642F3805D9A90 /* Keyboard-Mappings.plist */; };
 		E66ED795617D681F41CFA7BD /* MSX.oesystemplugin in Copy System Plugins to App Plugins */ = {isa = PBXBuildFile; fileRef = FEB6625B187B791800D14713 /* MSX.oesystemplugin */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		E8D9112BFB38FBCEEA8B22DD /* CheatSearchWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED2D0AB7012BE11642E384A3 /* CheatSearchWindowController.swift */; };
 		E96D97FB8B2AA2119A472430 /* OpenEmuBase.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C6D120C317112E1300E868A8 /* OpenEmuBase.framework */; };
 		EB3D03D02A24B3C100EBABCD /* 3DO.oesystemplugin in Copy System Plugins to App Plugins */ = {isa = PBXBuildFile; fileRef = 943F99B31707DF3700270E89 /* 3DO.oesystemplugin */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		EF2FDBEB14CFFE06002A64F2 /* ControlsKeyButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8396CC5514068DA90096F791 /* ControlsKeyButton.swift */; };
@@ -676,6 +677,7 @@
 		EFBD5D7814EFE19A00FBD1E0 /* NSColor+OEAdditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFBD5D7714EFE19A00FBD1E0 /* NSColor+OEAdditions.swift */; };
 		EFBD5D7F14EFE26300FBD1E0 /* OEGridView.m in Sources */ = {isa = PBXBuildFile; fileRef = EFBD5D7C14EFE26300FBD1E0 /* OEGridView.m */; };
 		F2E3C43668DB03A494D5B16E /* OECredentialStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42A14B489D09FD1B597AD586 /* OECredentialStore.swift */; };
+		FC582061983BED3F49DE43B5 /* CheatSearchViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8045ABD4E2FC2F0F03CEECB4 /* CheatSearchViewController.swift */; };
 		FEB66268187B792700D14713 /* OEMSXSystemController.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEB66251187B62CA00D14713 /* OEMSXSystemController.swift */; };
 		FEB66269187B792700D14713 /* OEMSXSystemResponder.m in Sources */ = {isa = PBXBuildFile; fileRef = FEB66254187B751700D14713 /* OEMSXSystemResponder.m */; };
 		FEB6626B187B797600D14713 /* OpenEmuSystem.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C6D120C417112E1300E868A8 /* OpenEmuSystem.framework */; };
@@ -1353,6 +1355,7 @@
 		7F313F1C2A607A18009EBADB /* ar */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ar; path = ar.lproj/ControlLabels.strings; sourceTree = "<group>"; };
 		7F313F1D2A607A18009EBADB /* ar */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ar; path = ar.lproj/Debug.strings; sourceTree = "<group>"; };
 		7F313F1E2A607A19009EBADB /* ar */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ar; path = ar.lproj/MainMenu.strings; sourceTree = "<group>"; };
+		8045ABD4E2FC2F0F03CEECB4 /* CheatSearchViewController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CheatSearchViewController.swift; sourceTree = "<group>"; };
 		820EB74A1483F9A2008EC398 /* NeoGeo Pocket.oesystemplugin */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "NeoGeo Pocket.oesystemplugin"; sourceTree = BUILT_PRODUCTS_DIR; };
 		820EB7561483F9D3008EC398 /* OENGPSystemResponder.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OENGPSystemResponder.h; sourceTree = "<group>"; };
 		820EB7571483F9D3008EC398 /* OENGPSystemResponder.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = OENGPSystemResponder.m; sourceTree = "<group>"; };
@@ -1924,6 +1927,7 @@
 		CC0011223344557201900001 /* ScreenScraperDevCredentials.template.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ScreenScraperDevCredentials.template.swift; sourceTree = "<group>"; };
 		DBFF44DC2E9D79C700B30F0A /* OENESSystemResponderClient.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = OENESSystemResponderClient.h; sourceTree = "<group>"; };
 		DBFF44DD2E9D79D400B30F0A /* OEFDSSystemResponderClient.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = OEFDSSystemResponderClient.h; sourceTree = "<group>"; };
+		ED2D0AB7012BE11642E384A3 /* CheatSearchWindowController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CheatSearchWindowController.swift; sourceTree = "<group>"; };
 		EFBD5D7714EFE19A00FBD1E0 /* NSColor+OEAdditions.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "NSColor+OEAdditions.swift"; sourceTree = "<group>"; };
 		EFBD5D7B14EFE26300FBD1E0 /* OEGridView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OEGridView.h; sourceTree = "<group>"; };
 		EFBD5D7C14EFE26300FBD1E0 /* OEGridView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = OEGridView.m; sourceTree = "<group>"; };
@@ -4088,6 +4092,8 @@
 				35F8401C31D685D3E7EAA048 /* OEGoogleDriveSecrets.template.swift */,
 				CC0011223344557201900001 /* ScreenScraperDevCredentials.template.swift */,
 				42A14B489D09FD1B597AD586 /* OECredentialStore.swift */,
+				ED2D0AB7012BE11642E384A3 /* CheatSearchWindowController.swift */,
+				8045ABD4E2FC2F0F03CEECB4 /* CheatSearchViewController.swift */,
 			);
 			name = OpenEmu;
 			sourceTree = "<group>";
@@ -6455,6 +6461,8 @@
 				F2E3C43668DB03A494D5B16E /* OECredentialStore.swift in Sources */,
 				C0D2C87DC8E70B924B0364B8 /* ArtworkFolderMatcher.swift in Sources */,
 				D3360575D5430005882E67D6 /* ArtworkImportReviewViewController.swift in Sources */,
+				E8D9112BFB38FBCEEA8B22DD /* CheatSearchWindowController.swift in Sources */,
+				FC582061983BED3F49DE43B5 /* CheatSearchViewController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
