@@ -35,7 +35,7 @@
 #import <OpenEmuBase/OEDiffQueue.h>
 #import <OpenEmuBase/OEGameCoreDisplayModes.h>
 
-@class OEGameCoreController, OEGameCore;
+@class OEGameCoreController, OEGameCore, OEMemoryRegionDescriptor;
 
 /// Primary bridge input protocol — used by all system responders.
 @protocol OEBridgeInputTranslation <NSObject>
@@ -519,6 +519,12 @@ OE_EXPORTED_CLASS
 #pragma mark - Cheats - Optional
 
 - (void)setCheat:(NSString *)code setType:(NSString *)type setEnabled:(BOOL)enabled;
+
+#pragma mark - Readable Memory - Optional
+
+/// Returns an array of memory region descriptors with their current data.
+/// Override this in cores that support cheat search / memory inspection.
+- (NSArray<OEMemoryRegionDescriptor *> *)readableMemoryRegions;
 
 #pragma mark - Discs - Optional
 

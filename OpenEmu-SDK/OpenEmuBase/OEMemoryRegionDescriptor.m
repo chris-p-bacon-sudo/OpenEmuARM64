@@ -1,5 +1,6 @@
 /*
- Copyright (c) 2011, OpenEmu Team
+ Copyright (c) 2026, OpenEmu Team
+ Author: Leonardo Kasperavičius
 
  Redistribution and use in source and binary forms, with or without
  modification, are permitted provided that the following conditions are met:
@@ -24,26 +25,35 @@
   SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#import <Foundation/Foundation.h>
-#if TARGET_OS_OSX
-#import <Cocoa/Cocoa.h>
-#endif
+#import "OEMemoryRegionDescriptor.h"
 
-#if !__has_feature(objc_arc)
-#error OEGameCores will probably not function without ARC
-#endif
+@implementation OEMemoryRegionDescriptor
 
-#import <OpenEmuBase/NSDictionary+OpenEmuSDK.h>
-#import <OpenEmuBase/OEAbstractAdditions.h>
-#import <OpenEmuBase/OEGameCore.h>
-#import <OpenEmuBase/OELibretroCoreTranslator.h>
-#import <OpenEmuBase/OEGameCoreController.h>
-#import <OpenEmuBase/OERingBuffer.h>
-#import <OpenEmuBase/OESystemResponderClient.h>
-#import <OpenEmuBase/OETimingUtils.h>
-#import <OpenEmuBase/TPCircularBuffer.h>
-#import <OpenEmuBase/OEAudioBuffer.h>
-#import <OpenEmuBase/NSUserDefaults+OpenEmuSDK.h>
-#import <OpenEmuBase/OEGameCoreDisplayModes.h>
-#import <OpenEmuBase/OEMemoryRegionDescriptor.h>
-#import <OpenEmuBase/OELibretroCoreTranslator.h>
+- (instancetype)initWithName:(NSString *)name address:(uint32_t)address addressBytes:(uint8_t)addressBytes minDataBytes:(uint8_t)minDataBytes data:(NSData *)data
+{
+    if ((self = [super init])) {
+        _name = [name copy];
+        _address = address;
+        _addressBytes = addressBytes;
+        _minDataBytes = minDataBytes;
+        _data = [data copy];
+    }
+    return self;
+}
+
++ (instancetype)descriptorWithName:(NSString *)name address:(uint32_t)address addressBytes:(uint8_t)addressBytes minDataBytes:(uint8_t)minDataBytes data:(NSData *)data
+{
+    return [[self alloc] initWithName:name address:address addressBytes:addressBytes minDataBytes:minDataBytes data:data];
+}
+
+- (instancetype)initWithName:(NSString *)name address:(uint32_t)address addressBytes:(uint8_t)addressBytes data:(NSData *)data
+{
+    return [self initWithName:name address:address addressBytes:addressBytes minDataBytes:1 data:data];
+}
+
++ (instancetype)descriptorWithName:(NSString *)name address:(uint32_t)address addressBytes:(uint8_t)addressBytes data:(NSData *)data
+{
+    return [[self alloc] initWithName:name address:address addressBytes:addressBytes data:data];
+}
+
+@end

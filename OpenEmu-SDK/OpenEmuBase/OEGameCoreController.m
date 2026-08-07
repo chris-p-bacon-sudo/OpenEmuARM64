@@ -44,6 +44,7 @@ NSString *const OEGameCoreOptionsKey           = @"OEGameCoreOptions";
 
 // sub-keys of OEGameCoreOptionsKey
 NSString *const OEGameCoreSupportsCheatCodeKey = @"OEGameCoreSupportsCheatCode";
+NSString *const OEGameCoreSupportsCheatSearchKey = @"OEGameCoreSupportsCheatSearch";
 NSString *const OEGameCoreRequiresFilesKey     = @"OEGameCoreRequiresFiles";
 NSString *const OEGameCoreHasGlitchesKey       = @"OEGameCoreHasGlitches";
 NSString *const OEGameCoreSupportsMultipleDiscsKey = @"OEGameCoreSupportsMultipleDiscs";

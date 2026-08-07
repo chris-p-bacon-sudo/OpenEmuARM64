@@ -28,6 +28,7 @@
 
 #import "OEGameCore.h"
 #import "OEGameCoreController.h"
+#import "OEMemoryRegionDescriptor.h"
 #import "OEAbstractAdditions.h"
 #import "OEAudioBuffer.h"
 #import "OERingBuffer.h"
@@ -869,6 +870,11 @@ static Class GameCoreClass = Nil;
 
 - (void)setCheat:(NSString *)code setType:(NSString *)type setEnabled:(BOOL)enabled
 {
+}
+
+- (NSArray<OEMemoryRegionDescriptor *> *)readableMemoryRegions
+{
+    return @[];
 }
 
 #pragma mark - Misc

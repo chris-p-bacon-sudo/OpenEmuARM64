@@ -55,6 +55,7 @@ extern NSString *const OEGameCoreOptionsKey;
 
 // sub-keys of OEGameCoreOptionsKey
 extern NSString *const OEGameCoreSupportsCheatCodeKey;
+extern NSString *const OEGameCoreSupportsCheatSearchKey;
 extern NSString *const OEGameCoreRequiresFilesKey;
 extern NSString *const OEGameCoreRequiredFilesKey;
 extern NSString *const OEGameCoreHasGlitchesKey;
