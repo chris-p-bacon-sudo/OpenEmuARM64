@@ -37,6 +37,7 @@
 #import "MednafenGameCore.h"
 #import <OpenEmuBase/OERingBuffer.h>
 #import <OpenEmuBase/OEGameCoreDisplayModes.h>
+#import <OpenEmuBase/OEMemoryRegionDescriptor.h>
 #import <OpenGL/gl.h>
 #import "OELynxSystemResponderClient.h"
 #import "OENGPSystemResponderClient.h"
@@ -4290,6 +4291,18 @@ const int WSMap[]   = { 0, 2, 3, 1, 4, 6, 7, 5, 9, 10, 8, 11 };
             Mednafen::MDFNI_AddCheat(patch);
         }
     }
+}
+
+- (NSArray<OEMemoryRegionDescriptor *> *)readableMemoryRegions
+{
+    if ([_mednafenCoreModule isEqualToString:@"psx"]) {
+        NSData *data = [NSData dataWithBytes:MDFN_IEN_PSX::MainRAM.data8 length:2 * 1024 * 1024];
+        return @[[OEMemoryRegionDescriptor descriptorWithName:@"Main RAM"
+                                                     address:0x80000000
+                                                addressBytes:4
+                                                        data:data]];
+    }
+    return @[];
 }
 
 @end

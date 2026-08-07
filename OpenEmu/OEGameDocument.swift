@@ -1838,6 +1838,8 @@ final class OEGameDocument: NSDocument {
         switch systemIdentifier {
         case OESystemIdentifierN64:
             return ConvertedCheat(code: Self.convertToGameSharkN64(code), type: OECheatTypeGameShark)
+        case OESystemIdentifierPSX:
+            return ConvertedCheat(code: Self.convertToGameSharkPSX(code), type: OECheatTypeGameShark)
         case OESystemIdentifierGB:
             return ConvertedCheat(code: Self.convertToGameSharkGB(code), type: OECheatTypeGameShark)
         case OESystemIdentifierNDS:
@@ -1959,6 +1961,37 @@ final class OEGameDocument: NSDocument {
             } else {
                 let val8 = UInt8((value >> ((byteCount - offset - 1) * 8)) & 0xFF)
                 codes.append(String(format: "%08X%04X", 0x80000000 | addr, UInt16(val8)))
+                offset += 1
+            }
+        }
+        return codes.joined(separator: "+")
+    }
+
+    // MARK: PSX GameShark (TTAAAAAA VVVV — little-endian, 12 nybbles)
+
+    private static func convertToGameSharkPSX(_ code: String) -> String {
+        guard let colonIdx = code.firstIndex(of: ":") else { return code }
+        let addressPart = String(code[code.startIndex..<colonIdx])
+        let valuePart = String(code[code.index(after: colonIdx)...])
+
+        let address = UInt64(addressPart, radix: 16) ?? 0
+        let value = UInt64(valuePart, radix: 16) ?? 0
+        let byteCount = max(1, (valuePart.count + 1) / 2)
+
+        let baseAddr = UInt32(address & 0x00FFFFFF)
+        var codes: [String] = []
+        var offset = 0
+        while offset < byteCount {
+            let remaining = byteCount - offset
+            let addr = baseAddr + UInt32(offset)
+
+            if remaining >= 2 && (addr % 2 == 0) {
+                let val16 = UInt16((value >> (offset * 8)) & 0xFFFF)
+                codes.append(String(format: "%08X %04X", 0x80000000 | addr, val16))
+                offset += 2
+            } else {
+                let val8 = UInt8((value >> (offset * 8)) & 0xFF)
+                codes.append(String(format: "%08X %04X", 0x30000000 | addr, UInt16(val8)))
                 offset += 1
             }
         }

@@ -44,6 +44,7 @@ extern NSString *const OESystemIdentifierGameGear;
 extern NSString *const OESystemIdentifierSegaCD;
 extern NSString *const OESystemIdentifierSega32X;
 extern NSString *const OESystemIdentifierAtari2600;
+extern NSString *const OESystemIdentifierPSX;
 
 // MARK: - Cheat Code Type Strings
 
