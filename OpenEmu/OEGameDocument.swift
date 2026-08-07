@@ -1770,7 +1770,7 @@ final class OEGameDocument: NSDocument {
 
     private static func cheatFormat(for systemIdentifier: String) -> CheatFormat {
         switch systemIdentifier {
-        case "openemu.system.n64":
+        case OESystemIdentifierN64:
             return CheatFormat(
                 placeholder: NSLocalizedString("12 hex chars per code, e.g. 8033B21D0064. Join multi-line cheats with '+'.", comment: "Add Cheat dialog placeholder, N64"),
                 validationHint: NSLocalizedString("N64 codes must be 12 hex characters (8-char address + 4-char value), e.g. 8033B21D0064. Longer 16-char GameShark Pro / Action Replay codes are not supported by the Mupen64Plus core.", comment: "Add Cheat validation hint, N64"),
@@ -1784,31 +1784,31 @@ final class OEGameDocument: NSDocument {
                     }
                 }
             )
-        case "openemu.system.nes", "openemu.system.fds":
+        case OESystemIdentifierNES, OESystemIdentifierFDS:
             return CheatFormat(
                 placeholder: NSLocalizedString("Game Genie or raw hex (XXXX:YY). Join multi-line cheats with '+'.", comment: "Add Cheat dialog placeholder, NES"),
                 validationHint: "",
                 validator: nil
             )
-        case "openemu.system.snes":
+        case OESystemIdentifierSNES:
             return CheatFormat(
                 placeholder: NSLocalizedString("Game Genie or PAR codes. Join multi-line cheats with '+'.", comment: "Add Cheat dialog placeholder, SNES"),
                 validationHint: "",
                 validator: nil
             )
-        case "openemu.system.gb", "openemu.system.gba":
+        case OESystemIdentifierGB, OESystemIdentifierGBA:
             return CheatFormat(
                 placeholder: NSLocalizedString("GameShark (no dash) or Game Genie (with dash). Join multi-line cheats with '+'.", comment: "Add Cheat dialog placeholder, Game Boy / GBA"),
                 validationHint: "",
                 validator: nil
             )
-        case "openemu.system.sg", "openemu.system.sms", "openemu.system.gg", "openemu.system.32x", "openemu.system.scd":
+        case OESystemIdentifierGenesis, OESystemIdentifierSMS, OESystemIdentifierGameGear, OESystemIdentifierSega32X, OESystemIdentifierSegaCD:
             return CheatFormat(
                 placeholder: NSLocalizedString("Game Genie or Action Replay. Join multi-line cheats with '+'.", comment: "Add Cheat dialog placeholder, Sega"),
                 validationHint: "",
                 validator: nil
             )
-        case "openemu.system.psx":
+        case OESystemIdentifierPSX:
             return CheatFormat(
                 placeholder: NSLocalizedString("12 hex chars per code, e.g. 80097BA0270F. Join multi-line cheats with '+'.", comment: "Add Cheat dialog placeholder, PSX"),
                 validationHint: NSLocalizedString("PSX GameShark codes must be 12 hex characters (e.g. 80097BA0270F). Type byte: 30=8-bit, 80=16-bit.", comment: "Add Cheat validation hint, PSX"),
