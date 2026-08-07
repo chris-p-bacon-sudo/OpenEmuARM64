@@ -27,6 +27,7 @@
 
 #import "NESGameCore.h"
 #import <OpenEmuBase/OERingBuffer.h>
+#import <OpenEmuBase/OEMemoryRegionDescriptor.h>
 #import "OENESSystemResponderClient.h"
 #import "OEFDSSystemResponderClient.h"
 #import <OpenGL/gl.h>
@@ -1132,6 +1133,18 @@ void NST_CALLBACK doEvent(void *userData, Nes::Api::Machine::Event event, Nes::R
         case Nes::Api::Machine::EVENT_MODE_PAL :
             break;
     }
+}
+
+- (NSArray<OEMemoryRegionDescriptor *> *)readableMemoryRegions
+{
+    Nes::Api::Cheats cheater(_emu);
+    Nes::Api::Cheats::Ram ram = cheater.GetRam();
+    NSData *data = [NSData dataWithBytes:ram length:0x800];
+    OEMemoryRegionDescriptor *descriptor = [OEMemoryRegionDescriptor descriptorWithName:@"RAM"
+                                                                              address:0x0000
+                                                                         addressBytes:2
+                                                                                 data:data];
+    return @[descriptor];
 }
 
 @end
