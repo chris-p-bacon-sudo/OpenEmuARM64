@@ -88,6 +88,8 @@ final class CheatSearchViewController: NSViewController {
     }
 
     private var searchResults: [SearchResult] = []
+    private var loadingSpinner: NSProgressIndicator?
+    private var isPopulating = false
 
     private var addressHexDigits: Int {
         memoryRegions.map { Int($0.addressBytes) * 2 }.max() ?? 8
@@ -197,6 +199,48 @@ final class CheatSearchViewController: NSViewController {
         }
     }
 
+    // MARK: - Loading Indicator
+
+    private func reloadTable() {
+        tableView.reloadData()
+        tableView.deselectAll(nil)
+    }
+
+    private func showLoadingIndicator() {
+        isPopulating = true
+        searchButton.isEnabled = false
+        addCheatButton.isEnabled = false
+        resetButton.isEnabled = false
+        storeValuesButton.isEnabled = false
+
+        if loadingSpinner == nil {
+            let spinner = NSProgressIndicator()
+            spinner.style = .spinning
+            spinner.controlSize = .regular
+            spinner.translatesAutoresizingMaskIntoConstraints = false
+            scrollView.superview?.addSubview(spinner)
+            NSLayoutConstraint.activate([
+                spinner.centerXAnchor.constraint(equalTo: scrollView.centerXAnchor),
+                spinner.centerYAnchor.constraint(equalTo: scrollView.centerYAnchor),
+            ])
+            loadingSpinner = spinner
+        }
+        loadingSpinner?.startAnimation(nil)
+        loadingSpinner?.isHidden = false
+        tableView.deselectAll(nil)
+        tableView.isEnabled = false
+    }
+
+    private func hideLoadingIndicator() {
+        isPopulating = false
+        searchButton.isEnabled = true
+        resetButton.isEnabled = true
+        storeValuesButton.isEnabled = true
+        loadingSpinner?.stopAnimation(nil)
+        loadingSpinner?.isHidden = true
+        tableView.isEnabled = true
+    }
+
     // MARK: - Memory Reading
 
     func readMemoryFromCore() {
@@ -215,32 +259,50 @@ final class CheatSearchViewController: NSViewController {
     }
 
     private func populateFullMemory() {
-        var results: [SearchResult] = []
+        let regions = memoryRegions
+        showLoadingIndicator()
 
-        for region in memoryRegions {
-            let data = region.data
-            let baseAddress = UInt32(region.address)
-            let byteCount = data.count
-            let stride = Int(region.minDataBytes)
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            var totalCount = 0
+            for region in regions {
+                totalCount += region.data.count / Int(region.minDataBytes)
+            }
+            var results: [SearchResult] = []
+            results.reserveCapacity(totalCount)
 
-            data.withUnsafeBytes { buffer in
-                var offset = 0
-                while offset <= byteCount - 1 {
-                    let available = min(4, byteCount - offset)
-                    let value = readValue(from: buffer, at: offset, size: available)
-                    results.append(SearchResult(
-                        address: baseAddress + UInt32(offset),
-                        currentValue: value,
-                        previousValue: nil,
-                        storedValue: nil
-                    ))
-                    offset += stride
+            for region in regions {
+                let data = region.data
+                let baseAddress = UInt32(region.address)
+                let byteCount = data.count
+                let stride = Int(region.minDataBytes)
+
+                data.withUnsafeBytes { buffer in
+                    var offset = 0
+                    while offset <= byteCount - 1 {
+                        let available = min(4, byteCount - offset)
+                        var value: UInt64 = 0
+                        for i in 0..<available {
+                            value |= UInt64(buffer[offset + i]) << (i * 8)
+                        }
+                        results.append(SearchResult(
+                            address: baseAddress + UInt32(offset),
+                            currentValue: value,
+                            previousValue: nil,
+                            storedValue: nil
+                        ))
+                        offset += stride
+                    }
                 }
             }
-        }
 
-        searchResults = results
-        tableView.reloadData()
+            DispatchQueue.main.async {
+                guard let self else { return }
+                self.searchResults = results
+                self.hideLoadingIndicator()
+                print("[CheatSearch] Populated \(results.count) addresses")
+                self.reloadTable()
+            }
+        }
     }
 
     private var isUpdatingValues = false
@@ -248,6 +310,7 @@ final class CheatSearchViewController: NSViewController {
     private func updateCurrentValues() {
         guard !searchResults.isEmpty, !memoryRegions.isEmpty, !isUpdatingValues else { return }
         isUpdatingValues = true
+        showLoadingIndicator()
 
         let regions = memoryRegions
         var results = searchResults
@@ -281,7 +344,8 @@ final class CheatSearchViewController: NSViewController {
                 guard let self = self else { return }
                 self.searchResults = results
                 self.isUpdatingValues = false
-                self.tableView.reloadData()
+                self.hideLoadingIndicator()
+                self.reloadTable()
             }
         }
     }
@@ -296,6 +360,7 @@ final class CheatSearchViewController: NSViewController {
         tableView.delegate = self
         tableView.headerView = NSTableHeaderView()
         tableView.style = .fullWidth
+        tableView.doubleAction = #selector(tableDoubleClicked(_:))
 
         let addressColumn = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("address"))
         addressColumn.title = NSLocalizedString("Address", comment: "Cheat Search table column header")
@@ -531,6 +596,8 @@ final class CheatSearchViewController: NSViewController {
     // MARK: - Actions
 
     @objc private func searchClicked(_ sender: Any?) {
+        guard !isPopulating else { return }
+
         let dataSize = selectedDataSize
         let dataType = selectedDataType
         let comparison = selectedComparison
@@ -542,66 +609,93 @@ final class CheatSearchViewController: NSViewController {
         }
 
         if searchResults.isEmpty {
-            var results: [SearchResult] = []
+            let regions = memoryRegions
+            showLoadingIndicator()
 
-            for region in memoryRegions {
-                let data = region.data
-                let baseAddress = UInt32(region.address)
-                let byteCount = data.count
-                let stride = Int(region.minDataBytes)
+            DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+                var results: [SearchResult] = []
 
-                guard byteCount >= dataSize else { continue }
+                for region in regions {
+                    let data = region.data
+                    let baseAddress = UInt32(region.address)
+                    let byteCount = data.count
+                    let stride = Int(region.minDataBytes)
 
-                data.withUnsafeBytes { buffer in
-                    var offset = 0
-                    while offset <= byteCount - dataSize {
-                        let fullValue = readValue(from: buffer, at: offset, size: min(4, byteCount - offset))
+                    guard byteCount >= dataSize else { continue }
 
-                        let referenceValue: UInt64
-                        switch compareTo {
-                        case .thisValue:
-                            referenceValue = targetValue
-                        default:
-                            referenceValue = fullValue
+                    data.withUnsafeBytes { buffer in
+                        var offset = 0
+                        while offset <= byteCount - dataSize {
+                            let fullValue = self?.readValue(from: buffer, at: offset, size: min(4, byteCount - offset)) ?? 0
+
+                            let referenceValue: UInt64
+                            switch compareTo {
+                            case .thisValue:
+                                referenceValue = targetValue
+                            default:
+                                referenceValue = fullValue
+                            }
+
+                            if self?.compare(fullValue, to: referenceValue, operation: comparison, dataType: dataType, dataSize: dataSize) == true {
+                                results.append(SearchResult(
+                                    address: baseAddress + UInt32(offset),
+                                    currentValue: fullValue,
+                                    previousValue: nil,
+                                    storedValue: nil
+                                ))
+                            }
+                            offset += stride
                         }
-
-                        if compare(fullValue, to: referenceValue, operation: comparison, dataType: dataType, dataSize: dataSize) {
-                            results.append(SearchResult(
-                                address: baseAddress + UInt32(offset),
-                                currentValue: fullValue,
-                                previousValue: nil,
-                                storedValue: nil
-                            ))
-                        }
-                        offset += stride
                     }
                 }
+
+                DispatchQueue.main.async {
+                    guard let self else { return }
+                    self.searchResults = results
+                    self.hideLoadingIndicator()
+                    print("[CheatSearch] Search results: \(results.count)")
+                    self.reloadTable()
+                }
             }
-
-            searchResults = results
         } else {
-            searchResults = searchResults.compactMap { result in
-                let referenceValue: UInt64?
-                switch compareTo {
-                case .storedValue:
-                    referenceValue = result.storedValue
-                case .previousValue:
-                    referenceValue = result.previousValue
-                case .thisValue:
-                    referenceValue = targetValue
+            showLoadingIndicator()
+            let currentResults = searchResults
+
+            DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+                let filtered = currentResults.compactMap { result -> SearchResult? in
+                    let referenceValue: UInt64?
+                    switch compareTo {
+                    case .storedValue:
+                        referenceValue = result.storedValue
+                    case .previousValue:
+                        referenceValue = result.previousValue
+                    case .thisValue:
+                        referenceValue = targetValue
+                    }
+
+                    guard let ref = referenceValue else { return result }
+
+                    guard self?.compare(result.currentValue, to: ref, operation: comparison, dataType: dataType, dataSize: dataSize) == true else {
+                        return nil
+                    }
+
+                    return result
                 }
 
-                guard let ref = referenceValue else { return result }
-
-                guard compare(result.currentValue, to: ref, operation: comparison, dataType: dataType, dataSize: dataSize) else {
-                    return nil
+                DispatchQueue.main.async {
+                    guard let self else { return }
+                    self.searchResults = filtered
+                    self.hideLoadingIndicator()
+                    print("[CheatSearch] Search results: \(filtered.count)")
+                    self.reloadTable()
                 }
-
-                return result
             }
         }
+    }
 
-        tableView.reloadData()
+    @objc private func tableDoubleClicked(_ sender: Any?) {
+        guard tableView.selectedRow >= 0 else { return }
+        addCheatClicked(sender)
     }
 
     @objc private func addCheatClicked(_ sender: Any?) {
@@ -745,14 +839,26 @@ final class CheatSearchViewController: NSViewController {
 
     @objc private func resetClicked(_ sender: Any?) {
         searchResults = []
+        reloadTable()
         readMemoryFromCore()
     }
 
     @objc private func storeValuesClicked(_ sender: Any?) {
-        for i in 0..<searchResults.count {
-            searchResults[i].storedValue = searchResults[i].currentValue
+        showLoadingIndicator()
+        var results = searchResults
+
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            for i in 0..<results.count {
+                results[i].storedValue = results[i].currentValue
+            }
+
+            DispatchQueue.main.async {
+                guard let self else { return }
+                self.searchResults = results
+                self.hideLoadingIndicator()
+                self.reloadTable()
+            }
         }
-        tableView.reloadData()
     }
 
     @objc private func windowDidBecomeMain(_ notification: Notification) {
@@ -768,7 +874,7 @@ final class CheatSearchViewController: NSViewController {
             let index = tag - Self.dataTypeTagBase
             selectRadio(in: dataTypeRadios, index: index)
             UserDefaults.standard.set(index, forKey: Self.dataTypeKey)
-            tableView.reloadData()
+            reloadTable()
         } else if tag >= Self.compareToTagBase && tag < Self.compareToTagBase + 100 {
             let index = tag - Self.compareToTagBase
             selectRadio(in: compareToRadios, index: index)
@@ -778,7 +884,7 @@ final class CheatSearchViewController: NSViewController {
 
     @objc private func dataSizeChanged(_ sender: Any?) {
         UserDefaults.standard.set(dataSizeCombo.indexOfSelectedItem, forKey: Self.dataSizeKey)
-        tableView.reloadData()
+        reloadTable()
     }
 
     private func rebuildDataSizeCombo() {
