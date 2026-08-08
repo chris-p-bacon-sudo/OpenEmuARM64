@@ -439,9 +439,8 @@ const int ColecoVisionMap[] = {COLECOVISION_UP, COLECOVISION_DOWN, COLECOVISION_
     // Remove any spaces
     code = [code stringByReplacingOccurrencesOfString:@" " withString:@""];
 
-    // Remove address-value separator
+    // Remove Game Genie dash separator (colons are handled per-code below)
     code = [code stringByReplacingOccurrencesOfString:@"-" withString:@""];
-    code = [code stringByReplacingOccurrencesOfString:@":" withString:@""];
 
     if (enabled)
         [cheatList setValue:@YES forKey:code];
@@ -461,11 +460,22 @@ const int ColecoVisionMap[] = {COLECOVISION_UP, COLECOVISION_DOWN, COLECOVISION_
             multipleCodes = [key componentsSeparatedByString:@"+"];
             for (NSString *singleCode in multipleCodes)
             {
-                if ([singleCode length] == 8)
+                // Normalize raw format (ADDR:VAL) to 8-char AR (AAAAVVVV)
+                NSString *normalized = singleCode;
+                NSRange colon = [singleCode rangeOfString:@":"];
+                if (colon.location != NSNotFound) {
+                    NSString *addr = [singleCode substringToIndex:colon.location];
+                    NSString *val = [singleCode substringFromIndex:colon.location + 1];
+                    while (addr.length < 4) addr = [@"0" stringByAppendingString:addr];
+                    while (val.length < 4) val = [@"0" stringByAppendingString:val];
+                    normalized = [addr stringByAppendingString:val];
+                }
+
+                if ([normalized length] == 8)
                 {
                     // Action Replay GG/SMS format: XXXX-YYYY
-                    NSString *address = [singleCode substringWithRange:NSMakeRange(0, 4)];
-                    NSString *value = [singleCode substringWithRange:NSMakeRange(4, 4)];
+                    NSString *address = [normalized substringWithRange:NSMakeRange(0, 4)];
+                    NSString *value = [normalized substringWithRange:NSMakeRange(4, 4)];
 
                     // Convert AR hex to int
                     uint32_t outAddress, outValue;
@@ -477,7 +487,7 @@ const int ColecoVisionMap[] = {COLECOVISION_UP, COLECOVISION_DOWN, COLECOVISION_
                     sms_cheat_t *arCode = (sms_cheat_t *)malloc(sizeof(sms_cheat_t));
                     memset(arCode, 0, sizeof(sms_cheat_t));
                     arCode->ar_code = (outAddress << 16) | outValue;
-                    strcpy(arCode->desc, [singleCode UTF8String]);
+                    strcpy(arCode->desc, [normalized UTF8String]);
                     arCode->enabled = 1;
 
                     sms_cheat_add(arCode);
@@ -497,7 +507,7 @@ const int ColecoVisionMap[] = {COLECOVISION_UP, COLECOVISION_DOWN, COLECOVISION_
     return @[
         [OEMemoryRegionDescriptor descriptorWithName:@"RAM"
                                             address:0xC000
-                                       addressBytes:3
+                                       addressBytes:2
                                                data:ramData]
     ];
 }
