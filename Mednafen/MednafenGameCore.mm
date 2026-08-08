@@ -4282,8 +4282,8 @@ namespace Mednafen { void MDFN_FlushGameCheats(int nosave); }
             NSRange colonRange = [singleCode rangeOfString:@":"];
             if (colonRange.location != NSNotFound) {
                 unsigned int addr = 0, val = 0;
-                [[NSScanner scannerWithString:[singleCode substringToIndex:colonRange.location]] scanHexInt:&addr];
-                [[NSScanner scannerWithString:[singleCode substringFromIndex:colonRange.location + 1]] scanHexInt:&val];
+                if (![[NSScanner scannerWithString:[singleCode substringToIndex:colonRange.location]] scanHexInt:&addr]) continue;
+                if (![[NSScanner scannerWithString:[singleCode substringFromIndex:colonRange.location + 1]] scanHexInt:&val]) continue;
                 patch.addr = addr;
                 patch.val = val;
                 patch.length = 1;

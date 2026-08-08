@@ -481,8 +481,8 @@ const int ColecoVisionMap[] = {COLECOVISION_UP, COLECOVISION_DOWN, COLECOVISION_
                     uint32_t outAddress, outValue;
                     NSScanner *scanAddress = [NSScanner scannerWithString:address];
                     NSScanner *scanValue = [NSScanner scannerWithString:value];
-                    [scanAddress scanHexInt:&outAddress];
-                    [scanValue scanHexInt:&outValue];
+                    if (![scanAddress scanHexInt:&outAddress] || ![scanValue scanHexInt:&outValue])
+                        continue;
 
                     sms_cheat_t *arCode = (sms_cheat_t *)malloc(sizeof(sms_cheat_t));
                     memset(arCode, 0, sizeof(sms_cheat_t));

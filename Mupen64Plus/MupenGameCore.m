@@ -1035,8 +1035,8 @@ static void MupenSetAudioSpeed(int percent)
             unsigned int outAddress, outValue;
             NSScanner *scanAddress = [NSScanner scannerWithString:address];
             NSScanner *scanValue = [NSScanner scannerWithString:value];
-            [scanAddress scanHexInt:&outAddress];
-            [scanValue scanHexInt:&outValue];
+            if (![scanAddress scanHexInt:&outAddress] || ![scanValue scanHexInt:&outValue])
+                continue;
             
             gsCode[codeCounter].address = outAddress;
             gsCode[codeCounter].value = outValue;
