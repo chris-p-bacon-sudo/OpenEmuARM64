@@ -382,7 +382,7 @@ final class PrefRetroAchievementsController: NSViewController {
 
     @objc private func signIn() {
         let username = usernameField.stringValue.trimmingCharacters(in: .whitespaces)
-        let password = passwordField.stringValue
+        let password = passwordField.stringValue.trimmingCharacters(in: .whitespaces)
 
         guard !username.isEmpty else {
             setStatus("Username cannot be empty.", isError: true)
