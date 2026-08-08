@@ -299,7 +299,7 @@ final class CheatSearchViewController: NSViewController {
                 guard let self else { return }
                 self.searchResults = results
                 self.hideLoadingIndicator()
-                print("[CheatSearch] Populated \(results.count) addresses")
+                // print("[CheatSearch] Populated \(results.count) addresses")
                 self.reloadTable()
             }
         }
@@ -653,7 +653,7 @@ final class CheatSearchViewController: NSViewController {
                     guard let self else { return }
                     self.searchResults = results
                     self.hideLoadingIndicator()
-                    print("[CheatSearch] Search results: \(results.count)")
+                    // print("[CheatSearch] Search results: \(results.count)")
                     self.reloadTable()
                 }
             }
@@ -686,7 +686,7 @@ final class CheatSearchViewController: NSViewController {
                     guard let self else { return }
                     self.searchResults = filtered
                     self.hideLoadingIndicator()
-                    print("[CheatSearch] Search results: \(filtered.count)")
+                    // print("[CheatSearch] Search results: \(filtered.count)")
                     self.reloadTable()
                 }
             }
