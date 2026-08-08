@@ -724,12 +724,22 @@ Du kannst die Tastenbelegung in den Einstellungen unter „Steuerung“ überpr�
 	<string>Datengröße</string>
 	<key>1 byte</key>
 	<string>1 Byte</string>
-	<key>2 bytes</key>
-	<string>2 Bytes</string>
-	<key>3 bytes</key>
-	<string>3 Bytes</string>
-	<key>4 bytes</key>
-	<string>4 Bytes</string>
+	<key>%d bytes</key>
+	<string>%d Bytes</string>
+	<key>Address</key>
+	<string>Adresse</string>
+	<key>Current</key>
+	<string>Aktuell</string>
+	<key>Previous</key>
+	<string>Vorherig</string>
+	<key>Stored</key>
+	<string>Gespeichert</string>
+	<key>Reset</key>
+	<string>Zurücksetzen</string>
+	<key>Address:</key>
+	<string>Adresse:</string>
+	<key>Value (Hex):</key>
+	<string>Wert (Hex):</string>
 	<key>Stored Value</key>
 	<string>Gespeicherter Wert</string>
 	<key>Previous Value</key>

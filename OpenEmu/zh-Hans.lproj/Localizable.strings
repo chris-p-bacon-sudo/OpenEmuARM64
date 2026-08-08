@@ -725,12 +725,22 @@ You can go to the Controls preferences to check which associations were affected
 	<string>数据大小</string>
 	<key>1 byte</key>
 	<string>1字节</string>
-	<key>2 bytes</key>
-	<string>2字节</string>
-	<key>3 bytes</key>
-	<string>3字节</string>
-	<key>4 bytes</key>
-	<string>4字节</string>
+	<key>%d bytes</key>
+	<string>%d 字节</string>
+	<key>Address</key>
+	<string>地址</string>
+	<key>Current</key>
+	<string>当前值</string>
+	<key>Previous</key>
+	<string>上次值</string>
+	<key>Stored</key>
+	<string>存储值</string>
+	<key>Reset</key>
+	<string>重置</string>
+	<key>Address:</key>
+	<string>地址:</string>
+	<key>Value (Hex):</key>
+	<string>数值 (十六进制):</string>
 	<key>Stored Value</key>
 	<string>已存储值</string>
 	<key>Previous Value</key>

@@ -721,12 +721,22 @@ You can go to the Controls preferences to check which associations were affected
 	<string>データサイズ</string>
 	<key>1 byte</key>
 	<string>1バイト</string>
-	<key>2 bytes</key>
-	<string>2バイト</string>
-	<key>3 bytes</key>
-	<string>3バイト</string>
-	<key>4 bytes</key>
-	<string>4バイト</string>
+	<key>%d bytes</key>
+	<string>%d バイト</string>
+	<key>Address</key>
+	<string>アドレス</string>
+	<key>Current</key>
+	<string>現在値</string>
+	<key>Previous</key>
+	<string>前回値</string>
+	<key>Stored</key>
+	<string>保存値</string>
+	<key>Reset</key>
+	<string>リセット</string>
+	<key>Address:</key>
+	<string>アドレス:</string>
+	<key>Value (Hex):</key>
+	<string>値 (16進数):</string>
 	<key>Stored Value</key>
 	<string>保存済みの値</string>
 	<key>Previous Value</key>

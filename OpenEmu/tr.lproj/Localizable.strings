@@ -726,12 +726,22 @@ Hangi ilişkilendirmelerin etkilendiğini kontrol etmek için Kontrolcü tercihl
 	<string>Veri boyutu</string>
 	<key>1 byte</key>
 	<string>1 bayt</string>
-	<key>2 bytes</key>
-	<string>2 bayt</string>
-	<key>3 bytes</key>
-	<string>3 bayt</string>
-	<key>4 bytes</key>
-	<string>4 bayt</string>
+	<key>%d bytes</key>
+	<string>%d bayt</string>
+	<key>Address</key>
+	<string>Adres</string>
+	<key>Current</key>
+	<string>Mevcut</string>
+	<key>Previous</key>
+	<string>Önceki</string>
+	<key>Stored</key>
+	<string>Kaydedilmiş</string>
+	<key>Reset</key>
+	<string>Sıfırla</string>
+	<key>Address:</key>
+	<string>Adres:</string>
+	<key>Value (Hex):</key>
+	<string>Değer (Hex):</string>
 	<key>Stored Value</key>
 	<string>Saklanan değer</string>
 	<key>Previous Value</key>

@@ -728,12 +728,22 @@ Puoi andare nelle Preferenze Controlli per verificare quali impostazioni sono st
 	<string>Dimensione dati</string>
 	<key>1 byte</key>
 	<string>1 byte</string>
-	<key>2 bytes</key>
-	<string>2 bytes</string>
-	<key>3 bytes</key>
-	<string>3 bytes</string>
-	<key>4 bytes</key>
-	<string>4 bytes</string>
+	<key>%d bytes</key>
+	<string>%d byte</string>
+	<key>Address</key>
+	<string>Indirizzo</string>
+	<key>Current</key>
+	<string>Attuale</string>
+	<key>Previous</key>
+	<string>Precedente</string>
+	<key>Stored</key>
+	<string>Memorizzato</string>
+	<key>Reset</key>
+	<string>Reimposta</string>
+	<key>Address:</key>
+	<string>Indirizzo:</string>
+	<key>Value (Hex):</key>
+	<string>Valore (Hex):</string>
 	<key>Stored Value</key>
 	<string>Valore memorizzato</string>
 	<key>Previous Value</key>

@@ -725,12 +725,22 @@ You can go to the Controls preferences to check which associations were affected
 	<string>Gegevensgrootte</string>
 	<key>1 byte</key>
 	<string>1 byte</string>
-	<key>2 bytes</key>
-	<string>2 bytes</string>
-	<key>3 bytes</key>
-	<string>3 bytes</string>
-	<key>4 bytes</key>
-	<string>4 bytes</string>
+	<key>%d bytes</key>
+	<string>%d bytes</string>
+	<key>Address</key>
+	<string>Adres</string>
+	<key>Current</key>
+	<string>Huidig</string>
+	<key>Previous</key>
+	<string>Vorig</string>
+	<key>Stored</key>
+	<string>Opgeslagen</string>
+	<key>Reset</key>
+	<string>Herstel</string>
+	<key>Address:</key>
+	<string>Adres:</string>
+	<key>Value (Hex):</key>
+	<string>Waarde (Hex):</string>
 	<key>Stored Value</key>
 	<string>Opgeslagen waarde</string>
 	<key>Previous Value</key>

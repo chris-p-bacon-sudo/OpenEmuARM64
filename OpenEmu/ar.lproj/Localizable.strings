@@ -696,12 +696,22 @@ You can go to the Controls preferences to check which associations were affected
 	<string>حجم البيانات</string>
 	<key>1 byte</key>
 	<string>1 بايت</string>
-	<key>2 bytes</key>
-	<string>2 بايت</string>
-	<key>3 bytes</key>
-	<string>3 بايت</string>
-	<key>4 bytes</key>
-	<string>4 بايت</string>
+	<key>%d bytes</key>
+	<string>%d بايت</string>
+	<key>Address</key>
+	<string>العنوان</string>
+	<key>Current</key>
+	<string>الحالي</string>
+	<key>Previous</key>
+	<string>السابق</string>
+	<key>Stored</key>
+	<string>المخزن</string>
+	<key>Reset</key>
+	<string>إعادة تعيين</string>
+	<key>Address:</key>
+	<string>العنوان:</string>
+	<key>Value (Hex):</key>
+	<string>القيمة (سداسي عشري):</string>
 	<key>Stored Value</key>
 	<string>القيمة المخزنة</string>
 	<key>Previous Value</key>

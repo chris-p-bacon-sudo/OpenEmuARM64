@@ -726,12 +726,22 @@ Podeu anar a les preferències dels controls per comprovar quines associacions s
 	<string>Mida de dades</string>
 	<key>1 byte</key>
 	<string>1 byte</string>
-	<key>2 bytes</key>
-	<string>2 bytes</string>
-	<key>3 bytes</key>
-	<string>3 bytes</string>
-	<key>4 bytes</key>
-	<string>4 bytes</string>
+	<key>%d bytes</key>
+	<string>%d bytes</string>
+	<key>Address</key>
+	<string>Adreça</string>
+	<key>Current</key>
+	<string>Actual</string>
+	<key>Previous</key>
+	<string>Anterior</string>
+	<key>Stored</key>
+	<string>Emmagatzemat</string>
+	<key>Reset</key>
+	<string>Restableix</string>
+	<key>Address:</key>
+	<string>Adreça:</string>
+	<key>Value (Hex):</key>
+	<string>Valor (Hex):</string>
 	<key>Stored Value</key>
 	<string>Valor emmagatzemat</string>
 	<key>Previous Value</key>

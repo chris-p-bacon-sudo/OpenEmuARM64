@@ -726,12 +726,22 @@ You can go to the Controls preferences to check which associations were affected
 	<string>Размер данных</string>
 	<key>1 byte</key>
 	<string>1 байт</string>
-	<key>2 bytes</key>
-	<string>2 байта</string>
-	<key>3 bytes</key>
-	<string>3 байта</string>
-	<key>4 bytes</key>
-	<string>4 байта</string>
+	<key>%d bytes</key>
+	<string>%d байт</string>
+	<key>Address</key>
+	<string>Адрес</string>
+	<key>Current</key>
+	<string>Текущее</string>
+	<key>Previous</key>
+	<string>Предыдущее</string>
+	<key>Stored</key>
+	<string>Сохранённое</string>
+	<key>Reset</key>
+	<string>Сбросить</string>
+	<key>Address:</key>
+	<string>Адрес:</string>
+	<key>Value (Hex):</key>
+	<string>Значение (Hex):</string>
 	<key>Stored Value</key>
 	<string>Сохранённое значение</string>
 	<key>Previous Value</key>

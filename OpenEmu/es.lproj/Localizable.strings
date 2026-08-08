@@ -724,12 +724,22 @@ You can go to the Controls preferences to check which associations were affected
 	<string>Tamaño de dato</string>
 	<key>1 byte</key>
 	<string>1 byte</string>
-	<key>2 bytes</key>
-	<string>2 bytes</string>
-	<key>3 bytes</key>
-	<string>3 bytes</string>
-	<key>4 bytes</key>
-	<string>4 bytes</string>
+	<key>%d bytes</key>
+	<string>%d bytes</string>
+	<key>Address</key>
+	<string>Dirección</string>
+	<key>Current</key>
+	<string>Actual</string>
+	<key>Previous</key>
+	<string>Anterior</string>
+	<key>Stored</key>
+	<string>Almacenado</string>
+	<key>Reset</key>
+	<string>Restablecer</string>
+	<key>Address:</key>
+	<string>Dirección:</string>
+	<key>Value (Hex):</key>
+	<string>Valor (Hex):</string>
 	<key>Stored Value</key>
 	<string>Valor almacenado</string>
 	<key>Previous Value</key>
