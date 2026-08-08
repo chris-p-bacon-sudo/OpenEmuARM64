@@ -812,7 +812,8 @@ final class CheatSearchViewController: NSViewController {
             return
         }
 
-        let rawCode = "\(address):\(hexValue.uppercased())"
+        let paddedValue = String(repeating: "0", count: max(0, selectedDataSize * 2 - hexValue.count)) + hexValue.uppercased()
+        let rawCode = "\(address):\(paddedValue)"
         let name = titleField.stringValue.isEmpty ? rawCode : titleField.stringValue
         let enabled = enableCheck.state == .on
 
@@ -882,7 +883,10 @@ final class CheatSearchViewController: NSViewController {
         }
     }
 
+    private var isRebuildingCombo = false
+
     @objc private func dataSizeChanged(_ sender: Any?) {
+        guard !isRebuildingCombo else { return }
         UserDefaults.standard.set(dataSizeCombo.indexOfSelectedItem, forKey: Self.dataSizeKey)
         reloadTable()
     }
@@ -897,6 +901,7 @@ final class CheatSearchViewController: NSViewController {
             return
         }
         
+        isRebuildingCombo = true
         let previousSize = availableDataSizes.isEmpty ? 0 : selectedDataSize
         availableDataSizes = newSizes
         
@@ -907,6 +912,7 @@ final class CheatSearchViewController: NSViewController {
                 : String(format: NSLocalizedString("%d bytes", comment: "Cheat Search data size option"), size)
             dataSizeCombo.addItem(withTitle: title)
         }
+        isRebuildingCombo = false
     }
 
     @objc private func comparisonChanged(_ sender: Any?) {
