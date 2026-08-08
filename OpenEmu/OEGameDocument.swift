@@ -1937,7 +1937,10 @@ final class OEGameDocument: NSDocument {
     }
 
     // MARK: N64 GameShark (TTXXXXXX YYYY)
-
+    // Mupen64Plus stores RDRAM as host-native uint32 words; the cheat engine XORs byte/halfword
+    // addresses (S8=3, S16=2) to find the correct raw offset. We XOR here to convert the raw
+    // buffer offset (from cheat search) to the N64 virtual address the engine expects.
+    
     private static func convertToGameSharkN64(_ code: String) -> String {
         guard let colonIdx = code.firstIndex(of: ":") else { return code }
         let addressPart = String(code[code.startIndex..<colonIdx])
@@ -1952,15 +1955,19 @@ final class OEGameDocument: NSDocument {
         var offset = 0
         while offset < byteCount {
             let remaining = byteCount - offset
-            let addr = baseAddr + UInt32(offset)
+            let rawAddr = baseAddr + UInt32(offset)
 
-            if remaining >= 2 && (addr % 2 == 0) {
+            if remaining >= 2 && (rawAddr % 2 == 0) {
+                // Convert raw buffer offset to N64 virtual address (XOR 2 for halfword)
+                let n64Addr = rawAddr ^ 2
                 let val16 = UInt16((value >> ((byteCount - offset - 2) * 8)) & 0xFFFF)
-                codes.append(String(format: "%08X%04X", 0x81000000 | addr, val16))
+                codes.append(String(format: "%08X%04X", 0x81000000 | n64Addr, val16))
                 offset += 2
             } else {
+                // Convert raw buffer offset to N64 virtual address (XOR 3 for byte)
+                let n64Addr = rawAddr ^ 3
                 let val8 = UInt8((value >> ((byteCount - offset - 1) * 8)) & 0xFF)
-                codes.append(String(format: "%08X%04X", 0x80000000 | addr, UInt16(val8)))
+                codes.append(String(format: "%08X%04X", 0x80000000 | n64Addr, UInt16(val8)))
                 offset += 1
             }
         }
