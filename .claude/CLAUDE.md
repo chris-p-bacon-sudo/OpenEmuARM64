@@ -117,7 +117,7 @@ If you find yourself about to write "could you check…" or "could you launch…
 
 ## Session start
 
-Run `/start` before touching code. It syncs `main`, pulls the live issue list and project board, and creates the correctly named branch for the work.
+Run `/start` before touching code. It syncs `main`, pulls the live issue list, and creates the correctly named branch for the work.
 
 ---
 
