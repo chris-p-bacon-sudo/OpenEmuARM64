@@ -3,7 +3,7 @@
 #
 # Usage:
 #   ./Scripts/verify.sh                        # build + analyze + plist + codesign on the main app
-#   ./Scripts/verify.sh --launch               # above, plus 5s smoke launch with log + crash check
+#   ./Scripts/verify.sh --launch               # above, plus 5s smoke launch with log + crash check, then leaves the app running
 #   ./Scripts/verify.sh --test                 # above, plus run OpenEmuTests unit test target
 #   ./Scripts/verify.sh --core <CoreName>      # build a core scheme + install + verify the installed plugin
 #   ./Scripts/verify.sh --core <CoreName> --release  # use Release configuration (for Release-only bugs)
@@ -335,14 +335,13 @@ if [ "$LAUNCH" -eq 1 ] && [ -z "$CORE" ] && [ -n "${ARTIFACT:-}" ] && [ -e "$ART
   if pgrep -x OpenEmu >/dev/null 2>&1; then
     info "OpenEmu is already running — skipping smoke launch (would clobber user state)"
   else
-    info "smoke launching for 5s and capturing logs"
+    info "smoke launching (staying open for manual testing after health checks)"
     LAUNCH_START=$(date +"%Y-%m-%d %H:%M:%S")
-    open -g "$ARTIFACT"
+    open "$ARTIFACT"
     sleep 5
 
     if pgrep -x OpenEmu >/dev/null 2>&1; then
       pass "process alive after 5s"
-      pkill -x OpenEmu 2>/dev/null || true
     else
       fail "process died within 5s of launch"
     fi

@@ -22,10 +22,9 @@ git stash list
 
 ```bash
 gh issue list --repo nickybmon/OpenEmu-Silicon --state open
-gh project item-list 3 --owner nickybmon --format json
 ```
 
-Read the output. Summarize the open issues and board status so there's a clear picture of what's in flight.
+Read the output. Summarize the open issues so there's a clear picture of what's in flight.
 
 ### 3. Confirm the task
 
@@ -46,5 +45,5 @@ git checkout -b <type>/short-description
 
 Confirm:
 - Branch created and active
-- Summary of open issues / board state
+- Summary of open issues
 - Ready to work

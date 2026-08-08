@@ -190,7 +190,7 @@ static void mupen_rc_event_handler(const rc_client_event_t *event, rc_client_t *
         OEAchievementIDKey:          @(ach->id),
         OEAchievementTitleKey:       @(ach->title       ?: ""),
         OEAchievementDescriptionKey: @(ach->description ?: ""),
-        OEAchievementBadgeURLKey:    @(ach->badge_name  ?: ""),
+        OEAchievementBadgeURLKey:    @(ach->badge_url   ?: ""),
         OEAchievementPointsKey:      @(ach->points),
     };
     [[NSNotificationCenter defaultCenter]
