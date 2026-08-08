@@ -53,7 +53,6 @@ final class CheatSearchWindowController: NSWindowController {
 
     override func showWindow(_ sender: Any?) {
         super.showWindow(sender)
-        (contentViewController as? CheatSearchViewController)?.readMemoryFromCore()
     }
 
     @available(*, unavailable)
