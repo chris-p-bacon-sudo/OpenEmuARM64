@@ -31,4 +31,9 @@ updates:
   # OpenEmu-Shaders/3rdparty/SPIRV/3rdparty/SPIRV-Tools/tools/sva contains
   # a 2019-era yarn.lock for dev-only shader validator tooling. These packages
   # are never executed at runtime and are not shipped in the app binary.
-  # All Dependabot alerts for this path have been dismissed as 'not_used'.
+  #
+  # NOTE: this `ignore` mechanism only applies to version-update PRs — it does
+  # NOT stop Dependabot from generating new security alerts against this
+  # lockfile as new CVEs land. Alerts on this path recur periodically and must
+  # be dismissed manually each time with reason 'not_used'. See dismissed
+  # alerts #1-40 for precedent/comment wording.
