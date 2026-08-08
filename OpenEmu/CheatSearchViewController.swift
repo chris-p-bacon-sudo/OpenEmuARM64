@@ -278,7 +278,7 @@ final class CheatSearchViewController: NSViewController {
 
                 data.withUnsafeBytes { buffer in
                     var offset = 0
-                    while offset <= byteCount - 1 {
+                    while offset <= byteCount - stride {
                         let available = min(4, byteCount - offset)
                         var value: UInt64 = 0
                         for i in 0..<available {
