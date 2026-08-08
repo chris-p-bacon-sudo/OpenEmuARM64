@@ -495,7 +495,7 @@ const int ColecoVisionMap[] = {COLECOVISION_UP, COLECOVISION_DOWN, COLECOVISION_
 
     NSData *ramData = [NSData dataWithBytes:ramBase length:8 * 1024];
     return @[
-        [OEMemoryRegionDescriptor descriptorWithName:@"Work RAM"
+        [OEMemoryRegionDescriptor descriptorWithName:@"RAM"
                                             address:0xC000
                                        addressBytes:3
                                                data:ramData]
