@@ -533,6 +533,7 @@ void stellaOESetPalette(const uInt32 *palette)
 
 - (NSArray<OEMemoryRegionDescriptor *> *)readableMemoryRegions
 {
+    if (!console) return @[];
     uint8_t ram[128];
     for (int i = 0; i < 128; i++)
         ram[i] = console->system().peek((uInt16)(0x80 + i));

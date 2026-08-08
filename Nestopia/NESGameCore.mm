@@ -1139,6 +1139,7 @@ void NST_CALLBACK doEvent(void *userData, Nes::Api::Machine::Event event, Nes::R
 {
     Nes::Api::Cheats cheater(_emu);
     Nes::Api::Cheats::Ram ram = cheater.GetRam();
+    if (!ram) return @[];
     NSData *data = [NSData dataWithBytes:ram length:0x800];
     OEMemoryRegionDescriptor *descriptor = [OEMemoryRegionDescriptor descriptorWithName:@"RAM"
                                                                               address:0x0000

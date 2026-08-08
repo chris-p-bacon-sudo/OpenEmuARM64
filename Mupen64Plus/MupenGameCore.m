@@ -1066,6 +1066,7 @@ static void MupenSetAudioSpeed(int percent)
 
 - (NSArray<OEMemoryRegionDescriptor *> *)readableMemoryRegions
 {
+    if (!g_dev.rdram.dram) return @[];
     uint32_t dramSize = (uint32_t)g_dev.rdram.dram_size;
     NSData *data = [NSData dataWithBytes:g_dev.rdram.dram length:dramSize];
     OEMemoryRegionDescriptor *descriptor = [OEMemoryRegionDescriptor descriptorWithName:@"RDRAM"

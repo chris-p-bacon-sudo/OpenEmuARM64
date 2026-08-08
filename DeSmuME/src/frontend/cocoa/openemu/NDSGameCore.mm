@@ -1694,6 +1694,7 @@ void UpdateDisplayPropertiesFromStates(uint64_t displayModeStates, ClientDisplay
 
 - (NSArray<OEMemoryRegionDescriptor *> *)readableMemoryRegions
 {
+	if (gameInfo.romsize == 0) return @[];
 	uint32_t ramSize = _MMU_MAIN_MEM_MASK + 1;
 	NSData *data = [NSData dataWithBytes:MMU.MAIN_MEM length:ramSize];
 	OEMemoryRegionDescriptor *descriptor = [OEMemoryRegionDescriptor descriptorWithName:@"Main RAM"

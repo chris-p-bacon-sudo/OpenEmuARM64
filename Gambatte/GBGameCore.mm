@@ -722,6 +722,7 @@ const int GBMap[] = {gambatte::InputGetter::UP, gambatte::InputGetter::DOWN, gam
 
 - (NSArray<OEMemoryRegionDescriptor *> *)readableMemoryRegions
 {
+    if (!gb.isLoaded()) return @[];
     const NSUInteger wramSize = 0x2000;
     NSMutableData *wramData = [NSMutableData dataWithLength:wramSize];
     uint8_t *bytes = (uint8_t *)wramData.mutableBytes;

@@ -688,6 +688,7 @@ static void bsnes_rc_event_handler(const rc_client_event_t *event, rc_client_t *
 
 - (NSArray<OEMemoryRegionDescriptor *> *)readableMemoryRegions
 {
+    if (!emulator) return @[];
     const NSUInteger wramSize = 128 * 1024;
     NSMutableData *data = [NSMutableData dataWithLength:wramSize];
     uint8_t *bytes = (uint8_t *)data.mutableBytes;

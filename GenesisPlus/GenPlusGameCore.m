@@ -2142,6 +2142,7 @@ void ROMCheatUpdate(void)
 
 - (NSArray<OEMemoryRegionDescriptor *> *)readableMemoryRegions
 {
+    if (cart.romsize == 0) return @[];
     if ((system_hw & SYSTEM_PBC) == SYSTEM_MD) {
         NSData *data = [NSData dataWithBytes:work_ram length:0x10000];
         OEMemoryRegionDescriptor *descriptor = [OEMemoryRegionDescriptor descriptorWithName:@"Work RAM"

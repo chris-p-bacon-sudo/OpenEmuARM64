@@ -1114,6 +1114,7 @@ void S9xParsePortConfig(ConfigFile&, int)
 
 - (NSArray<OEMemoryRegionDescriptor *> *)readableMemoryRegions
 {
+    if (Memory.CalculatedSize == 0) return @[];
     NSData *data = [NSData dataWithBytes:Memory.RAM length:0x20000];
     OEMemoryRegionDescriptor *wram = [OEMemoryRegionDescriptor descriptorWithName:@"WRAM"
                                                                           address:0x7E0000

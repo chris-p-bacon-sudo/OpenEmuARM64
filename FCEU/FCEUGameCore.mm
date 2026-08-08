@@ -934,6 +934,7 @@ void FCEUD_Message(const char *s)
 
 - (NSArray<OEMemoryRegionDescriptor *> *)readableMemoryRegions
 {
+    if (!RAM) return @[];
     NSData *data = [NSData dataWithBytes:RAM length:0x800];
     OEMemoryRegionDescriptor *descriptor = [OEMemoryRegionDescriptor descriptorWithName:@"RAM"
                                                                               address:0x0000
