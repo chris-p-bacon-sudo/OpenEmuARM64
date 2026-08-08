@@ -867,19 +867,78 @@ class AppDelegate: NSObject, UNUserNotificationCenterDelegate {
             alert.defaultButtonTitle = NSLocalizedString("Open System Preferences", comment:"Button to open System Preferences for Input Monitoring permission")
         }
         alert.alternateButtonTitle = NSLocalizedString("Ignore", comment: "")
+        alert.otherButtonTitle = NSLocalizedString("Reset Permission", comment: "Button to reset the Input Monitoring permission when toggling it in System Settings hasn't fixed keyboard input")
 
         UserDefaults.standard.set(true, forKey: suppressionKey)
 
         guard let window = mainWindowController.window else { return }
         alert.beginSheetModal(for: window) { res in
-            if res == .alertFirstButtonReturn {
+            switch res {
+            case .alertFirstButtonReturn:
                 if #available(macOS 13.0, *) {
                     NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension?Privacy_ListenEvent")!)
                 } else {
                     NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent")!)
                 }
+            case .alertThirdButtonReturn:
+                self.resetInputMonitoringPermission(nil)
+            default:
+                break
             }
         }
+    }
+
+    /// Clears a stale/corrupted Input Monitoring TCC grant for this app via
+    /// `tccutil reset` and re-triggers the OS permission prompt. This is the
+    /// same fix users have had to achieve manually by deleting and
+    /// reinstalling the app when toggling the permission in System Settings
+    /// alone didn't resolve broken keyboard input (see issue #628).
+    @IBAction fileprivate func resetInputMonitoringPermission(_ sender: Any?) {
+        guard let bundleID = Bundle.main.bundleIdentifier else { return }
+
+        let script = "do shell script \"/usr/bin/tccutil reset ListenEvent \(bundleID)\" with administrator privileges"
+        guard let appleScript = NSAppleScript(source: script) else { return }
+
+        var error: NSDictionary?
+        appleScript.executeAndReturnError(&error)
+        if let error = error {
+            // -128 is the user cancelling the administrator-privileges prompt.
+            if error[NSAppleScript.errorNumber] as? Int16 != -128 {
+                os_log(.error, log: .default, "Failed to reset Input Monitoring permission { error = %{public}@ }",
+                       (error[NSAppleScript.errorMessage] as? String) ?? "unknown")
+            }
+            return
+        }
+
+        UserDefaults.standard.removeObject(forKey: "OEInputMonitoringPreviouslyGranted")
+        UserDefaults.standard.removeObject(forKey: OEAlert.OEInputMonitoringAlertSuppressionKey)
+
+        // Re-requesting access in this same process immediately after the
+        // reset is unreliable: IOHIDRequestAccess can race with tccd and
+        // silently add a disabled entry instead of showing the consent
+        // dialog. Relaunching gives the OS a fresh process to prompt
+        // against, which is how this request behaves reliably at normal
+        // app launch.
+        let alert = NSAlert()
+        alert.messageText = NSLocalizedString("Permission reset", comment: "Headline shown after successfully resetting Input Monitoring permission")
+        alert.informativeText = NSLocalizedString("OpenEmu needs to relaunch to request Input Monitoring access again.", comment: "Message shown after successfully resetting Input Monitoring permission")
+        alert.addButton(withTitle: NSLocalizedString("Relaunch Now", comment: "Button to relaunch OpenEmu after resetting Input Monitoring permission"))
+        alert.runModal()
+
+        relaunchToReapplyInputMonitoringPermission()
+    }
+
+    private func relaunchToReapplyInputMonitoringPermission() {
+        let pid = ProcessInfo.processInfo.processIdentifier
+        let path = Bundle.main.bundlePath
+        let script = "(while /bin/kill -0 \(pid) >&/dev/null; do /bin/sleep 0.1; done; /usr/bin/open \"\(path)\") &"
+
+        let task = Process()
+        task.executableURL = URL(fileURLWithPath: "/bin/sh")
+        task.arguments = ["-c", script]
+        try? task.run()
+
+        NSApp.terminate(self)
     }
     
     // MARK: - Help Menu
