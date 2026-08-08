@@ -608,6 +608,17 @@ final class CheatSearchViewController: NSViewController {
             targetValue = parseInputValue(thisValueTextField.stringValue, dataType: dataType, dataSize: dataSize)
         }
 
+        if !searchResults.isEmpty {
+            if compareTo == .storedValue && searchResults.first?.storedValue == nil {
+                NSSound.beep()
+                return
+            }
+            if compareTo == .previousValue && searchResults.first?.previousValue == nil {
+                NSSound.beep()
+                return
+            }
+        }
+
         if searchResults.isEmpty {
             let regions = memoryRegions
             showLoadingIndicator()
