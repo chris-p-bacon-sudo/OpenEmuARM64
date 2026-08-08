@@ -130,9 +130,9 @@ extension GameCoreManager: OEGameCoreHelper {
             let regions: [OEMemoryRegionDescriptor] = dicts.compactMap { dict in
                 guard let name = dict["name"] as? String,
                       let address = dict["address"] as? UInt32,
+                      let addressBytes = dict["addressBytes"] as? UInt8,
                       let data = dict["data"] as? Data
                 else { return nil }
-                let addressBytes = dict["addressBytes"] as? UInt8 ?? 2
                 let minDataBytes = dict["minDataBytes"] as? UInt8 ?? 1
                 return OEMemoryRegionDescriptor(name: name, address: address, addressBytes: addressBytes, minDataBytes: minDataBytes, data: data)
             }
