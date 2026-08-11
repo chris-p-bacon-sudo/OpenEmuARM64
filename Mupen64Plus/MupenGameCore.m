@@ -1072,6 +1072,7 @@ static void MupenSetAudioSpeed(int percent)
     OEMemoryRegionDescriptor *descriptor = [OEMemoryRegionDescriptor descriptorWithName:@"RDRAM"
                                                                               address:0x80000000
                                                                          addressBytes:4
+                                                                         minDataBytes:2
                                                                                  data:data];
     return @[descriptor];
 }
