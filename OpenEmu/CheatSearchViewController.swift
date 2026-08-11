@@ -169,6 +169,7 @@ final class CheatSearchViewController: NSViewController {
         rightSide.widthAnchor.constraint(equalTo: mainSplit.widthAnchor, multiplier: 0.38).isActive = true
 
         restoreSavedSelections()
+        updateControlStates()
     }
 
     // MARK: - Persist / Restore Selections
@@ -235,7 +236,7 @@ final class CheatSearchViewController: NSViewController {
         isPopulating = false
         searchButton.isEnabled = true
         resetButton.isEnabled = true
-        storeValuesButton.isEnabled = true
+        updateControlStates()
         loadingSpinner?.stopAnimation(nil)
         loadingSpinner?.isHidden = true
         tableView.isEnabled = true
@@ -250,57 +251,8 @@ final class CheatSearchViewController: NSViewController {
             guard let self = self else { return }
             self.memoryRegions = regions.sorted { $0.address < $1.address }
             self.rebuildDataSizeCombo()
-            if self.searchResults.isEmpty {
-                self.populateFullMemory()
-            } else {
+            if !self.searchResults.isEmpty {
                 self.updateCurrentValues()
-            }
-        }
-    }
-
-    private func populateFullMemory() {
-        let regions = memoryRegions
-        showLoadingIndicator()
-
-        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            var totalCount = 0
-            for region in regions {
-                totalCount += region.data.count / Int(region.minDataBytes)
-            }
-            var results: [SearchResult] = []
-            results.reserveCapacity(totalCount)
-
-            for region in regions {
-                let data = region.data
-                let baseAddress = UInt32(region.address)
-                let byteCount = data.count
-                let stride = Int(region.minDataBytes)
-
-                data.withUnsafeBytes { buffer in
-                    var offset = 0
-                    while offset <= byteCount - stride {
-                        let available = min(4, byteCount - offset)
-                        var value: UInt64 = 0
-                        for i in 0..<available {
-                            value |= UInt64(buffer[offset + i]) << (i * 8)
-                        }
-                        results.append(SearchResult(
-                            address: baseAddress + UInt32(offset),
-                            currentValue: value,
-                            previousValue: nil,
-                            storedValue: nil
-                        ))
-                        offset += stride
-                    }
-                }
-            }
-
-            DispatchQueue.main.async {
-                guard let self else { return }
-                self.searchResults = results
-                self.hideLoadingIndicator()
-                // print("[CheatSearch] Populated \(results.count) addresses")
-                self.reloadTable()
             }
         }
     }
@@ -598,6 +550,20 @@ final class CheatSearchViewController: NSViewController {
     @objc private func searchClicked(_ sender: Any?) {
         guard !isPopulating else { return }
 
+        // Fetch memory regions first if not yet loaded
+        if memoryRegions.isEmpty {
+            guard let document = gameDocument else { return }
+            showLoadingIndicator()
+            document.fetchReadableMemoryRegions { [weak self] regions in
+                guard let self = self else { return }
+                self.memoryRegions = regions.sorted { $0.address < $1.address }
+                self.rebuildDataSizeCombo()
+                self.hideLoadingIndicator()
+                self.searchClicked(nil)
+            }
+            return
+        }
+
         let dataSize = selectedDataSize
         let dataType = selectedDataType
         let comparison = selectedComparison
@@ -852,6 +818,7 @@ final class CheatSearchViewController: NSViewController {
     @objc private func resetClicked(_ sender: Any?) {
         searchResults = []
         reloadTable()
+        updateControlStates()
         readMemoryFromCore()
     }
 
@@ -928,6 +895,24 @@ final class CheatSearchViewController: NSViewController {
 
     @objc private func comparisonChanged(_ sender: Any?) {
         UserDefaults.standard.set(comparisonCombo.indexOfSelectedItem, forKey: Self.comparisonKey)
+    }
+
+    /// Update enabled state of Stored/Previous radios and Store Values button
+    private func updateControlStates() {
+        let hasResults = !searchResults.isEmpty
+        let hasPrevious = hasResults && searchResults.first?.previousValue != nil
+        let hasStored = hasResults && searchResults.first?.storedValue != nil
+
+        compareToRadios[CompareTo.storedValue.rawValue].isEnabled = hasStored
+        compareToRadios[CompareTo.previousValue.rawValue].isEnabled = hasPrevious
+        storeValuesButton.isEnabled = hasResults
+
+        // If the selected radio is disabled, switch to This Value
+        let selectedIdx = compareToRadios.firstIndex(where: { $0.state == .on }) ?? 0
+        if !compareToRadios[selectedIdx].isEnabled {
+            selectRadio(in: compareToRadios, index: CompareTo.thisValue.rawValue)
+            UserDefaults.standard.set(CompareTo.thisValue.rawValue, forKey: Self.compareToKey)
+        }
     }
 
     // MARK: - Search Helpers
