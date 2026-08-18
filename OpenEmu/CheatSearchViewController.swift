@@ -134,6 +134,7 @@ final class CheatSearchViewController: NSViewController {
     private var searchButton: NSButton!
     private var storeValuesButton: NSButton!
     private var addCheatButton: NSButton!
+    private var resultsCountLabel: NSTextField!
 
     override func loadView() {
         view = NSView(frame: NSRect(x: 0, y: 0, width: 620, height: 480))
@@ -205,6 +206,24 @@ final class CheatSearchViewController: NSViewController {
     private func reloadTable() {
         tableView.reloadData()
         tableView.deselectAll(nil)
+        updateResultsCountLabel()
+    }
+
+    private func updateResultsCountLabel() {
+        let count = searchResults.count
+        if count == 0 {
+            resultsCountLabel.stringValue = ""
+        } else if count == 1 {
+            resultsCountLabel.stringValue = String(
+                format: NSLocalizedString("%@ result found 🎯", comment: "Cheat Search single result count"),
+                NumberFormatter.localizedString(from: NSNumber(value: count), number: .decimal)
+            )
+        } else {
+            resultsCountLabel.stringValue = String(
+                format: NSLocalizedString("%@ results found", comment: "Cheat Search result count"),
+                NumberFormatter.localizedString(from: NSNumber(value: count), number: .decimal)
+            )
+        }
     }
 
     private func showLoadingIndicator() {
@@ -385,6 +404,16 @@ final class CheatSearchViewController: NSViewController {
         addCheatButton.isEnabled = false
         stack.addArrangedSubview(storeRow.2)
         storeRow.2.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+
+        resultsCountLabel = NSTextField(labelWithString: "")
+        resultsCountLabel.alignment = .center
+        resultsCountLabel.textColor = .secondaryLabelColor
+        resultsCountLabel.font = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)
+        resultsCountLabel.maximumNumberOfLines = 1
+        resultsCountLabel.lineBreakMode = .byTruncatingTail
+        resultsCountLabel.drawsBackground = false
+        stack.addArrangedSubview(resultsCountLabel)
+        resultsCountLabel.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
 
         let bottomSpacer = NSView()
         bottomSpacer.setContentHuggingPriority(.defaultLow, for: .vertical)
