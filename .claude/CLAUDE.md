@@ -152,15 +152,17 @@ Things you do on every PR, where it's easy to forget:
 
 ---
 
-## Issue hygiene (the rules AI sessions have repeatedly broken)
+## Issue tracking — Linear is the source of truth
 
-Detailed rules are in `AGENTS.md`. The short version, because these failures keep happening:
+Linear (workspace **OpenEmu Silicon**, via the `linear` MCP plugin) is where triage, status, and work happen now — not GitHub Issues/labels. GitHub Issues stays as the public intake point and syncs live one-way (GitHub → Linear): a new GitHub issue auto-creates a matching Linear issue within seconds, with the GitHub issue linked back as an attachment. Confirmed by direct test on 2026-08-19 (GitHub #668 → Linear OES-308, same timestamp) — trust this, not Linear's own docs, which describe GitHub Issues as import-only and are wrong or stale for this workspace. Re-verify with a live test (not doc search) if this ever seems to stop working.
 
-1. Search before opening: `gh issue list --repo nickybmon/OpenEmu-Silicon --state open` first.
-2. No type prefixes in titles (`fix:` / `note:` / `bug:` belong to labels, not titles).
-3. One concern per issue, per branch, per PR.
-4. Close on fix: `gh issue close #N --repo nickybmon/OpenEmu-Silicon --comment "Resolved in <sha>."` — same session as the fix lands.
-5. Always pass `--repo nickybmon/OpenEmu-Silicon` on every `gh` command.
+What this means day to day:
+1. **Check Linear first**, not `gh issue list` — use the `linear` MCP tools (`list_issues`, `get_issue`) to find existing/open work.
+2. **Triage and research live in Linear**: post root-cause findings as issue comments, set labels (`ready-for-agent`, `needs-testing`, `needs-info`, etc.), assign, and move status (Backlog → In Progress → In Review → Done) — see OES-307 for the pattern. Don't do this triage in GitHub issue comments; it won't sync back.
+3. **Still close the GitHub issue on fix** — `gh issue close #N --repo nickybmon/OpenEmu-Silicon --comment "Resolved in <sha>."`, same session as the fix lands. Sync is one-way for new issues; don't assume completing the Linear issue closes GitHub's copy without checking.
+4. **Link the PR on both sides**: `Fixes #N` in the PR body (GitHub), and a `links` entry pointing at the PR URL on the Linear issue (`save_issue`).
+5. Only create an issue directly in Linear (skipping GitHub) for internal-only work that doesn't need public visibility — everything a community member might report or care about should still go through GitHub so the sync catches it.
+6. No type prefixes in titles (`fix:` / `note:` / `bug:` belong to labels, not titles). One concern per issue, per branch, per PR. Always pass `--repo nickybmon/OpenEmu-Silicon` on every `gh` command.
 
 ---
 
