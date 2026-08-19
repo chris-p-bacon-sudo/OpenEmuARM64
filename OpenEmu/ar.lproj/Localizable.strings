@@ -720,6 +720,8 @@ You can go to the Controls preferences to check which associations were affected
 	<string>هذه القيمة:</string>
 	<key>Cheat Description</key>
 	<string>وصف الغش</string>
+	<key>Showing first %1$@ of %2$@ matches, narrow your search</key>
+	<string>يتم عرض أول %1$@ من %2$@ تطابق، ضيّق نطاق البحث</string>
 
 </dict>
 </plist>

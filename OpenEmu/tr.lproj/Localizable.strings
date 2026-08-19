@@ -750,6 +750,8 @@ Hangi ilişkilendirmelerin etkilendiğini kontrol etmek için Kontrolcü tercihl
 	<string>Bu değer:</string>
 	<key>Cheat Description</key>
 	<string>Hile Açıklaması </string>
+	<key>Showing first %1$@ of %2$@ matches, narrow your search</key>
+	<string>%2$@ eşleşmeden ilk %1$@ tanesi gösteriliyor, aramanızı daraltın</string>
 
 </dict>
 </plist>

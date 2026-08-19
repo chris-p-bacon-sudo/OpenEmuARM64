@@ -749,6 +749,8 @@ You can go to the Controls preferences to check which associations were affected
 	<string>Deze waarde:</string>
 	<key>Cheat Description</key>
 	<string>Beschrijving van cheat</string>
+	<key>Showing first %1$@ of %2$@ matches, narrow your search</key>
+	<string>Eerste %1$@ van %2$@ overeenkomsten weergegeven, verfijn je zoekopdracht</string>
 
 </dict>
 </plist>

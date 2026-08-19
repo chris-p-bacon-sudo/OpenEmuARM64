@@ -750,6 +750,8 @@ Podeu anar a les preferències dels controls per comprovar quines associacions s
 	<string>Aquest valor:</string>
 	<key>Cheat Description</key>
 	<string>Descripció del truc</string>
+	<key>Showing first %1$@ of %2$@ matches, narrow your search</key>
+	<string>Es mostren les primeres %1$@ de %2$@ coincidències, refina la cerca</string>
 
 </dict>
 </plist>

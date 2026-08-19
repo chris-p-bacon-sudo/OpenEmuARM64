@@ -745,6 +745,8 @@ You can go to the Controls preferences to check which associations were affected
 	<string>この値:</string>
 	<key>Cheat Description</key>
 	<string>チートの説明</string>
+	<key>Showing first %1$@ of %2$@ matches, narrow your search</key>
+	<string>%2$@ 件中の最初の %1$@ 件を表示しています。検索条件を絞り込んでください</string>
 
 </dict>
 </plist>

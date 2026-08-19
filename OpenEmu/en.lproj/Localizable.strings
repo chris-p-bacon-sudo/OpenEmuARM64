@@ -762,6 +762,8 @@ You can go to the Controls preferences to check which associations were affected
 	<string>This Value:</string>
 	<key>Cheat Description</key>
 	<string>Cheat Description</string>
+	<key>Showing first %1$@ of %2$@ matches, narrow your search</key>
+	<string>Showing first %1$@ of %2$@ matches, narrow your search</string>
 
 </dict>
 </plist>

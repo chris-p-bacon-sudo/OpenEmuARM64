@@ -752,6 +752,8 @@ Puoi andare nelle Preferenze Controlli per verificare quali impostazioni sono st
 	<string>Questo valore:</string>
 	<key>Cheat Description</key>
 	<string>Descrizione trucco</string>
+	<key>Showing first %1$@ of %2$@ matches, narrow your search</key>
+	<string>Mostrate le prime %1$@ di %2$@ corrispondenze, affina la ricerca</string>
 
 </dict>
 </plist>

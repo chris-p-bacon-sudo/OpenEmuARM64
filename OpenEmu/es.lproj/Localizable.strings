@@ -748,6 +748,8 @@ You can go to the Controls preferences to check which associations were affected
 	<string>Este valor:</string>
 	<key>Cheat Description</key>
 	<string>Descripción de truco</string>
+	<key>Showing first %1$@ of %2$@ matches, narrow your search</key>
+	<string>Mostrando las primeras %1$@ de %2$@ coincidencias, refina la búsqueda</string>
 
 </dict>
 </plist>

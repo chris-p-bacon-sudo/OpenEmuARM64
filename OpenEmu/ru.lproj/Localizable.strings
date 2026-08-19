@@ -750,6 +750,8 @@ You can go to the Controls preferences to check which associations were affected
 	<string>Это значение:</string>
 	<key>Cheat Description</key>
 	<string>Описание чит-кода</string>
+	<key>Showing first %1$@ of %2$@ matches, narrow your search</key>
+	<string>Показаны первые %1$@ из %2$@ совпадений, уточните поиск</string>
 
 </dict>
 </plist>

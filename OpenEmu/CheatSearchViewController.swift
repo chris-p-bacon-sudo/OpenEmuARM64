@@ -136,6 +136,21 @@ final class CheatSearchViewController: NSViewController {
     private var addCheatButton: NSButton!
     private var resultsCountLabel: NSTextField!
 
+    // MARK: - Result display cap
+    /// Maximum rows handed to the table view. Matches are kept in full in
+    /// `searchResults` so narrowing still works against every hit; only the
+    /// number of rows the table has to build is bounded.
+    ///
+    /// Without this, a broad first search (searching for 0 is common, and RAM is
+    /// full of zeroes) produces millions of rows. AppKit allocates an
+    /// accessibility element per row, which pushed the app past 5 GB and hung
+    /// the main thread in AX serialisation on N64-sized RAM.
+    ///
+    /// 1000 is set for what is actually readable rather than what is survivable.
+    /// The list is a surface you narrow down, not one you scroll to the end of,
+    /// and a realistic narrowed result set fits well inside this.
+    private static let displayLimit = 1_000
+
     override func loadView() {
         view = NSView(frame: NSRect(x: 0, y: 0, width: 620, height: 480))
     }
@@ -186,7 +201,10 @@ final class CheatSearchViewController: NSViewController {
         let dataType = defaults.integer(forKey: Self.dataTypeKey)
         selectRadio(in: dataTypeRadios, index: dataType)
 
-        let comparison = defaults.integer(forKey: Self.comparisonKey)
+        // Default to "=" rather than the first item, "<". With the other defaults
+        // (unsigned, This Value 0) a "<" search asks for an unsigned number below
+        // zero, which can never match, so a first search always came back empty.
+        let comparison = defaults.object(forKey: Self.comparisonKey) as? Int ?? Comparison.equal.rawValue
         if comparison >= 0 && comparison < comparisonCombo.numberOfItems {
             comparisonCombo.selectItem(at: comparison)
         }
@@ -209,10 +227,20 @@ final class CheatSearchViewController: NSViewController {
         updateResultsCountLabel()
     }
 
+    /// Reports the match count, and says so plainly when the table is only
+    /// showing a capped subset of them (searching for 0 is common, and RAM is
+    /// full of zeroes, so a broad first search can produce millions of hits).
     private func updateResultsCountLabel() {
         let count = searchResults.count
         if count == 0 {
             resultsCountLabel.stringValue = ""
+        } else if count > Self.displayLimit {
+            resultsCountLabel.stringValue = String(
+                format: NSLocalizedString("Showing first %1$@ of %2$@ matches, narrow your search",
+                                          comment: "Cheat Search result count when capped"),
+                NumberFormatter.localizedString(from: NSNumber(value: Self.displayLimit), number: .decimal),
+                NumberFormatter.localizedString(from: NSNumber(value: count), number: .decimal)
+            )
         } else if count == 1 {
             resultsCountLabel.stringValue = String(
                 format: NSLocalizedString("%@ result found 🎯", comment: "Cheat Search single result count"),
@@ -588,6 +616,13 @@ final class CheatSearchViewController: NSViewController {
                 self.memoryRegions = regions.sorted { $0.address < $1.address }
                 self.rebuildDataSizeCombo()
                 self.hideLoadingIndicator()
+                // Cores return no regions before a ROM is loaded and during
+                // teardown. Re-entering unconditionally would fetch again on an
+                // empty result and loop over XPC forever.
+                guard !self.memoryRegions.isEmpty else {
+                    NSSound.beep()
+                    return
+                }
                 self.searchClicked(nil)
             }
             return
@@ -1029,7 +1064,7 @@ final class CheatSearchViewController: NSViewController {
 
 extension CheatSearchViewController: NSTableViewDataSource {
     func numberOfRows(in tableView: NSTableView) -> Int {
-        return searchResults.count
+        return min(searchResults.count, Self.displayLimit)
     }
 }
 

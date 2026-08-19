@@ -746,6 +746,8 @@ Vous pouvez aller dans les préférences Contrôles pour vérifier les associati
 	<string>Cette valeur :</string>
 	<key>Cheat Description</key>
 	<string>Description du code</string>
+	<key>Showing first %1$@ of %2$@ matches, narrow your search</key>
+	<string>Affichage des %1$@ premières correspondances sur %2$@, affinez votre recherche</string>
 
 </dict>
 </plist>

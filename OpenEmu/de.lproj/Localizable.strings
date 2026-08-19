@@ -748,6 +748,8 @@ Du kannst die Tastenbelegung in den Einstellungen unter „Steuerung“ überpr�
 	<string>Dieser Wert:</string>
 	<key>Cheat Description</key>
 	<string>Cheat-Beschreibung</string>
+	<key>Showing first %1$@ of %2$@ matches, narrow your search</key>
+	<string>Erste %1$@ von %2$@ Übereinstimmungen werden angezeigt, Suche eingrenzen</string>
 
 </dict>
 </plist>

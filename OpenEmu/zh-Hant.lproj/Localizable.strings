@@ -749,6 +749,8 @@ You can go to the Controls preferences to check which associations were affected
 	<string>此值:</string>
 	<key>Cheat Description</key>
 	<string>金手指描述</string>
+	<key>Showing first %1$@ of %2$@ matches, narrow your search</key>
+	<string>顯示 %2$@ 個相符項目中的前 %1$@ 個，請縮小搜尋範圍</string>
 
 </dict>
 </plist>

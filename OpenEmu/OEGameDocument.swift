@@ -1068,11 +1068,28 @@ final class OEGameDocument: NSDocument {
     }
     
     @objc private func windowDidResignMain(_ notification: Notification) {
-        let backgroundPause = UserDefaults.standard.bool(forKey: OEBackgroundPauseKey)
-        if backgroundPause && emulationStatus == .playing {
-            requestEmulationPauseRespectingRetroAchievementsHardcore { [weak self] paused in
-                if paused {
-                    self?.pausedByGoingToBackground = true
+        // Deferred a turn so the incoming main window has been established:
+        // this fires before the new window takes over, so asking who is main
+        // right now would always come back empty.
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+
+            // Moving to this document's own Cheat Search window is not "going to
+            // the background". Cheat search depends on the game continuing to run,
+            // since the whole workflow is changing a value in-game and searching
+            // again to narrow down candidates. Pausing here made the game look
+            // frozen the moment the window opened.
+            if let cheatSearchWindow = self.cheatSearchWindowController?.window,
+               cheatSearchWindow.isMainWindow || cheatSearchWindow.isKeyWindow {
+                return
+            }
+
+            let backgroundPause = UserDefaults.standard.bool(forKey: OEBackgroundPauseKey)
+            if backgroundPause && self.emulationStatus == .playing {
+                self.requestEmulationPauseRespectingRetroAchievementsHardcore { [weak self] paused in
+                    if paused {
+                        self?.pausedByGoingToBackground = true
+                    }
                 }
             }
         }
