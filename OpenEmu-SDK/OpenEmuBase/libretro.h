@@ -90,6 +90,12 @@ extern "C" {
 // ── Sentinel for HW-rendered frames ──────────────────────────────────
 #define RETRO_HW_FRAME_BUFFER_VALID ((void*)-1)
 
+// ── Memory IDs (retro_get_memory_data/size) ──────────────────────────
+#define RETRO_MEMORY_SAVE_RAM    0
+#define RETRO_MEMORY_RTC         1
+#define RETRO_MEMORY_SYSTEM_RAM  2
+#define RETRO_MEMORY_VIDEO_RAM   3
+
 // ── Input devices / IDs ──────────────────────────────────────────────
 #define RETRO_DEVICE_JOYPAD              1
 #define RETRO_DEVICE_ANALOG              2

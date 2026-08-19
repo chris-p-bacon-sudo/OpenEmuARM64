@@ -435,12 +435,19 @@ static OELibretroSystemPolicy OELibretroSystemPolicyForSystemID(NSString *system
     void (*_retro_reset)(void);
     bool (*_retro_load_game)(const struct retro_game_info *game);
     void (*_retro_unload_game)(void);
-    
+
     // Serialization
     size_t (*_retro_serialize_size)(void);
     bool (*_retro_serialize)(void *data, size_t size);
     bool (*_retro_unserialize)(const void *data, size_t size);
-    
+
+    // Battery RAM (SRAM) — the frontend, not the core, is responsible for
+    // pulling this out of the core and persisting it to disk. See
+    // -loadFileAtPath: and -stopEmulation.
+    void   *(*_retro_get_memory_data)(unsigned id);
+    size_t  (*_retro_get_memory_size)(unsigned id);
+    NSURL  *_batterySaveFileURL;
+
     struct retro_system_av_info _avInfo;
     struct retro_hw_render_callback _hw_callback;
 @public
@@ -1366,6 +1373,14 @@ static void* bridge_dlsym(void *handle, const char *symbol) {
 
     self.coreBundle = [[self owner] bundle];
 
+    // Recompute savesPath now that -owner is available. -init runs before
+    // the XPC helper assigns -owner, so batterySavesDirectoryPath (which
+    // reads -owner) returns nil at that point — the -init-time value is a
+    // placeholder only, never something to load-bearing code should trust.
+    self.savesPath = [self batterySavesDirectoryPath];
+    free(_savesPathCStr);
+    _savesPathCStr = self.savesPath ? strdup([self.savesPath UTF8String]) : NULL;
+
     // Fallback: if owner didn't provide a bundle, scan all loaded bundles
     // for one that declares OELibretroCoreTranslator as its game core class.
     if (!self.coreBundle) {
@@ -1453,7 +1468,12 @@ static void* bridge_dlsym(void *handle, const char *symbol) {
     RESOLVE(retro_serialize_size);
     RESOLVE(retro_serialize);
     RESOLVE(retro_unserialize);
-    
+
+    // Optional: battery RAM access. Most cores implement this even though
+    // it's not in the "essential" set checked below.
+    RESOLVE(retro_get_memory_data);
+    RESOLVE(retro_get_memory_size);
+
     // Safety check for absolute minimum required to function
     if (!_retro_init || !_retro_run || !_retro_load_game) {
         if (error) {
@@ -1520,13 +1540,38 @@ static void* bridge_dlsym(void *handle, const char *symbol) {
 
         NSLog(@"[OELibretro] !!! CRITICAL LOAD FAILURE: %@", errorMsg);
         if (error) {
-            *error = [NSError errorWithDomain:OEGameCoreErrorDomain 
-                                         code:OEGameCoreCouldNotLoadROMError 
+            *error = [NSError errorWithDomain:OEGameCoreErrorDomain
+                                         code:OEGameCoreCouldNotLoadROMError
                                      userInfo:@{NSLocalizedDescriptionKey: errorMsg}];
         }
         return NO;
     }
-    
+
+    // Battery RAM restore. The libretro spec leaves persistence to the
+    // frontend: read the save file (if any) and copy it into the core's
+    // SAVE_RAM buffer now that the game is loaded and that buffer exists.
+    // Same directory/filename convention as OpenEmu's native cores (e.g.
+    // GenPlusGameCore) so a ROM's save carries over between the native and
+    // RetroArch-bridged builds of the same core.
+    if (self.savesPath) {
+        NSString *extensionlessFilename = [[path lastPathComponent] stringByDeletingPathExtension];
+        NSURL *batterySavesDirectory = [NSURL fileURLWithPath:self.savesPath];
+        [[NSFileManager defaultManager] createDirectoryAtURL:batterySavesDirectory withIntermediateDirectories:YES attributes:nil error:nil];
+        _batterySaveFileURL = [batterySavesDirectory URLByAppendingPathComponent:[extensionlessFilename stringByAppendingPathExtension:@"sav"]];
+
+        if (_retro_get_memory_data && _retro_get_memory_size) {
+            void *sramBuffer = _retro_get_memory_data(RETRO_MEMORY_SAVE_RAM);
+            size_t sramSize = _retro_get_memory_size(RETRO_MEMORY_SAVE_RAM);
+            if (sramBuffer && sramSize > 0) {
+                NSData *saveData = [NSData dataWithContentsOfURL:_batterySaveFileURL];
+                if (saveData) {
+                    memcpy(sramBuffer, [saveData bytes], MIN(sramSize, [saveData length]));
+                    NSLog(@"[OELibretro] Restored battery save (%zu bytes) from %@", (size_t)[saveData length], _batterySaveFileURL);
+                }
+            }
+        }
+    }
+
     // Core is loaded — resolve serialization state size now.
     // Spec: cores may only know their true state size after loading content.
     if (_retro_serialize_size) {
@@ -1559,6 +1604,24 @@ static void* bridge_dlsym(void *handle, const char *symbol) {
 
 - (void)stopEmulation {
     [super stopEmulation];
+
+    // Battery RAM persist. Must happen before retro_unload_game/retro_deinit
+    // tear down the core — the SAVE_RAM buffer they return is only valid
+    // while the core is loaded.
+    if (_coreHandle && _batterySaveFileURL && _retro_get_memory_data && _retro_get_memory_size) {
+        void *sramBuffer = _retro_get_memory_data(RETRO_MEMORY_SAVE_RAM);
+        size_t sramSize = _retro_get_memory_size(RETRO_MEMORY_SAVE_RAM);
+        if (sramBuffer && sramSize > 0) {
+            NSData *saveData = [NSData dataWithBytes:sramBuffer length:sramSize];
+            NSError *writeError = nil;
+            if ([saveData writeToURL:_batterySaveFileURL options:NSDataWritingAtomic error:&writeError]) {
+                NSLog(@"[OELibretro] Saved battery save (%zu bytes) to %@", sramSize, _batterySaveFileURL);
+            } else {
+                NSLog(@"[OELibretro] Error writing battery save file: %@", writeError);
+            }
+        }
+    }
+
     // Nil _current BEFORE dlclose so any callbacks that fire during shutdown
     // see nil and return early (prevents use-after-free in C callbacks).
     _current = nil;
@@ -1568,6 +1631,7 @@ static void* bridge_dlsym(void *handle, const char *symbol) {
         dlclose(_coreHandle);
         _coreHandle = NULL;
     }
+    _batterySaveFileURL = nil;
 }
 
 - (void)executeFrame {
