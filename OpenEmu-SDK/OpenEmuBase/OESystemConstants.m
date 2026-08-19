@@ -1,5 +1,6 @@
 /*
- Copyright (c) 2011, OpenEmu Team
+ Copyright (c) 2026, OpenEmu Team
+ Author: Leonardo Kasperavičius
 
  Redistribution and use in source and binary forms, with or without
  modification, are permitted provided that the following conditions are met:
@@ -24,27 +25,29 @@
   SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#import <Foundation/Foundation.h>
-#if TARGET_OS_OSX
-#import <Cocoa/Cocoa.h>
-#endif
+#import "OESystemConstants.h"
 
-#if !__has_feature(objc_arc)
-#error OEGameCores will probably not function without ARC
-#endif
+// MARK: - System Identifiers
 
-#import <OpenEmuBase/NSDictionary+OpenEmuSDK.h>
-#import <OpenEmuBase/OEAbstractAdditions.h>
-#import <OpenEmuBase/OEGameCore.h>
-#import <OpenEmuBase/OELibretroCoreTranslator.h>
-#import <OpenEmuBase/OEGameCoreController.h>
-#import <OpenEmuBase/OERingBuffer.h>
-#import <OpenEmuBase/OESystemResponderClient.h>
-#import <OpenEmuBase/OETimingUtils.h>
-#import <OpenEmuBase/TPCircularBuffer.h>
-#import <OpenEmuBase/OEAudioBuffer.h>
-#import <OpenEmuBase/NSUserDefaults+OpenEmuSDK.h>
-#import <OpenEmuBase/OEGameCoreDisplayModes.h>
-#import <OpenEmuBase/OEMemoryRegionDescriptor.h>
-#import <OpenEmuBase/OESystemConstants.h>
-#import <OpenEmuBase/OELibretroCoreTranslator.h>
+NSString *const OESystemIdentifierNES        = @"openemu.system.nes";
+NSString *const OESystemIdentifierFDS        = @"openemu.system.fds";
+NSString *const OESystemIdentifierSNES       = @"openemu.system.snes";
+NSString *const OESystemIdentifierN64        = @"openemu.system.n64";
+NSString *const OESystemIdentifierGB         = @"openemu.system.gb";
+NSString *const OESystemIdentifierGBA        = @"openemu.system.gba";
+NSString *const OESystemIdentifierNDS        = @"openemu.system.nds";
+NSString *const OESystemIdentifierGenesis    = @"openemu.system.sg";
+NSString *const OESystemIdentifierSMS        = @"openemu.system.sms";
+NSString *const OESystemIdentifierGameGear   = @"openemu.system.gg";
+NSString *const OESystemIdentifierSegaCD     = @"openemu.system.scd";
+NSString *const OESystemIdentifierSega32X    = @"openemu.system.32x";
+NSString *const OESystemIdentifierAtari2600  = @"openemu.system.2600";
+NSString *const OESystemIdentifierPSX        = @"openemu.system.psx";
+
+// MARK: - Cheat Code Type Strings
+
+NSString *const OECheatTypeGameShark    = @"GameShark";
+NSString *const OECheatTypeActionReplay = @"Action Replay";
+NSString *const OECheatTypeGameGenie    = @"Game Genie";
+NSString *const OECheatTypeRaw          = @"Raw";
+NSString *const OECheatTypeUnknown      = @"Unknown";

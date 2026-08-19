@@ -706,5 +706,52 @@ Podeu anar a les preferències dels controls per comprovar quines associacions s
 	<string>S'ha mogut la biblioteca correctament.</string>
 	<key>this guide</key>
 	<string>aquesta guia</string>
+	<key>Add Cheat</key>
+	<string>Afegeix un truc</string>
+	<key>Cheat Search…</key>
+	<string>Cerca de trucs…</string>
+	<key>Cheat Search</key>
+	<string>Cerca de trucs</string>
+	<key>Store Values</key>
+	<string>Emmagatzema valors</string>
+	<key>Comparison</key>
+	<string>Comparació</string>
+	<key>Unsigned (&gt;=0)</key>
+	<string>Sense signe (&gt;=0)</string>
+	<key>Signed (+/-)</key>
+	<string>Amb signe (+/-)</string>
+	<key>Hexadecimal</key>
+	<string>Hexadecimal</string>
+	<key>Data Size</key>
+	<string>Mida de dades</string>
+	<key>1 byte</key>
+	<string>1 byte</string>
+	<key>%d bytes</key>
+	<string>%d bytes</string>
+	<key>Address</key>
+	<string>Adreça</string>
+	<key>Current</key>
+	<string>Actual</string>
+	<key>Previous</key>
+	<string>Anterior</string>
+	<key>Stored</key>
+	<string>Emmagatzemat</string>
+	<key>Reset</key>
+	<string>Restableix</string>
+	<key>Address:</key>
+	<string>Adreça:</string>
+	<key>Value (Hex):</key>
+	<string>Valor (Hex):</string>
+	<key>Stored Value</key>
+	<string>Valor emmagatzemat</string>
+	<key>Previous Value</key>
+	<string>Valor anterior</string>
+	<key>This Value:</key>
+	<string>Aquest valor:</string>
+	<key>Cheat Description</key>
+	<string>Descripció del truc</string>
+	<key>Showing first %1$@ of %2$@ matches, narrow your search</key>
+	<string>Es mostren les primeres %1$@ de %2$@ coincidències, refina la cerca</string>
+
 </dict>
 </plist>

@@ -708,5 +708,52 @@ Puoi andare nelle Preferenze Controlli per verificare quali impostazioni sono st
 	<string>La tua Libreria è stata spostata con successo.</string>
 	<key>this guide</key>
 	<string>la guida</string>
+	<key>Add Cheat</key>
+	<string>Aggiungi trucco</string>
+	<key>Cheat Search…</key>
+	<string>Cerca trucchi…</string>
+	<key>Cheat Search</key>
+	<string>Cerca trucchi</string>
+	<key>Store Values</key>
+	<string>Memorizza valori</string>
+	<key>Comparison</key>
+	<string>Confronto</string>
+	<key>Unsigned (&gt;=0)</key>
+	<string>Senza segno (&gt;=0)</string>
+	<key>Signed (+/-)</key>
+	<string>Con segno (+/-)</string>
+	<key>Hexadecimal</key>
+	<string>Esadecimale</string>
+	<key>Data Size</key>
+	<string>Dimensione dati</string>
+	<key>1 byte</key>
+	<string>1 byte</string>
+	<key>%d bytes</key>
+	<string>%d byte</string>
+	<key>Address</key>
+	<string>Indirizzo</string>
+	<key>Current</key>
+	<string>Attuale</string>
+	<key>Previous</key>
+	<string>Precedente</string>
+	<key>Stored</key>
+	<string>Memorizzato</string>
+	<key>Reset</key>
+	<string>Reimposta</string>
+	<key>Address:</key>
+	<string>Indirizzo:</string>
+	<key>Value (Hex):</key>
+	<string>Valore (Hex):</string>
+	<key>Stored Value</key>
+	<string>Valore memorizzato</string>
+	<key>Previous Value</key>
+	<string>Valore precedente</string>
+	<key>This Value:</key>
+	<string>Questo valore:</string>
+	<key>Cheat Description</key>
+	<string>Descrizione trucco</string>
+	<key>Showing first %1$@ of %2$@ matches, narrow your search</key>
+	<string>Mostrate le prime %1$@ di %2$@ corrispondenze, affina la ricerca</string>
+
 </dict>
 </plist>

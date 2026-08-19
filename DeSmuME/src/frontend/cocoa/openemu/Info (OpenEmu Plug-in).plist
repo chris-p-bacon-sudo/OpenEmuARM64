@@ -40,6 +40,8 @@
 		<dict>
 			<key>OEGameCoreSupportsCheatCode</key>
 			<true/>
+			<key>OEGameCoreSupportsCheatSearch</key>
+			<true/>
 			<key>OEGameCoreSupportsDisplayModeChange</key>
 			<true/>
 		</dict>

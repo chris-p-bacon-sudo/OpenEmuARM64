@@ -706,5 +706,52 @@ You can go to the Controls preferences to check which associations were affected
 	<string>Ваша библиотека успешно перемещена.</string>
 	<key>this guide</key>
 	<string>эту инструкцию</string>
+	<key>Add Cheat</key>
+	<string>Добавить Чит-код</string>
+	<key>Cheat Search…</key>
+	<string>Поиск чит-кодов…</string>
+	<key>Cheat Search</key>
+	<string>Поиск чит-кодов</string>
+	<key>Store Values</key>
+	<string>Сохранить значения</string>
+	<key>Comparison</key>
+	<string>Сравнение</string>
+	<key>Unsigned (&gt;=0)</key>
+	<string>Без знака (&gt;=0)</string>
+	<key>Signed (+/-)</key>
+	<string>Со знаком (+/-)</string>
+	<key>Hexadecimal</key>
+	<string>Шестнадцатеричный</string>
+	<key>Data Size</key>
+	<string>Размер данных</string>
+	<key>1 byte</key>
+	<string>1 байт</string>
+	<key>%d bytes</key>
+	<string>%d байт</string>
+	<key>Address</key>
+	<string>Адрес</string>
+	<key>Current</key>
+	<string>Текущее</string>
+	<key>Previous</key>
+	<string>Предыдущее</string>
+	<key>Stored</key>
+	<string>Сохранённое</string>
+	<key>Reset</key>
+	<string>Сбросить</string>
+	<key>Address:</key>
+	<string>Адрес:</string>
+	<key>Value (Hex):</key>
+	<string>Значение (Hex):</string>
+	<key>Stored Value</key>
+	<string>Сохранённое значение</string>
+	<key>Previous Value</key>
+	<string>Предыдущее значение</string>
+	<key>This Value:</key>
+	<string>Это значение:</string>
+	<key>Cheat Description</key>
+	<string>Описание чит-кода</string>
+	<key>Showing first %1$@ of %2$@ matches, narrow your search</key>
+	<string>Показаны первые %1$@ из %2$@ совпадений, уточните поиск</string>
+
 </dict>
 </plist>

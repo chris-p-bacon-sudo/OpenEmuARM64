@@ -701,5 +701,52 @@ You can go to the Controls preferences to check which associations were affected
 	<string>ライブラリの移動が正常に完了しました。</string>
 	<key>this guide</key>
 	<string>ガイド</string>
+	<key>Add Cheat</key>
+	<string>チートコードを追加</string>
+	<key>Cheat Search…</key>
+	<string>チート検索…</string>
+	<key>Cheat Search</key>
+	<string>チート検索</string>
+	<key>Store Values</key>
+	<string>値を保存</string>
+	<key>Comparison</key>
+	<string>比較</string>
+	<key>Unsigned (&gt;=0)</key>
+	<string>符号なし (&gt;=0)</string>
+	<key>Signed (+/-)</key>
+	<string>符号付き (+/-)</string>
+	<key>Hexadecimal</key>
+	<string>16進数</string>
+	<key>Data Size</key>
+	<string>データサイズ</string>
+	<key>1 byte</key>
+	<string>1バイト</string>
+	<key>%d bytes</key>
+	<string>%d バイト</string>
+	<key>Address</key>
+	<string>アドレス</string>
+	<key>Current</key>
+	<string>現在値</string>
+	<key>Previous</key>
+	<string>前回値</string>
+	<key>Stored</key>
+	<string>保存値</string>
+	<key>Reset</key>
+	<string>リセット</string>
+	<key>Address:</key>
+	<string>アドレス:</string>
+	<key>Value (Hex):</key>
+	<string>値 (16進数):</string>
+	<key>Stored Value</key>
+	<string>保存済みの値</string>
+	<key>Previous Value</key>
+	<string>前回の値</string>
+	<key>This Value:</key>
+	<string>この値:</string>
+	<key>Cheat Description</key>
+	<string>チートの説明</string>
+	<key>Showing first %1$@ of %2$@ matches, narrow your search</key>
+	<string>%2$@ 件中の最初の %1$@ 件を表示しています。検索条件を絞り込んでください</string>
+
 </dict>
 </plist>

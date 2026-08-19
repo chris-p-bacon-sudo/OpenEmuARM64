@@ -161,6 +161,7 @@ final class OEGameDocument: NSDocument {
     private(set) var displayModes: [[String: Any]] = []
     
     private var gameCoreManager: GameCoreManager?
+    private var cheatSearchWindowController: CheatSearchWindowController?
     private var retroAchievementsWindowController: NSWindowController?
     @objc dynamic private(set) var retroAchievementsSessionInfo: [String: Any]?
     private var retroAchievementsSuppressedUnlockIDs = Set<UInt32>()
@@ -659,7 +660,10 @@ final class OEGameDocument: NSDocument {
                 self.didShowRetroAchievementsBootPlacard = false
                 
                 self.gameCoreManager = nil
-                
+
+                self.cheatSearchWindowController?.close()
+                self.cheatSearchWindowController = nil
+
                 if let lastPlayStartDate = self.lastPlayStartDate {
                     self.rom.addTimeIntervalToPlayTime(abs(lastPlayStartDate.timeIntervalSinceNow))
                 }
@@ -1064,11 +1068,18 @@ final class OEGameDocument: NSDocument {
     }
     
     @objc private func windowDidResignMain(_ notification: Notification) {
-        let backgroundPause = UserDefaults.standard.bool(forKey: OEBackgroundPauseKey)
-        if backgroundPause && emulationStatus == .playing {
-            requestEmulationPauseRespectingRetroAchievementsHardcore { [weak self] paused in
-                if paused {
-                    self?.pausedByGoingToBackground = true
+        // Deferred a turn so the incoming main window has been established:
+        // this fires before the new window takes over, so asking who is main
+        // right now would always come back empty.
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+
+            let backgroundPause = UserDefaults.standard.bool(forKey: OEBackgroundPauseKey)
+            if backgroundPause && self.emulationStatus == .playing {
+                self.requestEmulationPauseRespectingRetroAchievementsHardcore { [weak self] paused in
+                    if paused {
+                        self?.pausedByGoingToBackground = true
+                    }
                 }
             }
         }
@@ -1618,6 +1629,32 @@ final class OEGameDocument: NSDocument {
     var supportsCheats: Bool {
         return corePlugin.supportsCheatCode(forSystemIdentifier: systemPlugin.systemIdentifier)
     }
+
+    var supportsCheatSearch: Bool {
+        return corePlugin.supportsCheatSearch(forSystemIdentifier: systemPlugin.systemIdentifier)
+    }
+
+    func fetchReadableMemoryRegions(completionHandler block: @escaping ([OEMemoryRegionDescriptor]) -> Void) {
+        gameCoreManager?.readableMemoryRegionDescriptors(completionHandler: block)
+    }
+
+    @IBAction func openCheatSearch(_ sender: Any?) {
+        if cheatSearchWindowController == nil {
+            cheatSearchWindowController = CheatSearchWindowController(document: self)
+        }
+        cheatSearchWindowController?.showWindow(self)
+    }
+
+    func addCheatFromSearch(code: String, type: String, name: String, enabled: Bool) {
+        let cheat = Cheat(code: code, type: type, name: name)
+        cheat.isUserAdded = true
+        if enabled {
+            cheat.isEnabled = true
+            setCheat(cheat)
+        }
+        cheats.append(cheat)
+        saveUserCheats()
+    }
     
     /// In order to load cheats, we need the core plugin and the ROM to be set.
     private func loadCheats() {
@@ -1740,7 +1777,7 @@ final class OEGameDocument: NSDocument {
 
     private static func cheatFormat(for systemIdentifier: String) -> CheatFormat {
         switch systemIdentifier {
-        case "openemu.system.n64":
+        case OESystemIdentifierN64:
             return CheatFormat(
                 placeholder: NSLocalizedString("12 hex chars per code, e.g. 8033B21D0064. Join multi-line cheats with '+'.", comment: "Add Cheat dialog placeholder, N64"),
                 validationHint: NSLocalizedString("N64 codes must be 12 hex characters (8-char address + 4-char value), e.g. 8033B21D0064. Longer 16-char GameShark Pro / Action Replay codes are not supported by the Mupen64Plus core.", comment: "Add Cheat validation hint, N64"),
@@ -1754,35 +1791,227 @@ final class OEGameDocument: NSDocument {
                     }
                 }
             )
-        case "openemu.system.nes", "openemu.system.fds":
+        case OESystemIdentifierNES, OESystemIdentifierFDS:
             return CheatFormat(
                 placeholder: NSLocalizedString("Game Genie or raw hex (XXXX:YY). Join multi-line cheats with '+'.", comment: "Add Cheat dialog placeholder, NES"),
                 validationHint: "",
                 validator: nil
             )
-        case "openemu.system.snes":
+        case OESystemIdentifierSNES:
             return CheatFormat(
                 placeholder: NSLocalizedString("Game Genie or PAR codes. Join multi-line cheats with '+'.", comment: "Add Cheat dialog placeholder, SNES"),
                 validationHint: "",
                 validator: nil
             )
-        case "openemu.system.gb", "openemu.system.gba":
+        case OESystemIdentifierGB, OESystemIdentifierGBA:
             return CheatFormat(
                 placeholder: NSLocalizedString("GameShark (no dash) or Game Genie (with dash). Join multi-line cheats with '+'.", comment: "Add Cheat dialog placeholder, Game Boy / GBA"),
                 validationHint: "",
                 validator: nil
             )
-        case "openemu.system.sg", "openemu.system.sms", "openemu.system.gg", "openemu.system.32x", "openemu.system.scd":
+        case OESystemIdentifierGenesis, OESystemIdentifierSMS, OESystemIdentifierGameGear, OESystemIdentifierSega32X, OESystemIdentifierSegaCD:
             return CheatFormat(
                 placeholder: NSLocalizedString("Game Genie or Action Replay. Join multi-line cheats with '+'.", comment: "Add Cheat dialog placeholder, Sega"),
                 validationHint: "",
                 validator: nil
             )
+        case OESystemIdentifierPSX:
+            return CheatFormat(
+                placeholder: NSLocalizedString("12 hex chars per code, e.g. 80097BA0 270F. Join multi-line cheats with '+'.", comment: "Add Cheat dialog placeholder, PSX"),
+                validationHint: NSLocalizedString("PSX GameShark codes must be 12 hex characters (e.g. 80097BA0 270F). Type byte: 30=8-bit, 80=16-bit.", comment: "Add Cheat validation hint, PSX"),
+                validator: { code in
+                    let parts = code.replacingOccurrences(of: " ", with: "")
+                                    .split(separator: "+")
+                    guard !parts.isEmpty else { return false }
+                    return parts.allSatisfy { p in
+                        p.count == 12 && p.allSatisfy { $0.isHexDigit }
+                    }
+                }
+            )
         default:
             return defaultCheatFormat
         }
     }
+
+    // MARK: - Cheat Search Code Conversion
+
+    struct ConvertedCheat {
+        let code: String
+        let type: String
+    }
+
+    /// Converts a raw cheat search code (ADDRESS:VALUE) to the native format expected by the core.
+    static func convertCheatSearchCode(_ code: String, for systemIdentifier: String, addressBytes: UInt8, minDataBytes: UInt8) -> ConvertedCheat {
+        switch systemIdentifier {
+        case OESystemIdentifierN64:
+            return ConvertedCheat(code: Self.convertToGameSharkN64(code), type: OECheatTypeGameShark)
+        case OESystemIdentifierPSX:
+            return ConvertedCheat(code: Self.convertToGameSharkPSX(code), type: OECheatTypeGameShark)
+        case OESystemIdentifierGB:
+            return ConvertedCheat(code: Self.convertToGameSharkGB(code), type: OECheatTypeGameShark)
+        case OESystemIdentifierNDS:
+            return ConvertedCheat(code: Self.convertToActionReplayDS(code), type: OECheatTypeActionReplay)
+        default:
+            return ConvertedCheat(code: Self.convertToRaw(code, addressBytes: addressBytes, minDataBytes: minDataBytes), type: OECheatTypeRaw)
+        }
+    }
+
+    // MARK: Raw format (ADDRESS:VALUE with padding and multi-byte splitting)
+
+    private static func convertToRaw(_ code: String, addressBytes: UInt8, minDataBytes: UInt8) -> String {
+        guard let colonIdx = code.firstIndex(of: ":") else { return code }
+        let addressPart = String(code[code.startIndex..<colonIdx])
+        let valuePart = String(code[code.index(after: colonIdx)...])
+
+        let hexDigits = Int(addressBytes) * 2
+        let address = UInt64(addressPart, radix: 16) ?? 0
+        let value = UInt64(valuePart, radix: 16) ?? 0
+        let byteCount = max(1, (valuePart.count + 1) / 2)
+
+        if byteCount <= Int(minDataBytes) {
+            let mask: UInt64 = (1 << (UInt64(minDataBytes) * 8)) - 1
+            let addrStr = String(format: "%0\(hexDigits)llX", address)
+            let valStr = String(format: "%0\(Int(minDataBytes) * 2)X", UInt32(value & mask))
+            return "\(addrStr):\(valStr)"
+        }
+
+        let chunkCount = (byteCount + Int(minDataBytes) - 1) / Int(minDataBytes)
+        let chunkMask: UInt64 = (1 << (UInt64(minDataBytes) * 8)) - 1
+        var codes: [String] = []
+        for i in 0..<chunkCount {
+            let chunk = UInt32((value >> (UInt64(i) * UInt64(minDataBytes) * 8)) & chunkMask)
+            let addr = address + UInt64(i) * UInt64(minDataBytes)
+            let addrStr = String(format: "%0\(hexDigits)llX", addr)
+            let valStr = String(format: "%0\(Int(minDataBytes) * 2)X", chunk)
+            codes.append("\(addrStr):\(valStr)")
+        }
+        return codes.joined(separator: "+")
+    }
+
+    // MARK: Game Boy GameShark (01VVLLHH)
+
+    private static func convertToGameSharkGB(_ code: String) -> String {
+        guard let colonIdx = code.firstIndex(of: ":") else { return code }
+        let addressPart = String(code[code.startIndex..<colonIdx])
+        let valuePart = String(code[code.index(after: colonIdx)...])
+
+        let address = UInt16(addressPart, radix: 16) ?? 0
+        let value = UInt64(valuePart, radix: 16) ?? 0
+        let byteCount = max(1, (valuePart.count + 1) / 2)
+
+        var codes: [String] = []
+        for i in 0..<byteCount {
+            let byte = UInt8((value >> (i * 8)) & 0xFF)
+            let addr = address &+ UInt16(i)
+            codes.append(String(format: "01%02X%02X%02X", byte, addr & 0xFF, (addr >> 8) & 0xFF))
+        }
+        return codes.joined(separator: "+")
+    }
+
+    // MARK: NDS Action Replay DS
+
+    private static func convertToActionReplayDS(_ code: String) -> String {
+        guard let colonIdx = code.firstIndex(of: ":") else { return code }
+        let addressPart = String(code[code.startIndex..<colonIdx])
+        let valuePart = String(code[code.index(after: colonIdx)...])
+
+        let address = UInt64(addressPart, radix: 16) ?? 0
+        let value = UInt64(valuePart, radix: 16) ?? 0
+        let byteCount = max(1, (valuePart.count + 1) / 2)
+
+        var codes: [String] = []
+        var offset = 0
+        while offset < byteCount {
+            let remaining = byteCount - offset
+            let addr28 = UInt32((address + UInt64(offset)) & 0x0FFFFFFF)
+            let shifted = value >> (offset * 8)
+
+            if remaining >= 4 && (addr28 % 4 == 0) {
+                let val32 = UInt32(shifted & 0xFFFFFFFF)
+                codes.append(String(format: "%08X %08X", 0x00000000 | addr28, val32))
+                offset += 4
+            } else if remaining >= 2 && (addr28 % 2 == 0) {
+                let val16 = UInt32(shifted & 0xFFFF)
+                codes.append(String(format: "%08X %08X", 0x10000000 | addr28, val16))
+                offset += 2
+            } else {
+                let val8 = UInt32(shifted & 0xFF)
+                codes.append(String(format: "%08X %08X", 0x20000000 | addr28, val8))
+                offset += 1
+            }
+        }
+        return codes.joined(separator: "\n")
+    }
+
+    // MARK: N64 GameShark (TTXXXXXX YYYY)
+    // Mupen64Plus stores RDRAM as host-native uint32 words; the cheat engine XORs byte/halfword
+    // addresses (S8=3, S16=2) to find the correct raw offset. We XOR here to convert the raw
+    // buffer offset (from cheat search) to the N64 virtual address the engine expects.
     
+    private static func convertToGameSharkN64(_ code: String) -> String {
+        guard let colonIdx = code.firstIndex(of: ":") else { return code }
+        let addressPart = String(code[code.startIndex..<colonIdx])
+        let valuePart = String(code[code.index(after: colonIdx)...])
+
+        let address = UInt64(addressPart, radix: 16) ?? 0
+        let value = UInt64(valuePart, radix: 16) ?? 0
+        let byteCount = max(1, (valuePart.count + 1) / 2)
+
+        let baseAddr = UInt32(address & 0x00FFFFFF)
+        var codes: [String] = []
+        var offset = 0
+        while offset < byteCount {
+            let remaining = byteCount - offset
+            let rawAddr = baseAddr + UInt32(offset)
+
+            if remaining >= 2 && (rawAddr % 2 == 0) {
+                // Convert raw buffer offset to N64 virtual address (XOR 2 for halfword)
+                let n64Addr = rawAddr ^ 2
+                let val16 = UInt16((value >> ((byteCount - offset - 2) * 8)) & 0xFFFF)
+                codes.append(String(format: "%08X%04X", 0x81000000 | n64Addr, val16))
+                offset += 2
+            } else {
+                // Convert raw buffer offset to N64 virtual address (XOR 3 for byte)
+                let n64Addr = rawAddr ^ 3
+                let val8 = UInt8((value >> ((byteCount - offset - 1) * 8)) & 0xFF)
+                codes.append(String(format: "%08X%04X", 0x80000000 | n64Addr, UInt16(val8)))
+                offset += 1
+            }
+        }
+        return codes.joined(separator: "+")
+    }
+
+    // MARK: PSX GameShark (TTAAAAAA VVVV — little-endian, 12 nybbles)
+
+    private static func convertToGameSharkPSX(_ code: String) -> String {
+        guard let colonIdx = code.firstIndex(of: ":") else { return code }
+        let addressPart = String(code[code.startIndex..<colonIdx])
+        let valuePart = String(code[code.index(after: colonIdx)...])
+
+        let address = UInt64(addressPart, radix: 16) ?? 0
+        let value = UInt64(valuePart, radix: 16) ?? 0
+        let byteCount = max(1, (valuePart.count + 1) / 2)
+
+        let baseAddr = UInt32(address & 0x00FFFFFF)
+        var codes: [String] = []
+        var offset = 0
+        while offset < byteCount {
+            let remaining = byteCount - offset
+            let addr = baseAddr + UInt32(offset)
+
+            if remaining >= 2 && (addr % 2 == 0) {
+                let val16 = UInt16((value >> (offset * 8)) & 0xFFFF)
+                codes.append(String(format: "%08X %04X", 0x80000000 | addr, val16))
+                offset += 2
+            } else {
+                let val8 = UInt8((value >> (offset * 8)) & 0xFF)
+                codes.append(String(format: "%08X %04X", 0x30000000 | addr, UInt16(val8)))
+                offset += 1
+            }
+        }
+        return codes.joined(separator: "+")
+    }
+
     /// expects `sender.representedObject` to be a `Cheat` object
     @IBAction func toggleCheat(_ sender: AnyObject) {
         if isHardcoreModeEnabled { return }

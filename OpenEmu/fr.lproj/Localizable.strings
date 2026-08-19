@@ -702,5 +702,52 @@ Vous pouvez aller dans les préférences Contrôles pour vérifier les associati
 	<string>Votre bibliothèque a été déplacée avec succès.</string>
 	<key>this guide</key>
 	<string>ce guide</string>
+	<key>Add Cheat</key>
+	<string>Ajouter un code</string>
+	<key>Cheat Search…</key>
+	<string>Recherche de codes…</string>
+	<key>Cheat Search</key>
+	<string>Recherche de codes</string>
+	<key>Store Values</key>
+	<string>Stocker les valeurs</string>
+	<key>Comparison</key>
+	<string>Comparaison</string>
+	<key>Unsigned (&gt;=0)</key>
+	<string>Non signé (&gt;=0)</string>
+	<key>Signed (+/-)</key>
+	<string>Signé (+/-)</string>
+	<key>Hexadecimal</key>
+	<string>Hexadécimal</string>
+	<key>Data Size</key>
+	<string>Taille des données</string>
+	<key>1 byte</key>
+	<string>1 octet</string>
+	<key>%d bytes</key>
+	<string>%d octets</string>
+	<key>Address</key>
+	<string>Adresse</string>
+	<key>Current</key>
+	<string>Actuel</string>
+	<key>Previous</key>
+	<string>Précédent</string>
+	<key>Stored</key>
+	<string>Enregistré</string>
+	<key>Reset</key>
+	<string>Réinitialiser</string>
+	<key>Address:</key>
+	<string>Adresse :</string>
+	<key>Value (Hex):</key>
+	<string>Valeur (Hex) :</string>
+	<key>Stored Value</key>
+	<string>Valeur stockée</string>
+	<key>Previous Value</key>
+	<string>Valeur précédente</string>
+	<key>This Value:</key>
+	<string>Cette valeur :</string>
+	<key>Cheat Description</key>
+	<string>Description du code</string>
+	<key>Showing first %1$@ of %2$@ matches, narrow your search</key>
+	<string>Affichage des %1$@ premières correspondances sur %2$@, affinez votre recherche</string>
+
 </dict>
 </plist>

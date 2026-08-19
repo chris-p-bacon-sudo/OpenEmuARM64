@@ -36,6 +36,8 @@
 			<integer>1</integer>
 			<key>OEGameCoreSupportsCheatCode</key>
 			<true/>
+			<key>OEGameCoreSupportsCheatSearch</key>
+			<true/>
 			<key>OEGameCoreSupportsDisplayModeChange</key>
 			<true/>
 			<key>OEGameCoreSupportsRetroAchievements</key>

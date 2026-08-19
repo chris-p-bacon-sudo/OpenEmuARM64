@@ -7,10 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		B5AE7A121710BD6200ED5801 /* OELibretroCoreTranslator.m in Sources */ = {isa = PBXBuildFile; fileRef = B5AE7A111710BD6200ED5801 /* OELibretroCoreTranslator.m */; };
-		B5AE7A141710BD6200ED5801 /* OELibretroCoreTranslator.h in Headers */ = {isa = PBXBuildFile; fileRef = B5AE7A131710BD6200ED5801 /* OELibretroCoreTranslator.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		0109BBA5209F25EB002419C1 /* OEDiffQueueTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 0109BBA4209F25EB002419C1 /* OEDiffQueueTests.m */; };
-		0442B0011A2F4E6C00442001 /* OEGameCoreHardcoreTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 0442B0001A2F4E6C00442001 /* OEGameCoreHardcoreTests.m */; };
 		0109BBA7209F25EB002419C1 /* OpenEmuBase.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C6772A261710A4BA00ED580A /* OpenEmuBase.framework */; };
 		011829A720ACA8AA0030B347 /* OEAudioBuffer.h in Headers */ = {isa = PBXBuildFile; fileRef = 011829A620ACA8AA0030B347 /* OEAudioBuffer.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		011FAED42325B8F900DBEC62 /* NSDictionary+OpenEmuSDK.h in Headers */ = {isa = PBXBuildFile; fileRef = 011FAED22325B8F900DBEC62 /* NSDictionary+OpenEmuSDK.h */; settings = {ATTRIBUTES = (Public, ); }; };
@@ -24,10 +21,11 @@
 		01C0F4372327184F00311409 /* OEDeviceManager_Internal.h in Headers */ = {isa = PBXBuildFile; fileRef = 01C0F436232717C700311409 /* OEDeviceManager_Internal.h */; };
 		01F306FB20AA1C64005C8F18 /* NSUserDefaults+OpenEmuSDK.h in Headers */ = {isa = PBXBuildFile; fileRef = 01F306F920AA1C64005C8F18 /* NSUserDefaults+OpenEmuSDK.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		01F306FC20AA1C64005C8F18 /* NSUserDefaults+OpenEmuSDK.m in Sources */ = {isa = PBXBuildFile; fileRef = 01F306FA20AA1C64005C8F18 /* NSUserDefaults+OpenEmuSDK.m */; };
-		0518D6DD24F17C6E0037101D /* OEGeometry.m in Sources */ = {isa = PBXBuildFile; fileRef = 0518D6DC24F17C6E0037101D /* OEGeometry.m */; };
-		0572A3FF287781BA00AC32F8 /* OEGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0572A3FE287781BA00AC32F8 /* OEGeometry.swift */; };
+		0442B0011A2F4E6C00442001 /* OEGameCoreHardcoreTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 0442B0001A2F4E6C00442001 /* OEGameCoreHardcoreTests.m */; };
 		0442B0021A2F4E6C00442002 /* HardcoreModePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0442B0031A2F4E6C00442003 /* HardcoreModePolicy.swift */; };
 		0442B0041A2F4E6C00442004 /* HardcoreModePolicyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0442B0051A2F4E6C00442005 /* HardcoreModePolicyTests.swift */; };
+		0518D6DD24F17C6E0037101D /* OEGeometry.m in Sources */ = {isa = PBXBuildFile; fileRef = 0518D6DC24F17C6E0037101D /* OEGeometry.m */; };
+		0572A3FF287781BA00AC32F8 /* OEGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0572A3FE287781BA00AC32F8 /* OEGeometry.swift */; };
 		05F2F90824EA029900BFAF18 /* Controller-Database.plist in Resources */ = {isa = PBXBuildFile; fileRef = 05F2F90724EA029900BFAF18 /* Controller-Database.plist */; };
 		05FC85B1295E49FE003DED0C /* NSDataCategoryTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 05FC85B0295E49FE003DED0C /* NSDataCategoryTests.m */; };
 		05FC85B2295E49FE003DED0C /* OpenEmuSystem.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C6772A8C1710CD7E00ED580A /* OpenEmuSystem.framework */; };
@@ -35,6 +33,8 @@
 		05FF41B922B08C5F00BB7283 /* OELogging.h in Headers */ = {isa = PBXBuildFile; fileRef = 05FF41B722B08C5F00BB7283 /* OELogging.h */; };
 		27FC95181A92F12700CF1DC6 /* OEDiffQueue.h in Headers */ = {isa = PBXBuildFile; fileRef = 27FC95161A92F12700CF1DC6 /* OEDiffQueue.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		27FC95191A92F12700CF1DC6 /* OEDiffQueue.mm in Sources */ = {isa = PBXBuildFile; fileRef = 27FC95171A92F12700CF1DC6 /* OEDiffQueue.mm */; };
+		5E427923D438B2BBDCB457B9 /* OESystemConstants.h in Headers */ = {isa = PBXBuildFile; fileRef = 1E2F988CC2D67CFDA1EC461B /* OESystemConstants.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		63D108D227B98A7A6A343F72 /* OEMemoryRegionDescriptor.h in Headers */ = {isa = PBXBuildFile; fileRef = E3726762F8CB752642F1B71C /* OEMemoryRegionDescriptor.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		8363A434193CA52400F18425 /* OEGeometry.h in Headers */ = {isa = PBXBuildFile; fileRef = 8363A433193CA52400F18425 /* OEGeometry.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		878203EA21C4A09900C1C2C9 /* OEDreamcastGDI.h in Headers */ = {isa = PBXBuildFile; fileRef = 878203E821C4A09800C1C2C9 /* OEDreamcastGDI.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		878203EB21C4A09900C1C2C9 /* OEDreamcastGDI.m in Sources */ = {isa = PBXBuildFile; fileRef = 878203E921C4A09800C1C2C9 /* OEDreamcastGDI.m */; };
@@ -43,6 +43,9 @@
 		8F7909962A1A07C200E98FE8 /* OpenEmuSystemPrivate.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F7909932A1A07C200E98FE8 /* OpenEmuSystemPrivate.h */; };
 		94FDE6AE1AC35BA60003D247 /* OECloneCD.h in Headers */ = {isa = PBXBuildFile; fileRef = 94FDE6AC1AC35BA60003D247 /* OECloneCD.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		94FDE6AF1AC35BA60003D247 /* OECloneCD.m in Sources */ = {isa = PBXBuildFile; fileRef = 94FDE6AD1AC35BA60003D247 /* OECloneCD.m */; };
+		B5AE7A121710BD6200ED5801 /* OELibretroCoreTranslator.m in Sources */ = {isa = PBXBuildFile; fileRef = B5AE7A111710BD6200ED5801 /* OELibretroCoreTranslator.m */; };
+		B5AE7A141710BD6200ED5801 /* OELibretroCoreTranslator.h in Headers */ = {isa = PBXBuildFile; fileRef = B5AE7A131710BD6200ED5801 /* OELibretroCoreTranslator.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		B8296619452A248C4B234493 /* OESystemConstants.m in Sources */ = {isa = PBXBuildFile; fileRef = DCAFB56D006087C1FE9C74D0 /* OESystemConstants.m */; };
 		C6206C0E1C08EB80008E0106 /* OEBindingDescription_Internal.h in Headers */ = {isa = PBXBuildFile; fileRef = C6206C0D1C08EB80008E0106 /* OEBindingDescription_Internal.h */; };
 		C6605B841D725B0D009C7E91 /* OEM3UFile.h in Headers */ = {isa = PBXBuildFile; fileRef = C6605B821D725B0D009C7E91 /* OEM3UFile.h */; };
 		C6605B851D725B0D009C7E91 /* OEM3UFile.m in Sources */ = {isa = PBXBuildFile; fileRef = C6605B831D725B0D009C7E91 /* OEM3UFile.m */; };
@@ -120,6 +123,7 @@
 		C6A726841C059BF000E35961 /* OEBindingDescription.m in Sources */ = {isa = PBXBuildFile; fileRef = C6A726821C059BF000E35961 /* OEBindingDescription.m */; };
 		C6F16C4C1D73582C008E0C57 /* OEFile.h in Headers */ = {isa = PBXBuildFile; fileRef = C6F16C4A1D73582C008E0C57 /* OEFile.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		C6F16C4D1D73582C008E0C57 /* OEFile.m in Sources */ = {isa = PBXBuildFile; fileRef = C6F16C4B1D73582C008E0C57 /* OEFile.m */; };
+		CE117DFAA143768BB64EA609 /* OEMemoryRegionDescriptor.m in Sources */ = {isa = PBXBuildFile; fileRef = 649A876CCFF99B047EEF024C /* OEMemoryRegionDescriptor.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -147,12 +151,8 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		B5AE7A111710BD6200ED5801 /* OELibretroCoreTranslator.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = OELibretroCoreTranslator.m; sourceTree = "<group>"; };
-		B5AE7A131710BD6200ED5801 /* OELibretroCoreTranslator.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OELibretroCoreTranslator.h; sourceTree = "<group>"; };
-		B5AE7A151710BD6200ED5801 /* libretro.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = libretro.h; sourceTree = "<group>"; };
 		0109BBA2209F25EB002419C1 /* OpenEmuBaseTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = OpenEmuBaseTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		0109BBA4209F25EB002419C1 /* OEDiffQueueTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = OEDiffQueueTests.m; sourceTree = "<group>"; };
-		0442B0001A2F4E6C00442001 /* OEGameCoreHardcoreTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = OEGameCoreHardcoreTests.m; sourceTree = "<group>"; };
 		011829A620ACA8AA0030B347 /* OEAudioBuffer.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = OEAudioBuffer.h; sourceTree = "<group>"; };
 		011FAED22325B8F900DBEC62 /* NSDictionary+OpenEmuSDK.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "NSDictionary+OpenEmuSDK.h"; sourceTree = "<group>"; };
 		011FAED32325B8F900DBEC62 /* NSDictionary+OpenEmuSDK.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "NSDictionary+OpenEmuSDK.m"; sourceTree = "<group>"; };
@@ -165,17 +165,20 @@
 		01C0F436232717C700311409 /* OEDeviceManager_Internal.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = OEDeviceManager_Internal.h; sourceTree = "<group>"; };
 		01F306F920AA1C64005C8F18 /* NSUserDefaults+OpenEmuSDK.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "NSUserDefaults+OpenEmuSDK.h"; sourceTree = "<group>"; };
 		01F306FA20AA1C64005C8F18 /* NSUserDefaults+OpenEmuSDK.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "NSUserDefaults+OpenEmuSDK.m"; sourceTree = "<group>"; };
-		0518D6DC24F17C6E0037101D /* OEGeometry.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = OEGeometry.m; sourceTree = "<group>"; };
-		0572A3FE287781BA00AC32F8 /* OEGeometry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OEGeometry.swift; sourceTree = "<group>"; };
+		0442B0001A2F4E6C00442001 /* OEGameCoreHardcoreTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = OEGameCoreHardcoreTests.m; sourceTree = "<group>"; };
 		0442B0031A2F4E6C00442003 /* HardcoreModePolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HardcoreModePolicy.swift; sourceTree = "<group>"; };
 		0442B0051A2F4E6C00442005 /* HardcoreModePolicyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HardcoreModePolicyTests.swift; sourceTree = "<group>"; };
+		0518D6DC24F17C6E0037101D /* OEGeometry.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = OEGeometry.m; sourceTree = "<group>"; };
+		0572A3FE287781BA00AC32F8 /* OEGeometry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OEGeometry.swift; sourceTree = "<group>"; };
 		05F2F90724EA029900BFAF18 /* Controller-Database.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "Controller-Database.plist"; sourceTree = "<group>"; };
 		05FC85AE295E49FE003DED0C /* OpenEmuSystemTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = OpenEmuSystemTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		05FC85B0295E49FE003DED0C /* NSDataCategoryTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = NSDataCategoryTests.m; sourceTree = "<group>"; };
 		05FF41B622B08C5F00BB7283 /* OELogging.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = OELogging.m; sourceTree = "<group>"; };
 		05FF41B722B08C5F00BB7283 /* OELogging.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OELogging.h; sourceTree = "<group>"; };
+		1E2F988CC2D67CFDA1EC461B /* OESystemConstants.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = OESystemConstants.h; sourceTree = "<group>"; };
 		27FC95161A92F12700CF1DC6 /* OEDiffQueue.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OEDiffQueue.h; sourceTree = "<group>"; };
 		27FC95171A92F12700CF1DC6 /* OEDiffQueue.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = OEDiffQueue.mm; sourceTree = "<group>"; };
+		649A876CCFF99B047EEF024C /* OEMemoryRegionDescriptor.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = OEMemoryRegionDescriptor.m; sourceTree = "<group>"; };
 		8363A433193CA52400F18425 /* OEGeometry.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OEGeometry.h; sourceTree = "<group>"; };
 		878203E821C4A09800C1C2C9 /* OEDreamcastGDI.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OEDreamcastGDI.h; sourceTree = "<group>"; };
 		878203E921C4A09800C1C2C9 /* OEDreamcastGDI.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = OEDreamcastGDI.m; sourceTree = "<group>"; };
@@ -186,6 +189,9 @@
 		8F7909952A1A07C200E98FE8 /* OpenEmuSystem.private.modulemap */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = "sourcecode.module-map"; name = OpenEmuSystem.private.modulemap; path = OpenEmuSystem/OpenEmuSystem.private.modulemap; sourceTree = SOURCE_ROOT; };
 		94FDE6AC1AC35BA60003D247 /* OECloneCD.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OECloneCD.h; sourceTree = "<group>"; };
 		94FDE6AD1AC35BA60003D247 /* OECloneCD.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = OECloneCD.m; sourceTree = "<group>"; };
+		B5AE7A111710BD6200ED5801 /* OELibretroCoreTranslator.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = OELibretroCoreTranslator.m; sourceTree = "<group>"; };
+		B5AE7A131710BD6200ED5801 /* OELibretroCoreTranslator.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OELibretroCoreTranslator.h; sourceTree = "<group>"; };
+		B5AE7A151710BD6200ED5801 /* libretro.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = libretro.h; sourceTree = "<group>"; };
 		C6206C0D1C08EB80008E0106 /* OEBindingDescription_Internal.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OEBindingDescription_Internal.h; sourceTree = "<group>"; };
 		C6605B821D725B0D009C7E91 /* OEM3UFile.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OEM3UFile.h; sourceTree = "<group>"; };
 		C6605B831D725B0D009C7E91 /* OEM3UFile.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = OEM3UFile.m; sourceTree = "<group>"; };
@@ -266,6 +272,8 @@
 		C6A726821C059BF000E35961 /* OEBindingDescription.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = OEBindingDescription.m; sourceTree = "<group>"; };
 		C6F16C4A1D73582C008E0C57 /* OEFile.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OEFile.h; sourceTree = "<group>"; };
 		C6F16C4B1D73582C008E0C57 /* OEFile.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = OEFile.m; sourceTree = "<group>"; };
+		DCAFB56D006087C1FE9C74D0 /* OESystemConstants.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = OESystemConstants.m; sourceTree = "<group>"; };
+		E3726762F8CB752642F1B71C /* OEMemoryRegionDescriptor.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = OEMemoryRegionDescriptor.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -391,6 +399,10 @@
 				01F306FA20AA1C64005C8F18 /* NSUserDefaults+OpenEmuSDK.m */,
 				011FAED22325B8F900DBEC62 /* NSDictionary+OpenEmuSDK.h */,
 				011FAED32325B8F900DBEC62 /* NSDictionary+OpenEmuSDK.m */,
+				E3726762F8CB752642F1B71C /* OEMemoryRegionDescriptor.h */,
+				649A876CCFF99B047EEF024C /* OEMemoryRegionDescriptor.m */,
+				1E2F988CC2D67CFDA1EC461B /* OESystemConstants.h */,
+				DCAFB56D006087C1FE9C74D0 /* OESystemConstants.m */,
 			);
 			path = OpenEmuBase;
 			sourceTree = "<group>";
@@ -559,6 +571,8 @@
 				C6772A7A1710BD6200ED580A /* OETimingUtils.h in Headers */,
 				05FF41B922B08C5F00BB7283 /* OELogging.h in Headers */,
 				013D75CD23BD25CB00D74AD3 /* OEGameCoreDisplayModes.h in Headers */,
+				63D108D227B98A7A6A343F72 /* OEMemoryRegionDescriptor.h in Headers */,
+				5E427923D438B2BBDCB457B9 /* OESystemConstants.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -797,6 +811,8 @@
 				0518D6DD24F17C6E0037101D /* OEGeometry.m in Sources */,
 				0572A3FF287781BA00AC32F8 /* OEGeometry.swift in Sources */,
 				0442B0021A2F4E6C00442002 /* HardcoreModePolicy.swift in Sources */,
+				CE117DFAA143768BB64EA609 /* OEMemoryRegionDescriptor.m in Sources */,
+				B8296619452A248C4B234493 /* OESystemConstants.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -704,5 +704,52 @@ Du kannst die Tastenbelegung in den Einstellungen unter „Steuerung“ überpr�
 	<string>Die Mediathek wurde erfolgreich verschoben.</string>
 	<key>this guide</key>
 	<string>dieser Anleitung</string>
+	<key>Add Cheat</key>
+	<string>Cheat hinzufügen</string>
+	<key>Cheat Search…</key>
+	<string>Cheat-Suche…</string>
+	<key>Cheat Search</key>
+	<string>Cheat-Suche</string>
+	<key>Store Values</key>
+	<string>Werte speichern</string>
+	<key>Comparison</key>
+	<string>Vergleich</string>
+	<key>Unsigned (&gt;=0)</key>
+	<string>Ohne Vorzeichen (&gt;=0)</string>
+	<key>Signed (+/-)</key>
+	<string>Mit Vorzeichen (+/-)</string>
+	<key>Hexadecimal</key>
+	<string>Hexadezimal</string>
+	<key>Data Size</key>
+	<string>Datengröße</string>
+	<key>1 byte</key>
+	<string>1 Byte</string>
+	<key>%d bytes</key>
+	<string>%d Bytes</string>
+	<key>Address</key>
+	<string>Adresse</string>
+	<key>Current</key>
+	<string>Aktuell</string>
+	<key>Previous</key>
+	<string>Vorherig</string>
+	<key>Stored</key>
+	<string>Gespeichert</string>
+	<key>Reset</key>
+	<string>Zurücksetzen</string>
+	<key>Address:</key>
+	<string>Adresse:</string>
+	<key>Value (Hex):</key>
+	<string>Wert (Hex):</string>
+	<key>Stored Value</key>
+	<string>Gespeicherter Wert</string>
+	<key>Previous Value</key>
+	<string>Vorheriger Wert</string>
+	<key>This Value:</key>
+	<string>Dieser Wert:</string>
+	<key>Cheat Description</key>
+	<string>Cheat-Beschreibung</string>
+	<key>Showing first %1$@ of %2$@ matches, narrow your search</key>
+	<string>Erste %1$@ von %2$@ Übereinstimmungen werden angezeigt, Suche eingrenzen</string>
+
 </dict>
 </plist>

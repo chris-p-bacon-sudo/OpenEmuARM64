@@ -115,6 +115,14 @@ internal import os.log
                         argumentIndex: 0,
                         ofReply: false)
         
+        // cheat search
+        let memoryRegionClasses: NSSet = [NSDictionary.self, NSArray.self, NSString.self, NSNumber.self, NSData.self]
+        // swiftlint:disable:next force_cast
+        intf.setClasses(memoryRegionClasses as! Set<AnyHashable>,
+                        for: #selector(OEXPCGameCoreHelper.readableMemoryRegions(completionHandler:)),
+                        argumentIndex: 0,
+                        ofReply: true)
+        
         gameCoreConnection = newConnection
         
         newConnection.exportedInterface = intf

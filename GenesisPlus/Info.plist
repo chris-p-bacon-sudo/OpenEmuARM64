@@ -34,6 +34,8 @@
 			<integer>0</integer>
 			<key>OEGameCoreSupportsCheatCode</key>
 			<true/>
+			<key>OEGameCoreSupportsCheatSearch</key>
+			<true/>
 			<key>OEGameCoreSupportsDisplayModeChange</key>
 			<true/>
 			<key>OEGameCoreSupportsRetroAchievements</key>
@@ -50,6 +52,8 @@
 			<key>OEGameCoreRewindInterval</key>
 			<integer>0</integer>
 			<key>OEGameCoreSupportsCheatCode</key>
+			<true/>
+			<key>OEGameCoreSupportsCheatSearch</key>
 			<true/>
 			<key>OEGameCoreSupportsRetroAchievements</key>
 			<true/>
@@ -97,6 +101,8 @@
 			<integer>0</integer>
 			<key>OEGameCoreSupportsCheatCode</key>
 			<true/>
+			<key>OEGameCoreSupportsCheatSearch</key>
+			<true/>
 			<key>OEGameCoreSupportsRetroAchievements</key>
 			<true/>
 			<key>OEGameCoreSupportsRewinding</key>
@@ -125,6 +131,8 @@
 			<integer>0</integer>
 			<key>OEGameCoreSupportsCheatCode</key>
 			<true/>
+			<key>OEGameCoreSupportsCheatSearch</key>
+			<true/>
 			<key>OEGameCoreSupportsRetroAchievements</key>
 			<true/>
 			<key>OEGameCoreSupportsRewinding</key>
@@ -137,6 +145,8 @@
 			<key>OEGameCoreRewindInterval</key>
 			<integer>0</integer>
 			<key>OEGameCoreSupportsCheatCode</key>
+			<true/>
+			<key>OEGameCoreSupportsCheatSearch</key>
 			<true/>
 			<key>OEGameCoreSupportsRetroAchievements</key>
 			<true/>

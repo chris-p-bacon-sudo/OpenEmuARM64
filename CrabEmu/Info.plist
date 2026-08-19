@@ -34,6 +34,8 @@
 			<integer>0</integer>
 			<key>OEGameCoreSupportsCheatCode</key>
 			<true/>
+			<key>OEGameCoreSupportsCheatSearch</key>
+			<true/>
 			<key>OEGameCoreSupportsRewinding</key>
 			<true/>
 			<key>OERequiredFiles</key>
@@ -58,6 +60,8 @@
 			<integer>0</integer>
 			<key>OEGameCoreSupportsCheatCode</key>
 			<true/>
+			<key>OEGameCoreSupportsCheatSearch</key>
+			<true/>
 			<key>OEGameCoreSupportsRewinding</key>
 			<true/>
 		</dict>
@@ -68,6 +72,8 @@
 			<key>OEGameCoreRewindInterval</key>
 			<integer>0</integer>
 			<key>OEGameCoreSupportsCheatCode</key>
+			<true/>
+			<key>OEGameCoreSupportsCheatSearch</key>
 			<true/>
 			<key>OEGameCoreSupportsRewinding</key>
 			<true/>
@@ -80,6 +86,8 @@
 			<integer>0</integer>
 			<key>OEGameCoreSupportsCheatCode</key>
 			<true/>
+			<key>OEGameCoreSupportsCheatSearch</key>
+			<true/>
 			<key>OEGameCoreSupportsRewinding</key>
 			<true/>
 		</dict>
@@ -91,6 +99,9 @@
 	<key>OESystemIdentifiers</key>
 	<array>
 		<string>openemu.system.colecovision</string>
+		<string>openemu.system.gg</string>
+		<string>openemu.system.sg1000</string>
+		<string>openemu.system.sms</string>
 	</array>
 	<key>SUEnableAutomaticChecks</key>
 	<string>1</string>

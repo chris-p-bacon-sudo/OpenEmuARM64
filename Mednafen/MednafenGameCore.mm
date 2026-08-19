@@ -32,10 +32,12 @@
 #include "MemoryStream.h"
 #include "mednafen/psx/psx.h"
 #include "mednafen/pce/pce.h"
+#include "mednafen/mempatcher-driver.h"
 
 #import "MednafenGameCore.h"
 #import <OpenEmuBase/OERingBuffer.h>
 #import <OpenEmuBase/OEGameCoreDisplayModes.h>
+#import <OpenEmuBase/OEMemoryRegionDescriptor.h>
 #import <OpenGL/gl.h>
 #import "OELynxSystemResponderClient.h"
 #import "OENGPSystemResponderClient.h"
@@ -111,6 +113,7 @@ namespace MDFN_IEN_VB
     OERetroAchievementsBridge *_raBridge;
     NSString *_romPath;
     int _rcConsole;
+    NSMutableDictionary<NSString *, NSNumber *> *_cheatList;
     BOOL _isSystemPCECD;
     // Owned C-string copy of the active console module name (e.g. "psx", "pce").
     // Read from the RA memory-reader trampoline on the bridge's serial queue
@@ -4246,6 +4249,74 @@ const int WSMap[]   = { 0, 2, 3, 1, 4, 6, 7, 5, 9, 10, 8, 11 };
 
     _mouseScaledX = aPoint.x * (CGFloat)scaledRatio.width;
     _mouseScaledY = aPoint.y * (CGFloat)scaledRatio.height;
+}
+
+#pragma mark - Cheats
+
+namespace Mednafen { void MDFN_FlushGameCheats(int nosave); }
+
+- (void)setCheat:(NSString *)code setType:(NSString *)type setEnabled:(BOOL)enabled
+{
+    code = [code stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    code = [code stringByReplacingOccurrencesOfString:@" " withString:@""];
+
+    if (!_cheatList)
+        _cheatList = [NSMutableDictionary dictionary];
+
+    if (enabled)
+        _cheatList[code] = @YES;
+    else
+        [_cheatList removeObjectForKey:code];
+
+    Mednafen::MDFN_FlushGameCheats(1);
+
+    for (NSString *key in _cheatList) {
+        if (![_cheatList[key] boolValue]) continue;
+        NSArray<NSString *> *parts = [key componentsSeparatedByString:@"+"];
+        for (NSString *singleCode in parts) {
+            Mednafen::MemoryPatch patch;
+            patch.status = true;
+            patch.type = 'R';
+            patch.bigendian = false;
+
+            NSRange colonRange = [singleCode rangeOfString:@":"];
+            if (colonRange.location != NSNotFound) {
+                unsigned int addr = 0, val = 0;
+                if (![[NSScanner scannerWithString:[singleCode substringToIndex:colonRange.location]] scanHexInt:&addr]) continue;
+                if (![[NSScanner scannerWithString:[singleCode substringFromIndex:colonRange.location + 1]] scanHexInt:&val]) continue;
+                patch.addr = addr;
+                patch.val = val;
+                patch.length = 1;
+                Mednafen::MDFNI_AddCheat(patch);
+            } else if (singleCode.length == 12) {
+                unsigned long long raw = strtoull(singleCode.UTF8String, NULL, 16);
+                uint8_t codeType = (raw >> 40) & 0xFF;
+                uint32_t addr = (raw >> 16) & 0xFFFFFF;
+                uint16_t val = raw & 0xFFFF;
+                patch.addr = addr;
+                if (codeType == 0x30) {
+                    patch.val = val & 0xFF;
+                    patch.length = 1;
+                } else {
+                    patch.val = val;
+                    patch.length = 2;
+                }
+                Mednafen::MDFNI_AddCheat(patch);
+            }
+        }
+    }
+}
+
+- (NSArray<OEMemoryRegionDescriptor *> *)readableMemoryRegions
+{
+    if ([_mednafenCoreModule isEqualToString:@"psx"]) {
+        NSData *data = [NSData dataWithBytes:MDFN_IEN_PSX::MainRAM.data8 length:2 * 1024 * 1024];
+        return @[[OEMemoryRegionDescriptor descriptorWithName:@"Main RAM"
+                                                     address:0x80000000
+                                                addressBytes:4
+                                                        data:data]];
+    }
+    return @[];
 }
 
 @end

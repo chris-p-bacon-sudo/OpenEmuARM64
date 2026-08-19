@@ -705,5 +705,52 @@ You can go to the Controls preferences to check which associations were affected
 	<string>Uw bibliotheek werd succesvol verplaatst.</string>
 	<key>this guide</key>
 	<string>deze handleiding</string>
+	<key>Add Cheat</key>
+	<string>Voeg cheat toe</string>
+	<key>Cheat Search…</key>
+	<string>Cheat zoeken…</string>
+	<key>Cheat Search</key>
+	<string>Cheat zoeken</string>
+	<key>Store Values</key>
+	<string>Waarden opslaan</string>
+	<key>Comparison</key>
+	<string>Vergelijking</string>
+	<key>Unsigned (&gt;=0)</key>
+	<string>Unsigned (&gt;=0)</string>
+	<key>Signed (+/-)</key>
+	<string>Signed (+/-)</string>
+	<key>Hexadecimal</key>
+	<string>Hexadecimaal</string>
+	<key>Data Size</key>
+	<string>Gegevensgrootte</string>
+	<key>1 byte</key>
+	<string>1 byte</string>
+	<key>%d bytes</key>
+	<string>%d bytes</string>
+	<key>Address</key>
+	<string>Adres</string>
+	<key>Current</key>
+	<string>Huidig</string>
+	<key>Previous</key>
+	<string>Vorig</string>
+	<key>Stored</key>
+	<string>Opgeslagen</string>
+	<key>Reset</key>
+	<string>Herstel</string>
+	<key>Address:</key>
+	<string>Adres:</string>
+	<key>Value (Hex):</key>
+	<string>Waarde (Hex):</string>
+	<key>Stored Value</key>
+	<string>Opgeslagen waarde</string>
+	<key>Previous Value</key>
+	<string>Vorige waarde</string>
+	<key>This Value:</key>
+	<string>Deze waarde:</string>
+	<key>Cheat Description</key>
+	<string>Beschrijving van cheat</string>
+	<key>Showing first %1$@ of %2$@ matches, narrow your search</key>
+	<string>Eerste %1$@ van %2$@ overeenkomsten weergegeven, verfijn je zoekopdracht</string>
+
 </dict>
 </plist>

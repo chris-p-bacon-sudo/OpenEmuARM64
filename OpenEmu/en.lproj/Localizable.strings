@@ -718,5 +718,52 @@ You can go to the Controls preferences to check which associations were affected
 	<string>Your library was moved sucessfully.</string>
 	<key>this guide</key>
 	<string>this guide</string>
+	<key>Add Cheat</key>
+	<string>Add Cheat</string>
+	<key>Cheat Search…</key>
+	<string>Cheat Search…</string>
+	<key>Cheat Search</key>
+	<string>Cheat Search</string>
+	<key>Store Values</key>
+	<string>Store Values</string>
+	<key>Comparison</key>
+	<string>Comparison</string>
+	<key>Unsigned (&gt;=0)</key>
+	<string>Unsigned (&gt;=0)</string>
+	<key>Signed (+/-)</key>
+	<string>Signed (+/-)</string>
+	<key>Hexadecimal</key>
+	<string>Hexadecimal</string>
+	<key>Data Size</key>
+	<string>Data Size</string>
+	<key>1 byte</key>
+	<string>1 byte</string>
+	<key>%d bytes</key>
+	<string>%d bytes</string>
+	<key>Address</key>
+	<string>Address</string>
+	<key>Current</key>
+	<string>Current</string>
+	<key>Previous</key>
+	<string>Previous</string>
+	<key>Stored</key>
+	<string>Stored</string>
+	<key>Reset</key>
+	<string>Reset</string>
+	<key>Address:</key>
+	<string>Address:</string>
+	<key>Value (Hex):</key>
+	<string>Value (Hex):</string>
+	<key>Stored Value</key>
+	<string>Stored Value</string>
+	<key>Previous Value</key>
+	<string>Previous Value</string>
+	<key>This Value:</key>
+	<string>This Value:</string>
+	<key>Cheat Description</key>
+	<string>Cheat Description</string>
+	<key>Showing first %1$@ of %2$@ matches, narrow your search</key>
+	<string>Showing first %1$@ of %2$@ matches, narrow your search</string>
+
 </dict>
 </plist>

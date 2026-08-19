@@ -26,6 +26,8 @@
 
 #import "SMSGameCore.h"
 #import <OpenEmuBase/OERingBuffer.h>
+#import <OpenEmuBase/OEMemoryRegionDescriptor.h>
+#import <OpenEmuBase/OESystemConstants.h>
 #import <OpenGL/gl.h>
 #import "OESMSSystemResponderClient.h"
 #import "OEGGSystemResponderClient.h"
@@ -41,6 +43,8 @@
 #include "colecovision.h"
 #include "colecomem.h"
 #include "cheats.h"
+
+extern uint8 *sms_read_map[256];
 #include "console.h"
 
 #if MAC_OS_X_VERSION_MIN_REQUIRED < __MAC_10_13
@@ -435,7 +439,7 @@ const int ColecoVisionMap[] = {COLECOVISION_UP, COLECOVISION_DOWN, COLECOVISION_
     // Remove any spaces
     code = [code stringByReplacingOccurrencesOfString:@" " withString:@""];
 
-    // Remove address-value separator
+    // Remove Game Genie dash separator (colons are handled per-code below)
     code = [code stringByReplacingOccurrencesOfString:@"-" withString:@""];
 
     if (enabled)
@@ -456,23 +460,34 @@ const int ColecoVisionMap[] = {COLECOVISION_UP, COLECOVISION_DOWN, COLECOVISION_
             multipleCodes = [key componentsSeparatedByString:@"+"];
             for (NSString *singleCode in multipleCodes)
             {
-                if ([singleCode length] == 8)
+                // Normalize raw format (ADDR:VAL) to 8-char AR (AAAAVVVV)
+                NSString *normalized = singleCode;
+                NSRange colon = [singleCode rangeOfString:@":"];
+                if (colon.location != NSNotFound) {
+                    NSString *addr = [singleCode substringToIndex:colon.location];
+                    NSString *val = [singleCode substringFromIndex:colon.location + 1];
+                    while (addr.length < 4) addr = [@"0" stringByAppendingString:addr];
+                    while (val.length < 4) val = [@"0" stringByAppendingString:val];
+                    normalized = [addr stringByAppendingString:val];
+                }
+
+                if ([normalized length] == 8)
                 {
                     // Action Replay GG/SMS format: XXXX-YYYY
-                    NSString *address = [singleCode substringWithRange:NSMakeRange(0, 4)];
-                    NSString *value = [singleCode substringWithRange:NSMakeRange(4, 4)];
+                    NSString *address = [normalized substringWithRange:NSMakeRange(0, 4)];
+                    NSString *value = [normalized substringWithRange:NSMakeRange(4, 4)];
 
                     // Convert AR hex to int
                     uint32_t outAddress, outValue;
                     NSScanner *scanAddress = [NSScanner scannerWithString:address];
                     NSScanner *scanValue = [NSScanner scannerWithString:value];
-                    [scanAddress scanHexInt:&outAddress];
-                    [scanValue scanHexInt:&outValue];
+                    if (![scanAddress scanHexInt:&outAddress] || ![scanValue scanHexInt:&outValue])
+                        continue;
 
                     sms_cheat_t *arCode = (sms_cheat_t *)malloc(sizeof(sms_cheat_t));
                     memset(arCode, 0, sizeof(sms_cheat_t));
                     arCode->ar_code = (outAddress << 16) | outValue;
-                    strcpy(arCode->desc, [singleCode UTF8String]);
+                    strcpy(arCode->desc, [normalized UTF8String]);
                     arCode->enabled = 1;
 
                     sms_cheat_add(arCode);
@@ -481,6 +496,20 @@ const int ColecoVisionMap[] = {COLECOVISION_UP, COLECOVISION_DOWN, COLECOVISION_
             }
         }
     }
+}
+
+- (NSArray<OEMemoryRegionDescriptor *> *)readableMemoryRegions
+{
+    uint8 *ramBase = sms_read_map[0xC0];
+    if (!ramBase) return @[];
+
+    NSData *ramData = [NSData dataWithBytes:ramBase length:8 * 1024];
+    return @[
+        [OEMemoryRegionDescriptor descriptorWithName:@"RAM"
+                                            address:0xC000
+                                       addressBytes:2
+                                               data:ramData]
+    ];
 }
 
 @end

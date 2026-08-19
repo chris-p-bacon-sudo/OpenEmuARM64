@@ -120,6 +120,10 @@
 			<true/>
 			<key>OEGameCoreSupportsMultipleDiscs</key>
 			<true/>
+			<key>OEGameCoreSupportsCheatCode</key>
+			<true/>
+			<key>OEGameCoreSupportsCheatSearch</key>
+			<true/>
 			<key>OEGameCoreSupportsRetroAchievements</key>
 			<true/>
 			<key>OERequiredFiles</key>

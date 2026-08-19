@@ -27,6 +27,7 @@
 
 #import "SNESGameCore.h"
 #import <OpenEmuBase/OERingBuffer.h>
+#import <OpenEmuBase/OEMemoryRegionDescriptor.h>
 #import <OpenGL/gl.h>
 
 #include "snes9x.h"
@@ -1109,6 +1110,17 @@ void S9xParseArg(char**, int&, int)
 
 void S9xParsePortConfig(ConfigFile&, int)
 {
+}
+
+- (NSArray<OEMemoryRegionDescriptor *> *)readableMemoryRegions
+{
+    if (Memory.CalculatedSize == 0) return @[];
+    NSData *data = [NSData dataWithBytes:Memory.RAM length:0x20000];
+    OEMemoryRegionDescriptor *wram = [OEMemoryRegionDescriptor descriptorWithName:@"WRAM"
+                                                                          address:0x7E0000
+                                                                     addressBytes:3
+                                                                             data:data];
+    return @[wram];
 }
 
 @end

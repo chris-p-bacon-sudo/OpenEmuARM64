@@ -705,5 +705,52 @@ You can go to the Controls preferences to check which associations were affected
 	<string>成功移動遊戲庫。</string>
 	<key>this guide</key>
 	<string>本指南</string>
+	<key>Add Cheat</key>
+	<string>新增金手指</string>
+	<key>Cheat Search…</key>
+	<string>搜尋金手指…</string>
+	<key>Cheat Search</key>
+	<string>搜尋金手指</string>
+	<key>Store Values</key>
+	<string>儲存值</string>
+	<key>Comparison</key>
+	<string>比較</string>
+	<key>Unsigned (&gt;=0)</key>
+	<string>無符號 (&gt;=0)</string>
+	<key>Signed (+/-)</key>
+	<string>有符號 (+/-)</string>
+	<key>Hexadecimal</key>
+	<string>十六進位</string>
+	<key>Data Size</key>
+	<string>資料大小</string>
+	<key>1 byte</key>
+	<string>1位元組</string>
+	<key>%d bytes</key>
+	<string>%d 位元組</string>
+	<key>Address</key>
+	<string>位址</string>
+	<key>Current</key>
+	<string>目前值</string>
+	<key>Previous</key>
+	<string>上次值</string>
+	<key>Stored</key>
+	<string>儲存值</string>
+	<key>Reset</key>
+	<string>重置</string>
+	<key>Address:</key>
+	<string>位址:</string>
+	<key>Value (Hex):</key>
+	<string>數值 (十六進位):</string>
+	<key>Stored Value</key>
+	<string>已儲存值</string>
+	<key>Previous Value</key>
+	<string>前一個值</string>
+	<key>This Value:</key>
+	<string>此值:</string>
+	<key>Cheat Description</key>
+	<string>金手指描述</string>
+	<key>Showing first %1$@ of %2$@ matches, narrow your search</key>
+	<string>顯示 %2$@ 個相符項目中的前 %1$@ 個，請縮小搜尋範圍</string>
+
 </dict>
 </plist>

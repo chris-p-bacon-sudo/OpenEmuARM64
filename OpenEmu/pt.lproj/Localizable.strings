@@ -706,5 +706,52 @@ You can go to the Controls preferences to check which associations were affected
 	<string>Sua biblioteca foi movida com sucesso.</string>
 	<key>this guide</key>
 	<string>este manual</string>
+	<key>Add Cheat</key>
+	<string>Adicionar Trapaça</string>
+	<key>Cheat Search…</key>
+	<string>Buscar Trapaças…</string>
+	<key>Cheat Search</key>
+	<string>Buscar Trapaças</string>
+	<key>Store Values</key>
+	<string>Armazenar valores</string>
+	<key>Comparison</key>
+	<string>Comparação</string>
+	<key>Unsigned (&gt;=0)</key>
+	<string>Sem sinal (&gt;=0)</string>
+	<key>Signed (+/-)</key>
+	<string>Com sinal (+/-)</string>
+	<key>Hexadecimal</key>
+	<string>Hexadecimal</string>
+	<key>Data Size</key>
+	<string>Tamanho do dado</string>
+	<key>1 byte</key>
+	<string>1 byte</string>
+	<key>%d bytes</key>
+	<string>%d bytes</string>
+	<key>Address</key>
+	<string>Endereço</string>
+	<key>Current</key>
+	<string>Atual</string>
+	<key>Previous</key>
+	<string>Anterior</string>
+	<key>Stored</key>
+	<string>Armazenado</string>
+	<key>Reset</key>
+	<string>Redefinir</string>
+	<key>Address:</key>
+	<string>Endereço:</string>
+	<key>Value (Hex):</key>
+	<string>Valor (Hex):</string>
+	<key>Stored Value</key>
+	<string>Valor armazenado</string>
+	<key>Previous Value</key>
+	<string>Valor anterior</string>
+	<key>This Value:</key>
+	<string>Este valor:</string>
+	<key>Cheat Description</key>
+	<string>Descrição da Trapaça</string>
+	<key>Showing first %1$@ of %2$@ matches, narrow your search</key>
+	<string>A mostrar as primeiras %1$@ de %2$@ correspondências, refine a pesquisa</string>
+
 </dict>
 </plist>

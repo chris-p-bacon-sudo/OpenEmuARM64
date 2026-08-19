@@ -26,6 +26,7 @@
 
 #import "GBGameCore.h"
 #import <OpenEmuBase/OERingBuffer.h>
+#import <OpenEmuBase/OEMemoryRegionDescriptor.h>
 #import "OEGBSystemResponderClient.h"
 #import <OpenGL/gl.h>
 
@@ -717,6 +718,24 @@ const int GBMap[] = {gambatte::InputGetter::UP, gambatte::InputGetter::DOWN, gam
             gb.setDmgPaletteColor(palnum, colornum, rgb32);
         }
     }
+}
+
+- (NSArray<OEMemoryRegionDescriptor *> *)readableMemoryRegions
+{
+    if (!gb.isLoaded()) return @[];
+    const NSUInteger wramSize = 0x2000;
+    NSMutableData *wramData = [NSMutableData dataWithLength:wramSize];
+    uint8_t *bytes = (uint8_t *)wramData.mutableBytes;
+    for (NSUInteger i = 0; i < wramSize; i++) {
+        bytes[i] = gb.busRead8(0xC000 + i);
+    }
+
+    return @[
+        [OEMemoryRegionDescriptor descriptorWithName:@"WRAM"
+                                            address:0xC000
+                                       addressBytes:2
+                                               data:wramData]
+    ];
 }
 
 @end

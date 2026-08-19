@@ -27,6 +27,7 @@
 
 #import "StellaGameCore.h"
 #import <OpenEmuBase/OERingBuffer.h>
+#import <OpenEmuBase/OEMemoryRegionDescriptor.h>
 #import "OE2600SystemResponderClient.h"
 #import <OpenGL/gl.h>
 
@@ -73,6 +74,7 @@ void stellaOESetPalette(const uInt32 *palette)
     int16_t *_sampleBuffer;
     int _videoWidth, _videoHeight;
     NSMutableArray <NSMutableDictionary <NSString *, id> *> *_availableDisplayModes;
+    NSMutableDictionary<NSString *, NSNumber *> *_cheatList;
 }
 
 - (void)loadDisplayModeOptions;
@@ -168,6 +170,20 @@ void stellaOESetPalette(const uInt32 *palette)
 
     TIA &tia = console->tia();
     tia.update();
+
+    for (NSString *key in _cheatList) {
+        if (![_cheatList[key] boolValue]) continue;
+        NSArray<NSString *> *codes = [key componentsSeparatedByString:@"+"];
+        for (NSString *singleCode in codes) {
+            NSRange colonRange = [singleCode rangeOfString:@":"];
+            if (colonRange.location != NSNotFound) {
+                unsigned int addr = 0, val = 0;
+                if (![[NSScanner scannerWithString:[singleCode substringToIndex:colonRange.location]] scanHexInt:&addr]) continue;
+                if (![[NSScanner scannerWithString:[singleCode substringFromIndex:colonRange.location + 1]] scanHexInt:&val]) continue;
+                console->system().poke((uInt16)addr, (uInt8)val);
+            }
+        }
+    }
 
     // Video
     _videoWidth = tia.width();
@@ -499,6 +515,35 @@ void stellaOESetPalette(const uInt32 *palette)
     if (lastFormat && ![lastFormat isEqualToString:@"Auto"]) {
         [self changeDisplayWithMode:lastFormat];
     }
+}
+
+- (void)setCheat:(NSString *)code setType:(NSString *)type setEnabled:(BOOL)enabled
+{
+    if (!_cheatList)
+        _cheatList = [NSMutableDictionary dictionary];
+
+    code = [code stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    code = [code stringByReplacingOccurrencesOfString:@" " withString:@""];
+
+    if (enabled)
+        _cheatList[code] = @YES;
+    else
+        [_cheatList removeObjectForKey:code];
+}
+
+- (NSArray<OEMemoryRegionDescriptor *> *)readableMemoryRegions
+{
+    if (!console) return @[];
+    uint8_t ram[128];
+    for (int i = 0; i < 128; i++)
+        ram[i] = console->system().peek((uInt16)(0x80 + i));
+
+    NSData *data = [NSData dataWithBytes:ram length:128];
+    OEMemoryRegionDescriptor *descriptor = [OEMemoryRegionDescriptor descriptorWithName:@"RAM"
+                                                                              address:0x80
+                                                                         addressBytes:1
+                                                                                 data:data];
+    return @[descriptor];
 }
 
 @end

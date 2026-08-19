@@ -40,6 +40,7 @@
 
 #import <OpenEmuBase/OEGameCoreController.h>
 #import <OpenEmuBase/OERingBuffer.h>
+#import <OpenEmuBase/OEMemoryRegionDescriptor.h>
 #import "OEGBASystemResponderClient.h"
 #import <OpenGL/gl.h>
 
@@ -402,24 +403,40 @@ const int GBAMap[] = {
 		cheatSet->copyProperties(cheatSet, *mCheatSetsGetPointer(&cheats->cheats, size - 1));
 	}
 	int codeType = GBA_CHEAT_AUTODETECT;
-	// NOTE: This is deprecated and was only meant to test cheats with the UI using cheats-database.xml
-	// Will be replaced with a sqlite database in the future.
-//    if ([type isEqual:@"GameShark"]) {
-//        codeType = GBA_CHEAT_GAMESHARK;
-//    } else if ([type isEqual:@"Action Replay"]) {
-//        codeType = GBA_CHEAT_PRO_ACTION_REPLAY;
-//    }
 	NSArray *codeSet = [code componentsSeparatedByString:@"+"];
 	for (id c in codeSet) {
-//        if ([c length] == 12)
-//            codeType = GBA_CHEAT_CODEBREAKER;
-//        if ([c length] == 16) // default to GS/AR v1/v2 code (can't determine GS/AR v1/v2 vs AR v3 because same length)
-//            codeType = GBA_CHEAT_GAMESHARK;
 		mCheatAddLine(cheatSet, [c UTF8String], codeType);
 	}
 	cheatSet->enabled = enabled;
 	[cheatSets setObject:[NSValue valueWithPointer:cheatSet] forKey:codeId];
 	mCheatAddSet(cheats, cheatSet);
 }
+
+- (NSArray<OEMemoryRegionDescriptor *> *)readableMemoryRegions
+{
+	const struct mCoreMemoryBlock* blocks = NULL;
+	size_t count = core->listMemoryBlocks(core, &blocks);
+	NSMutableArray *regions = [NSMutableArray arrayWithCapacity:count];
+	for (size_t i = 0; i < count; i++) {
+		if (strcmp(blocks[i].shortName, "IWRAM") != 0 &&
+		    strcmp(blocks[i].shortName, "EWRAM") != 0) {
+			continue;
+		}
+		size_t size = 0;
+		void* memory = core->getMemoryBlock(core, blocks[i].id, &size);
+		if (memory && size > 0) {
+			NSData *data = [NSData dataWithBytes:memory length:size];
+			NSString *name = [NSString stringWithUTF8String:blocks[i].shortName];
+			OEMemoryRegionDescriptor *descriptor = [OEMemoryRegionDescriptor
+			    descriptorWithName:name
+			              address:blocks[i].start
+			         addressBytes:4
+			                 data:data];
+			[regions addObject:descriptor];
+		}
+	}
+	return regions;
+}
+
 @end
 

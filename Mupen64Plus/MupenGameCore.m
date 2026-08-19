@@ -30,6 +30,7 @@
 #import "MupenGameCore.h"
 #import <OpenEmuBase/OERingBuffer.h>
 #import <OpenEmuBase/OETimingUtils.h>
+#import <OpenEmuBase/OEMemoryRegionDescriptor.h>
 #import "OEN64SystemResponderClient.h"
 #import <OpenGL/gl.h>
 
@@ -1034,8 +1035,8 @@ static void MupenSetAudioSpeed(int percent)
             unsigned int outAddress, outValue;
             NSScanner *scanAddress = [NSScanner scannerWithString:address];
             NSScanner *scanValue = [NSScanner scannerWithString:value];
-            [scanAddress scanHexInt:&outAddress];
-            [scanValue scanHexInt:&outValue];
+            if (![scanAddress scanHexInt:&outAddress] || ![scanValue scanHexInt:&outValue])
+                continue;
             
             gsCode[codeCounter].address = outAddress;
             gsCode[codeCounter].value = outValue;
@@ -1061,6 +1062,18 @@ static void MupenSetAudioSpeed(int percent)
     }
 
     free(gsCode);
+}
+
+- (NSArray<OEMemoryRegionDescriptor *> *)readableMemoryRegions
+{
+    if (!g_dev.rdram.dram) return @[];
+    uint32_t dramSize = (uint32_t)g_dev.rdram.dram_size;
+    NSData *data = [NSData dataWithBytes:g_dev.rdram.dram length:dramSize];
+    OEMemoryRegionDescriptor *descriptor = [OEMemoryRegionDescriptor descriptorWithName:@"RDRAM"
+                                                                              address:0x80000000
+                                                                         addressBytes:4
+                                                                                 data:data];
+    return @[descriptor];
 }
 
 @end

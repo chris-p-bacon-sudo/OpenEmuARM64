@@ -706,5 +706,52 @@ Hangi ilişkilendirmelerin etkilendiğini kontrol etmek için Kontrolcü tercihl
 	<string>Kütüphaneniz başarı ile taşındı.</string>
 	<key>this guide</key>
 	<string>Bu rehber</string>
+	<key>Add Cheat</key>
+	<string>Hile ekle</string>
+	<key>Cheat Search…</key>
+	<string>Hile Ara…</string>
+	<key>Cheat Search</key>
+	<string>Hile Ara</string>
+	<key>Store Values</key>
+	<string>Değerleri sakla</string>
+	<key>Comparison</key>
+	<string>Karşılaştırma</string>
+	<key>Unsigned (&gt;=0)</key>
+	<string>İşaretsiz (&gt;=0)</string>
+	<key>Signed (+/-)</key>
+	<string>İşaretli (+/-)</string>
+	<key>Hexadecimal</key>
+	<string>Onaltılık</string>
+	<key>Data Size</key>
+	<string>Veri boyutu</string>
+	<key>1 byte</key>
+	<string>1 bayt</string>
+	<key>%d bytes</key>
+	<string>%d bayt</string>
+	<key>Address</key>
+	<string>Adres</string>
+	<key>Current</key>
+	<string>Mevcut</string>
+	<key>Previous</key>
+	<string>Önceki</string>
+	<key>Stored</key>
+	<string>Kaydedilmiş</string>
+	<key>Reset</key>
+	<string>Sıfırla</string>
+	<key>Address:</key>
+	<string>Adres:</string>
+	<key>Value (Hex):</key>
+	<string>Değer (Hex):</string>
+	<key>Stored Value</key>
+	<string>Saklanan değer</string>
+	<key>Previous Value</key>
+	<string>Önceki değer</string>
+	<key>This Value:</key>
+	<string>Bu değer:</string>
+	<key>Cheat Description</key>
+	<string>Hile Açıklaması </string>
+	<key>Showing first %1$@ of %2$@ matches, narrow your search</key>
+	<string>%2$@ eşleşmeden ilk %1$@ tanesi gösteriliyor, aramanızı daraltın</string>
+
 </dict>
 </plist>
