@@ -96,6 +96,8 @@
 	<string>Redo</string>
 	<key>Release Notes</key>
 	<string>Release Notes</string>
+	<key>Reset Input Monitoring Permission…</key>
+	<string>Reset Input Monitoring Permission…</string>
 	<key>Save State</key>
 	<string>Save State</string>
 	<key>Select All</key>

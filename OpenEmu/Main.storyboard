@@ -898,6 +898,16 @@ DQ
                                                 <action selector="showOEWebSite:" target="-1" id="O8U-HO-a1Q"/>
                                             </connections>
                                         </menuItem>
+                                        <menuItem isSeparatorItem="YES" id="hR2-mK-8pQ"/>
+                                        <menuItem title="Reset Input Monitoring Permission…" id="rIm-4X-9zT">
+                                            <modifierMask key="keyEquivalentModifierMask"/>
+                                            <userDefinedRuntimeAttributes>
+                                                <userDefinedRuntimeAttribute type="boolean" keyPath="localizeTitle" value="YES"/>
+                                            </userDefinedRuntimeAttributes>
+                                            <connections>
+                                                <action selector="resetInputMonitoringPermission:" target="-1" id="fVn-2K-3bW"/>
+                                            </connections>
+                                        </menuItem>
                                         <menuItem isSeparatorItem="YES" id="1g0-za-3ea"/>
                                         <menuItem title="Submit Feedback" id="ftM-3D-CSh">
                                             <modifierMask key="keyEquivalentModifierMask"/>
