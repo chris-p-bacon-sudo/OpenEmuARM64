@@ -185,9 +185,16 @@ NS_ASSUME_NONNULL_BEGIN
     return (__bridge NSNumber *)IOHIDDeviceGetProperty(_device, CFSTR(kUSBInterfaceNumber));
 }
 
++ (BOOL)deviceIsKeyboardOnly:(IOHIDDeviceRef)device
+{
+    return IOHIDDeviceConformsTo(device, kHIDPage_GenericDesktop, kHIDUsage_GD_Keyboard)
+        && !IOHIDDeviceConformsTo(device, kHIDPage_GenericDesktop, kHIDUsage_GD_GamePad)
+        && !IOHIDDeviceConformsTo(device, kHIDPage_GenericDesktop, kHIDUsage_GD_Joystick);
+}
+
 - (BOOL)isKeyboardDevice;
 {
-    return IOHIDDeviceConformsTo(_device, kHIDPage_GenericDesktop, kHIDUsage_GD_Keyboard);
+    return [OEHIDDeviceHandler deviceIsKeyboardOnly:_device];
 }
 
 - (BOOL)isFunctionKeyPressed

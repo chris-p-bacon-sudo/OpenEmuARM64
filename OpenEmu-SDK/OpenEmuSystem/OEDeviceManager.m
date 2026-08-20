@@ -467,7 +467,7 @@ static const void * kOEBluetoothDevicePairSyncStyleKey = &kOEBluetoothDevicePair
     NSAssert(device != NULL, @"Passing NULL device.");
 
     OEHIDDeviceHandler *handler = nil;
-    if(IOHIDDeviceConformsTo(device, kHIDPage_GenericDesktop, kHIDUsage_GD_Keyboard)) {
+    if([OEHIDDeviceHandler deviceIsKeyboardOnly:device]) {
         if (!istouchbar)
             handler = [[OEHIDDeviceHandler alloc] initWithIOHIDDevice:device deviceDescription:nil];
         else
