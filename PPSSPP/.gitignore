@@ -8,8 +8,11 @@ PPSSPP-Core/ppsspp/ext/vulkan/iOS/
 PPSSPP-Core/ppsspp/ext/vulkan/*.so
 PPSSPP-Core/ppsspp/ext/vulkan/*.so.*
 
-# OpenXR headers — not needed for macOS
-PPSSPP-Core/ppsspp/ext/openxr/
+# OpenXR: only the headers are needed on macOS, same story as Vulkan
+# above — Common/VR/*.cpp includes <openxr.h> unconditionally. The
+# compiled binaries (Pico/Quest Android VR headset loader .so files)
+# are never referenced by PPSSPP.xcodeproj and are not vendored.
+PPSSPP-Core/ppsspp/ext/openxr/libs/
 
 # Android assets / platform-specific directories not needed for macOS build
 PPSSPP-Core/ppsspp/android/
