@@ -40,6 +40,13 @@ NS_ASSUME_NONNULL_BEGIN
 
 + (BOOL)canHandleDevice:(IOHIDDeviceRef)device;
 
+/** Whether a device is keyboard-only, i.e. conforms to the Keyboard usage
+ *  and does not also conform to GamePad or Joystick. A HID conforming to
+ *  Keyboard as well as GamePad/Joystick (e.g. some Bluetooth Xbox
+ *  controllers) is not keyboard-only, and must be routed through the
+ *  controller parser rather than treated as a keyboard. */
++ (BOOL)deviceIsKeyboardOnly:(IOHIDDeviceRef)device;
+
 - (instancetype)initWithDeviceDescription:(nullable OEDeviceDescription *)deviceDescription NS_UNAVAILABLE;
 - (instancetype)initWithIOHIDDevice:(IOHIDDeviceRef)aDevice deviceDescription:(nullable OEDeviceDescription *)deviceDescription NS_DESIGNATED_INITIALIZER;
 
