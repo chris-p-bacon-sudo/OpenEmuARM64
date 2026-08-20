@@ -102,12 +102,20 @@ jobs:
           cp OpenEmu/ScreenScraperDevCredentials.template.swift OpenEmu/ScreenScraperDevCredentials.swift
           cp OpenEmu/OEGoogleDriveSecrets.template.swift OpenEmu/OEGoogleDriveSecrets.swift
 
-      - name: Build ${{ matrix.core }} (Debug, arm64)
+      - name: Build ${{ matrix.core }} (arm64)
         run: |
+          # Mednafen, SNES9x, and mGBA guard against Debug builds with a
+          # #error ("Cores should not be compiled in DEBUG!") — they must
+          # be built Release, unlike every other core in this matrix.
+          case "${{ matrix.core }}" in
+            Mednafen|SNES9x|mGBA) configuration=Release ;;
+            *) configuration=Debug ;;
+          esac
+
           xcodebuild build \
             -workspace OpenEmu-metal.xcworkspace \
             -scheme "OpenEmu + ${{ matrix.core }}" \
-            -configuration Debug \
+            -configuration "$configuration" \
             -destination 'platform=macOS,arch=arm64' \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
