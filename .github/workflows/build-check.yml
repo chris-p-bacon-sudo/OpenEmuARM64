@@ -54,7 +54,11 @@ jobs:
 
             # A change to shared framework code, the workspace, or scheme files
             # can affect every core's build — fall back to building all of them.
-            if echo "$changed" | grep -qE '^(OpenEmu-SDK/|OpenEmu-metal\.xcworkspace/|Scripts/)'; then
+            # OpenEmuKit/ is included because several cores (Gambatte, FCEU,
+            # GenesisPlus, Mednafen, mGBA, Mupen64Plus, Nestopia, SNES9x, BSNES)
+            # compile .m files directly out of OpenEmuKit/Source/ into their
+            # own plugin targets.
+            if echo "$changed" | grep -qE '^(OpenEmu-SDK/|OpenEmu-metal\.xcworkspace/|OpenEmuKit/|Scripts/)'; then
               echo "Shared code changed — building all core schemes"
               cores="$all_cores"
             else
