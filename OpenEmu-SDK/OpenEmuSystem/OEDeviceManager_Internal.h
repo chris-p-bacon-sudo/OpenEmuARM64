@@ -26,6 +26,7 @@
 
 @interface OEDeviceManager ()
 
+- (void)OE_addDeviceHandler:(__kindof OEDeviceHandler *)handler;
 - (void)OE_removeDeviceHandler:(__kindof OEDeviceHandler *)handler;
 
 @end

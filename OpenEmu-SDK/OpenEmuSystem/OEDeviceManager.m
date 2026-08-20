@@ -481,6 +481,13 @@ static const void * kOEBluetoothDevicePairSyncStyleKey = &kOEBluetoothDevicePair
 
 - (void)OE_addDeviceHandler:(__kindof OEDeviceHandler *)handler
 {
+    if(![handler isKindOfClass:[OEMultiHIDDeviceHandler class]]
+       && ![handler isKeyboardDevice]
+       && [[handler controllerDescription] numberOfControls] == 0) {
+        NSLog(@"OEDeviceManager: ignoring device handler %@, no controls could be read from it.", handler);
+        return;
+    }
+
     dispatch_barrier_async(_uniqueIdentifiersToDeviceHandlersQueue, ^{
         OEDeviceHandlerPlaceholder *placeholder = self->_uniqueIdentifiersToDeviceHandlers[handler.uniqueIdentifier];
         self->_uniqueIdentifiersToDeviceHandlers[handler.uniqueIdentifier] = handler;
@@ -509,7 +516,6 @@ static const void * kOEBluetoothDevicePairSyncStyleKey = &kOEBluetoothDevicePair
         [_keyboardHandlers addObject:handler];
         [self didChangeValueForKey:@"keyboardDeviceHandlers"];
     } else {
-        NSAssert([[handler controllerDescription] numberOfControls] > 0, @"Handler %@ does not have any controls.", handler);
         [handler setDeviceIdentifier:++_lastAttributedDeviceIdentifier];
         [self willChangeValueForKey:@"controllerDeviceHandlers"];
         [_deviceHandlers addObject:handler];
