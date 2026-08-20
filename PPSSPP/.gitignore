@@ -1,5 +1,12 @@
-# Vulkan headers — not needed (NO_VULKAN is set for macOS)
-PPSSPP-Core/ppsspp/ext/vulkan/
+# Vulkan: only the headers are needed on macOS — VulkanLoader.h includes
+# ext/vulkan/vulkan.h unconditionally (NO_VULKAN disables actually *using*
+# the API, not the type declarations the loader header needs to compile).
+# The compiled binaries (MoltenVK .dylib, Linux libvulkan.so*) are never
+# referenced by PPSSPP.xcodeproj and are not vendored.
+PPSSPP-Core/ppsspp/ext/vulkan/macOS/
+PPSSPP-Core/ppsspp/ext/vulkan/iOS/
+PPSSPP-Core/ppsspp/ext/vulkan/*.so
+PPSSPP-Core/ppsspp/ext/vulkan/*.so.*
 
 # OpenXR headers — not needed for macOS
 PPSSPP-Core/ppsspp/ext/openxr/
