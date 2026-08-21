@@ -1146,4 +1146,6 @@ MDFNGI EmulatedPCFX =
 };
 
 extern "C" uint8_t *MDFNPCFX_GetRAMPointer(void) { return RAM; }
+extern "C" uint8_t *MDFNPCFX_GetBackupRAMPointer(void) { return BackupRAM; }
+extern "C" uint8_t *MDFNPCFX_GetExBackupRAMPointer(void) { return ExBackupRAM; }
 

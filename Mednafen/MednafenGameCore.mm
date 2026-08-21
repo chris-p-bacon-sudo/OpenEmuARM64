@@ -66,6 +66,8 @@ extern "C" uint8_t *MDFNPCE_GetSaveRAMPointer(void);
 extern "C" uint8_t *MDFNPCE_GetMainRAMPointer(void);
 extern "C" uint32_t MDFNPCE_GetMainRAMSize(void);
 extern "C" uint8_t *MDFNPCFX_GetRAMPointer(void);
+extern "C" uint8_t *MDFNPCFX_GetBackupRAMPointer(void);
+extern "C" uint8_t *MDFNPCFX_GetExBackupRAMPointer(void);
 
 #ifdef DEBUG
     #error "Cores should not be compiled in DEBUG! Follow the guide https://github.com/OpenEmu/OpenEmu/wiki/Compiling-From-Source-Guide"
@@ -235,6 +237,25 @@ static uint32_t mednafen_rc_read_memory(uint32_t address, uint8_t *buffer,
         for (uint32_t i = 0; i < num_bytes; i++) {
             if (address + i >= 0x4000) { return i; }
             buffer[i] = ram[address + i];
+        }
+        return num_bytes;
+    }
+    if (strcmp(mod, "pcfx") == 0) {
+        uint8_t *ram = MDFNPCFX_GetRAMPointer();
+        if (!ram) { return 0; }
+        uint8_t *bram = MDFNPCFX_GetBackupRAMPointer();
+        uint8_t *exbram = MDFNPCFX_GetExBackupRAMPointer();
+        for (uint32_t i = 0; i < num_bytes; i++) {
+            uint32_t a = address + i;
+            if (a < 0x200000) {
+                buffer[i] = ram[a];
+            } else if (a < 0x208000) {
+                buffer[i] = bram[a - 0x200000];
+            } else if (a < 0x210000) {
+                buffer[i] = exbram[a - 0x208000];
+            } else {
+                return i;
+            }
         }
         return num_bytes;
     }
@@ -3635,6 +3656,7 @@ static uint32_t mednafen_rc_read_memory(uint32_t address, uint8_t *buffer,
     else if ([_mednafenCoreModule isEqualToString:@"ngp"])    _rcConsole = RC_CONSOLE_NEOGEO_POCKET;
     else if ([_mednafenCoreModule isEqualToString:@"pce"] && !_isSystemPCECD)  _rcConsole = RC_CONSOLE_PC_ENGINE;
     else if ([_mednafenCoreModule isEqualToString:@"pce"] && _isSystemPCECD)   _rcConsole = RC_CONSOLE_PC_ENGINE_CD;
+    else if ([_mednafenCoreModule isEqualToString:@"pcfx"])   _rcConsole = RC_CONSOLE_PCFX;
 
     if (_rcConsole > 0) {
         _romPath = path;
