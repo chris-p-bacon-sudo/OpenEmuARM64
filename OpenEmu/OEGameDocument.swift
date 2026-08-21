@@ -1068,9 +1068,8 @@ final class OEGameDocument: NSDocument {
     }
     
     @objc private func windowDidResignMain(_ notification: Notification) {
-        // Deferred a turn so the incoming main window has been established:
-        // this fires before the new window takes over, so asking who is main
-        // right now would always come back empty.
+        // Deferred one runloop turn to avoid a race where the pause fires
+        // while AppKit is still mid-transition between main windows.
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
 
