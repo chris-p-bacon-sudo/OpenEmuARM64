@@ -4,7 +4,18 @@
   xmlns:dc="http://purl.org/dc/elements/1.1/">
   <channel>
     <title>Dolphin</title>
-            <item>
+                <item>
+      <title>Dolphin 5.0.16211.2</title>
+      <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
+      <enclosure
+        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.4.0/Dolphin.oecoreplugin.zip"
+        sparkle:version="5.0.16211.2"
+        sparkle:shortVersionString="5.0.16211.2"
+        length="8927609"
+        sparkle:edSignature="MGZ/twNuqaEZhlO24WLTNCh8lztAcHqjFR0Is+7DtWugd0KKXOr71rG12pfaiIxVObgC8JWYcMWawBHTgI76BA=="
+        type="application/octet-stream" />
+    </item>
+<item>
       <title>Dolphin 5.0.16211.1</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
