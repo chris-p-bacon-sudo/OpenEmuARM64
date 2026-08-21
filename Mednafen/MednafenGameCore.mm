@@ -73,6 +73,8 @@ extern "C" uint8_t *MDFNVB_GetGPRAMPointer(void);
 extern "C" uint32_t MDFNVB_GetGPRAMSize(void);
 extern "C" uint8_t *MDFNWS_GetRAMPointer(void);
 extern "C" uint32_t MDFNWS_GetRAMSize(void);
+extern "C" uint8_t *MDFNWS_GetSRAMPointer(void);
+extern "C" uint32_t MDFNWS_GetSRAMSize(void);
 
 #ifdef DEBUG
     #error "Cores should not be compiled in DEBUG! Follow the guide https://github.com/OpenEmu/OpenEmu/wiki/Compiling-From-Source-Guide"
@@ -233,6 +235,23 @@ static uint32_t mednafen_rc_read_memory(uint32_t address, uint8_t *buffer,
         for (uint32_t i = 0; i < num_bytes; i++) {
             if (address + i >= 0x10000) { return i; }
             buffer[i] = ram[address + i];
+        }
+        return num_bytes;
+    }
+    if (strcmp(mod, "wswan") == 0) {
+        uint8_t *ram = MDFNWS_GetRAMPointer();
+        if (!ram) { return 0; }
+        uint8_t *sram = MDFNWS_GetSRAMPointer();
+        uint32_t sramSize = MDFNWS_GetSRAMSize();
+        for (uint32_t i = 0; i < num_bytes; i++) {
+            uint32_t a = address + i;
+            if (a < 0x10000) {
+                buffer[i] = ram[a];
+            } else if (sram && sramSize > 0 && a < 0x10000 + sramSize) {
+                buffer[i] = sram[a - 0x10000];
+            } else {
+                return i;
+            }
         }
         return num_bytes;
     }
@@ -3681,6 +3700,7 @@ static uint32_t mednafen_rc_read_memory(uint32_t address, uint8_t *buffer,
     else if ([_mednafenCoreModule isEqualToString:@"pce"] && _isSystemPCECD)   _rcConsole = RC_CONSOLE_PC_ENGINE_CD;
     else if ([_mednafenCoreModule isEqualToString:@"pcfx"])   _rcConsole = RC_CONSOLE_PCFX;
     else if ([_mednafenCoreModule isEqualToString:@"vb"])     _rcConsole = RC_CONSOLE_VIRTUAL_BOY;
+    else if ([_mednafenCoreModule isEqualToString:@"wswan"])  _rcConsole = RC_CONSOLE_WONDERSWAN;
 
     if (_rcConsole > 0) {
         _romPath = path;
