@@ -1145,3 +1145,5 @@ MDFNGI EmulatedPCFX =
  2,     // Number of output sound channels
 };
 
+extern "C" uint8_t *MDFNPCFX_GetRAMPointer(void) { return RAM; }
+

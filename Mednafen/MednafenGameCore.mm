@@ -65,6 +65,7 @@ extern "C" uint8_t *MDFNPCE_GetSysCardRAMPointer(void);
 extern "C" uint8_t *MDFNPCE_GetSaveRAMPointer(void);
 extern "C" uint8_t *MDFNPCE_GetMainRAMPointer(void);
 extern "C" uint32_t MDFNPCE_GetMainRAMSize(void);
+extern "C" uint8_t *MDFNPCFX_GetRAMPointer(void);
 
 #ifdef DEBUG
     #error "Cores should not be compiled in DEBUG! Follow the guide https://github.com/OpenEmu/OpenEmu/wiki/Compiling-From-Source-Guide"
@@ -4420,6 +4421,16 @@ namespace Mednafen { void MDFN_FlushGameCheats(int nosave); }
         return @[[OEMemoryRegionDescriptor descriptorWithName:@"System RAM"
                                                      address:0x0000
                                                 addressBytes:2
+                                                        data:data]];
+    }
+
+    if ([_mednafenCoreModule isEqualToString:@"pcfx"]) {
+        uint8_t *ram = MDFNPCFX_GetRAMPointer();
+        if (!ram) return @[];
+        NSData *data = [NSData dataWithBytes:ram length:2 * 1024 * 1024];
+        return @[[OEMemoryRegionDescriptor descriptorWithName:@"Main RAM"
+                                                     address:0x00000000
+                                                addressBytes:4
                                                         data:data]];
     }
 
