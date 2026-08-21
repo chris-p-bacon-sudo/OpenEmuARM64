@@ -3611,13 +3611,11 @@ static uint32_t mednafen_rc_read_memory(uint32_t address, uint8_t *buffer,
         [self loadDisplayModeOptions];
     }
 
-    // RetroAchievements: enabled for PSX, PCE/PCECD, Lynx, NGP, Saturn.
+    // RetroAchievements: only PSX and Saturn are fully integrated.
+    // Other systems (PCE/PCECD, Lynx, NGP) need memory reader verification
+    // before enabling — see Phase 3 (#261).
     _rcConsole = -1;
     if ([_mednafenCoreModule isEqualToString:@"psx"])  _rcConsole = RC_CONSOLE_PLAYSTATION;
-    else if (_isSystemPCECD)                           _rcConsole = RC_CONSOLE_PC_ENGINE_CD;
-    else if ([_mednafenCoreModule isEqualToString:@"pce"])   _rcConsole = RC_CONSOLE_PC_ENGINE;
-    else if ([_mednafenCoreModule isEqualToString:@"lynx"])  _rcConsole = RC_CONSOLE_ATARI_LYNX;
-    else if ([_mednafenCoreModule isEqualToString:@"ngp"])   _rcConsole = RC_CONSOLE_NEOGEO_POCKET;
     else if ([_mednafenCoreModule isEqualToString:@"ss"])    _rcConsole = RC_CONSOLE_SATURN;
 
     if (_rcConsole > 0) {
@@ -4376,6 +4374,16 @@ namespace Mednafen { void MDFN_FlushGameCheats(int nosave); }
                                            minDataBytes:2
                                                    data:dataH],
         ];
+    }
+
+    if ([_mednafenCoreModule isEqualToString:@"lynx"]) {
+        uint8_t *ram = MDFNLynx_GetRAMPointer();
+        if (!ram) return @[];
+        NSData *data = [NSData dataWithBytes:ram length:0x10000];
+        return @[[OEMemoryRegionDescriptor descriptorWithName:@"System RAM"
+                                                     address:0x0000
+                                                addressBytes:2
+                                                        data:data]];
     }
 
     return @[];
