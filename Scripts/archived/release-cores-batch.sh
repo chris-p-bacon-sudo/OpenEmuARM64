@@ -124,7 +124,7 @@ git push origin "$CORES_TAG"
 echo "  Tag pushed: $CORES_TAG"
 
 gh release create "$CORES_TAG" \
-  --repo nickybmon/OpenEmu-Silicon \
+  --repo OpenEmu-Silicon/OpenEmu-Silicon \
   --title "Core Updates $CORES_TAG" \
   --notes "Batch core update: RetroAchievements Phase 1 + bug fixes. See app release notes for details." \
   --prerelease \
@@ -135,7 +135,7 @@ for entry in "${ZIPS[@]}"; do
   IFS='|' read -r SCHEME PLUGIN VERSION APPCAST ZIP SIZE <<< "$entry"
   echo "  Uploading $PLUGIN $VERSION..."
   gh release upload "$CORES_TAG" "$ZIP" \
-    --repo nickybmon/OpenEmu-Silicon \
+    --repo OpenEmu-Silicon/OpenEmu-Silicon \
     --clobber
 done
 echo "  All uploads complete"
@@ -145,7 +145,7 @@ echo ""
 echo "━━━ [4/4] Updating appcasts ━━━"
 for entry in "${ZIPS[@]}"; do
   IFS='|' read -r SCHEME PLUGIN VERSION APPCAST ZIP SIZE <<< "$entry"
-  DOWNLOAD_URL="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/${CORES_TAG}/${PLUGIN}.oecoreplugin.zip"
+  DOWNLOAD_URL="https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases/download/${CORES_TAG}/${PLUGIN}.oecoreplugin.zip"
   python3 "$REPO/Scripts/update_core_appcast.py" \
     "$REPO/$APPCAST" "$PLUGIN" "$VERSION" "$DOWNLOAD_URL" "$SIZE"
 done
@@ -165,11 +165,11 @@ echo "╔═══════════════════════�
 echo "║  Done! Draft release ready for your review.         ║"
 echo "╚══════════════════════════════════════════════════════╝"
 echo ""
-echo "  Draft: https://github.com/nickybmon/OpenEmu-Silicon/releases/tag/$CORES_TAG"
+echo "  Draft: https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases/tag/$CORES_TAG"
 echo "  Appcasts committed and pushed to main."
 echo ""
 echo "  When ready to publish:"
-echo "  → gh release edit $CORES_TAG --draft=false --repo nickybmon/OpenEmu-Silicon"
+echo "  → gh release edit $CORES_TAG --draft=false --repo OpenEmu-Silicon/OpenEmu-Silicon"
 echo ""
 echo "  ** Do not ask Claude to run that command. Publishing is always your call. **"
 rm -rf "$TMP_DIR"

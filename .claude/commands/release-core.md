@@ -158,7 +158,7 @@ at the end — needed for Steps 9 and 10.
 
 Check existing cores releases:
 ```bash
-gh release list --repo nickybmon/OpenEmu-Silicon | grep "^Emulation Cores"
+gh release list --repo OpenEmu-Silicon/OpenEmu-Silicon | grep "^Emulation Cores"
 ```
 
 - If this is the only core being updated, create a new `cores-vX.Y.Z` tag (increment the patch).
@@ -174,17 +174,17 @@ Core releases are always created as `--prerelease`. This keeps them off the main
 NEXT_TAG="cores-vX.Y.Z"   # determined above
 
 gh release create "$NEXT_TAG" "$ZIP" \
-  --repo nickybmon/OpenEmu-Silicon \
+  --repo OpenEmu-Silicon/OpenEmu-Silicon \
   --title "Emulation Cores vX.Y.Z" \
   --prerelease \
   --notes "<CoreName> <NewVersion> — <one-line description of what changed>.
 
-Distributed via the in-app core updater — not a user-facing download. If you are looking to install OpenEmu-Silicon, see the [latest release](https://github.com/nickybmon/OpenEmu-Silicon/releases/latest)."
+Distributed via the in-app core updater — not a user-facing download. If you are looking to install OpenEmu-Silicon, see the [latest release](https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases/latest)."
 ```
 
 Note the asset URL — it will be:
 ```
-https://github.com/nickybmon/OpenEmu-Silicon/releases/download/<NEXT_TAG>/<CoreName>.oecoreplugin.zip
+https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases/download/<NEXT_TAG>/<CoreName>.oecoreplugin.zip
 ```
 
 ## Step 10 — Update the appcast
@@ -200,7 +200,7 @@ python3 Scripts/update_core_appcast.py \
   Appcasts/<corename-lowercase>.xml \
   "<CoreName>" \
   "<NewVersion>" \
-  "https://github.com/nickybmon/OpenEmu-Silicon/releases/download/<NEXT_TAG>/<CoreName>.oecoreplugin.zip" \
+  "https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases/download/<NEXT_TAG>/<CoreName>.oecoreplugin.zip" \
   <BYTE_COUNT_FROM_STEP_7> \
   --sign-zip /tmp/<CoreName>.oecoreplugin.zip
 ```
@@ -252,7 +252,7 @@ Do not post this comment until the PR is merged and the appcast is live on `main
 Once the PR merges:
 ```bash
 # Confirm the appcast on main has the new version
-curl -s https://raw.githubusercontent.com/nickybmon/OpenEmu-Silicon/main/Appcasts/<corename-lowercase>.xml | grep "sparkle:version"
+curl -s https://raw.githubusercontent.com/OpenEmu-Silicon/OpenEmu-Silicon/main/Appcasts/<corename-lowercase>.xml | grep "sparkle:version"
 ```
 
 The new version should appear at the top. If it does, the update will be offered to users on their next OpenEmu launch.

@@ -8,7 +8,7 @@
       <title>mGBA 0.10.10.1</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.4.0/mGBA.oecoreplugin.zip"
+        url="https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases/download/cores-v1.4.0/mGBA.oecoreplugin.zip"
         sparkle:version="0.10.10.1"
         sparkle:shortVersionString="0.10.10.1"
         length="381921"
@@ -19,7 +19,7 @@
       <title>mGBA 0.10.10</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.3.6/mGBA.oecoreplugin.zip"
+        url="https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases/download/cores-v1.3.6/mGBA.oecoreplugin.zip"
         sparkle:version="0.10.10"
         sparkle:shortVersionString="0.10.10"
         length="381713"
@@ -30,7 +30,7 @@
       <title>mGBA 0.10.9</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.3.5/mGBA.oecoreplugin.zip"
+        url="https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases/download/cores-v1.3.5/mGBA.oecoreplugin.zip"
         sparkle:version="0.10.9"
         sparkle:shortVersionString="0.10.9"
         length="381027"
@@ -41,7 +41,7 @@
       <title>mGBA 0.10.8</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.3.3/mGBA.oecoreplugin.zip"
+        url="https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases/download/cores-v1.3.3/mGBA.oecoreplugin.zip"
         sparkle:version="0.10.8"
         sparkle:shortVersionString="0.10.8"
         length="782933"
@@ -52,7 +52,7 @@
       <title>mGBA 0.10.7</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.3.2/mGBA.oecoreplugin.zip"
+        url="https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases/download/cores-v1.3.2/mGBA.oecoreplugin.zip"
         sparkle:version="0.10.7"
         sparkle:shortVersionString="0.10.7"
         length="776448"
@@ -63,7 +63,7 @@
       <title>mGBA 0.10.6</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.3.1/mGBA.oecoreplugin.zip"
+        url="https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases/download/cores-v1.3.1/mGBA.oecoreplugin.zip"
         sparkle:version="0.10.6"
         sparkle:shortVersionString="0.10.6"
         length="371384"
@@ -74,7 +74,7 @@
       <title>mGBA 0.10.5</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.0.0/mGBA.oecoreplugin.zip"
+        url="https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases/download/cores-v1.0.0/mGBA.oecoreplugin.zip"
         sparkle:version="0.10.5"
         sparkle:shortVersionString="0.10.5"
         length="209032"

@@ -8,7 +8,7 @@
       <title>CrabEmu 0.2.1.270</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.3.1/CrabEmu.oecoreplugin.zip"
+        url="https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases/download/cores-v1.3.1/CrabEmu.oecoreplugin.zip"
         sparkle:version="0.2.1.270"
         sparkle:shortVersionString="0.2.1.270"
         length="128554"
@@ -19,7 +19,7 @@
       <title>CrabEmu 0.2.1.269</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.0.0/CrabEmu.oecoreplugin.zip"
+        url="https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases/download/cores-v1.0.0/CrabEmu.oecoreplugin.zip"
         sparkle:version="0.2.1.269"
         sparkle:shortVersionString="0.2.1.269"
         length="128551"

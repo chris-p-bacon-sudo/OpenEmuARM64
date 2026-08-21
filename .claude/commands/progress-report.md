@@ -22,7 +22,7 @@ echo "Date range: $SINCE to $UNTIL"
 
 ```bash
 gh pr list \
-  --repo nickybmon/OpenEmu-Silicon \
+  --repo OpenEmu-Silicon/OpenEmu-Silicon \
   --state merged \
   --search "merged:>$SINCE" \
   --limit 50 \
@@ -43,7 +43,7 @@ for pr in sorted(prs, key=lambda x: x['mergedAt']):
 
 ```bash
 gh issue list \
-  --repo nickybmon/OpenEmu-Silicon \
+  --repo OpenEmu-Silicon/OpenEmu-Silicon \
   --state closed \
   --limit 30 \
   --json number,title,closedAt,labels \
@@ -86,7 +86,7 @@ Cross-reference PR authors against the full contributor list to flag first-timer
 
 ```bash
 gh api \
-  repos/nickybmon/OpenEmu-Silicon/contributors \
+  repos/OpenEmu-Silicon/OpenEmu-Silicon/contributors \
   --paginate \
   --jq '.[].login' \
   2>/dev/null | sort > /tmp/all_contributors.txt
@@ -100,7 +100,7 @@ For every closed issue in the period, scan comment threads for non-@nickybmon ac
 
 ```bash
 for page in 1 2 3 4 5 6; do
-  gh api "repos/nickybmon/OpenEmu-Silicon/issues/comments?per_page=100&page=$page&sort=created&direction=desc" \
+  gh api "repos/OpenEmu-Silicon/OpenEmu-Silicon/issues/comments?per_page=100&page=$page&sort=created&direction=desc" \
     --jq '.[] | select(.user.login != "nickybmon") | "Issue \(.issue_url | split("/") | last) [\(.user.login)]: \(.body[:200])"' 2>/dev/null
 done
 ```
@@ -110,7 +110,7 @@ For anyone with substantive activity (crash logs, repro steps, multi-comment thr
 ```bash
 # Pull current help wanted issues for the "What's Next" section
 gh issue list \
-  --repo nickybmon/OpenEmu-Silicon \
+  --repo OpenEmu-Silicon/OpenEmu-Silicon \
   --state open \
   --label "help wanted" \
   --limit 5 \

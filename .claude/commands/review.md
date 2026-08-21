@@ -3,7 +3,7 @@ Review and test a pull request locally.
 Arguments: $PR_NUMBER
 
 1. Check out the PR branch:
-   gh pr checkout $PR_NUMBER --repo nickybmon/OpenEmu-Silicon
+   gh pr checkout $PR_NUMBER --repo OpenEmu-Silicon/OpenEmu-Silicon
 
 2. Run the build check and report the result.
 

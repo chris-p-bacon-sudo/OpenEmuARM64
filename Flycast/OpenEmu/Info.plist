@@ -88,6 +88,6 @@
 		<string>openemu.system.dc</string>
 	</array>
 	<key>SUFeedURL</key>
-	<string>https://raw.githubusercontent.com/nickybmon/OpenEmu-Silicon/main/Appcasts/flycast.xml</string>
+	<string>https://raw.githubusercontent.com/OpenEmu-Silicon/OpenEmu-Silicon/main/Appcasts/flycast.xml</string>
 </dict>
 </plist>

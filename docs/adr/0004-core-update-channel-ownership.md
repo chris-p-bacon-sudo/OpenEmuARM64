@@ -19,7 +19,7 @@ This blocked the next coordinated host+cores release: there was no point cutting
 1. Migrate every shipped core's `SUFeedURL` to:
 
    ```
-   https://raw.githubusercontent.com/nickybmon/OpenEmu-Silicon/main/Appcasts/<core>.xml
+   https://raw.githubusercontent.com/OpenEmu-Silicon/OpenEmu-Silicon/main/Appcasts/<core>.xml
    ```
 
    `<core>` is the lowercased core name. The matching file already exists under `Appcasts/` in this repo. nickybmon is the sole source of truth for core updates going forward.

@@ -16,10 +16,10 @@
 
 This is a community-maintained fork of OpenEmu for M-series Macs. The app runs on macOS 11.0+ and has been tested on macOS Sequoia and macOS 26 (Tahoe).
 
-> **Download:** Get the latest signed DMG from the **[Releases](https://github.com/nickybmon/OpenEmu-Silicon/releases)** page. The app is notarized — no Gatekeeper workaround needed.
+> **Download:** Get the latest signed DMG from the **[Releases](https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases)** page. The app is notarized — no Gatekeeper workaround needed.
 
 ### Recent Updates
-- RetroAchievements verified with official hardcore mode support across Phase 1 Systems, [see wiki for more details](https://github.com/nickybmon/OpenEmu-Silicon/wiki/RetroAchievements)
+- RetroAchievements verified with official hardcore mode support across Phase 1 Systems, [see wiki for more details](https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/wiki/RetroAchievements)
 - Improved Gamecube performance via Dolphin and Wii is officially working, though still a bit experimental.
 - Arcade is officially working via MAME, though remains experimental and requires additional testing.
 - Sony PSP (PPSSPP), Dreamcast (Flycast) , and Nintendo DS (DeSmuME) have all recently been added and seem to stable for most users and hardware.
@@ -30,12 +30,12 @@ This is a community-maintained fork of OpenEmu for M-series Macs. The app runs o
 
 ## Download
 
-Get the latest build from the **[Releases](https://github.com/nickybmon/OpenEmu-Silicon/releases)** page.
+Get the latest build from the **[Releases](https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases)** page.
 
 ### Install via Homebrew
 
 ```bash
-brew tap nickybmon/OpenEmu-Silicon https://github.com/nickybmon/OpenEmu-Silicon
+brew tap OpenEmu-Silicon/OpenEmu-Silicon https://github.com/OpenEmu-Silicon/OpenEmu-Silicon
 brew install --cask openemu-silicon
 ```
 
@@ -43,7 +43,7 @@ brew install --cask openemu-silicon
 
 ## Supported Systems
 
-> **Full details — working status, known issues, in-progress cores, and what's planned — are on the [Supported Systems](https://github.com/nickybmon/OpenEmu-Silicon/wiki/Supported-Systems) wiki page.**
+> **Full details — working status, known issues, in-progress cores, and what's planned — are on the [Supported Systems](https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/wiki/Supported-Systems) wiki page.**
 
 Quick summary: 30+ systems work today, including NES, SNES, Game Boy, GBA, N64, Nintendo DS, PlayStation, Dreamcast, GameCube/Wii, and more. A handful have known issues (PSP, Saturn, Game Boy Color categorization). PS2 has no core yet.
 
@@ -51,7 +51,7 @@ Quick summary: 30+ systems work today, including NES, SNES, Game Boy, GBA, N64, 
 
 ## Known Issues
 
-- **Save state compatibility** — Save states from certain older cores are incompatible with current ARM64 builds and will crash if loaded. On launch, the app detects these and shows a warning dialog. **Back up your save states before your first launch** — see [Migrating from OpenEmu](https://github.com/nickybmon/OpenEmu-Silicon/wiki/Migrating-from-OpenEmu) for the full list and instructions.
+- **Save state compatibility** — Save states from certain older cores are incompatible with current ARM64 builds and will crash if loaded. On launch, the app detects these and shows a warning dialog. **Back up your save states before your first launch** — see [Migrating from OpenEmu](https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/wiki/Migrating-from-OpenEmu) for the full list and instructions.
 - Input Monitoring permission may need to be granted manually in System Settings → Privacy & Security.
 - A few cores have quirks on Apple Silicon still being investigated (see open issues).
 
@@ -87,9 +87,9 @@ The vast majority of the code in this repo is still from the original developers
 
 | Doc | What's in it |
 |-----|-------------|
-| [Wiki](https://github.com/nickybmon/OpenEmu-Silicon/wiki) | User guides: getting started, BIOS files, importing, CD games, controllers, troubleshooting |
-| [Migrating from OpenEmu](https://github.com/nickybmon/OpenEmu-Silicon/wiki/Migrating-from-OpenEmu) | Switching from the original OpenEmu: what carries over, what doesn't, and how to back up |
-| [Supported Systems](https://github.com/nickybmon/OpenEmu-Silicon/wiki/Supported-Systems) | Every system: working status, known issues, in-progress cores, what's planned, and BIOS requirements |
+| [Wiki](https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/wiki) | User guides: getting started, BIOS files, importing, CD games, controllers, troubleshooting |
+| [Migrating from OpenEmu](https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/wiki/Migrating-from-OpenEmu) | Switching from the original OpenEmu: what carries over, what doesn't, and how to back up |
+| [Supported Systems](https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/wiki/Supported-Systems) | Every system: working status, known issues, in-progress cores, what's planned, and BIOS requirements |
 | [`CREDITS.md`](.github/CREDITS.md) | Everyone who contributed — original OpenEmu team, ARM64 port, core sources, illustrators, and this repo's contributors |
 
 ---

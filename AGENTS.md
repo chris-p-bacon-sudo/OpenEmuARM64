@@ -169,7 +169,7 @@ These rules exist because AI-assisted sessions have previously created orphaned 
 
 **PRs:**
 
-- **Target branch:** `main` on `nickybmon/OpenEmu-Silicon`
+- **Target branch:** `main` on `OpenEmu-Silicon/OpenEmu-Silicon`
 - **Push and open a PR in the same step — never push without immediately opening a PR**
 - **PR title format:** `fix: description` / `feat: description` / `chore: description`
 - **Use the PR template** — `.github/PULL_REQUEST_TEMPLATE.md` auto-populates. Fill every section.
@@ -185,7 +185,7 @@ These rules exist because AI-assisted sessions have previously created orphaned 
 ## How to test locally
 
 # 1. Check out this PR
-gh pr checkout <N> --repo nickybmon/OpenEmu-Silicon
+gh pr checkout <N> --repo OpenEmu-Silicon/OpenEmu-Silicon
 
 # 2. Build
 xcodebuild \
@@ -205,7 +205,7 @@ open ~/Library/Developer/Xcode/DerivedData/OpenEmu-metal-*/Build/Products/Debug/
 ## How to test locally
 
 # 1. Check out this PR
-gh pr checkout <N> --repo nickybmon/OpenEmu-Silicon
+gh pr checkout <N> --repo OpenEmu-Silicon/OpenEmu-Silicon
 
 # 2. Build the core scheme (the main OpenEmu scheme does not build core plugins)
 xcodebuild \
@@ -230,7 +230,7 @@ Replace `<N>` with the actual PR number and `<CoreName>` with the scheme name (e
 
 ## Issue Tracker
 
-The issue tracker at `nickybmon/OpenEmu-Silicon` is the primary place for bug reports, feature requests, core integration work, and release checklists.
+The issue tracker at `OpenEmu-Silicon/OpenEmu-Silicon` is the primary place for bug reports, feature requests, core integration work, and release checklists.
 
 **Issue templates** — always use the appropriate template:
 
@@ -243,12 +243,12 @@ The issue tracker at `nickybmon/OpenEmu-Silicon` is the primary place for bug re
 
 **Issue hygiene rules (non-negotiable):**
 
-1. **Search before opening.** Run `gh issue list --repo nickybmon/OpenEmu-Silicon --state open` first. If the problem is already tracked, comment — don't open a duplicate.
+1. **Search before opening.** Run `gh issue list --repo OpenEmu-Silicon/OpenEmu-Silicon --state open` first. If the problem is already tracked, comment — don't open a duplicate.
 2. **No type prefixes in titles.** Never write `note:`, `fix:`, `feat:`, `bug:` in the issue title. Labels carry the type. The title describes the problem.
    - Good: `PokeMini — OpenEmuBase header missing in standalone build`
    - Bad: `note: PokeMini — needs workspace integration`
 3. **One issue per concern.** Same root cause + same fix = one issue covering both.
-4. **Close resolved issues immediately.** The moment a fix is committed, run: `gh issue close #N --repo nickybmon/OpenEmu-Silicon --comment "Resolved in <sha>."` Do not leave issues open for a later cleanup pass.
+4. **Close resolved issues immediately.** The moment a fix is committed, run: `gh issue close #N --repo OpenEmu-Silicon/OpenEmu-Silicon --comment "Resolved in <sha>."` Do not leave issues open for a later cleanup pass.
 5. **Close superseded issues immediately.** If you open a more comprehensive issue that replaces an older one, close the old one in the same session.
 6. **Only one checklist per milestone.** If one is already open, update it.
 
@@ -290,7 +290,7 @@ Every shipped core plugin embeds a `SUFeedURL` in its `Info.plist`. Sparkle read
 The canonical pattern, used by all cores nickybmon ships, is:
 
 ```
-https://raw.githubusercontent.com/nickybmon/OpenEmu-Silicon/main/Appcasts/<core>.xml
+https://raw.githubusercontent.com/OpenEmu-Silicon/OpenEmu-Silicon/main/Appcasts/<core>.xml
 ```
 
 `<core>` is the lowercased core name (e.g. `dolphin`, `mednafen`, `bluemsx`). The matching file must exist under `Appcasts/` in this repo — that is the file Sparkle fetches.
@@ -347,10 +347,10 @@ Before merging any PR, check it out locally, build, and verify the behaviors des
 
 ```bash
 # gh looks up the branch name automatically
-gh pr checkout <PR_NUMBER> --repo nickybmon/OpenEmu-Silicon
+gh pr checkout <PR_NUMBER> --repo OpenEmu-Silicon/OpenEmu-Silicon
 
 # Example
-gh pr checkout 54 --repo nickybmon/OpenEmu-Silicon
+gh pr checkout 54 --repo OpenEmu-Silicon/OpenEmu-Silicon
 ```
 
 ### Build
@@ -444,5 +444,5 @@ git commit -m "fix: description"
 
 # Push and open a PR — always in the same step, never one without the other
 git push -u origin fix/your-description
-gh pr create --repo nickybmon/OpenEmu-Silicon --base main --title "fix: your-description" --body "..."
+gh pr create --repo OpenEmu-Silicon/OpenEmu-Silicon --base main --title "fix: your-description" --body "..."
 ```

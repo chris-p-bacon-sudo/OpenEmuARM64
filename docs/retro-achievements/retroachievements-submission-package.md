@@ -13,7 +13,7 @@ tracking and pull final values here when submitting.
 | Emulator name | OpenEmu-Silicon |
 | Platform | macOS (Apple Silicon — M1/M2/M3/M4) |
 | Current version | 1.2.2 |
-| GitHub URL | <https://github.com/nickybmon/OpenEmu-Silicon> |
+| GitHub URL | <https://github.com/OpenEmu-Silicon/OpenEmu-Silicon> |
 | Visibility | Public |
 | Public since | 2026-03-20 |
 | Six-month mark | 2026-09-20 |

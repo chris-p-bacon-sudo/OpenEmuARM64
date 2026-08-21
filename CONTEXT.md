@@ -26,7 +26,7 @@ This file is the source of truth for what each term means *in this codebase*. If
 |---|---|
 | **host app** | The main `OpenEmu.app` — the library, preferences, controllers UI, save state browser. |
 | **helper / broker / `OpenEmuHelperApp`** | The sandboxed XPC process that actually runs an emulator core. Lives in `OpenEmu/broker/`. The host app and helper communicate via XPC; the helper isolates crashes so a bad core can't take down the library. |
-| **rcheevos** | The vendored C library that talks to the RetroAchievements service. Built into the helper. Native cores integrate it directly; libretro cores receive it through the libretro host (in progress — see [#360](https://github.com/nickybmon/OpenEmu-Silicon/issues/360)). |
+| **rcheevos** | The vendored C library that talks to the RetroAchievements service. Built into the helper. Native cores integrate it directly; libretro cores receive it through the libretro host (in progress — see [#360](https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/issues/360)). |
 
 ## Update / distribution
 

@@ -208,7 +208,7 @@ Observed behavior:
 
 ### No monetization / commercialization
 
-OpenEmu-Silicon is distributed as a free public GitHub project at <https://github.com/nickybmon/OpenEmu-Silicon>.
+OpenEmu-Silicon is distributed as a free public GitHub project at <https://github.com/OpenEmu-Silicon/OpenEmu-Silicon>.
 
 No monetization features are implemented in this repository:
 
@@ -242,7 +242,7 @@ Summary:
 | Source | Date | Evidence |
 | --- | --- | --- |
 | Local repository history begins | 2026-01-25 | `git log --reverse` first commit: `5103b813 Step 1: OpenEmu Core and SDKs`. |
-| GitHub repository created/public | 2026-03-20 | `gh repo view nickybmon/OpenEmu-Silicon --json createdAt,visibility` reported `createdAt: 2026-03-20T14:47:23Z`, `visibility: PUBLIC`. |
+| GitHub repository created/public | 2026-03-20 | `gh repo view OpenEmu-Silicon/OpenEmu-Silicon --json createdAt,visibility` reported `createdAt: 2026-03-20T14:47:23Z`, `visibility: PUBLIC`. |
 | Upstream OpenEmu availability | Predates this fork by years | Upstream project: <https://github.com/OpenEmu/OpenEmu>. |
 
 Reviewer note:

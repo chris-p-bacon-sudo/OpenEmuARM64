@@ -106,12 +106,12 @@ Use `/progress-report` in a Claude Code session to draft a filled-in version fro
 #### How to Get Involved
 
 New to the project? Here's where to start:
-- [`good first issue`](https://github.com/nickybmon/OpenEmu-Silicon/issues?q=is%3Aopen+label%3A%22good+first+issue%22) — well-scoped bugs and improvements with pointers to the relevant code
-- [`help wanted`](https://github.com/nickybmon/OpenEmu-Silicon/issues?q=is%3Aopen+label%3A%22help+wanted%22) — things the maintainer wants help with but can't prioritize right now
+- [`good first issue`](https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/issues?q=is%3Aopen+label%3A%22good+first+issue%22) — well-scoped bugs and improvements with pointers to the relevant code
+- [`help wanted`](https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/issues?q=is%3Aopen+label%3A%22help+wanted%22) — things the maintainer wants help with but can't prioritize right now
 - [CONTRIBUTING.md](../.github/CONTRIBUTING.md) — how to set up a build, submit a PR, and the AI contribution policy
 - [RetroAchievements Community Guide](retro-achievements/retroachievements-community-guide.md) — if you're an RA user or achievement set developer
 
-Questions? Open a [Discussion](https://github.com/nickybmon/OpenEmu-Silicon/discussions).
+Questions? Open a [Discussion](https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/discussions).
 
 ---
 
@@ -169,7 +169,7 @@ Thanks to everyone who contributed to this release: @[HANDLE_1] and @[HANDLE_2] 
 
 Download the `.dmg` or `.zip` from the assets below. Requires macOS 11.0 or later on Apple Silicon.
 
-For installation help, see the [Wiki](https://github.com/nickybmon/OpenEmu-Silicon/wiki) or open a [Discussion](https://github.com/nickybmon/OpenEmu-Silicon/discussions).
+For installation help, see the [Wiki](https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/wiki) or open a [Discussion](https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/discussions).
 
 ---
 

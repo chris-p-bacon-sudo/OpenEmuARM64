@@ -110,7 +110,7 @@ AI tools (Claude, Cursor, Copilot) are used in the development of this project. 
 
 ## Good First Issues
 
-Issues tagged [`good first issue`](https://github.com/nickybmon/OpenEmu-Silicon/issues?q=is%3Aopen+label%3A%22good+first+issue%22) are chosen because:
+Issues tagged [`good first issue`](https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/issues?q=is%3Aopen+label%3A%22good+first+issue%22) are chosen because:
 
 - The scope is well-defined
 - The relevant file or function is identified in the issue body
@@ -123,7 +123,7 @@ Comment on an issue before you start work to avoid duplicates.
 
 ## Working on RetroAchievements Integration
 
-RA core integration is tracked in [issue #258](https://github.com/nickybmon/OpenEmu-Silicon/issues/258). The implementation pattern and known pitfalls are documented in [docs/retro-achievements/retroachievements-implementation-guide.md](../docs/retro-achievements/retroachievements-implementation-guide.md). Read that before wiring up a new core.
+RA core integration is tracked in [issue #258](https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/issues/258). The implementation pattern and known pitfalls are documented in [docs/retro-achievements/retroachievements-implementation-guide.md](../docs/retro-achievements/retroachievements-implementation-guide.md). Read that before wiring up a new core.
 
 For testing RA as a user or tester rather than as a developer, see [docs/retro-achievements/retroachievements-community-guide.md](../docs/retro-achievements/retroachievements-community-guide.md).
 
@@ -131,7 +131,7 @@ For testing RA as a user or tester rather than as a developer, see [docs/retro-a
 
 ## Working on the Libretro Bridge
 
-The libretro bridge loads some emulator cores from pre-built libretro binaries instead of building them from source. See [The Libretro Bridge](https://github.com/nickybmon/OpenEmu-Silicon/wiki/The-Libretro-Bridge) on the wiki for context.
+The libretro bridge loads some emulator cores from pre-built libretro binaries instead of building them from source. See [The Libretro Bridge](https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/wiki/The-Libretro-Bridge) on the wiki for context.
 
 Bridge work branches from `main`. The integration branch (`feat/libretro-bridge`) has merged. Coordinate before touching `OpenEmu-SDK/OpenEmuBase/OEGameCore.h/.m` — that file is the base class for every core and is the highest-conflict file in the repo.
 
@@ -147,7 +147,7 @@ Engage with a few issues first — ask clarifying questions, look for duplicates
 
 ### Compatibility Testing
 
-The compatibility list lives in the [project wiki](https://github.com/nickybmon/OpenEmu-Silicon/wiki). To contribute:
+The compatibility list lives in the [project wiki](https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/wiki). To contribute:
 1. Test a game on the latest release build
 2. Note: core name, macOS version, M-chip generation, and what you observed
 3. Submit a PR against the wiki or open a Discussion with your findings
@@ -170,4 +170,4 @@ This project follows the [Contributor Covenant](https://www.contributor-covenant
 
 ---
 
-*Questions? Open a [Discussion](https://github.com/nickybmon/OpenEmu-Silicon/discussions).*
+*Questions? Open a [Discussion](https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/discussions).*

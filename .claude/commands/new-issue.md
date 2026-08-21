@@ -1,7 +1,7 @@
 Create a new issue following the project's hygiene rules.
 
 1. Search for duplicates first:
-   gh issue list --repo nickybmon/OpenEmu-Silicon --state open
+   gh issue list --repo OpenEmu-Silicon/OpenEmu-Silicon --state open
    Ask the user to confirm no duplicate exists before proceeding.
 
 2. Ask: what is the issue type? (bug / feature / core integration / checklist)

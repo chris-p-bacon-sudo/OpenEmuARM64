@@ -18,7 +18,7 @@ Factors considered:
 
 ## Decision
 
-All emulator cores, the main app, OpenEmu-SDK, OpenEmuKit, and OpenEmu-Shaders live in a single repository (`nickybmon/OpenEmu-Silicon`). Cores are regular tracked directories — not active git submodules. They can receive fixes via normal PRs.
+All emulator cores, the main app, OpenEmu-SDK, OpenEmuKit, and OpenEmu-Shaders live in a single repository (`OpenEmu-Silicon/OpenEmu-Silicon`). Cores are regular tracked directories — not active git submodules. They can receive fixes via normal PRs.
 
 Independent core releases are handled at the release layer: `gh workflow run release-core.yml` builds and ships a single core plugin independently, updating its `Appcasts/<CoreName>.xml`. The `CoreUpdater` mechanism delivers these to users without requiring a full app update.
 

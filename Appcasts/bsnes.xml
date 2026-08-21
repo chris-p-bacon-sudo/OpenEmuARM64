@@ -8,7 +8,7 @@
       <title>BSNES 115.3</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.3.6/BSNES.oecoreplugin.zip"
+        url="https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases/download/cores-v1.3.6/BSNES.oecoreplugin.zip"
         sparkle:version="115.3"
         sparkle:shortVersionString="115.3"
         length="921031"
@@ -19,7 +19,7 @@
       <title>BSNES 115.2</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.3.3/BSNES.oecoreplugin.zip"
+        url="https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases/download/cores-v1.3.3/BSNES.oecoreplugin.zip"
         sparkle:version="115.2"
         sparkle:shortVersionString="115.2"
         length="1793227"
@@ -30,7 +30,7 @@
       <title>BSNES 115.1</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.3.1/BSNES.oecoreplugin.zip"
+        url="https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases/download/cores-v1.3.1/BSNES.oecoreplugin.zip"
         sparkle:version="115.1"
         sparkle:shortVersionString="115.1"
         length="918222"
@@ -41,7 +41,7 @@
       <title>BSNES 115</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.2.0/BSNES.oecoreplugin.zip"
+        url="https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases/download/cores-v1.2.0/BSNES.oecoreplugin.zip"
         sparkle:version="115"
         sparkle:shortVersionString="115"
         length="918198"

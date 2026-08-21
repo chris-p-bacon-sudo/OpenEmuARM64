@@ -8,7 +8,7 @@
       <title>DeSmuME 0.9.14.1</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.4.0/DeSmuME.oecoreplugin.zip"
+        url="https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases/download/cores-v1.4.0/DeSmuME.oecoreplugin.zip"
         sparkle:version="0.9.14.1"
         sparkle:shortVersionString="0.9.14.1"
         length="1658711"
@@ -19,7 +19,7 @@
       <title>DeSmuME 0.9.14</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.3.3/DeSmuME.oecoreplugin.zip"
+        url="https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases/download/cores-v1.3.3/DeSmuME.oecoreplugin.zip"
         sparkle:version="0.9.14"
         sparkle:shortVersionString="0.9.14"
         length="5267152"

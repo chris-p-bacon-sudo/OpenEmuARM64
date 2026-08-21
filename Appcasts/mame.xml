@@ -8,7 +8,7 @@
       <title>MAME 0.250.0.1</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.3.3/MAME.oecoreplugin.zip"
+        url="https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases/download/cores-v1.3.3/MAME.oecoreplugin.zip"
         sparkle:version="0.250.0.1"
         sparkle:shortVersionString="0.250.0.1"
         length="59548817"
