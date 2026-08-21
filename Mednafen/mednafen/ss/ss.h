@@ -173,6 +173,10 @@ namespace MDFN_IEN_SS
  void SS_SetPhysMemMap(uint32 Astart, uint32 Aend, uint16* ptr, uint32 length, bool is_writeable = false) MDFN_COLD;
 
  void SS_Reset(bool powering_up) MDFN_COLD;
+
+ // RAM accessors for cheat search
+ const uint8* SS_GetWorkRAML(void);
+ const uint8* SS_GetWorkRAMH(void);
 }
 
 #endif

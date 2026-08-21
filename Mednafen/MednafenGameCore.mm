@@ -33,9 +33,11 @@
 #include "mednafen/psx/psx.h"
 #include "mednafen/pce/pce.h"
 #include "mednafen/mempatcher-driver.h"
+#include "mednafen/ss/ss.h"
 
 #import "MednafenGameCore.h"
 #import <OpenEmuBase/OERingBuffer.h>
+#import <OpenEmuBase/OEMemoryRegionDescriptor.h>
 #import <OpenEmuBase/OEGameCoreDisplayModes.h>
 #import <OpenEmuBase/OEMemoryRegionDescriptor.h>
 #import <OpenGL/gl.h>
@@ -4288,6 +4290,24 @@ namespace Mednafen { void MDFN_FlushGameCheats(int nosave); }
                 patch.val = val;
                 patch.length = 1;
                 Mednafen::MDFNI_AddCheat(patch);
+            } else if (singleCode.length == 12 && [_mednafenCoreModule isEqualToString:@"ss"]) {
+                // Saturn AR format: TAAAAAAA VVVV (T=1 word, T=3 byte)
+                unsigned int fullCode = 0;
+                if (![[NSScanner scannerWithString:[singleCode substringToIndex:8]] scanHexInt:&fullCode]) continue;
+                uint8_t satType = (fullCode >> 28) & 0xF;
+                uint32_t addr = fullCode & 0x0FFFFFFF;
+                unsigned int val = 0;
+                if (![[NSScanner scannerWithString:[singleCode substringFromIndex:8]] scanHexInt:&val]) continue;
+                patch.addr = addr;
+                patch.bigendian = true;
+                if (satType == 3) {
+                    patch.val = val & 0xFF;
+                    patch.length = 1;
+                } else {
+                    patch.val = val & 0xFFFF;
+                    patch.length = 2;
+                }
+                Mednafen::MDFNI_AddCheat(patch);
             } else if (singleCode.length == 12) {
                 unsigned long long raw = strtoull(singleCode.UTF8String, NULL, 16);
                 uint8_t codeType = (raw >> 40) & 0xFF;
@@ -4307,6 +4327,8 @@ namespace Mednafen { void MDFN_FlushGameCheats(int nosave); }
     }
 }
 
+#pragma mark - Cheat Search
+
 - (NSArray<OEMemoryRegionDescriptor *> *)readableMemoryRegions
 {
     if ([_mednafenCoreModule isEqualToString:@"psx"]) {
@@ -4316,6 +4338,29 @@ namespace Mednafen { void MDFN_FlushGameCheats(int nosave); }
                                                 addressBytes:4
                                                         data:data]];
     }
+
+    if ([_mednafenCoreModule isEqualToString:@"ss"]) {
+        const uint8 *workL = MDFN_IEN_SS::SS_GetWorkRAML();
+        const uint8 *workH = MDFN_IEN_SS::SS_GetWorkRAMH();
+        if (!workL || !workH) return @[];
+
+        NSData *dataL = [NSData dataWithBytes:workL length:1024 * 1024];
+        NSData *dataH = [NSData dataWithBytes:workH length:1024 * 1024];
+
+        return @[
+            [OEMemoryRegionDescriptor descriptorWithName:@"Low Work RAM"
+                                                address:0x00200000
+                                           addressBytes:4
+                                           minDataBytes:2
+                                                   data:dataL],
+            [OEMemoryRegionDescriptor descriptorWithName:@"High Work RAM"
+                                                address:0x06000000
+                                           addressBytes:4
+                                           minDataBytes:2
+                                                   data:dataH],
+        ];
+    }
+
     return @[];
 }
 
