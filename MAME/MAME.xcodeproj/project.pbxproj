@@ -24,6 +24,7 @@
 /* Begin PBXBuildFile section */
 		0510AA1E2300825E002028C1 /* mamearcade_headless.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 0510AA1D2300825D002028C1 /* mamearcade_headless.dylib */; };
 		0510AA1F23008294002028C1 /* mamearcade_headless.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 0510AA1D2300825D002028C1 /* mamearcade_headless.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		AA0000012B0000000000CAFE /* cheat.7z in Resources */ = {isa = PBXBuildFile; fileRef = AA0000022B0000000000CAFE /* cheat.7z */; };
 		D00A068E1763763000C99008 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D00A068D1763763000C99008 /* Cocoa.framework */; };
 		D00A06A617637E9100C99008 /* MAMEGameCore.m in Sources */ = {isa = PBXBuildFile; fileRef = D00A06A517637E9100C99008 /* MAMEGameCore.m */; };
 		D0AADE31176382F900759E26 /* OpenEmuBase.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D0AADE30176382F900759E26 /* OpenEmuBase.framework */; };
@@ -75,6 +76,7 @@
 		D0AADE30176382F900759E26 /* OpenEmuBase.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = OpenEmuBase.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		D0AADE331763838A00759E26 /* AppKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppKit.framework; path = System/Library/Frameworks/AppKit.framework; sourceTree = SDKROOT; };
 		D0AADE341763838A00759E26 /* CoreData.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreData.framework; path = System/Library/Frameworks/CoreData.framework; sourceTree = SDKROOT; };
+		AA0000022B0000000000CAFE /* cheat.7z */ = {isa = PBXFileReference; lastKnownFileType = file; path = cheat.7z; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -136,6 +138,7 @@
 			isa = PBXGroup;
 			children = (
 				D00A069F17637AB600C99008 /* Info.plist */,
+				AA0000022B0000000000CAFE /* cheat.7z */,
 			);
 			name = Resources;
 			sourceTree = "<group>";
@@ -238,6 +241,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				AA0000012B0000000000CAFE /* cheat.7z in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

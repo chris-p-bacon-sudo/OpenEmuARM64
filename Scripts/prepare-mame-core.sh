@@ -9,13 +9,13 @@ MAME_DIR="$REPO_ROOT/MAME"
 DEPS_DIR="$MAME_DIR/deps"
 SRC_DIR="$DEPS_DIR/mame"
 PATCH_FILE="$MAME_DIR/patches/mame-headless-clang21-apple.patch"
-REVISION="4fc1f9f16b0dfba6be670367330028635613b04b"
-REMOTE="https://github.com/stuartcarnie/mame.git"
+REVISION="fac13e827b7b8cfa4ee4f5760198d31241e2a544"
+REMOTE="https://github.com/OpenEmu-Silicon/mame.git"
 
 mkdir -p "$DEPS_DIR"
 
 if [ ! -e "$SRC_DIR/.git" ]; then
-  echo "Cloning stuartcarnie/mame into $SRC_DIR..."
+  echo "Cloning OpenEmu-Silicon/mame into $SRC_DIR..."
   git clone --no-tags "$REMOTE" "$SRC_DIR"
 fi
 

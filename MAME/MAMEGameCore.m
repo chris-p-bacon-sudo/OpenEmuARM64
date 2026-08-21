@@ -27,6 +27,7 @@
 #import "MAMEGameCore.h"
 
 #import <OpenEmuBase/OERingBuffer.h>
+#import <OpenEmuBase/OEMemoryRegionDescriptor.h>
 #import <OpenGL/gl.h>
 #import <os/log.h>
 
@@ -63,6 +64,8 @@
     void *_handle;
     OSD *_osd;
     BOOL _supportsRewinding;
+    
+    NSMutableDictionary<NSString *, NSDictionary *> *_cheatList;
 }
 
 @end
@@ -222,6 +225,18 @@ BOOL driverIsNotWorking(GameDriverOptions o)
     NSString *romDir = [path stringByDeletingLastPathComponent];
     Options *opts = _osd.options;
     [opts setBasePath:self.supportDirectoryPath];
+
+    // Install bundled cheat database on first launch
+    NSString *cheatDir = [self.supportDirectoryPath stringByAppendingPathComponent:@"cheat"];
+    NSString *cheatDst = [cheatDir stringByAppendingPathComponent:@"cheat.7z"];
+    if (![[NSFileManager defaultManager] fileExistsAtPath:cheatDst]) {
+        NSString *cheatSrc = [[NSBundle bundleForClass:[self class]] pathForResource:@"cheat" ofType:@"7z"];
+        if (cheatSrc) {
+            [[NSFileManager defaultManager] createDirectoryAtPath:cheatDir withIntermediateDirectories:YES attributes:nil error:nil];
+            [[NSFileManager defaultManager] copyItemAtPath:cheatSrc toPath:cheatDst error:nil];
+        }
+    }
+
     opts.romsPath = romDir;
     BOOL prev;
     prev = opts.autoStretchXY;
@@ -495,6 +510,79 @@ BOOL driverIsNotWorking(GameDriverOptions o)
 - (BOOL)supportsRewinding
 {
     return _supportsRewinding;
+}
+
+#pragma mark - Cheats
+
+- (void)setCheat:(NSString *)code setType:(NSString *)type setEnabled:(BOOL)enabled
+{
+    if (!_cheatList)
+        _cheatList = [NSMutableDictionary dictionary];
+
+    code = [code stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    code = [code stringByReplacingOccurrencesOfString:@" " withString:@""];
+    code = [code stringByReplacingOccurrencesOfString:@"=" withString:@":"];
+
+    if (enabled)
+        _cheatList[code] = @{@"enabled": @YES};
+    else
+        [_cheatList removeObjectForKey:code];
+
+    // Disable all cheats first
+    for (uint32_t i = 0; i < 256; i++) {
+        [_osd setCheat:i address:0 value:0 size:1 enabled:NO];
+    }
+
+    // Re-apply all enabled cheats
+    uint32_t idx = 0;
+    for (NSString *key in _cheatList) {
+        if (![_cheatList[key][@"enabled"] boolValue]) continue;
+        if (idx >= 256) break;
+
+        NSArray<NSString *> *parts = [key componentsSeparatedByString:@"+"];
+        for (NSString *singleCode in parts) {
+            if (idx >= 256) break;
+            NSRange colonRange = [singleCode rangeOfString:@":"];
+            if (colonRange.location == NSNotFound) continue;
+
+            unsigned int addr = 0, val = 0;
+            if (![[NSScanner scannerWithString:[singleCode substringToIndex:colonRange.location]] scanHexInt:&addr]) continue;
+            if (![[NSScanner scannerWithString:[singleCode substringFromIndex:colonRange.location + 1]] scanHexInt:&val]) continue;
+
+            NSUInteger valueHexLen = singleCode.length - colonRange.location - 1;
+            uint8_t size = (uint8_t)((valueHexLen + 1) / 2);
+            if (size == 0) size = 1;
+            if (size > 4) size = 4;
+
+            [_osd setCheat:idx address:addr value:val size:size enabled:YES];
+            idx++;
+        }
+    }
+}
+
+- (NSArray<OEMemoryRegionDescriptor *> *)readableMemoryRegions
+{
+    NSArray<NSDictionary *> *regions = [_osd readableMemoryRegions];
+    if (!regions || regions.count == 0) return @[];
+
+    NSMutableArray<OEMemoryRegionDescriptor *> *result = [NSMutableArray arrayWithCapacity:regions.count];
+    for (NSDictionary *dict in regions) {
+        NSString *name = dict[@"name"] ?: @"RAM";
+        uint32_t address = [dict[@"address"] unsignedIntValue];
+        NSData *bytes = dict[@"bytes"];
+        BOOL bigEndian = [dict[@"bigEndian"] boolValue];
+        if (!bytes) continue;
+
+        uint8_t addrBytes = (address > 0xFFFF) ? 4 : (address > 0xFF) ? 3 : 2;
+        uint8_t minDataBytes = bigEndian ? 2 : 1;
+
+        [result addObject:[OEMemoryRegionDescriptor descriptorWithName:name
+                                                              address:address
+                                                         addressBytes:addrBytes
+                                                         minDataBytes:minDataBytes
+                                                                 data:bytes]];
+    }
+    return result;
 }
 
 - (NSData *)serializeStateWithError:(NSError *__autoreleasing *)outError
