@@ -4432,7 +4432,7 @@ namespace Mednafen { void MDFN_FlushGameCheats(int nosave); }
                                                         data:data]];
     }
 
-    if ([_mednafenCoreModule isEqualToString:@"pce"]) {
+    if ([_mednafenCoreModule isEqualToString:@"pce"] && !_isSystemPCECD) {
         uint8_t *ram = MDFNPCE_GetMainRAMPointer();
         if (!ram) return @[];
         uint32_t size = MDFNPCE_GetMainRAMSize();
@@ -4454,6 +4454,47 @@ namespace Mednafen { void MDFN_FlushGameCheats(int nosave); }
                                                               addressBytes:3
                                                                       data:pageData]];
         }
+        return regions;
+    }
+
+    if ([_mednafenCoreModule isEqualToString:@"pce"] && _isSystemPCECD) {
+        uint8_t *ram = MDFNPCE_GetMainRAMPointer();
+        if (!ram) return @[];
+        NSMutableArray *regions = [NSMutableArray array];
+
+        NSData *mainData = [NSData dataWithBytes:ram length:8192];
+        [regions addObject:[OEMemoryRegionDescriptor descriptorWithName:@"System RAM"
+                                                               address:0xF82000
+                                                          addressBytes:3
+                                                                  data:mainData]];
+
+        uint8_t *cdram = MDFNPCE_GetCDRAMPointer();
+        if (cdram) {
+            NSData *cdData = [NSData dataWithBytes:cdram length:64 * 1024];
+            [regions addObject:[OEMemoryRegionDescriptor descriptorWithName:@"CD RAM"
+                                                                   address:0x100000
+                                                              addressBytes:3
+                                                                      data:cdData]];
+        }
+
+        uint8_t *syscard = MDFNPCE_GetSysCardRAMPointer();
+        if (syscard) {
+            NSData *sysData = [NSData dataWithBytes:syscard length:192 * 1024];
+            [regions addObject:[OEMemoryRegionDescriptor descriptorWithName:@"Super System Card RAM"
+                                                                   address:0x0D0000
+                                                              addressBytes:3
+                                                                      data:sysData]];
+        }
+
+        uint8_t *saveram = MDFNPCE_GetSaveRAMPointer();
+        if (saveram) {
+            NSData *saveData = [NSData dataWithBytes:saveram length:2048];
+            [regions addObject:[OEMemoryRegionDescriptor descriptorWithName:@"Save RAM"
+                                                                   address:0x1EE000
+                                                              addressBytes:3
+                                                                      data:saveData]];
+        }
+
         return regions;
     }
 
