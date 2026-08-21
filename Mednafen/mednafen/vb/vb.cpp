@@ -1074,3 +1074,7 @@ MDFNGI EmulatedVB =
 
  2,     // Number of output sound channels
 };
+
+extern "C" uint8_t *MDFNVB_GetWRAMPointer(void) { return WRAM; }
+extern "C" uint8_t *MDFNVB_GetGPRAMPointer(void) { return GPRAM; }
+extern "C" uint32_t MDFNVB_GetGPRAMSize(void) { return GPRAM ? (GPRAM_Mask + 1) : 0; }

@@ -68,6 +68,9 @@ extern "C" uint32_t MDFNPCE_GetMainRAMSize(void);
 extern "C" uint8_t *MDFNPCFX_GetRAMPointer(void);
 extern "C" uint8_t *MDFNPCFX_GetBackupRAMPointer(void);
 extern "C" uint8_t *MDFNPCFX_GetExBackupRAMPointer(void);
+extern "C" uint8_t *MDFNVB_GetWRAMPointer(void);
+extern "C" uint8_t *MDFNVB_GetGPRAMPointer(void);
+extern "C" uint32_t MDFNVB_GetGPRAMSize(void);
 
 #ifdef DEBUG
     #error "Cores should not be compiled in DEBUG! Follow the guide https://github.com/OpenEmu/OpenEmu/wiki/Compiling-From-Source-Guide"
@@ -4454,6 +4457,27 @@ namespace Mednafen { void MDFN_FlushGameCheats(int nosave); }
                                                      address:0x00000000
                                                 addressBytes:4
                                                         data:data]];
+    }
+
+    if ([_mednafenCoreModule isEqualToString:@"vb"]) {
+        uint8_t *wram = MDFNVB_GetWRAMPointer();
+        if (!wram) return @[];
+        NSMutableArray *regions = [NSMutableArray array];
+        NSData *wramData = [NSData dataWithBytes:wram length:65536];
+        [regions addObject:[OEMemoryRegionDescriptor descriptorWithName:@"System RAM"
+                                                               address:0x05000000
+                                                          addressBytes:4
+                                                                  data:wramData]];
+        uint8_t *gpram = MDFNVB_GetGPRAMPointer();
+        uint32_t gpramSize = MDFNVB_GetGPRAMSize();
+        if (gpram && gpramSize > 0) {
+            NSData *gpData = [NSData dataWithBytes:gpram length:gpramSize];
+            [regions addObject:[OEMemoryRegionDescriptor descriptorWithName:@"Cartridge RAM"
+                                                                   address:0x06000000
+                                                              addressBytes:4
+                                                                      data:gpData]];
+        }
+        return regions;
     }
 
     if ([_mednafenCoreModule isEqualToString:@"ngp"]) {
