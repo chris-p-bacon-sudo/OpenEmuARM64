@@ -8805,6 +8805,7 @@
 			inputPaths = (
 			);
 			outputPaths = (
+				"$(SRCROOT)/ppsspp/git-version.cpp",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
