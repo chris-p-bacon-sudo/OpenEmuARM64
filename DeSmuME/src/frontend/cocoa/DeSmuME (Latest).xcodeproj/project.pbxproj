@@ -3293,6 +3293,9 @@
 		ABB3C6671501BF8A00E0C22E /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 29B97325FDCFA39411CA2CEA /* Foundation.framework */; };
 		ABB3C6691501BF8A00E0C22E /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = ABC570D4134431DA00E7B0B1 /* OpenGL.framework */; };
 		ABB3C66C1501C04F00E0C22E /* NDSGameCore.mm in Sources */ = {isa = PBXBuildFile; fileRef = ABB3C63E1501BB8300E0C22E /* NDSGameCore.mm */; };
+		OE0DESM0BUILDFILE000000001 /* rcheevos_build.c in Sources */ = {isa = PBXBuildFile; fileRef = OE0DESM0FILEREF000000001 /* rcheevos_build.c */; settings = {COMPILER_FLAGS = "-DRC_NO_THREADS=1 -DRC_CLIENT_SUPPORTS_HASH=1"; }; };
+		OE0DESM0BUILDFILE000000002 /* OERetroAchievementsTransport.m in Sources */ = {isa = PBXBuildFile; fileRef = OE0DESM0FILEREF000000002 /* OERetroAchievementsTransport.m */; settings = {COMPILER_FLAGS = "-fobjc-arc"; }; };
+		OE0DESM0BUILDFILE000000003 /* OERetroAchievementsBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = OE0DESM0FILEREF000000003 /* OERetroAchievementsBridge.m */; settings = {COMPILER_FLAGS = "-fobjc-arc"; }; };
 		ABB3C6701501C04F00E0C22E /* videofilter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AB817A35143EE2DB00A7DFE9 /* videofilter.cpp */; };
 		ABB3C6721501C04F00E0C22E /* cocoa_file.mm in Sources */ = {isa = PBXBuildFile; fileRef = AB58F32C1364F44B0074C376 /* cocoa_file.mm */; };
 		ABB3C6751501C04F00E0C22E /* cocoa_rom.mm in Sources */ = {isa = PBXBuildFile; fileRef = ABD104131346652500AF11D1 /* cocoa_rom.mm */; };
@@ -4657,6 +4660,10 @@
 		ABB3C63C1501BB8300E0C22E /* Info (OpenEmu Plug-in).plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Info (OpenEmu Plug-in).plist"; sourceTree = "<group>"; };
 		ABB3C63D1501BB8300E0C22E /* NDSGameCore.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NDSGameCore.h; sourceTree = "<group>"; };
 		ABB3C63E1501BB8300E0C22E /* NDSGameCore.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = NDSGameCore.mm; sourceTree = "<group>"; };
+		OE0DESM0FILEREF000000001 /* rcheevos_build.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = rcheevos_build.c; path = ../../../../Vendor/rcheevos/rcheevos_build.c; sourceTree = SOURCE_ROOT; };
+		OE0DESM0FILEREF000000002 /* OERetroAchievementsTransport.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = OERetroAchievementsTransport.m; path = ../../../../OpenEmuKit/Source/OERetroAchievementsTransport.m; sourceTree = SOURCE_ROOT; };
+		OE0DESM0FILEREF000000003 /* OERetroAchievementsBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = OERetroAchievementsBridge.m; path = ../../../../OpenEmuKit/Source/OERetroAchievementsBridge.m; sourceTree = SOURCE_ROOT; };
+		OE0DESM0FILEREF000000004 /* OERetroAchievementsBridge.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = OERetroAchievementsBridge.h; path = ../../../../OpenEmuKit/Source/OERetroAchievementsBridge.h; sourceTree = SOURCE_ROOT; };
 		ABB3C63F1501BB8300E0C22E /* OENDSSystemResponderClient.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = OENDSSystemResponderClient.h; sourceTree = "<group>"; };
 		ABB3C6401501BB8300E0C22E /* OESoundInterface.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = OESoundInterface.mm; sourceTree = "<group>"; };
 		ABB3C6411501BB8300E0C22E /* OESoundInterface.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = OESoundInterface.h; sourceTree = "<group>"; };
@@ -10588,6 +10595,9 @@
 				AB455DFD2E8E624A009DEF2B /* ClientGraphicsControl.cpp in Sources */,
 				ABCFA9F6178BDE920030C8BA /* encrypt.cpp in Sources */,
 				ABB3C66C1501C04F00E0C22E /* NDSGameCore.mm in Sources */,
+				OE0DESM0BUILDFILE000000001 /* rcheevos_build.c in Sources */,
+				OE0DESM0BUILDFILE000000002 /* OERetroAchievementsTransport.m in Sources */,
+				OE0DESM0BUILDFILE000000003 /* OERetroAchievementsBridge.m in Sources */,
 				ABB3C6701501C04F00E0C22E /* videofilter.cpp in Sources */,
 				AB49B54B281687B90069F1D7 /* ftsynth.c in Sources */,
 				ABB3C6721501C04F00E0C22E /* cocoa_file.mm in Sources */,
@@ -11670,6 +11680,12 @@
 					"DEBUG=1",
 					METAL_DISABLE_FOR_BUILD_TARGET,
 				);
+				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(SRCROOT)/../../../../Vendor/rcheevos/include",
+					"$(SRCROOT)/../../../../Vendor/rcheevos/src",
+					"$(SRCROOT)/../../../../OpenEmuKit/Source",
+				);
 				INFOPLIST_FILE = "openemu/Info (OpenEmu Plug-in).plist";
 				MACOSX_DEPLOYMENT_TARGET = 11.0;
 				PRODUCT_BUNDLE_IDENTIFIER = org.openemu.DeSmuME;
@@ -11701,6 +11717,12 @@
 				);
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(SRCROOT)/../../../../Vendor/rcheevos/include",
+					"$(SRCROOT)/../../../../Vendor/rcheevos/src",
+					"$(SRCROOT)/../../../../OpenEmuKit/Source",
+				);
 				INFOPLIST_FILE = "openemu/Info (OpenEmu Plug-in).plist";
 				LLVM_LTO = YES;
 				MACOSX_DEPLOYMENT_TARGET = 11.0;
