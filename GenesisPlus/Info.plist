@@ -19,7 +19,7 @@
 	<key>CFBundleSignature</key>
 	<string>????</string>
 	<key>CFBundleVersion</key>
-	<string>1.7.5.6</string>
+	<string>1.7.5.7</string>
 	<key>NSPrincipalClass</key>
 	<string>OEGameCoreController</string>
 	<key>OEGameCoreClass</key>
@@ -116,10 +116,10 @@
 					<string>b4e76e416b887f4e7413ba76fa735f16</string>
 					<key>Name</key>
 					<string>Sonic &amp; Knuckles (World) (Lock-on).bin</string>
-					<key>Size</key>
-					<integer>262144</integer>
 					<key>Optional</key>
 					<true/>
+					<key>Size</key>
+					<integer>262144</integer>
 				</dict>
 			</array>
 		</dict>
