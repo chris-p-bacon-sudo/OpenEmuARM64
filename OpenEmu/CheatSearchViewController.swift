@@ -437,9 +437,10 @@ final class CheatSearchViewController: NSViewController {
         resultsCountLabel.alignment = .center
         resultsCountLabel.textColor = .secondaryLabelColor
         resultsCountLabel.font = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)
-        resultsCountLabel.maximumNumberOfLines = 1
-        resultsCountLabel.lineBreakMode = .byTruncatingTail
+        resultsCountLabel.maximumNumberOfLines = 0
+        resultsCountLabel.lineBreakMode = .byWordWrapping
         resultsCountLabel.drawsBackground = false
+        resultsCountLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         stack.addArrangedSubview(resultsCountLabel)
         resultsCountLabel.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
 

@@ -2688,7 +2688,8 @@ extension OEGameDocument {
             return supportsDisplayModeChange
         case #selector(showRetroAchievements(_:)):
             menuItem.title = NSLocalizedString("Achievements…", comment: "RetroAchievements menu item title")
-            return true
+            menuItem.isHidden = !isRetroAchievementsSessionSupported
+            return isRetroAchievementsSessionSupported
         default:
             return true
         }
