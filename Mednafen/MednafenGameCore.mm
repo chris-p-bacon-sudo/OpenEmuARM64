@@ -4316,6 +4316,9 @@ namespace Mednafen { void MDFN_FlushGameCheats(int nosave); }
                 unsigned int addr = 0, val = 0;
                 if (![[NSScanner scannerWithString:[singleCode substringToIndex:colonRange.location]] scanHexInt:&addr]) continue;
                 if (![[NSScanner scannerWithString:[singleCode substringFromIndex:colonRange.location + 1]] scanHexInt:&val]) continue;
+                // NGP RAM is registered at 0x4000 in Mednafen's mempatcher
+                if ([_mednafenCoreModule isEqualToString:@"ngp"])
+                    addr += 0x4000;
                 patch.addr = addr;
                 patch.val = val;
                 patch.length = 1;
@@ -4395,6 +4398,16 @@ namespace Mednafen { void MDFN_FlushGameCheats(int nosave); }
         uint8_t *ram = MDFNLynx_GetRAMPointer();
         if (!ram) return @[];
         NSData *data = [NSData dataWithBytes:ram length:0x10000];
+        return @[[OEMemoryRegionDescriptor descriptorWithName:@"System RAM"
+                                                     address:0x0000
+                                                addressBytes:2
+                                                        data:data]];
+    }
+
+    if ([_mednafenCoreModule isEqualToString:@"ngp"]) {
+        uint8_t *ram = MDFNNGP_GetRAMPointer();
+        if (!ram) return @[];
+        NSData *data = [NSData dataWithBytes:ram length:0x4000];
         return @[[OEMemoryRegionDescriptor descriptorWithName:@"System RAM"
                                                      address:0x0000
                                                 addressBytes:2
