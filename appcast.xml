@@ -5,7 +5,50 @@
     <link>https://github.com/nickybmon/OpenEmu-Silicon/releases</link>
     <description>Most recent changes with links to updates.</description>
     <language>en</language>
-                                                        <item>
+                                                            <item>
+      <title>OpenEmu-Silicon 1.2.5</title>
+      <description>
+        <![CDATA[
+        <h2>OpenEmu-Silicon 1.2.5</h2>
+        <h3>What's New in 1.2.5</h3>
+        <ul>
+        <li>Added Cheat Search, a new tool for finding and applying game cheats (thanks @leocck, #654)</li>
+        <li>Added bulk artwork import from a folder (thanks @bahgee, #634)</li>
+        </ul>
+        <h3>Bug Fixes</h3>
+        <ul>
+        <li>Fixed controllers that present as both a gamepad and a keyboard being misclassified as keyboards (thanks @jeffscottward, #642)</li>
+        <li>Fixed a crash when connecting a controller with no readable controls</li>
+        <li>Fixed battery-backed save RAM not persisting for RetroArch-bridged cores</li>
+        <li>Fixed Sonic & Knuckles lock-on ROMs not being recognized as a Genesis BIOS file (thanks @ketsuban, #636)</li>
+        <li>Added an in-app way to reset a stale Input Monitoring permission (thanks @zsummi, #628)</li>
+        <li>Fixed RetroAchievements login failing when the password had leading/trailing spaces (thanks @Double0Beavis, #644)</li>
+        <li>Fixed RetroAchievements unlock notifications not showing the correct badge image</li>
+        <li>Embedded the Jaguar, MSX, Pokémon mini, and Supervision system plugins directly in the app bundle (thanks @petewr, #639)</li>
+        <li>Stopped forcing MMU emulation on for every Dolphin (GameCube/Wii) game</li>
+        <li>Fixed the Cloud Sync status label shifting away from its status dot</li>
+        <li>Reduced clutter in the RetroAchievements corner overlay (thanks @tao-bioinfo, #638)</li>
+        <li>Restored Atari800 video output in Release builds (thanks @CamberwelK, #432)</li>
+        <li>Fixed a GameCube first-boot crash by initializing Dolphin input before boot</li>
+        <li>Restored the Dolphin core build by vendoring a missing external dependency</li>
+        </ul>
+        <h3>Under the Hood</h3>
+        <ul>
+        <li>Updated the bundled Dolphin core to a newer upstream version</li>
+        </ul>
+        ]]>
+      </description>
+      <pubDate>Fri, 21 Aug 2026 14:13:24 +0000</pubDate>
+      <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
+      <enclosure
+        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/v1.2.5/OpenEmu-Silicon.dmg"
+        sparkle:version="21"
+        sparkle:shortVersionString="1.2.5"
+        sparkle:edSignature="/34TQd2M+1NEV9ZEJ2RUkfDIUaSd67N5U+wKASoqf3tnEA5KVEUysN0ip6YmrCBesJJKnCKmFJUjWbaZeYvfDg=="
+        length="49762226"
+        type="application/octet-stream"/>
+    </item>
+<item>
       <title>OpenEmu-Silicon 1.2.4</title>
       <description>
         <![CDATA[
