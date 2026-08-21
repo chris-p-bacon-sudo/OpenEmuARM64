@@ -57,6 +57,10 @@ final class OEAlert: NSObject {
     // onto the main queue, which NSApp.runModal(for:) processes normally.
     private var sheetMode = false
     private var needsRebuild = true
+
+    private var usesScrollableInformativeText: Bool {
+        informativeText.count > 1000 || informativeText.filter { $0 == "\n" }.count > 20
+    }
     
     // MARK: - Controls
     
@@ -648,6 +652,9 @@ final class OEAlert: NSObject {
             contentView.widthAnchor.constraint(greaterThanOrEqualToConstant: MinimumWidth),
             maxWidthConstraint,
         ])
+        if usesScrollableInformativeText {
+            contentView.widthAnchor.constraint(equalToConstant: MaximumWidth).isActive = true
+        }
         
         // Set preferredMaxLayoutWidth on the message and the headline text fields.
         // In this way, in case the text wraps, the width of the label will be
@@ -714,13 +721,43 @@ final class OEAlert: NSObject {
             messageLabel.isSelectable = true
         }
         
+        if usesScrollableInformativeText {
+            let maxTextWidth = MaximumWidth - TrailingInset - LeadingInset - ImageWidth - ImageLeadingInset
+            messageLabel.preferredMaxLayoutWidth = maxTextWidth
+
+            let documentHeight = max(messageLabel.fittingSize.height, 1)
+            let maximumHeight = max(120, (NSScreen.main?.visibleFrame.height ?? 800) - 220)
+            let documentView = NSView(frame: NSRect(x: 0, y: 0, width: maxTextWidth, height: documentHeight))
+            messageLabel.translatesAutoresizingMaskIntoConstraints = true
+            messageLabel.frame = documentView.bounds
+            messageLabel.autoresizingMask = [.width, .height]
+            documentView.addSubview(messageLabel)
+
+            let scrollView = NSScrollView()
+            scrollView.translatesAutoresizingMaskIntoConstraints = false
+            scrollView.drawsBackground = false
+            scrollView.borderType = .noBorder
+            scrollView.hasVerticalScroller = documentHeight > maximumHeight
+            scrollView.autohidesScrollers = true
+            scrollView.documentView = documentView
+            contentView.addSubview(scrollView)
+            NSLayoutConstraint.activate([
+                scrollView.topAnchor.constraint(equalTo: lastAnchor, constant: hasHeadline ? HeadlineToMessageSpacing : TopInset),
+                scrollView.leadingAnchor.constraint(equalTo: effectiveLeadingAnchor, constant: LeadingInset),
+                contentView.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor, constant: TrailingInset),
+                scrollView.heightAnchor.constraint(equalToConstant: min(documentHeight, maximumHeight)),
+            ])
+
+            return scrollView.bottomAnchor
+        }
+
         contentView.addSubview(messageLabel)
         NSLayoutConstraint.activate([
             messageLabel.topAnchor.constraint(equalTo: lastAnchor, constant: hasHeadline ? HeadlineToMessageSpacing : TopInset),
             messageLabel.leadingAnchor.constraint(equalTo: effectiveLeadingAnchor, constant: LeadingInset),
             contentView.trailingAnchor.constraint(greaterThanOrEqualTo: messageLabel.trailingAnchor, constant: TrailingInset),
         ])
-        
+
         return messageLabel.bottomAnchor
     }
     
