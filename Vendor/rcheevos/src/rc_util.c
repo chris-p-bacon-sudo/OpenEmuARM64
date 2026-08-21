@@ -121,7 +121,7 @@ char* rc_buffer_strncpy(rc_buffer_t* buffer, const char* src, size_t len)
   uint8_t* dst = rc_buffer_reserve(buffer, len + 1);
   memcpy(dst, src, len);
   dst[len] = '\0';
-  rc_buffer_consume(buffer, dst, dst + len + 2);
+  rc_buffer_consume(buffer, dst, dst + len + 1);
   return (char*)dst;
 }
 

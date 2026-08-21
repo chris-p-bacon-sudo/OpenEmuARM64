@@ -70,3 +70,4 @@ build.log
 *-Bridge/**/*.dylib
 *-Bridge/**/MacOS/*-Bridge
 
+Flycast/flycast/core/deps/rcheevos/.build/
