@@ -262,6 +262,24 @@ static uint32_t mednafen_rc_read_memory(uint32_t address, uint8_t *buffer,
         }
         return num_bytes;
     }
+    if (strcmp(mod, "vb") == 0) {
+        uint8_t *wram = MDFNVB_GetWRAMPointer();
+        if (!wram) { return 0; }
+        uint8_t *gpram = MDFNVB_GetGPRAMPointer();
+        uint32_t gpramSize = MDFNVB_GetGPRAMSize();
+        for (uint32_t i = 0; i < num_bytes; i++) {
+            uint32_t a = address + i;
+            if (a < 0x10000) {
+                buffer[i] = wram[a];
+            } else if (a < 0x20000) {
+                if (!gpram || gpramSize == 0) { return i; }
+                buffer[i] = gpram[(a - 0x10000) & (gpramSize - 1)];
+            } else {
+                return i;
+            }
+        }
+        return num_bytes;
+    }
     if (strcmp(mod, "ss") == 0) {
         // Expose raw ne16 buffer layout — matches how Beetle Saturn (libretro)
         // exposes memory, which is what achievement sets are authored against.
@@ -3660,6 +3678,7 @@ static uint32_t mednafen_rc_read_memory(uint32_t address, uint8_t *buffer,
     else if ([_mednafenCoreModule isEqualToString:@"pce"] && !_isSystemPCECD)  _rcConsole = RC_CONSOLE_PC_ENGINE;
     else if ([_mednafenCoreModule isEqualToString:@"pce"] && _isSystemPCECD)   _rcConsole = RC_CONSOLE_PC_ENGINE_CD;
     else if ([_mednafenCoreModule isEqualToString:@"pcfx"])   _rcConsole = RC_CONSOLE_PCFX;
+    else if ([_mednafenCoreModule isEqualToString:@"vb"])     _rcConsole = RC_CONSOLE_VIRTUAL_BOY;
 
     if (_rcConsole > 0) {
         _romPath = path;
