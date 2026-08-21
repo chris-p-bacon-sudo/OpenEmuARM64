@@ -4,7 +4,7 @@ ARM64
 ARM
 
 # The bare "ARM" pattern above (meant for MSVC platform build-output
-# folders) also matches these real armips source/test directories —
-# carve them back in.
+# folders) also matches these real source directories — carve them back in.
 !armips/Archs/ARM
 !armips/Tests/ARM
+!libpng17/arm
