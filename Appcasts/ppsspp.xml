@@ -8,7 +8,7 @@
       <title>PPSSPP 1.14.8</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.3.3/PPSSPP.oecoreplugin.zip"
+        url="https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases/download/cores-v1.3.3/PPSSPP.oecoreplugin.zip"
         sparkle:version="1.14.8"
         sparkle:shortVersionString="1.14.8"
         length="12681037"
@@ -19,7 +19,7 @@
       <title>PPSSPP 1.14.7</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.3.2/PPSSPP.oecoreplugin.zip"
+        url="https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases/download/cores-v1.3.2/PPSSPP.oecoreplugin.zip"
         sparkle:version="1.14.7"
         sparkle:shortVersionString="1.14.7"
         length="12709175"
@@ -30,7 +30,7 @@
       <title>PPSSPP 1.14.6</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.3.2/PPSSPP.oecoreplugin.zip"
+        url="https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases/download/cores-v1.3.2/PPSSPP.oecoreplugin.zip"
         sparkle:version="1.14.6"
         sparkle:shortVersionString="1.14.6"
         length="12709006"
@@ -41,7 +41,7 @@
       <title>PPSSPP 1.14.5</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.3.1/PPSSPP.oecoreplugin.zip"
+        url="https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases/download/cores-v1.3.1/PPSSPP.oecoreplugin.zip"
         sparkle:version="1.14.5"
         sparkle:shortVersionString="1.14.5"
         length="12709004"
@@ -52,7 +52,7 @@
       <title>PPSSPP 1.14.4</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.0.0/PPSSPP.oecoreplugin.zip"
+        url="https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases/download/cores-v1.0.0/PPSSPP.oecoreplugin.zip"
         sparkle:version="1.14.4"
         sparkle:shortVersionString="1.14.4"
         length="12708993"

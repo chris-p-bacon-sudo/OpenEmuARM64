@@ -283,18 +283,18 @@ else
 fi
 
 # Create or update GitHub draft release
-if gh release view "$TAG" --repo nickybmon/OpenEmu-Silicon &>/dev/null; then
+if gh release view "$TAG" --repo OpenEmu-Silicon/OpenEmu-Silicon &>/dev/null; then
   echo "Release $TAG already exists — uploading DMG and updating notes..."
   gh release upload "$TAG" "$DMG" \
-    --repo nickybmon/OpenEmu-Silicon \
+    --repo OpenEmu-Silicon/OpenEmu-Silicon \
     --clobber
   gh release edit "$TAG" \
-    --repo nickybmon/OpenEmu-Silicon \
+    --repo OpenEmu-Silicon/OpenEmu-Silicon \
     "${GH_NOTES_ARGS[@]}"
 else
   echo "Creating draft release $TAG..."
   gh release create "$TAG" "$DMG" \
-    --repo nickybmon/OpenEmu-Silicon \
+    --repo OpenEmu-Silicon/OpenEmu-Silicon \
     --title "OpenEmu-Silicon $VERSION" \
     --draft \
     "${GH_NOTES_ARGS[@]}"
@@ -309,7 +309,7 @@ if [ -n "$NOTES_FILE" ] && [ -f "$NOTES_FILE" ]; then
 fi
 
 PR_URL=$(gh pr create \
-  --repo nickybmon/OpenEmu-Silicon \
+  --repo OpenEmu-Silicon/OpenEmu-Silicon \
   --base main \
   --head "$RELEASE_BRANCH" \
   --draft \
@@ -326,7 +326,7 @@ This PR lands the appcast update, Homebrew cask, and version files for v$VERSION
 **After merging:**
 Publish the GitHub Release:
 \`\`\`
-gh release edit $TAG --draft=false --repo nickybmon/OpenEmu-Silicon
+gh release edit $TAG --draft=false --repo OpenEmu-Silicon/OpenEmu-Silicon
 \`\`\`
 
 ---
@@ -340,7 +340,7 @@ echo ""
 echo "  DMG:    $DMG"
 echo "  Tag:    $TAG (pushed — download URL is live)"
 echo "  PR:     $PR_URL"
-echo "  Draft:  https://github.com/nickybmon/OpenEmu-Silicon/releases/tag/$TAG"
+echo "  Draft:  https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases/tag/$TAG"
 echo ""
 echo "  Next steps:"
 echo "  1. Let CI run on the PR — check for version lint failures"
@@ -348,5 +348,5 @@ echo "  2. Review draft release notes on GitHub"
 echo "  3. Test the DMG"
 echo "  4. Merge the PR (makes appcast live for Sparkle)"
 echo "  5. Publish the GitHub Release:"
-echo "     gh release edit $TAG --draft=false --repo nickybmon/OpenEmu-Silicon"
+echo "     gh release edit $TAG --draft=false --repo OpenEmu-Silicon/OpenEmu-Silicon"
 echo ""

@@ -13,7 +13,7 @@ Only the latest release receives security fixes. Older versions are not patched.
 
 **Please do not open a public GitHub issue for security vulnerabilities.**
 
-Report vulnerabilities privately using [GitHub's private vulnerability reporting](https://github.com/nickybmon/OpenEmu-Silicon/security/advisories/new). This keeps the details confidential until a fix is available.
+Report vulnerabilities privately using [GitHub's private vulnerability reporting](https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/security/advisories/new). This keeps the details confidential until a fix is available.
 
 Include as much of the following as you can:
 

@@ -41,10 +41,10 @@ Run the full git shipping loop for the current branch.
    Push and open the PR, then immediately edit the body to replace `NUMBER` with the real PR number:
    ```bash
    # Step 1 — create the PR (NUMBER is a placeholder at this point)
-   PR_URL=$(gh pr create --repo nickybmon/OpenEmu-Silicon --base main --title "<type>: description" --body "...")
+   PR_URL=$(gh pr create --repo OpenEmu-Silicon/OpenEmu-Silicon --base main --title "<type>: description" --body "...")
    # Step 2 — extract the number and patch the body
    PR_NUM=$(echo "$PR_URL" | grep -o '[0-9]*$')
-   gh pr edit "$PR_NUM" --repo nickybmon/OpenEmu-Silicon --body "$(gh pr view "$PR_NUM" --repo nickybmon/OpenEmu-Silicon --json body -q .body | sed "s/NUMBER/$PR_NUM/g")"
+   gh pr edit "$PR_NUM" --repo OpenEmu-Silicon/OpenEmu-Silicon --body "$(gh pr view "$PR_NUM" --repo OpenEmu-Silicon/OpenEmu-Silicon --json body -q .body | sed "s/NUMBER/$PR_NUM/g")"
    ```
 
    Always do both steps. The reviewer should never see `NUMBER` in the test block — it must be the real PR number before you report the PR as open.

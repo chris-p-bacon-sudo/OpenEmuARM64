@@ -8,7 +8,7 @@
       <title>SNES9x 1.63.5</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.3.6/SNES9x.oecoreplugin.zip"
+        url="https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases/download/cores-v1.3.6/SNES9x.oecoreplugin.zip"
         sparkle:version="1.63.5"
         sparkle:shortVersionString="1.63.5"
         length="864763"
@@ -19,7 +19,7 @@
       <title>SNES9x 1.63.4</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.3.5/SNES9x.oecoreplugin.zip"
+        url="https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases/download/cores-v1.3.5/SNES9x.oecoreplugin.zip"
         sparkle:version="1.63.4"
         sparkle:shortVersionString="1.63.4"
         length="864360"
@@ -30,7 +30,7 @@
       <title>SNES9x 1.63.3</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.3.3/SNES9x.oecoreplugin.zip"
+        url="https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases/download/cores-v1.3.3/SNES9x.oecoreplugin.zip"
         sparkle:version="1.63.3"
         sparkle:shortVersionString="1.63.3"
         length="1937929"
@@ -41,7 +41,7 @@
       <title>SNES9x 1.63.2</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.3.2/SNES9x.oecoreplugin.zip"
+        url="https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases/download/cores-v1.3.2/SNES9x.oecoreplugin.zip"
         sparkle:version="1.63.2"
         sparkle:shortVersionString="1.63.2"
         length="1931866"
@@ -52,7 +52,7 @@
       <title>SNES9x 1.63.1</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.3.1/SNES9x.oecoreplugin.zip"
+        url="https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases/download/cores-v1.3.1/SNES9x.oecoreplugin.zip"
         sparkle:version="1.63.1"
         sparkle:shortVersionString="1.63.1"
         length="854677"
@@ -63,7 +63,7 @@
       <title>SNES9x 1.63</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.0.0/SNES9x.oecoreplugin.zip"
+        url="https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases/download/cores-v1.0.0/SNES9x.oecoreplugin.zip"
         sparkle:version="1.63"
         sparkle:shortVersionString="1.63"
         length="692777"

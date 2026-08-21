@@ -28,7 +28,7 @@ The PR number below is filled in automatically — just paste the whole block. F
 
 ```bash
 cd ~/Documents/Cursor/Open\ Emu
-gh pr checkout NUMBER --repo nickybmon/OpenEmu-Silicon
+gh pr checkout NUMBER --repo OpenEmu-Silicon/OpenEmu-Silicon
 ./Scripts/verify.sh
 ./Scripts/launch-debug.sh
 ```

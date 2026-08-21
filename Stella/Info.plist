@@ -51,6 +51,6 @@
 	<key>SUEnableAutomaticChecks</key>
 	<string>1</string>
 	<key>SUFeedURL</key>
-	<string>https://raw.githubusercontent.com/nickybmon/OpenEmu-Silicon/main/Appcasts/stella.xml</string>
+	<string>https://raw.githubusercontent.com/OpenEmu-Silicon/OpenEmu-Silicon/main/Appcasts/stella.xml</string>
 </dict>
 </plist>

@@ -8,7 +8,7 @@
       <title>Mednafen 1.26.8.1</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.4.0/Mednafen.oecoreplugin.zip"
+        url="https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases/download/cores-v1.4.0/Mednafen.oecoreplugin.zip"
         sparkle:version="1.26.8.1"
         sparkle:shortVersionString="1.26.8.1"
         length="2930674"
@@ -19,7 +19,7 @@
       <title>Mednafen 1.26.8</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.3.6/Mednafen.oecoreplugin.zip"
+        url="https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases/download/cores-v1.3.6/Mednafen.oecoreplugin.zip"
         sparkle:version="1.26.8"
         sparkle:shortVersionString="1.26.8"
         length="2929482"
@@ -30,7 +30,7 @@
       <title>Mednafen 1.26.7</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.3.5/Mednafen.oecoreplugin.zip"
+        url="https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases/download/cores-v1.3.5/Mednafen.oecoreplugin.zip"
         sparkle:version="1.26.7"
         sparkle:shortVersionString="1.26.7"
         length="2928160"
@@ -41,7 +41,7 @@
       <title>Mednafen 1.26.6</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.3.3/Mednafen.oecoreplugin.zip"
+        url="https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases/download/cores-v1.3.3/Mednafen.oecoreplugin.zip"
         sparkle:version="1.26.6"
         sparkle:shortVersionString="1.26.6"
         length="7558630"
@@ -52,7 +52,7 @@
       <title>Mednafen 1.26.5</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.3.2/Mednafen.oecoreplugin.zip"
+        url="https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases/download/cores-v1.3.2/Mednafen.oecoreplugin.zip"
         sparkle:version="1.26.5"
         sparkle:shortVersionString="1.26.5"
         length="7548252"
@@ -63,7 +63,7 @@
       <title>Mednafen 1.26.4</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.3.1/Mednafen.oecoreplugin.zip"
+        url="https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases/download/cores-v1.3.1/Mednafen.oecoreplugin.zip"
         sparkle:version="1.26.4"
         sparkle:shortVersionString="1.26.4"
         length="2914494"
@@ -74,7 +74,7 @@
       <title>Mednafen 1.26.3</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.3.0/Mednafen.oecoreplugin.zip"
+        url="https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases/download/cores-v1.3.0/Mednafen.oecoreplugin.zip"
         sparkle:version="1.26.3"
         sparkle:shortVersionString="1.26.3"
         length="2915033"
@@ -84,7 +84,7 @@
       <title>Mednafen 1.26.2</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.2.0/Mednafen.oecoreplugin.zip"
+        url="https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases/download/cores-v1.2.0/Mednafen.oecoreplugin.zip"
         sparkle:version="1.26.2"
         sparkle:shortVersionString="1.26.2"
         length="2748848"
@@ -94,7 +94,7 @@
       <title>Mednafen 1.26.1</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.0.0/Mednafen.oecoreplugin.zip"
+        url="https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases/download/cores-v1.0.0/Mednafen.oecoreplugin.zip"
         sparkle:version="1.26.1"
         sparkle:shortVersionString="1.26.1"
         length="2748851"

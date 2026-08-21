@@ -8,7 +8,7 @@
       <title>Atari800 3.1.4</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.3.8/Atari800.oecoreplugin.zip"
+        url="https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases/download/cores-v1.3.8/Atari800.oecoreplugin.zip"
         sparkle:version="3.1.4"
         sparkle:shortVersionString="3.1.4"
         length="168828"
@@ -19,7 +19,7 @@
       <title>Atari800 3.1.3</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.3.8/Atari800.oecoreplugin.zip"
+        url="https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases/download/cores-v1.3.8/Atari800.oecoreplugin.zip"
         sparkle:version="3.1.3"
         sparkle:shortVersionString="3.1.3"
         length="164431"
@@ -31,7 +31,7 @@
       <title>Atari800 3.1.2</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.3.1/Atari800.oecoreplugin.zip"
+        url="https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases/download/cores-v1.3.1/Atari800.oecoreplugin.zip"
         sparkle:version="3.1.2"
         sparkle:shortVersionString="3.1.2"
         length="175959"
@@ -42,7 +42,7 @@
       <title>Atari800 3.1.1</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.0.0/Atari800.oecoreplugin.zip"
+        url="https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases/download/cores-v1.0.0/Atari800.oecoreplugin.zip"
         sparkle:version="3.1.1"
         sparkle:shortVersionString="3.1.1"
         length="175957"

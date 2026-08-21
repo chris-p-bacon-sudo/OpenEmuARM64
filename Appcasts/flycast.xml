@@ -8,7 +8,7 @@
       <title>Flycast 2.4.3</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.3.2/Flycast.oecoreplugin.zip"
+        url="https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases/download/cores-v1.3.2/Flycast.oecoreplugin.zip"
         sparkle:version="2.4.3"
         sparkle:shortVersionString="2.4.3"
         length="3094106"
@@ -19,7 +19,7 @@
       <title>Flycast 2.4.2</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.3.1/Flycast.oecoreplugin.zip"
+        url="https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases/download/cores-v1.3.1/Flycast.oecoreplugin.zip"
         sparkle:version="2.4.2"
         sparkle:shortVersionString="2.4.2"
         length="3094108"
@@ -30,7 +30,7 @@
       <title>Flycast 2.4.1</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.3.0/Flycast.oecoreplugin.zip"
+        url="https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases/download/cores-v1.3.0/Flycast.oecoreplugin.zip"
         sparkle:version="2.4.1"
         sparkle:shortVersionString="2.4.1"
         length="3094032"
@@ -40,7 +40,7 @@
       <title>Flycast 2.4</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.1.1/Flycast.oecoreplugin.zip"
+        url="https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases/download/cores-v1.1.1/Flycast.oecoreplugin.zip"
         sparkle:version="2.4"
         sparkle:shortVersionString="2.4"
         length="3093872"
@@ -50,7 +50,7 @@
       <title>Flycast 2.3</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.0.0/Flycast.oecoreplugin.zip"
+        url="https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases/download/cores-v1.0.0/Flycast.oecoreplugin.zip"
         sparkle:version="2.3"
         sparkle:shortVersionString="2.3"
         length="4491704"

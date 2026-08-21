@@ -21,7 +21,7 @@ git stash list
 ### 2. Pull live project state
 
 ```bash
-gh issue list --repo nickybmon/OpenEmu-Silicon --state open
+gh issue list --repo OpenEmu-Silicon/OpenEmu-Silicon --state open
 ```
 
 Read the output. Summarize the open issues so there's a clear picture of what's in flight.

@@ -41,11 +41,11 @@ extension OEDBRom: CachedLastPlayedInfoItem {}
 @objcMembers
 class AppDelegate: NSObject, UNUserNotificationCenterDelegate {
     
-    static let websiteAddress = "https://github.com/nickybmon/OpenEmu-Silicon"
-    static let userGuideAddress = "https://github.com/nickybmon/OpenEmu-Silicon/wiki"
-    static let releaseNotesAddress = "https://github.com/nickybmon/OpenEmu-Silicon/releases"
-    static let feedbackAddress = "https://github.com/nickybmon/OpenEmu-Silicon/issues/new/choose"
-    static let bugReportAddress = "https://github.com/nickybmon/OpenEmu-Silicon/issues/new"
+    static let websiteAddress = "https://github.com/OpenEmu-Silicon/OpenEmu-Silicon"
+    static let userGuideAddress = "https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/wiki"
+    static let releaseNotesAddress = "https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases"
+    static let feedbackAddress = "https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/issues/new/choose"
+    static let bugReportAddress = "https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/issues/new"
 
     @IBOutlet weak var fileMenu: NSMenu!
     @IBOutlet weak var helpMenu: NSMenu!
@@ -491,7 +491,7 @@ class AppDelegate: NSObject, UNUserNotificationCenterDelegate {
 
     /// Walks every installed `*.oecoreplugin` (excluding RetroArch stubs) and
     /// rewrites a stale `SUFeedURL` in its `Info.plist` to the canonical
-    /// nickybmon-hosted appcast. Sparkle and `CoreUpdater` both read the URL
+    /// canonical org-hosted appcast. Sparkle and `CoreUpdater` both read the URL
     /// from the installed plist, so cores installed before the URL migration
     /// stay frozen on the dormant upstream URL until this runs.
     ///
@@ -501,7 +501,7 @@ class AppDelegate: NSObject, UNUserNotificationCenterDelegate {
     /// the host's `disable-library-validation` entitlement covers any plugin
     /// signature drift, so re-codesigning is not required.
     fileprivate func refreshStaleCoreFeedURLs() {
-        let canonicalPrefix = "https://raw.githubusercontent.com/nickybmon/OpenEmu-Silicon/main/Appcasts/"
+        let canonicalPrefix = "https://raw.githubusercontent.com/OpenEmu-Silicon/OpenEmu-Silicon/main/Appcasts/"
         feedURLRefreshReport = ([], [])
 
         let coresDir = FileManager.default.homeDirectoryForCurrentUser

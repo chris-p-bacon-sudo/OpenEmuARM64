@@ -2,7 +2,7 @@
 <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">
   <channel>
     <title>OpenEmu-Silicon Changelog</title>
-    <link>https://github.com/nickybmon/OpenEmu-Silicon/releases</link>
+    <link>https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases</link>
     <description>Most recent changes with links to updates.</description>
     <language>en</language>
                                                             <item>
@@ -73,7 +73,7 @@
       <pubDate>Fri, 19 Jun 2026 15:44:44 +0000</pubDate>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/v1.2.4/OpenEmu-Silicon.dmg"
+        url="https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases/download/v1.2.4/OpenEmu-Silicon.dmg"
         sparkle:version="20"
         sparkle:shortVersionString="1.2.4"
         sparkle:edSignature="PZQ38l+c5x5A0qowGQCJm8+DYEJQ/GTjTG1hfoThvxt9r5vw4bcHtFwDjM3zfriJNEuK1By8T4QbvzlSO5/PCg=="
@@ -102,7 +102,7 @@
       <pubDate>Mon, 08 Jun 2026 14:51:42 +0000</pubDate>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/v1.2.3/OpenEmu-Silicon.dmg"
+        url="https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases/download/v1.2.3/OpenEmu-Silicon.dmg"
         sparkle:version="19"
         sparkle:shortVersionString="1.2.3"
         sparkle:edSignature="040NIcv+O6EbrD/RIzW9+eIZmIxrQ7buNfj7ZAcaTPTWXwxvyhdJDwaY65SoY0Qy64DA0FhZydv4r+mdTV2kAw=="
@@ -131,7 +131,7 @@
       <pubDate>Thu, 21 May 2026 02:16:00 +0000</pubDate>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/v1.2.2/OpenEmu-Silicon.dmg"
+        url="https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases/download/v1.2.2/OpenEmu-Silicon.dmg"
         sparkle:version="18"
         sparkle:shortVersionString="1.2.2"
         sparkle:edSignature="RepA5SbIm7cunKISVp28m2KxQFsndgenYlNmYacSdBS6CbLVwGZ9V0AIcVgWq/MmM3EaY1okUPYk0netTGi0AQ=="
@@ -155,7 +155,7 @@
       <pubDate>Wed, 20 May 2026 00:11:19 +0000</pubDate>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/v1.2.1/OpenEmu-Silicon.dmg"
+        url="https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases/download/v1.2.1/OpenEmu-Silicon.dmg"
         sparkle:version="17"
         sparkle:shortVersionString="1.2.1"
         sparkle:edSignature="prSU+X8vvtsMk0+Y0KPqdwH6IuY78GE2iwBcDHf4iF/WvR0M5QWheY//pPj+hCylKtt9KHQkhzsboFcaiXqZBw=="
@@ -170,7 +170,7 @@
         <h3>What's New in 1.2.0</h3>
         <ul>
         <li><strong>Nintendo DS</strong> — OpenEmu now includes a native DeSmuME core for Nintendo DS. DS games run natively on Apple Silicon with full dual-screen support, save states, and controller input. Import your .nds files and they'll appear in a new Nintendo DS library automatically.</li>
-        <li><strong>Arcade (experimental)</strong> — A native MAME core is now bundled for Arcade games. Sprite-based classics like Donkey Kong, Pac-Man, and Street Fighter II work well. Polygonal 3D hardware (Sega Model 1/2/3) has known rendering limitations — tracked in [#551](https://github.com/nickybmon/OpenEmu-Silicon/issues/551).</li>
+        <li><strong>Arcade (experimental)</strong> — A native MAME core is now bundled for Arcade games. Sprite-based classics like Donkey Kong, Pac-Man, and Street Fighter II work well. Polygonal 3D hardware (Sega Model 1/2/3) has known rendering limitations — tracked in [#551](https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/issues/551).</li>
         <li><strong>RetroAchievements UI</strong> — The in-game achievements experience is substantially improved. An achievement list panel shows your progress mid-session, gameplay event indicators appear on-screen when achievements unlock or are close to triggering, and online/offline status is shown at a glance. Games not recognized by RetroAchievements now surface a clear explanation rather than silently doing nothing.</li>
         <li><strong>Core updates (cores-v1.3.3)</strong> — All RetroAchievements-capable cores were rebuilt and updated. Cores that previously needed the RA token before launch now initialize correctly on the first try.</li>
         </ul>
@@ -189,14 +189,14 @@
         </ul>
         <h3>Known Limitations</h3>
         <ul>
-        <li><strong>MAME polygonal 3D</strong> — Games relying on Sega Model 1/2/3 hardware have rendering and audio issues. Tracked in [#551](https://github.com/nickybmon/OpenEmu-Silicon/issues/551).</li>
+        <li><strong>MAME polygonal 3D</strong> — Games relying on Sega Model 1/2/3 hardware have rendering and audio issues. Tracked in [#551](https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/issues/551).</li>
         </ul>
         ]]>
       </description>
       <pubDate>Tue, 19 May 2026 17:44:54 +0000</pubDate>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/v1.2.0/OpenEmu-Silicon.dmg"
+        url="https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases/download/v1.2.0/OpenEmu-Silicon.dmg"
         sparkle:version="16"
         sparkle:shortVersionString="1.2.0"
         sparkle:edSignature="b2IOM+uGTGSpmr+2TCgfgMKvgcBFTKJghyYNp3mormNkPxcOkonxpW0ODtOycyxKek2+QlDghTdQ3i1FZZcTBw=="
@@ -239,7 +239,7 @@
       <pubDate>Tue, 12 May 2026 12:56:16 +0000</pubDate>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/v1.1.2/OpenEmu-Silicon.dmg"
+        url="https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases/download/v1.1.2/OpenEmu-Silicon.dmg"
         sparkle:version="15"
         sparkle:shortVersionString="1.1.2"
         sparkle:edSignature="7j6rUURQ6bVuxy28nto0TIYqmr/0N26IqcGJAVNHtf+6cKAV0HfPcRhBeD5HI7JO3QYN4SkpePfE+2qXe+IZCQ=="
@@ -282,7 +282,7 @@
       <pubDate>Tue, 12 May 2026 02:20:24 +0000</pubDate>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/v1.1.2/OpenEmu-Silicon.dmg"
+        url="https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases/download/v1.1.2/OpenEmu-Silicon.dmg"
         sparkle:version="14"
         sparkle:shortVersionString="1.1.2"
         sparkle:edSignature="LZn6Xb7XeUjI4UePXG2QwiOhXmAWzg08F38hC7vD3daWs81u1oNM4zC4VHYFcdKd3geIBaHqrrIJeF9iH3W0Aw=="
@@ -313,7 +313,7 @@
       <pubDate>Thu, 07 May 2026 22:41:11 +0000</pubDate>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/v1.1.1/OpenEmu-Silicon.dmg"
+        url="https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases/download/v1.1.1/OpenEmu-Silicon.dmg"
         sparkle:version="13"
         sparkle:shortVersionString="1.1.1"
         sparkle:edSignature="1aZV/bCyaNlw9hmCMEQEuBcUNN2T3g15qWrMN42+dvRPzWBXRQ4Av6t2N+swKwcp9nMH6xcRZWfa67Y94h8nBw=="
@@ -353,7 +353,7 @@
         <li>Cores that override their declared default options used to lose those defaults until you opened settings — fixed in 1.1.0, but worth a sanity check on any core with unusual defaults.</li>
         </ul>
         <p>**I'd genuinely value testing help.** If you've got hardware to throw at a system above (or a different libretro core entirely), please try it and open issues with what works and what doesn't — especially crashes with full reproduction steps.</p>
-        <p>→ **[Setup guide and supported cores list](https://github.com/nickybmon/OpenEmu-Silicon/wiki/Using-RetroArch-Cores)**</p>
+        <p>→ **[Setup guide and supported cores list](https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/wiki/Using-RetroArch-Cores)**</p>
         <p>---</p>
         <p>### RetroAchievements — Phase 2 🏆 *(Testing help welcome)*</p>
         <p>Two more system families now earn RetroAchievements automatically while you play:</p>
@@ -411,7 +411,7 @@
       <pubDate>Wed, 06 May 2026 17:42:18 +0000</pubDate>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/v1.1.0/OpenEmu-Silicon.dmg"
+        url="https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases/download/v1.1.0/OpenEmu-Silicon.dmg"
         sparkle:version="12"
         sparkle:shortVersionString="1.1.0"
         sparkle:edSignature="6FkBvuhNJcZEQCEL0H01dXeayi4B1lthKTYioDidlOD279C5N1/bUusP504JkEGnjL3fHyXi+P3u8dekPLasDQ=="
@@ -437,8 +437,8 @@
         <p>| Master System / Game Gear | GenesisPlus |</p>
         <p>| Sega CD / SG-1000 | GenesisPlus |</p>
         <p>Your login token is stored securely in your Keychain and propagated automatically to each supported core when a game loads — no per-game setup needed. When you unlock an achievement, an in-game banner appears at the bottom of the screen with the achievement name and point value.</p>
-        <p>For setup instructions, supported game lists, and troubleshooting, see the [RetroAchievements wiki page](https://github.com/nickybmon/OpenEmu-Silicon/wiki/RetroAchievements).</p>
-        <p>More cores are on the way — see the [Phase 2 & 3 rollout tracker](https://github.com/nickybmon/OpenEmu-Silicon/issues/258) for what's coming next.</p>
+        <p>For setup instructions, supported game lists, and troubleshooting, see the [RetroAchievements wiki page](https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/wiki/RetroAchievements).</p>
+        <p>More cores are on the way — see the [Phase 2 & 3 rollout tracker](https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/issues/258) for what's coming next.</p>
         <p>---</p>
         <p>### Play With… — per-launch core selection</p>
         <p>Right-click any game in your library and choose **Play With…** to pick which core launches it, without changing your default. The submenu only appears when more than one core is installed for that system.</p>
@@ -459,7 +459,7 @@
       <pubDate>Thu, 30 Apr 2026 19:31:17 +0000</pubDate>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/v1.0.7/OpenEmu-Silicon.dmg"
+        url="https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases/download/v1.0.7/OpenEmu-Silicon.dmg"
         sparkle:version="8"
         sparkle:shortVersionString="1.0.7"
         sparkle:edSignature="tBC4xwhuvoiTNQVnrPZVjVGJ8y0J4rtCk7jZTsCVXnbCshewYyx3XGtSzo1QK+uTgqGbvpD0LQ3o/gyfawbODg=="
@@ -486,7 +486,7 @@
       <pubDate>Sat, 18 Apr 2026 16:21:02 +0000</pubDate>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/v1.0.6/OpenEmu-Silicon.dmg"
+        url="https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases/download/v1.0.6/OpenEmu-Silicon.dmg"
         sparkle:version="7"
         sparkle:shortVersionString="1.0.6"
         sparkle:edSignature="wTNqyYLd0DNCHrV1i4o/qi3jH8GSZ87o1QimcrKKHmHJ2/YGpTmRU+NCH1XR2AEF613wtPfpzSwE8IW7jHQqBQ=="
@@ -503,7 +503,7 @@
         <p>The Dolphin core is now available for download from Preferences → Cores. GameCube games load and run natively on Apple Silicon with full Metal rendering and save state support. Wii support is included but has not been fully tested — treat it as experimental for now.</p>
         <p>**Migrating from original OpenEmu?** Dolphin save states from the original app are not compatible due to the x86 → arm64 architecture change and different Dolphin version. You'll see a recovery dialog on first launch — choose "Reopen without loading state" to continue. Your memory card saves are not affected.</p>
         <p>### Dreamcast — semi-working</p>
-        <p>Flycast is available and most games are playable. There is a known cold-boot issue on some titles where the first launch shows a black screen — close the game and relaunch and it will work. Full details and ongoing investigation in [issue #169](https://github.com/nickybmon/OpenEmu-Silicon/issues/169).</p>
+        <p>Flycast is available and most games are playable. There is a known cold-boot issue on some titles where the first launch shows a black screen — close the game and relaunch and it will work. Full details and ongoing investigation in [issue #169](https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/issues/169).</p>
         <p>### 3DO now available</p>
         <p>The 4DO core builds natively on arm64 and is now downloadable from Preferences → Cores. Requires the `panafz10.bin` BIOS file in `~/Library/Application Support/OpenEmu/BIOS/`.</p>
         <p>### Coming soon — libretro bridge</p>
@@ -544,7 +544,7 @@
       <pubDate>Thu, 16 Apr 2026 01:43:34 +0000</pubDate>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/v1.0.5/OpenEmu-Silicon.dmg"
+        url="https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases/download/v1.0.5/OpenEmu-Silicon.dmg"
         sparkle:version="6"
         sparkle:shortVersionString="1.0.5"
         sparkle:edSignature="3onQH2WjUCWQshqoDf8e7vKhP84aRo8g2M6W0JOvrB8/sD5Jb3iDY4pNTgEIYXlRtxWCyIDuXFGUVgHaQrFjDg=="
@@ -581,7 +581,7 @@
       <pubDate>Sun, 05 Apr 2026 20:38:08 +0000</pubDate>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/v1.0.4/OpenEmu-Silicon.dmg"
+        url="https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases/download/v1.0.4/OpenEmu-Silicon.dmg"
         sparkle:version="5"
         sparkle:shortVersionString="1.0.4"
         sparkle:edSignature="amQMbfJNMHTCKn3o0OgIaxsku69zVZOqdCUJ1BGq5cN/XPUl12mzIvNFYDCnV4dPtMUreUAnERgk28yDDAwPBQ=="
@@ -603,7 +603,7 @@
       <pubDate>Fri, 04 Apr 2026 00:00:00 +0000</pubDate>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/v1.0.3/OpenEmu-Silicon.dmg"
+        url="https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases/download/v1.0.3/OpenEmu-Silicon.dmg"
         sparkle:version="4"
         sparkle:shortVersionString="1.0.3"
         sparkle:edSignature="Um1PdVkVEFwj+qXOxBJy4PHa6/3unb6MmzcRpmjpoZ8GIO2RSaR+GWg/e463nfSgObeWwgs/INw3CgTl5SUBDA=="
@@ -631,7 +631,7 @@
       <pubDate>Thu, 03 Apr 2026 00:00:00 +0000</pubDate>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/v1.0.2/OpenEmu-Silicon.dmg"
+        url="https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases/download/v1.0.2/OpenEmu-Silicon.dmg"
         sparkle:version="3"
         sparkle:shortVersionString="1.0.2"
         sparkle:edSignature="DlrQ2QIumrKgksQoaR03ZqI7yMkDPLUoXlkswvTPxff+Vp3WH6UMmT+qcOotgl/8jWA8cuIvixSZ2v1/lptQCA=="
@@ -654,7 +654,7 @@
       <pubDate>Wed, 02 Apr 2026 00:00:00 +0000</pubDate>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/v1.0.1/OpenEmu-Silicon.dmg"
+        url="https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases/download/v1.0.1/OpenEmu-Silicon.dmg"
         sparkle:version="2"
         sparkle:shortVersionString="1.0.1"
         sparkle:edSignature="umiYTLemnjNoDR+0sDRn6B1Z5q/fi9ZGFPe7Qbqr4N9UckpGKTxd3jA2naQc+2MQi+KxVbdD8sCASM2B9a+OCw=="
@@ -682,7 +682,7 @@
       <pubDate>Sun, 30 Mar 2026 00:00:00 +0000</pubDate>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/v1.0.0/OpenEmu-Silicon.dmg"
+        url="https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases/download/v1.0.0/OpenEmu-Silicon.dmg"
         sparkle:version="1"
         sparkle:shortVersionString="1.0.0"
         sparkle:edSignature="FILL_IN_AFTER_RELEASE"

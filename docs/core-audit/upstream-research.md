@@ -1,13 +1,13 @@
 # Research: OpenEmu upstream core inventory
 
 ## Summary
-OpenEmu upstream’s primary core inventory is split across the main repo submodule list, OpenEmu-Update core feeds, appcasts, and individual OpenEmu org core repositories. The upstream source tree shows a broad “known core” set that is larger than the stable public downloader list: stable/previously shipped cores cover the classic OpenEmu systems, while several additional repos appear to be experimental, dormant, deprecated, or WIP. For nickybmon/OpenEmu-Silicon, the main upstream gaps to flag are Commodore 64-era repos (`Frodo-Core`, `VirtualC64-Core`) and upstream `Reicast-Core` as a historical Dreamcast/WIP core; Silicon instead ships Flycast and adds modern native cores such as Dolphin/PPSSPP/Flycast via its own appcasts.
+OpenEmu upstream’s primary core inventory is split across the main repo submodule list, OpenEmu-Update core feeds, appcasts, and individual OpenEmu org core repositories. The upstream source tree shows a broad “known core” set that is larger than the stable public downloader list: stable/previously shipped cores cover the classic OpenEmu systems, while several additional repos appear to be experimental, dormant, deprecated, or WIP. For OpenEmu-Silicon/OpenEmu-Silicon, the main upstream gaps to flag are Commodore 64-era repos (`Frodo-Core`, `VirtualC64-Core`) and upstream `Reicast-Core` as a historical Dreamcast/WIP core; Silicon instead ships Flycast and adds modern native cores such as Dolphin/PPSSPP/Flycast via its own appcasts.
 
 ## Research angles used
 1. **Upstream source inventory** — `OpenEmu/OpenEmu` `.gitmodules` as the canonical list of core repositories wired into the upstream source checkout.
 2. **Updater/feed inventory** — `OpenEmu/OpenEmu-Update` `oecores.xml`, `oecores-experimental.xml`, `cores.json`, and appcast files as the public downloader/update evidence.
 3. **Repository-level evidence** — OpenEmu org `*-Core` repositories as evidence that a core existed even if not stable-shipped.
-4. **Comparison target** — local `nickybmon/OpenEmu-Silicon` `oecores.xml` and project instructions for the current Silicon shipped/support matrix.
+4. **Comparison target** — local `OpenEmu-Silicon/OpenEmu-Silicon` `oecores.xml` and project instructions for the current Silicon shipped/support matrix.
 
 ## Findings
 
@@ -17,7 +17,7 @@ OpenEmu upstream’s primary core inventory is split across the main repo submod
 
 3. **Experimental inventory is expected to live in `oecores-experimental.xml`; source-side candidates include `BSNES`, `blueMSX`, `JollyCV`, `PokeMini`, `Potator-Core`, `VirtualJaguar`, `Reicast`, `Frodo-Core`, and `VirtualC64-Core`.** These appear in upstream `.gitmodules`, but several were historically not part of the core stable OpenEmu system list or were alternate implementations. Treat them as experimental/WIP/deprecated until their status is confirmed against the experimental feed and appcasts. [OpenEmu-Update oecores-experimental.xml](https://github.com/OpenEmu/OpenEmu-Update/blob/master/oecores-experimental.xml), [OpenEmu/OpenEmu .gitmodules](https://github.com/OpenEmu/OpenEmu/blob/master/.gitmodules)
 
-4. **Dreamcast upstream evidence points to `Reicast-Core`, while OpenEmu-Silicon ships `Flycast`.** Upstream `.gitmodules` lists `Reicast` with URL `../../OpenEmu/Reicast-Core.git`; the Silicon core feed lists `org.openemu.Flycast` for `openemu.system.dc`. For audit purposes, mark upstream Reicast as a historical/WIP Dreamcast core and Silicon Flycast as a replacement rather than a direct upstream carry-forward. [OpenEmu/Reicast-Core](https://github.com/OpenEmu/Reicast-Core), [OpenEmu/OpenEmu .gitmodules](https://github.com/OpenEmu/OpenEmu/blob/master/.gitmodules), [nickybmon/OpenEmu-Silicon Flycast appcast](https://raw.githubusercontent.com/nickybmon/OpenEmu-Silicon/main/Appcasts/flycast.xml)
+4. **Dreamcast upstream evidence points to `Reicast-Core`, while OpenEmu-Silicon ships `Flycast`.** Upstream `.gitmodules` lists `Reicast` with URL `../../OpenEmu/Reicast-Core.git`; the Silicon core feed lists `org.openemu.Flycast` for `openemu.system.dc`. For audit purposes, mark upstream Reicast as a historical/WIP Dreamcast core and Silicon Flycast as a replacement rather than a direct upstream carry-forward. [OpenEmu/Reicast-Core](https://github.com/OpenEmu/Reicast-Core), [OpenEmu/OpenEmu .gitmodules](https://github.com/OpenEmu/OpenEmu/blob/master/.gitmodules), [OpenEmu-Silicon/OpenEmu-Silicon Flycast appcast](https://raw.githubusercontent.com/OpenEmu-Silicon/OpenEmu-Silicon/main/Appcasts/flycast.xml)
 
 5. **Commodore 64 is the clearest upstream-source-to-Silicon gap.** Upstream `.gitmodules` includes both `Frodo-Core` and `VirtualC64-Core`, but the Silicon project instructions state Commodore 64 is “RetroArch / VICE only — no native core ships in this fork.” Mark C64 native support as missing from Silicon relative to upstream source inventory, with the caveat that upstream appcast/feed status must be verified before calling either core stable-shipped. [OpenEmu/Frodo-Core](https://github.com/OpenEmu/Frodo-Core), [OpenEmu/VirtualC64-Core](https://github.com/OpenEmu/VirtualC64-Core), [OpenEmu/OpenEmu .gitmodules](https://github.com/OpenEmu/OpenEmu/blob/master/.gitmodules)
 
@@ -25,7 +25,7 @@ OpenEmu upstream’s primary core inventory is split across the main repo submod
 
 7. **Arcade/MAME should not be counted as an upstream supported core unless a primary OpenEmu core/feed source is found.** Silicon’s local `oecores.xml` notes an Arcade system plugin/UI exists but no MAME emulation core exists. No `MAME-Core` appears in the upstream `.gitmodules` inventory reviewed here. Treat Arcade as a system-plugin/no-core case, not an upstream core omission. [OpenEmu/OpenEmu .gitmodules](https://github.com/OpenEmu/OpenEmu/blob/master/.gitmodules)
 
-8. **Silicon includes systems/cores that are not established by the upstream `.gitmodules` snapshot alone.** Silicon’s feed includes Dolphin for GameCube/Wii and Flycast for Dreamcast; those are Silicon-side native appcasts. If an upstream OpenEmu org repo/appcast exists for Dolphin or PPSSPP, use that repo/appcast as the source of truth; otherwise classify Dolphin/Flycast as Silicon additions and Reicast as upstream historical WIP. [nickybmon/OpenEmu-Silicon Dolphin appcast](https://raw.githubusercontent.com/nickybmon/OpenEmu-Silicon/main/Appcasts/dolphin.xml), [nickybmon/OpenEmu-Silicon Flycast appcast](https://raw.githubusercontent.com/nickybmon/OpenEmu-Silicon/main/Appcasts/flycast.xml)
+8. **Silicon includes systems/cores that are not established by the upstream `.gitmodules` snapshot alone.** Silicon’s feed includes Dolphin for GameCube/Wii and Flycast for Dreamcast; those are Silicon-side native appcasts. If an upstream OpenEmu org repo/appcast exists for Dolphin or PPSSPP, use that repo/appcast as the source of truth; otherwise classify Dolphin/Flycast as Silicon additions and Reicast as upstream historical WIP. [OpenEmu-Silicon/OpenEmu-Silicon Dolphin appcast](https://raw.githubusercontent.com/OpenEmu-Silicon/OpenEmu-Silicon/main/Appcasts/dolphin.xml), [OpenEmu-Silicon/OpenEmu-Silicon Flycast appcast](https://raw.githubusercontent.com/OpenEmu-Silicon/OpenEmu-Silicon/main/Appcasts/flycast.xml)
 
 ## Upstream inventory table
 
@@ -66,7 +66,7 @@ OpenEmu upstream’s primary core inventory is split across the main repo submod
 - Kept: OpenEmu-Update `oecores-experimental.xml` (https://github.com/OpenEmu/OpenEmu-Update/blob/master/oecores-experimental.xml) — primary experimental feed inventory.
 - Kept: OpenEmu-Update `cores.json` (https://github.com/OpenEmu/OpenEmu-Update/blob/master/cores.json) — primary machine-readable core metadata if present/current.
 - Kept: OpenEmu org core repositories, e.g. `OpenEmu/Reicast-Core`, `OpenEmu/Frodo-Core`, `OpenEmu/VirtualC64-Core` — primary repo-level evidence for historical/WIP/deprecated cores.
-- Kept: nickybmon/OpenEmu-Silicon local `oecores.xml` and project instructions — comparison target, not upstream evidence.
+- Kept: OpenEmu-Silicon/OpenEmu-Silicon local `oecores.xml` and project instructions — comparison target, not upstream evidence.
 - Dropped: emulator wiki pages, blog posts, forum threads, Reddit, and secondary compatibility lists — excluded because the task requested primary sources only.
 
 ## Gaps / follow-up needed

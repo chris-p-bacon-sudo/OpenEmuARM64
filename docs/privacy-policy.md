@@ -2,7 +2,7 @@
 
 **App:** OpenEmu-Silicon
 **Last updated:** May 17, 2026
-**Contact:** [Open an issue](https://github.com/nickybmon/OpenEmu-Silicon/issues)
+**Contact:** [Open an issue](https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/issues)
 
 ---
 
@@ -119,7 +119,7 @@ You can decline crash reporting when prompted. If you previously opted in and wa
 
 ## Open source
 
-The full source code is available at [github.com/nickybmon/OpenEmu-Silicon](https://github.com/nickybmon/OpenEmu-Silicon). You can inspect exactly what data is read, written, and transmitted.
+The full source code is available at [github.com/OpenEmu-Silicon/OpenEmu-Silicon](https://github.com/OpenEmu-Silicon/OpenEmu-Silicon). You can inspect exactly what data is read, written, and transmitted.
 
 ---
 
@@ -131,4 +131,4 @@ If the app adds new network features that affect privacy, this document will be 
 
 ## Contact
 
-Questions or concerns? [Open an issue](https://github.com/nickybmon/OpenEmu-Silicon/issues) on GitHub.
+Questions or concerns? [Open an issue](https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/issues) on GitHub.

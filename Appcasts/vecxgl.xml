@@ -8,7 +8,7 @@
       <title>VecXGL 1.2.3</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.3.1/VecXGL.oecoreplugin.zip"
+        url="https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases/download/cores-v1.3.1/VecXGL.oecoreplugin.zip"
         sparkle:version="1.2.3"
         sparkle:shortVersionString="1.2.3"
         length="44852"
@@ -19,7 +19,7 @@
       <title>VecXGL 1.2.2</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.0.0/VecXGL.oecoreplugin.zip"
+        url="https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases/download/cores-v1.0.0/VecXGL.oecoreplugin.zip"
         sparkle:version="1.2.2"
         sparkle:shortVersionString="1.2.2"
         length="44850"

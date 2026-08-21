@@ -169,9 +169,9 @@ This is how RPCS3 grew its team.
 
 RA issues require different handling. See [retroachievements-community-guide.md](retro-achievements/retroachievements-community-guide.md) for full context. Short version:
 
-- **Achievement not triggering / triggering incorrectly:** Apply `retro-achievements` + the relevant core label. Ask: is this core in the supported list? If not, link to the [RA rollout issue (#258)](https://github.com/nickybmon/OpenEmu-Silicon/issues/258). If yes, ask for game title, achievement name, and whether it reproduces with RA disabled.
+- **Achievement not triggering / triggering incorrectly:** Apply `retro-achievements` + the relevant core label. Ask: is this core in the supported list? If not, link to the [RA rollout issue (#258)](https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/issues/258). If yes, ask for game title, achievement name, and whether it reproduces with RA disabled.
 - **RA vs. emulator bug:** Many RA bugs belong upstream in the RetroAchievements issue tracker or in rcheevos, not here. When the achievement set itself is wrong (wrong memory address, wrong trigger condition), file an RA-side ticket and link it from the issue here.
-- **New core RA support requests:** Label `enhancement` + `retro-achievements` + the relevant core label. Check [issue #258](https://github.com/nickybmon/OpenEmu-Silicon/issues/258) first — it may already be tracked there. These are `help wanted` candidates since RA integration per-core is largely self-contained once you've read the implementation guide.
+- **New core RA support requests:** Label `enhancement` + `retro-achievements` + the relevant core label. Check [issue #258](https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/issues/258) first — it may already be tracked there. These are `help wanted` candidates since RA integration per-core is largely self-contained once you've read the implementation guide.
 
 ---
 

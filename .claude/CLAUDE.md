@@ -148,7 +148,7 @@ Things you do on every PR, where it's easy to forget:
 - **PR body:** **Always `cat .github/PULL_REQUEST_TEMPLATE.md` first.** Never improvise or reconstruct the PR body from memory — the template's bash test block has been hand-stabilized over many fix commits and must be preserved verbatim. Use `/ship` for the full loop.
 - **AI assistance:** Note in the PR template's "Did you use AI tools?" section.
 - **Core changes:** Use `Scripts/install-core.sh <CoreName>` to install — never `cp -R`. `verify.sh --core <Name>` does this for you.
-- **Always pass `--repo nickybmon/OpenEmu-Silicon`** on every `gh` command — there are forks.
+- **Always pass `--repo OpenEmu-Silicon/OpenEmu-Silicon`** on every `gh` command — there are forks.
 
 ---
 
@@ -159,10 +159,10 @@ Linear (workspace **OpenEmu Silicon**, via the `linear` MCP plugin) is where tri
 What this means day to day:
 1. **Check Linear first**, not `gh issue list` — use the `linear` MCP tools (`list_issues`, `get_issue`) to find existing/open work.
 2. **Triage and research live in Linear**: post root-cause findings as issue comments, set labels (`ready-for-agent`, `needs-testing`, `needs-info`, etc.), assign, and move status (Backlog → In Progress → In Review → Done) — see OES-307 for the pattern. Don't do this triage in GitHub issue comments; it won't sync back.
-3. **Still close the GitHub issue on fix** — `gh issue close #N --repo nickybmon/OpenEmu-Silicon --comment "Resolved in <sha>."`, same session as the fix lands. Sync is one-way for new issues; don't assume completing the Linear issue closes GitHub's copy without checking.
+3. **Still close the GitHub issue on fix** — `gh issue close #N --repo OpenEmu-Silicon/OpenEmu-Silicon --comment "Resolved in <sha>."`, same session as the fix lands. Sync is one-way for new issues; don't assume completing the Linear issue closes GitHub's copy without checking.
 4. **Link the PR on both sides**: `Fixes #N` in the PR body (GitHub), and a `links` entry pointing at the PR URL on the Linear issue (`save_issue`).
 5. Only create an issue directly in Linear (skipping GitHub) for internal-only work that doesn't need public visibility — everything a community member might report or care about should still go through GitHub so the sync catches it.
-6. No type prefixes in titles (`fix:` / `note:` / `bug:` belong to labels, not titles). One concern per issue, per branch, per PR. Always pass `--repo nickybmon/OpenEmu-Silicon` on every `gh` command.
+6. No type prefixes in titles (`fix:` / `note:` / `bug:` belong to labels, not titles). One concern per issue, per branch, per PR. Always pass `--repo OpenEmu-Silicon/OpenEmu-Silicon` on every `gh` command.
 
 ---
 

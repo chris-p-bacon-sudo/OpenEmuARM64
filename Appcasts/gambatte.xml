@@ -8,7 +8,7 @@
       <title>Gambatte 0.5.5</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.3.6/Gambatte.oecoreplugin.zip"
+        url="https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases/download/cores-v1.3.6/Gambatte.oecoreplugin.zip"
         sparkle:version="0.5.5"
         sparkle:shortVersionString="0.5.5"
         length="402905"
@@ -19,7 +19,7 @@
       <title>Gambatte 0.5.4</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.3.3/Gambatte.oecoreplugin.zip"
+        url="https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases/download/cores-v1.3.3/Gambatte.oecoreplugin.zip"
         sparkle:version="0.5.4"
         sparkle:shortVersionString="0.5.4"
         length="734408"
@@ -30,7 +30,7 @@
       <title>Gambatte 0.5.3</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.3.2/Gambatte.oecoreplugin.zip"
+        url="https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases/download/cores-v1.3.2/Gambatte.oecoreplugin.zip"
         sparkle:version="0.5.3"
         sparkle:shortVersionString="0.5.3"
         length="726838"
@@ -41,7 +41,7 @@
       <title>Gambatte 0.5.2</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.3.1/Gambatte.oecoreplugin.zip"
+        url="https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases/download/cores-v1.3.1/Gambatte.oecoreplugin.zip"
         sparkle:version="0.5.2"
         sparkle:shortVersionString="0.5.2"
         length="393721"
@@ -52,7 +52,7 @@
       <title>Gambatte 0.5.1</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.0.0/Gambatte.oecoreplugin.zip"
+        url="https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases/download/cores-v1.0.0/Gambatte.oecoreplugin.zip"
         sparkle:version="0.5.1"
         sparkle:shortVersionString="0.5.1"
         length="241416"

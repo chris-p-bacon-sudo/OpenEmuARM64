@@ -7,7 +7,7 @@ Same gate `/ship` runs internally. Use it standalone to test the agent or sanity
 ## Steps
 
 1. **Get the diff.**
-   - With `$1`: `gh pr checkout $1 --repo nickybmon/OpenEmu-Silicon`, then `git diff main...HEAD`.
+   - With `$1`: `gh pr checkout $1 --repo OpenEmu-Silicon/OpenEmu-Silicon`, then `git diff main...HEAD`.
    - Without: `git diff main...HEAD`.
    - If the diff is empty, report "no changes — gate skipped" and stop.
 

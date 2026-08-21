@@ -93,7 +93,7 @@ Rules for drafting:
 - Omit the "Under the Hood" section if there's nothing meaningful to say to users
 - If the git log is empty or only has noise commits, write a single bullet: "General stability improvements"
 
-**Contributor credits:** For each commit that references a PR number, look up that PR's body for `Fixes #N` / `Related to #N` patterns, then look up those issues to find the original reporter. If the reporter is not `nickybmon`, append `(thanks @username, #N)` to the bullet. If the fix came from Sentry telemetry (no user-filed issue), omit the credit — there's no one to thank. Use `gh issue view N --repo nickybmon/OpenEmu-Silicon --json author` to get the reporter.
+**Contributor credits:** For each commit that references a PR number, look up that PR's body for `Fixes #N` / `Related to #N` patterns, then look up those issues to find the original reporter. If the reporter is not `nickybmon`, append `(thanks @username, #N)` to the bullet. If the fix came from Sentry telemetry (no user-filed issue), omit the credit — there's no one to thank. Use `gh issue view N --repo OpenEmu-Silicon/OpenEmu-Silicon --json author` to get the reporter.
 
 After writing the file, print its contents so the user can see the draft.
 
@@ -178,7 +178,7 @@ The appcast does not go live until the PR is merged. CI version checks run on th
 After the script completes, report:
 - Build number and version shipped
 - PR URL for the release branch
-- Direct link to the draft release: `https://github.com/nickybmon/OpenEmu-Silicon/releases`
+- Direct link to the draft release: `https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases`
 
 Then tell the user:
 
@@ -190,7 +190,7 @@ Next steps:
 2. Review and test the DMG
 3. Merge the PR — this makes the Sparkle update live for users
 4. Publish the GitHub Release:
-   gh release edit vVERSION --draft=false --repo nickybmon/OpenEmu-Silicon
+   gh release edit vVERSION --draft=false --repo OpenEmu-Silicon/OpenEmu-Silicon
 
 ** Do not ask me to run that last command. Publishing is always your call. **
 ```

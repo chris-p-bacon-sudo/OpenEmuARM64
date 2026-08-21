@@ -82,7 +82,7 @@ def main():
       <pubDate>{pub_date}</pubDate>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/v{version}/OpenEmu-Silicon.dmg"
+        url="https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases/download/v{version}/OpenEmu-Silicon.dmg"
         sparkle:version="{sparkle_version}"
         sparkle:shortVersionString="{version}"
         sparkle:edSignature="{ed_sig}"

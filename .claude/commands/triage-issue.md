@@ -7,7 +7,7 @@ Triage a bug report or feature request on behalf of the repo owner. Usage: /tria
 ### 1. Fetch and read the issue
 
 ```bash
-gh issue view <N> --repo nickybmon/OpenEmu-Silicon
+gh issue view <N> --repo OpenEmu-Silicon/OpenEmu-Silicon
 ```
 
 Read the full issue body carefully. Note the issue type (bug, feature request, core integration, etc.) and what information is present vs missing.
@@ -17,14 +17,14 @@ Read the full issue body carefully. Note the issue type (bug, feature request, c
 ### 2. Check for duplicates first
 
 ```bash
-gh issue list --repo nickybmon/OpenEmu-Silicon --state open
+gh issue list --repo OpenEmu-Silicon/OpenEmu-Silicon --state open
 ```
 
 If this is a duplicate of an existing issue, comment and close:
 
 ```bash
-gh issue comment <N> --repo nickybmon/OpenEmu-Silicon --body "Thanks for the report! This looks like a duplicate of #X — following the discussion there. Feel free to add any additional details on that thread if you have something new to add."
-gh issue close <N> --repo nickybmon/OpenEmu-Silicon --comment "Duplicate of #X."
+gh issue comment <N> --repo OpenEmu-Silicon/OpenEmu-Silicon --body "Thanks for the report! This looks like a duplicate of #X — following the discussion there. Feel free to add any additional details on that thread if you have something new to add."
+gh issue close <N> --repo OpenEmu-Silicon/OpenEmu-Silicon --comment "Duplicate of #X."
 ```
 
 Stop here if it's a duplicate.
@@ -59,7 +59,7 @@ Stop here if it's a duplicate.
 Use this format for the comment (adapt tone and content to what's missing):
 
 ```
-gh issue comment <N> --repo nickybmon/OpenEmu-Silicon --body "$(cat <<'EOF'
+gh issue comment <N> --repo OpenEmu-Silicon/OpenEmu-Silicon --body "$(cat <<'EOF'
 Thanks for the report!
 
 To help us investigate, could you share a bit more:
@@ -85,16 +85,16 @@ Check what labels are already applied. Add any that are missing:
 
 ```bash
 # Bug
-gh issue edit <N> --repo nickybmon/OpenEmu-Silicon --add-label "bug"
+gh issue edit <N> --repo OpenEmu-Silicon/OpenEmu-Silicon --add-label "bug"
 
 # Feature / enhancement
-gh issue edit <N> --repo nickybmon/OpenEmu-Silicon --add-label "enhancement"
+gh issue edit <N> --repo OpenEmu-Silicon/OpenEmu-Silicon --add-label "enhancement"
 
 # Core-specific (use the right one)
-gh issue edit <N> --repo nickybmon/OpenEmu-Silicon --add-label "core: other"
+gh issue edit <N> --repo OpenEmu-Silicon/OpenEmu-Silicon --add-label "core: other"
 
 # Needs more info (use when posting a needs-more-info comment)
-gh issue edit <N> --repo nickybmon/OpenEmu-Silicon --add-label "needs-testing"
+gh issue edit <N> --repo OpenEmu-Silicon/OpenEmu-Silicon --add-label "needs-testing"
 ```
 
 ---

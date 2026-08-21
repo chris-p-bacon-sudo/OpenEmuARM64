@@ -2,13 +2,13 @@ cask "openemu-silicon" do
   version "1.2.5"
   sha256 "a3d5a4cbca5c3662c25a74b602ea928cd887734165998fae2da4d03382457723"
 
-  url "https://github.com/nickybmon/OpenEmu-Silicon/releases/download/v#{version}/OpenEmu-Silicon.dmg"
+  url "https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases/download/v#{version}/OpenEmu-Silicon.dmg"
   name "OpenEmu Silicon"
   desc "Native Apple Silicon port of the OpenEmu multi-system emulator"
-  homepage "https://github.com/nickybmon/OpenEmu-Silicon"
+  homepage "https://github.com/OpenEmu-Silicon/OpenEmu-Silicon"
 
   livecheck do
-    url "https://raw.githubusercontent.com/nickybmon/OpenEmu-Silicon/main/appcast.xml"
+    url "https://raw.githubusercontent.com/OpenEmu-Silicon/OpenEmu-Silicon/main/appcast.xml"
     strategy :sparkle, &:short_version
   end
 

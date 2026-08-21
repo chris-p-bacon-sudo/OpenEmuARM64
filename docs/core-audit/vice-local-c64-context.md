@@ -132,7 +132,7 @@ OpenEmu separates:
 - A native VICE core should be a real top-level source tree/project, not a bundled libretro dylib or revived `VICE-Bridge/`.
 - It must implement `OEC64SystemResponderClient` exactly, including raw keycodes, two-player C64 buttons, joystick swapping, and mouse events.
 - It must register `openemu.system.c64` in its core `Info.plist` (`OESystemIdentifiers`) and provide `OEGameCorePlayerCount` compatible with two players.
-- It needs release metadata before users can download/update it: `oecores.xml` entry, `Appcasts/vice.xml` (or chosen core name), and a `SUFeedURL` in the core plist pointing at `https://raw.githubusercontent.com/nickybmon/OpenEmu-Silicon/main/Appcasts/<core>.xml`.
+- It needs release metadata before users can download/update it: `oecores.xml` entry, `Appcasts/vice.xml` (or chosen core name), and a `SUFeedURL` in the core plist pointing at `https://raw.githubusercontent.com/OpenEmu-Silicon/OpenEmu-Silicon/main/Appcasts/<core>.xml`.
 - `Scripts/check-core-feed-urls.sh` will fail if a native core plist has `OEGameCoreClass` but no `SUFeedURL`, or if the feed URL points to a missing Appcasts file.
 - Release packaging assumes a build product named `<CoreName>.oecoreplugin` in DerivedData and validates `CFBundleVersion`; appcast updates can enforce zip version match and Sparkle EdDSA signing.
 - Workspace/project wiring is required (`OpenEmu-metal.xcworkspace` and likely Xcode schemes). Current workspace has no VICE/Frodo/VirtualC64 project.

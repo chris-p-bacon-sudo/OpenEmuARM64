@@ -2,7 +2,7 @@
 
 _Last updated: 2026-05-18_
 
-Issue: [#542 — Commodore 64 — investigate native VICE-Core integration](https://github.com/nickybmon/OpenEmu-Silicon/issues/542)
+Issue: [#542 — Commodore 64 — investigate native VICE-Core integration](https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/issues/542)
 
 Supporting evidence:
 
@@ -199,7 +199,7 @@ A native VICE core would need the same release plumbing as other shipped cores:
    - `OESystemIdentifiers = [ openemu.system.c64 ]`
    - `OEGameCoreClass = ViceGameCore`
    - `OEGameCorePlayerCount = 2`
-   - `SUFeedURL = https://raw.githubusercontent.com/nickybmon/OpenEmu-Silicon/main/Appcasts/vice.xml`
+   - `SUFeedURL = https://raw.githubusercontent.com/OpenEmu-Silicon/OpenEmu-Silicon/main/Appcasts/vice.xml`
 5. `Appcasts/vice.xml`.
 6. `oecores.xml` entry.
 7. `Scripts/install-core.sh` / `Scripts/package-core.sh` compatibility.

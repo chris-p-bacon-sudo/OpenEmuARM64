@@ -101,7 +101,7 @@ Developer-facing rule (when to bump `OELibretroBridgeVersion`) lives in the "Lib
 - save state passthrough via `retro_serialize` / `retro_unserialize`
 
 **Does not handle yet:**
-- **RetroAchievements.** No `rc_client` initialization, no per-frame `rc_client_do_frame`, no memory exposure to rcheevos. Tracked in [#360](https://github.com/nickybmon/OpenEmu-Silicon/issues/360). Native cores integrate rcheevos directly; libretro cores get nothing.
+- **RetroAchievements.** No `rc_client` initialization, no per-frame `rc_client_do_frame`, no memory exposure to rcheevos. Tracked in [#360](https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/issues/360). Native cores integrate rcheevos directly; libretro cores get nothing.
 - **`RETRO_ENVIRONMENT_SET_MEMORY_MAPS` (env callback 36).** Cores that expose RAM via descriptor tables rather than `retro_get_memory_data` are not currently mapped — verify before doing memory-dependent work (cheats, RA).
 - **Runahead.** No frontend-side state-rollback loop.
 

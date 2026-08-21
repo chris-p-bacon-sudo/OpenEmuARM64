@@ -20,7 +20,7 @@ This guide is for **users and contributors** — people who want to earn achieve
 
 ## Core Support Status
 
-RA integration is rolling out in phases. See [issue #258](https://github.com/nickybmon/OpenEmu-Silicon/issues/258) for the full rollout tracker.
+RA integration is rolling out in phases. See [issue #258](https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/issues/258) for the full rollout tracker.
 
 | Core | System(s) | RA Status |
 |------|-----------|-----------|
@@ -102,7 +102,7 @@ For each test session, post findings as a comment on the relevant GitHub issue (
 
 ## Reporting RA Issues
 
-Before opening an issue, check [existing RA issues](https://github.com/nickybmon/OpenEmu-Silicon/issues?q=is%3Aopen+label%3Aretro-achievements) — your issue may already be tracked.
+Before opening an issue, check [existing RA issues](https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/issues?q=is%3Aopen+label%3Aretro-achievements) — your issue may already be tracked.
 
 When you do open an issue, use the **Bug Report** template and include:
 - Whether this is in a supported core (see the table above)
@@ -166,4 +166,4 @@ Open a Discussion and introduce yourself. If you've already tested a core and do
 
 ---
 
-*Questions? Open a [Discussion](https://github.com/nickybmon/OpenEmu-Silicon/discussions) or comment on [issue #258](https://github.com/nickybmon/OpenEmu-Silicon/issues/258).*
+*Questions? Open a [Discussion](https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/discussions) or comment on [issue #258](https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/issues/258).*
