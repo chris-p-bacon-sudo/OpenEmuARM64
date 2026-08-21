@@ -87,6 +87,9 @@ namespace MDFN_IEN_VB
     extern void VIP_SetAnaglyphColors(uint32 lcolor, uint32 rcolor);
 }
 
+// ~2 seconds at 75 fps — time for Lynx game code to clear 0xFF-initialized RAM before RA reads it
+static const uint32_t kLynxRAWarmupFrames = 150;
+
 @interface MednafenGameCore () <OELynxSystemResponderClient, OENGPSystemResponderClient, OEPCESystemResponderClient, OEPCECDSystemResponderClient, OEPCFXSystemResponderClient, OEPSXSystemResponderClient, OESaturnSystemResponderClient, OEVBSystemResponderClient, OEWSSystemResponderClient>
 {
     uint32_t *_inputBuffer[13];
@@ -117,6 +120,7 @@ namespace MDFN_IEN_VB
     int _rcConsole;
     NSMutableDictionary<NSString *, NSNumber *> *_cheatList;
     BOOL _isSystemPCECD;
+    uint32_t _lynxFrameCount;
     // Owned C-string copy of the active console module name (e.g. "psx", "pce").
     // Read from the RA memory-reader trampoline on the bridge's serial queue
     // without holding ObjC refs, so we can't use _mednafenCoreModule.UTF8String
@@ -128,6 +132,7 @@ namespace MDFN_IEN_VB
 - (NSString *)mednafenCoreModule;
 - (BOOL)isSystemPCECD;
 - (const char *)oeRACachedModule;
+- (BOOL)raLynxMemoryWarmingUp;
 
 - (void)initializeMednafen;
 - (void)loadDisplayModeOptions;
@@ -211,6 +216,10 @@ static uint32_t mednafen_rc_read_memory(uint32_t address, uint8_t *buffer,
     if (strcmp(mod, "lynx") == 0) {
         uint8_t *ram = MDFNLynx_GetRAMPointer();
         if (!ram) { return 0; }
+        if (c && [c raLynxMemoryWarmingUp]) {
+            memset(buffer, 0, num_bytes);
+            return num_bytes;
+        }
         for (uint32_t i = 0; i < num_bytes; i++) {
             if (address + i >= 0x10000) { return i; }
             buffer[i] = ram[address + i];
@@ -252,6 +261,10 @@ static uint32_t mednafen_rc_read_memory(uint32_t address, uint8_t *buffer,
 - (NSString *)mednafenCoreModule { return _mednafenCoreModule; }
 - (BOOL)isSystemPCECD { return _isSystemPCECD; }
 - (const char *)oeRACachedModule { return _cachedModule; }
+- (BOOL)raLynxMemoryWarmingUp {
+    // Lynx RAM inits to 0xFF; wait for game code to run before exposing memory to RA.
+    return _lynxFrameCount < kLynxRAWarmupFrames;
+}
 
 - (void)initializeMednafen
 {
@@ -3611,15 +3624,15 @@ static uint32_t mednafen_rc_read_memory(uint32_t address, uint8_t *buffer,
         [self loadDisplayModeOptions];
     }
 
-    // RetroAchievements: only PSX and Saturn are fully integrated.
-    // Other systems (PCE/PCECD, Lynx, NGP) need memory reader verification
-    // before enabling — see Phase 3 (#261).
+    // RetroAchievements: only verified systems are enabled.
     _rcConsole = -1;
-    if ([_mednafenCoreModule isEqualToString:@"psx"])  _rcConsole = RC_CONSOLE_PLAYSTATION;
-    else if ([_mednafenCoreModule isEqualToString:@"ss"])    _rcConsole = RC_CONSOLE_SATURN;
+    if ([_mednafenCoreModule isEqualToString:@"psx"])   _rcConsole = RC_CONSOLE_PLAYSTATION;
+    else if ([_mednafenCoreModule isEqualToString:@"ss"])     _rcConsole = RC_CONSOLE_SATURN;
+    else if ([_mednafenCoreModule isEqualToString:@"lynx"])   _rcConsole = RC_CONSOLE_ATARI_LYNX;
 
     if (_rcConsole > 0) {
         _romPath = path;
+        _lynxFrameCount = 0;
         const char *modCStr = _mednafenCoreModule.UTF8String;
         if (modCStr) { _cachedModule = strdup(modCStr); }
         _raBridge = [[OERetroAchievementsBridge alloc] initWithGameCore:self
@@ -3659,6 +3672,8 @@ static uint32_t mednafen_rc_read_memory(uint32_t address, uint8_t *buffer,
 
     MDFNI_Emulate(&spec);
 
+    if (_rcConsole == RC_CONSOLE_ATARI_LYNX && _lynxFrameCount < kLynxRAWarmupFrames)
+        _lynxFrameCount++;
     [_raBridge doFrame];
 
     _mednafenCoreTiming = _masterClock / spec.MasterCycles;
