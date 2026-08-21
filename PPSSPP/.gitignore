@@ -14,8 +14,18 @@ PPSSPP-Core/ppsspp/ext/vulkan/*.so.*
 # are never referenced by PPSSPP.xcodeproj and are not vendored.
 PPSSPP-Core/ppsspp/ext/openxr/libs/
 
-# Android assets / platform-specific directories not needed for macOS build
-PPSSPP-Core/ppsspp/android/
+# Android assets / platform-specific directories not needed for macOS build.
+# Exception: Common/File/Path.cpp (and 5 other Common/Core files) include
+# android/jni/app-android.h and android/jni/AndroidContentURI.h
+# unconditionally. Both are portable — app-android.h's actual JNI/Android
+# bits are already guarded behind #if PPSSPP_PLATFORM(ANDROID), and
+# AndroidContentURI is a header-only class with no .cpp — so carve just
+# those two files back in rather than the whole android/ tree.
+PPSSPP-Core/ppsspp/android/*
+!PPSSPP-Core/ppsspp/android/jni/
+PPSSPP-Core/ppsspp/android/jni/*
+!PPSSPP-Core/ppsspp/android/jni/app-android.h
+!PPSSPP-Core/ppsspp/android/jni/AndroidContentURI.h
 PPSSPP-Core/ppsspp/UWP/
 PPSSPP-Core/ppsspp/Windows/
 PPSSPP-Core/ppsspp/Qt/
