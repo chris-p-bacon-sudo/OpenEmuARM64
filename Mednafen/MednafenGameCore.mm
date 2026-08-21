@@ -226,6 +226,24 @@ static uint32_t mednafen_rc_read_memory(uint32_t address, uint8_t *buffer,
         }
         return num_bytes;
     }
+    if (strcmp(mod, "ss") == 0) {
+        // Expose raw ne16 buffer layout — matches how Beetle Saturn (libretro)
+        // exposes memory, which is what achievement sets are authored against.
+        const uint8_t *workL = MDFN_IEN_SS::SS_GetWorkRAML();
+        const uint8_t *workH = MDFN_IEN_SS::SS_GetWorkRAMH();
+        if (!workL || !workH) { return 0; }
+        for (uint32_t i = 0; i < num_bytes; i++) {
+            uint32_t a = address + i;
+            if (a < 0x100000) {
+                buffer[i] = workL[a & 0xFFFFF];
+            } else if (a < 0x200000) {
+                buffer[i] = workH[(a - 0x100000) & 0xFFFFF];
+            } else {
+                return i;
+            }
+        }
+        return num_bytes;
+    }
     return 0;
 }
 
@@ -3593,15 +3611,14 @@ static uint32_t mednafen_rc_read_memory(uint32_t address, uint8_t *buffer,
         [self loadDisplayModeOptions];
     }
 
-    // RetroAchievements: only enabled for Phase 2 systems (PSX, PCE/PCECD, Lynx, NGP).
-    // Saturn / VB / WSwan / PCFX are intentionally skipped here so Phase 3 (#261)
-    // can drop them in cleanly.
+    // RetroAchievements: enabled for PSX, PCE/PCECD, Lynx, NGP, Saturn.
     _rcConsole = -1;
     if ([_mednafenCoreModule isEqualToString:@"psx"])  _rcConsole = RC_CONSOLE_PLAYSTATION;
     else if (_isSystemPCECD)                           _rcConsole = RC_CONSOLE_PC_ENGINE_CD;
     else if ([_mednafenCoreModule isEqualToString:@"pce"])   _rcConsole = RC_CONSOLE_PC_ENGINE;
     else if ([_mednafenCoreModule isEqualToString:@"lynx"])  _rcConsole = RC_CONSOLE_ATARI_LYNX;
     else if ([_mednafenCoreModule isEqualToString:@"ngp"])   _rcConsole = RC_CONSOLE_NEOGEO_POCKET;
+    else if ([_mednafenCoreModule isEqualToString:@"ss"])    _rcConsole = RC_CONSOLE_SATURN;
 
     if (_rcConsole > 0) {
         _romPath = path;

@@ -193,6 +193,8 @@
 					<integer>524288</integer>
 				</dict>
 			</array>
+			<key>OEGameCoreSupportsRetroAchievements</key>
+			<true/>
 		</dict>
 		<key>openemu.system.vb</key>
 		<dict>
