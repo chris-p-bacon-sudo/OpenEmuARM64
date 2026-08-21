@@ -4,7 +4,18 @@
   xmlns:dc="http://purl.org/dc/elements/1.1/">
   <channel>
     <title>Mednafen</title>
-                            <item>
+                                <item>
+      <title>Mednafen 1.26.8.1</title>
+      <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
+      <enclosure
+        url="https://github.com/nickybmon/OpenEmu-Silicon/releases/download/cores-v1.4.0/Mednafen.oecoreplugin.zip"
+        sparkle:version="1.26.8.1"
+        sparkle:shortVersionString="1.26.8.1"
+        length="2930674"
+        sparkle:edSignature="HLXaal6YlLfzG/hVaXnjdueToOADm9jKT4Gysc9NZg1CoWi2u8dEzYJtkMB4NQdPFbmufh4BWfGWPL6TU0QUDQ=="
+        type="application/octet-stream" />
+    </item>
+<item>
       <title>Mednafen 1.26.8</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure

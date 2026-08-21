@@ -21,7 +21,7 @@
 	<key>CFBundleSignature</key>
 	<string>????</string>
 	<key>CFBundleVersion</key>
-	<string>1.26.8</string>
+	<string>1.26.8.1</string>
 	<key>NSPrincipalClass</key>
 	<string>OEGameCoreController</string>
 	<key>OEGameCoreClass</key>
@@ -118,11 +118,11 @@
 		<dict>
 			<key>OEGameCoreRequiresFiles</key>
 			<true/>
-			<key>OEGameCoreSupportsMultipleDiscs</key>
-			<true/>
 			<key>OEGameCoreSupportsCheatCode</key>
 			<true/>
 			<key>OEGameCoreSupportsCheatSearch</key>
+			<true/>
+			<key>OEGameCoreSupportsMultipleDiscs</key>
 			<true/>
 			<key>OEGameCoreSupportsRetroAchievements</key>
 			<true/>
