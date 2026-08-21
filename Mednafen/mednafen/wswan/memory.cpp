@@ -896,3 +896,6 @@ void WSwan_MemoryStateAction(StateMem *sm, const unsigned load, const bool data_
 }
 
 }
+
+extern "C" uint8_t *MDFNWS_GetRAMPointer(void) { return MDFN_IEN_WSWAN::wsRAM; }
+extern "C" uint32_t MDFNWS_GetRAMSize(void) { return MDFN_IEN_WSWAN::wsRAMSize; }
