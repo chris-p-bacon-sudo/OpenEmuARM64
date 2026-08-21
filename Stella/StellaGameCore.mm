@@ -31,6 +31,12 @@
 #import "OE2600SystemResponderClient.h"
 #import <OpenGL/gl.h>
 
+#define RC_CLIENT_SUPPORTS_HASH 1
+#include <rc_client.h>
+#include <rc_consoles.h>
+#import "OERetroAchievementsTransport.h"
+#import "OERetroAchievementsBridge.h"
+
 #include "Console.hxx"
 #include "Cart.hxx"
 #include "Props.hxx"
@@ -75,11 +81,26 @@ void stellaOESetPalette(const uInt32 *palette)
     int _videoWidth, _videoHeight;
     NSMutableArray <NSMutableDictionary <NSString *, id> *> *_availableDisplayModes;
     NSMutableDictionary<NSString *, NSNumber *> *_cheatList;
+    OERetroAchievementsBridge *_raBridge;
 }
 
 - (void)loadDisplayModeOptions;
 
 @end
+
+// rcheevos address 0x0000–0x007F → hardware 0x0080–0x00FF (128 bytes system RAM)
+static uint32_t stella_rc_read_memory(uint32_t address, uint8_t *buffer,
+                                       uint32_t num_bytes, rc_client_t *client)
+{
+    if (!console) return 0;
+    for (uint32_t i = 0; i < num_bytes; i++) {
+        uint32_t addr = 0x80 + address + i;
+        if (addr > 0xFF)
+            return i;
+        buffer[i] = console->system().peek((uInt16)addr);
+    }
+    return num_bytes;
+}
 
 @implementation StellaGameCore
 
@@ -93,6 +114,26 @@ void stellaOESetPalette(const uInt32 *palette)
     }
 
 	return self;
+}
+
+- (void)retroAchievementsIdle
+{
+    [_raBridge idle];
+}
+
+- (BOOL)canPauseRetroAchievementsHardcoreWithFramesRemaining:(uint32_t *)framesRemaining
+{
+    return _raBridge ? [_raBridge canPauseWithFramesRemaining:framesRemaining] : YES;
+}
+
+- (NSData *)retroAchievementsSerializedProgress
+{
+    return [_raBridge serializeProgress];
+}
+
+- (void)retroAchievementsDeserializeProgress:(NSData *)data
+{
+    [_raBridge deserializeProgress:data];
 }
 
 - (void)dealloc
@@ -157,6 +198,12 @@ void stellaOESetPalette(const uInt32 *palette)
         [self loadDisplayModeOptions];
     }
 
+    _raBridge = [[OERetroAchievementsBridge alloc] initWithGameCore:self
+                                                        memoryReader:stella_rc_read_memory
+                                                           consoleID:RC_CONSOLE_ATARI_2600];
+    [_raBridge startWithROMPath:path];
+    [_raBridge markROMReady];
+
     return YES;
 }
 
@@ -192,6 +239,8 @@ void stellaOESetPalette(const uInt32 *palette)
     for (unsigned int i = 0; i < _videoHeight * _videoWidth; ++i)
         _activeVideoBuffer[i] = Palette[tia.currentFrameBuffer()[i]];
 
+    [_raBridge doFrame];
+
     // Audio
     vcsSound->processFragment(_sampleBuffer, tiaSamplesPerFrame);
     [[self ringBufferAtIndex:0] write:_sampleBuffer maxLength:tiaSamplesPerFrame << 2];
@@ -203,11 +252,14 @@ void stellaOESetPalette(const uInt32 *palette)
 
 - (void)resetEmulation
 {
+    [_raBridge reset];
     console->system().reset();
 }
 
 - (void)stopEmulation
 {
+    [_raBridge shutdown];
+    _raBridge = nil;
     [super stopEmulation];
 }
 
