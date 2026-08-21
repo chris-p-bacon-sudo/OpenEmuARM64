@@ -63,6 +63,8 @@ extern "C" uint8_t *MDFNNGP_GetRAMPointer(void);
 extern "C" uint8_t *MDFNPCE_GetCDRAMPointer(void);
 extern "C" uint8_t *MDFNPCE_GetSysCardRAMPointer(void);
 extern "C" uint8_t *MDFNPCE_GetSaveRAMPointer(void);
+extern "C" uint8_t *MDFNPCE_GetMainRAMPointer(void);
+extern "C" uint32_t MDFNPCE_GetMainRAMSize(void);
 
 #ifdef DEBUG
     #error "Cores should not be compiled in DEBUG! Follow the guide https://github.com/OpenEmu/OpenEmu/wiki/Compiling-From-Source-Guide"
@@ -4314,15 +4316,29 @@ namespace Mednafen { void MDFN_FlushGameCheats(int nosave); }
 
             NSRange colonRange = [singleCode rangeOfString:@":"];
             if (colonRange.location != NSNotFound) {
+                NSString *addrPart = [singleCode substringToIndex:colonRange.location];
                 unsigned int addr = 0, val = 0;
-                if (![[NSScanner scannerWithString:[singleCode substringToIndex:colonRange.location]] scanHexInt:&addr]) continue;
+
+                if (![[NSScanner scannerWithString:addrPart] scanHexInt:&addr]) continue;
                 if (![[NSScanner scannerWithString:[singleCode substringFromIndex:colonRange.location + 1]] scanHexInt:&val]) continue;
+
                 // NGP RAM is registered at 0x4000 in Mednafen's mempatcher
-                if ([_mednafenCoreModule isEqualToString:@"ngp"])
+                if ([_mednafenCoreModule isEqualToString:@"ngp"]) {
                     addr += 0x4000;
+                }
+
+                // PCE Physical Address format (e.g. F82DB1 = page F8, offset 0xDB1).
+                // Convert to 21-bit physical address for the mempatcher.
+                if ([_mednafenCoreModule isEqualToString:@"pce"] && addr > 0x1FFFFF) {
+                    uint32_t page = (addr >> 16) & 0xFF;
+                    uint32_t offset = addr & 0x1FFF;
+                    addr = (page << 13) | offset;
+                }
+
                 patch.addr = addr;
                 patch.val = val;
                 patch.length = 1;
+
                 Mednafen::MDFNI_AddCheat(patch);
             } else if (singleCode.length == 12 && [_mednafenCoreModule isEqualToString:@"ss"]) {
                 // Saturn AR format: TAAAAAAA VVVV (T=1 word, T=3 byte)
@@ -4413,6 +4429,31 @@ namespace Mednafen { void MDFN_FlushGameCheats(int nosave); }
                                                      address:0x0000
                                                 addressBytes:2
                                                         data:data]];
+    }
+
+    if ([_mednafenCoreModule isEqualToString:@"pce"]) {
+        uint8_t *ram = MDFNPCE_GetMainRAMPointer();
+        if (!ram) return @[];
+        uint32_t size = MDFNPCE_GetMainRAMSize();
+        // Display using official PCE cheat format: page (F8+) + slot 1 base (0x2000)
+        if (size <= 8192) {
+            NSData *data = [NSData dataWithBytes:ram length:size];
+            return @[[OEMemoryRegionDescriptor descriptorWithName:@"System RAM"
+                                                         address:0xF82000
+                                                    addressBytes:3
+                                                            data:data]];
+        }
+        // SGX: 32KB split across pages F8-FB for correct address conversion
+        NSMutableArray *regions = [NSMutableArray array];
+        for (uint32_t i = 0; i < size / 8192; i++) {
+            NSData *pageData = [NSData dataWithBytes:ram + i * 8192 length:8192];
+            uint32_t pageAddr = ((0xF8 + i) << 16) | 0x2000;
+            [regions addObject:[OEMemoryRegionDescriptor descriptorWithName:[NSString stringWithFormat:@"RAM (page %02X)", 0xF8 + i]
+                                                                   address:pageAddr
+                                                              addressBytes:3
+                                                                      data:pageData]];
+        }
+        return regions;
     }
 
     return @[];
