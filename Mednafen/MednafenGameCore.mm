@@ -3629,6 +3629,7 @@ static uint32_t mednafen_rc_read_memory(uint32_t address, uint8_t *buffer,
     if ([_mednafenCoreModule isEqualToString:@"psx"])   _rcConsole = RC_CONSOLE_PLAYSTATION;
     else if ([_mednafenCoreModule isEqualToString:@"ss"])     _rcConsole = RC_CONSOLE_SATURN;
     else if ([_mednafenCoreModule isEqualToString:@"lynx"])   _rcConsole = RC_CONSOLE_ATARI_LYNX;
+    else if ([_mednafenCoreModule isEqualToString:@"ngp"])    _rcConsole = RC_CONSOLE_NEOGEO_POCKET;
 
     if (_rcConsole > 0) {
         _romPath = path;
