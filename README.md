@@ -104,6 +104,6 @@ If you want to contribute code, check the open issues for good starting points. 
 
 ## License
 
-The main OpenEmu app and SDK are licensed under the **BSD 2-Clause License**. Individual emulation cores carry their own licenses (GPL v2, MPL 2.0, LGPL 2.1, and others) — see each core's directory for details.
+This project is a derivative of [OpenEmu](https://github.com/OpenEmu/OpenEmu). Most of the main app and SDK still carries the OpenEmu Team's original **BSD 3-Clause** copyright header, which is what actually governs those files — see [`LICENSE`](LICENSE) for the full text and how it applies. Individual emulation cores carry their own licenses (GPL v2, MPL 2.0, LGPL 2.1, and others) — see each core's directory for details.
 
 Note: [picodrive](https://github.com/notaz/picodrive) includes a non-commercial clause. This project is and will remain free.
