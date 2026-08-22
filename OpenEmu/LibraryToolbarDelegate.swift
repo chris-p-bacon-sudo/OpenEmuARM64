@@ -223,7 +223,7 @@ final class LibraryToolbarDelegate: NSObject, NSToolbarDelegate {
     
     // MARK: - Search
     
-    private(set) lazy var searchField: OESearchField = {
+    private(set) lazy var searchField: NSSearchField = {
         let searchField = OESearchField()
         searchField.lineBreakMode = .byClipping
         searchField.usesSingleLineMode = true
