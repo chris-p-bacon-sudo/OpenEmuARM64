@@ -179,7 +179,7 @@
 		3E3D746F1C82B11900091C4D /* WbfsBlob.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 3E3D745B1C82B11900091C4D /* WbfsBlob.cpp */; };
 		3E3D74CC1C82B18C00091C4D /* minilzo.c in Sources */ = {isa = PBXBuildFile; fileRef = 3E3D74CA1C82B18C00091C4D /* minilzo.c */; };
 		3E3D75141C82B20700091C4D /* Http.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 3E3D750B1C82B20700091C4D /* Http.cpp */; };
-		3E3D75161C82B20700091C4D /* IPAddress.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 3E3D750C1C82B20700091C4D /* IPAddress.cpp */; };
+		3E3D75161C82B20700091C4D /* IpAddress.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 3E3D750C1C82B20700091C4D /* IpAddress.cpp */; };
 		3E3D75181C82B20700091C4D /* Packet.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 3E3D750D1C82B20700091C4D /* Packet.cpp */; };
 		3E3D751A1C82B20700091C4D /* Socket.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 3E3D750E1C82B20700091C4D /* Socket.cpp */; };
 		3E3D751C1C82B20700091C4D /* SocketSelector.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 3E3D75101C82B20700091C4D /* SocketSelector.cpp */; };
@@ -2101,7 +2101,7 @@
 		3E3D74CA1C82B18C00091C4D /* minilzo.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = minilzo.c; sourceTree = "<group>"; };
 		3E3D74CB1C82B18C00091C4D /* minilzo.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = minilzo.h; sourceTree = "<group>"; };
 		3E3D750B1C82B20700091C4D /* Http.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Http.cpp; sourceTree = "<group>"; };
-		3E3D750C1C82B20700091C4D /* IPAddress.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = IPAddress.cpp; sourceTree = "<group>"; };
+		3E3D750C1C82B20700091C4D /* IpAddress.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = IpAddress.cpp; sourceTree = "<group>"; };
 		3E3D750D1C82B20700091C4D /* Packet.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Packet.cpp; sourceTree = "<group>"; };
 		3E3D750E1C82B20700091C4D /* Socket.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Socket.cpp; sourceTree = "<group>"; };
 		3E3D75101C82B20700091C4D /* SocketSelector.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SocketSelector.cpp; sourceTree = "<group>"; };
@@ -6762,7 +6762,7 @@
 			isa = PBXGroup;
 			children = (
 				3E3D750B1C82B20700091C4D /* Http.cpp */,
-				3E3D750C1C82B20700091C4D /* IPAddress.cpp */,
+				3E3D750C1C82B20700091C4D /* IpAddress.cpp */,
 				3E3D750D1C82B20700091C4D /* Packet.cpp */,
 				3E3D750E1C82B20700091C4D /* Socket.cpp */,
 				3E3D75251C82B21200091C4D /* SocketImpl.hpp */,
@@ -11241,7 +11241,7 @@
 				3E3D751E1C82B20700091C4D /* TcpListener.cpp in Sources */,
 				3E3D75141C82B20700091C4D /* Http.cpp in Sources */,
 				3E3D75261C82B21200091C4D /* SocketImpl.cpp in Sources */,
-				3E3D75161C82B20700091C4D /* IPAddress.cpp in Sources */,
+				3E3D75161C82B20700091C4D /* IpAddress.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

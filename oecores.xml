@@ -9,8 +9,6 @@
 
   2. ARM64 native builds — appcast hosted in this repo (Appcasts/*.xml),
      download assets hosted on the cores-v1.0.0 GitHub Release.
-
-  Arcade (MAME) excluded: no emulation core exists yet — see issue #25.
 -->
 <cores>
 
