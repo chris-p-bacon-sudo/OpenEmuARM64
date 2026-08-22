@@ -42,12 +42,18 @@ jobs:
           # Most cores build through the "OpenEmu + <Name>" combined scheme.
           # DeSmuME and Dolphin only have a bare "<Name>" scheme — the Build
           # step below picks the right one per core. MAME also has a bare
-          # scheme but isn't listed yet: its build is currently broken
-          # (missing deps/mame/src/osd/headless/public headers), tracked
-          # separately. The other 11 shipped cores (Atari800, Bliss, JollyCV,
-          # O2EM, PokeMini, Potator, ProSystem, VecXGL, VirtualJaguar,
-          # blueMSX, Picodrive) have no scheme at all yet — see #674/#673.
-          all_cores='["4DO","BSNES","CrabEmu","DeSmuME","Dolphin","FCEU","Flycast","Gambatte","GenesisPlus","Mednafen","mGBA","Mupen64Plus","Nestopia","PPSSPP","SNES9x","Stella"]'
+          # scheme but isn't listed here: its build is currently broken
+          # (missing deps/mame/src/osd/headless/public headers) and its
+          # deps/mame source is deliberately not vendored into this repo
+          # (see MAME/README.md) — it needs its own clone-and-build CI job,
+          # not a slot in this xcodebuild matrix. Tracked separately.
+          all_cores='["4DO","Atari800","Bliss","BSNES","CrabEmu","DeSmuME","Dolphin","FCEU","Flycast","Gambatte","GenesisPlus","JollyCV","Mednafen","mGBA","Mupen64Plus","Nestopia","O2EM","Picodrive","PokeMini","Potator","PPSSPP","ProSystem","SNES9x","Stella","VecXGL","VirtualJaguar","blueMSX"]'
+
+          # A couple of core scheme names don't match their top-level
+          # directory name, so the plain "did <core>/ change" check below
+          # needs an explicit override for them. (Not a bash associative
+          # array — macOS's default /bin/bash is 3.2 and doesn't have them.)
+          core_dirs_json='{"Potator":"Potator-Core","Picodrive":"picodrive"}'
 
           if [ "${{ github.event_name }}" != "pull_request" ]; then
             # Manual workflow_dispatch run has no PR base to diff against — build everything.
@@ -68,11 +74,12 @@ jobs:
               echo "Shared code changed — building all core schemes"
               cores="$all_cores"
             else
-              cores=$(CHANGED_FILES="$changed" ALL_CORES="$all_cores" python3 -c "
+              cores=$(CHANGED_FILES="$changed" ALL_CORES="$all_cores" CORE_DIRS="$core_dirs_json" python3 -c "
           import json, os
           all_cores = json.loads(os.environ['ALL_CORES'])
+          core_dirs = json.loads(os.environ['CORE_DIRS'])
           changed = os.environ['CHANGED_FILES'].splitlines()
-          selected = [c for c in all_cores if any(f.startswith(c + '/') for f in changed)]
+          selected = [c for c in all_cores if any(f.startswith(core_dirs.get(c, c) + '/') for f in changed)]
           print(json.dumps(selected))
           ")
             fi
