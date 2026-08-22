@@ -39,9 +39,15 @@ jobs:
       - name: Determine which core schemes to build
         id: detect
         run: |
-          # Cores reachable through the "OpenEmu + <Name>" combined scheme.
-          # DeSmuME, Dolphin, and MAME use bare schemes and aren't covered here.
-          all_cores='["4DO","BSNES","CrabEmu","FCEU","Flycast","Gambatte","GenesisPlus","Mednafen","mGBA","Mupen64Plus","Nestopia","PPSSPP","SNES9x","Stella"]'
+          # Most cores build through the "OpenEmu + <Name>" combined scheme.
+          # DeSmuME and Dolphin only have a bare "<Name>" scheme — the Build
+          # step below picks the right one per core. MAME also has a bare
+          # scheme but isn't listed yet: its build is currently broken
+          # (missing deps/mame/src/osd/headless/public headers), tracked
+          # separately. The other 11 shipped cores (Atari800, Bliss, JollyCV,
+          # O2EM, PokeMini, Potator, ProSystem, VecXGL, VirtualJaguar,
+          # blueMSX, Picodrive) have no scheme at all yet — see #674/#673.
+          all_cores='["4DO","BSNES","CrabEmu","DeSmuME","Dolphin","FCEU","Flycast","Gambatte","GenesisPlus","Mednafen","mGBA","Mupen64Plus","Nestopia","PPSSPP","SNES9x","Stella"]'
 
           if [ "${{ github.event_name }}" != "pull_request" ]; then
             # Manual workflow_dispatch run has no PR base to diff against — build everything.
@@ -112,9 +118,16 @@ jobs:
             *) configuration=Debug ;;
           esac
 
+          # Most cores build through the "OpenEmu + <Name>" combined scheme.
+          # DeSmuME and Dolphin only have a bare "<Name>" scheme.
+          case "${{ matrix.core }}" in
+            DeSmuME|Dolphin) scheme="${{ matrix.core }}" ;;
+            *) scheme="OpenEmu + ${{ matrix.core }}" ;;
+          esac
+
           xcodebuild build \
             -workspace OpenEmu-metal.xcworkspace \
-            -scheme "OpenEmu + ${{ matrix.core }}" \
+            -scheme "$scheme" \
             -configuration "$configuration" \
             -destination 'platform=macOS,arch=arm64' \
             CODE_SIGN_IDENTITY="" \
