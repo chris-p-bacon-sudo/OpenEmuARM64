@@ -26,6 +26,11 @@ import Cocoa
 
 typealias OEAlertCompletionHandler = (OEAlert, NSApplication.ModalResponse) -> Void
 
+// Flipped so scroll views using it as a document view open at the top instead of the bottom.
+private final class FlippedView: NSView {
+    override var isFlipped: Bool { true }
+}
+
 @objc
 @objcMembers
 final class OEAlert: NSObject {
@@ -727,7 +732,8 @@ final class OEAlert: NSObject {
 
             let documentHeight = max(messageLabel.fittingSize.height, 1)
             let maximumHeight = max(120, (NSScreen.main?.visibleFrame.height ?? 800) - 220)
-            let documentView = NSView(frame: NSRect(x: 0, y: 0, width: maxTextWidth, height: documentHeight))
+            // Flipped so the scroll view opens showing the top of the text, not the bottom.
+            let documentView = FlippedView(frame: NSRect(x: 0, y: 0, width: maxTextWidth, height: documentHeight))
             messageLabel.translatesAutoresizingMaskIntoConstraints = true
             messageLabel.frame = documentView.bounds
             messageLabel.autoresizingMask = [.width, .height]
@@ -751,6 +757,7 @@ final class OEAlert: NSObject {
             return scrollView.bottomAnchor
         }
 
+        messageLabel.translatesAutoresizingMaskIntoConstraints = false
         contentView.addSubview(messageLabel)
         NSLayoutConstraint.activate([
             messageLabel.topAnchor.constraint(equalTo: lastAnchor, constant: hasHeadline ? HeadlineToMessageSpacing : TopInset),
