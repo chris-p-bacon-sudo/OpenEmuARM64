@@ -42,6 +42,17 @@ PPSSPPDebug.exe.manifest
 PPSSPPDebugARM64.exe.manifest
 PPSSPPDebugARM.exe.manifest
 assets/flash0
+
+# The "assets/flash0" pattern above is meant to keep locally-generated
+# PSP flash filesystem dumps out of the tree, but upstream itself
+# tracks the real replacement font set at assets/flash0/font despite
+# this rule — Xcode's PPSSPP.xcodeproj has a folder-reference Resources
+# build phase for it, and CI's CpResource step fails outright without
+# it. Carve the real directory back in, same pattern as the ARM
+# exception above.
+!assets/flash0/
+!assets/flash0/font/
+!assets/flash0/font/*.pgf
 UWP/icph
 UWP/*.ipch
 UWP/Content/*

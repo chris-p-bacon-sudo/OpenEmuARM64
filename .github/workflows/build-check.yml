@@ -20,6 +20,127 @@ jobs:
       - name: Check vendored core externals are populated
         run: ./Scripts/check-core-sources.sh
 
+  detect-core-changes:
+    # The `OpenEmu` scheme only builds the main app plus its own dependencies
+    # (OpenEmuKit/Base/System) — it never compiles core plugins, so a PR that
+    # only touches a core could go green without a single changed line being
+    # built. Figure out which cores (if any) actually need building for this
+    # PR, so the core matrix below only runs what changed.
+    name: Detect changed cores
+    runs-on: ubuntu-latest
+    outputs:
+      cores: ${{ steps.detect.outputs.cores }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine which core schemes to build
+        id: detect
+        run: |
+          # Most cores build through the "OpenEmu + <Name>" combined scheme.
+          # DeSmuME and Dolphin only have a bare "<Name>" scheme — the Build
+          # step below picks the right one per core. MAME also has a bare
+          # scheme but isn't listed here: its build is currently broken
+          # (missing deps/mame/src/osd/headless/public headers) and its
+          # deps/mame source is deliberately not vendored into this repo
+          # (see MAME/README.md) — it needs its own clone-and-build CI job,
+          # not a slot in this xcodebuild matrix. Tracked separately.
+          all_cores='["4DO","Atari800","Bliss","BSNES","CrabEmu","DeSmuME","Dolphin","FCEU","Flycast","Gambatte","GenesisPlus","JollyCV","Mednafen","mGBA","Mupen64Plus","Nestopia","O2EM","Picodrive","PokeMini","Potator","PPSSPP","ProSystem","SNES9x","Stella","VecXGL","VirtualJaguar","blueMSX"]'
+
+          # A couple of core scheme names don't match their top-level
+          # directory name, so the plain "did <core>/ change" check below
+          # needs an explicit override for them. (Not a bash associative
+          # array — macOS's default /bin/bash is 3.2 and doesn't have them.)
+          core_dirs_json='{"Potator":"Potator-Core","Picodrive":"picodrive"}'
+
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            # Manual workflow_dispatch run has no PR base to diff against — build everything.
+            echo "Not a pull_request event — building all core schemes"
+            cores="$all_cores"
+          else
+            changed=$(git diff --name-only "${{ github.event.pull_request.base.sha }}" "${{ github.sha }}")
+            echo "Changed files:"
+            echo "$changed"
+
+            # A change to shared framework code, the workspace, or scheme files
+            # can affect every core's build — fall back to building all of them.
+            # OpenEmuKit/ is included because several cores (Gambatte, FCEU,
+            # GenesisPlus, Mednafen, mGBA, Mupen64Plus, Nestopia, SNES9x, BSNES)
+            # compile .m files directly out of OpenEmuKit/Source/ into their
+            # own plugin targets.
+            if echo "$changed" | grep -qE '^(OpenEmu-SDK/|OpenEmu-metal\.xcworkspace/|OpenEmuKit/|Scripts/)'; then
+              echo "Shared code changed — building all core schemes"
+              cores="$all_cores"
+            else
+              cores=$(CHANGED_FILES="$changed" ALL_CORES="$all_cores" CORE_DIRS="$core_dirs_json" python3 -c "
+          import json, os
+          all_cores = json.loads(os.environ['ALL_CORES'])
+          core_dirs = json.loads(os.environ['CORE_DIRS'])
+          changed = os.environ['CHANGED_FILES'].splitlines()
+          selected = [c for c in all_cores if any(f.startswith(core_dirs.get(c, c) + '/') for f in changed)]
+          print(json.dumps(selected))
+          ")
+            fi
+          fi
+
+          echo "Core schemes to build: $cores"
+          echo "cores=$cores" >> "$GITHUB_OUTPUT"
+
+  build-cores:
+    name: Build core (${{ matrix.core }})
+    needs: detect-core-changes
+    if: needs.detect-core-changes.outputs.cores != '[]'
+    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        core: ${{ fromJson(needs.detect-core-changes.outputs.cores) }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Clear SPM binary artifact cache
+        run: rm -rf ~/Library/Caches/org.swift.swiftpm/artifacts/
+
+      - name: Generate credentials stubs
+        run: |
+          cp OpenEmu/ScreenScraperDevCredentials.template.swift OpenEmu/ScreenScraperDevCredentials.swift
+          cp OpenEmu/OEGoogleDriveSecrets.template.swift OpenEmu/OEGoogleDriveSecrets.swift
+
+      - name: Build ${{ matrix.core }} (arm64)
+        run: |
+          # Mednafen, SNES9x, and mGBA guard against Debug builds with a
+          # #error ("Cores should not be compiled in DEBUG!") — they must
+          # be built Release, unlike every other core in this matrix.
+          case "${{ matrix.core }}" in
+            Mednafen|SNES9x|mGBA) configuration=Release ;;
+            *) configuration=Debug ;;
+          esac
+
+          # Most cores build through the "OpenEmu + <Name>" combined scheme.
+          # DeSmuME and Dolphin only have a bare "<Name>" scheme.
+          case "${{ matrix.core }}" in
+            DeSmuME|Dolphin) scheme="${{ matrix.core }}" ;;
+            *) scheme="OpenEmu + ${{ matrix.core }}" ;;
+          esac
+
+          xcodebuild build \
+            -workspace OpenEmu-metal.xcworkspace \
+            -scheme "$scheme" \
+            -configuration "$configuration" \
+            -destination 'platform=macOS,arch=arm64' \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO
+
   build:
     name: Build (arm64)
     runs-on: macos-latest
