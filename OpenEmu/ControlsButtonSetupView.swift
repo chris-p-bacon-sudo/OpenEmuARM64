@@ -213,7 +213,7 @@ final class ControlsButtonSetupView: NSView {
                     button.frame = buttonRect.integral
                     
                     var labelRect = NSRect(x: leftGap, y: buttonRect.origin.y + buttonRect.size.height / 2 + 1, width: width - leftGap - labelButtonSpacing - buttonWidth, height: 100000).integral
-                    
+
                     var labelFitSize = label.cell?.cellSize(forBounds: labelRect) ?? .zero
                     if labelFitSize.height > 30 {
                         // If the label size returned is too tall, enlarge the
@@ -224,10 +224,10 @@ final class ControlsButtonSetupView: NSView {
                     }
                     labelRect.origin.y -= labelFitSize.height / 2
                     labelRect.size.height = labelFitSize.height
-                    
+
                     label.frame = labelRect
-                    
-                    y -= itemHeight + verticalItemSpacing
+
+                    y -= rowHeight(forLabel: label) + verticalItemSpacing
                 }
             }
             
@@ -245,14 +245,42 @@ final class ControlsButtonSetupView: NSView {
         }
         return height
     }
-    
+
+    /// Computes a row's vertical extent, accounting for labels that wrap to
+    /// more than one line so height-calculation and layout never drift apart.
+    private func rowHeight(forLabel label: ControlsKeyLabel?) -> CGFloat {
+        guard let label = label else { return itemHeight }
+        var labelRect = NSRect(x: 0, y: 0,
+                                width: width - leftGap - labelButtonSpacing - buttonWidth,
+                                height: 100000)
+        var fitSize = label.cell?.cellSize(forBounds: labelRect) ?? .zero
+        if fitSize.height > 30 {
+            labelRect.size.width += 5
+            fitSize = label.cell?.cellSize(forBounds: labelRect) ?? .zero
+        }
+        return max(itemHeight, fitSize.height)
+    }
+
     private func heightOfSection(_ section: Section) -> CGFloat {
         var height = sectionTitleHeight
-        
+
         height += topGap + bottomGap
-        let numberOfRows = CGFloat(section.numberOfRows)
-        height += (numberOfRows - 1) * verticalItemSpacing + numberOfRows * itemHeight
-        
+
+        var rowHeights: [CGFloat] = []
+        for group in section.groups {
+            for row in group {
+                if row.0 is ControlsKeyButton, let label = row.1 as? ControlsKeyLabel {
+                    rowHeights.append(rowHeight(forLabel: label))
+                } else {
+                    rowHeights.append(itemHeight)
+                }
+            }
+        }
+
+        guard !rowHeights.isEmpty else { return height }
+        let numberOfRows = CGFloat(rowHeights.count)
+        height += (numberOfRows - 1) * verticalItemSpacing + rowHeights.reduce(0, +)
+
         return height
     }
     
