@@ -559,6 +559,7 @@ final class OERetroAchievementsIndicatorStackView: NSStackView {
 final class OEGameLayerNotificationView: NSImageView {
     
     static let OEShowNotificationsKey = "OEShowNotifications"
+    static let OEShowHardcoreIconKey = "OEShowHardcoreIcon"
     
     public var disableNotifications: Bool = false
     
@@ -621,6 +622,13 @@ final class OEGameLayerNotificationView: NSImageView {
     }
 
     @objc public func showHardcore(enabled: Bool) {
+        guard UserDefaults.standard.bool(forKey: Self.OEShowHardcoreIconKey) else {
+            isHardcoreMode = enabled
+            if enabled {
+                postAccessibilityNotification(announcement: NSLocalizedString("Hardcore Mode", tableName: "ControlLabels", comment: ""))
+            }
+            return
+        }
         performNotification(img: hardcoreImage, enabled: enabled, state: &isHardcoreMode)
         if enabled {
             postAccessibilityNotification(announcement: NSLocalizedString("Hardcore Mode", tableName: "ControlLabels", comment: ""))
