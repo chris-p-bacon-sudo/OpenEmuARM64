@@ -397,10 +397,9 @@ final class PrefRetroAchievementsController: NSViewController {
         statusLabel.stringValue = "Signing in…"
         statusLabel.textColor = .secondaryLabelColor
 
-        RetroAchievementsAPI.login(username: username, password: password) { [weak self] result in
+        OERetroAchievementsLoginClient.login(withUsername: username, password: password) { [weak self] token, _, error in
             guard let self = self else { return }
-            switch result {
-            case .success(let token):
+            if let token = token {
                 OECredentialStore.shared.set(token, forKey: .retroAchievementsToken)
                 UserDefaults.standard.set(username, forKey: "RAUsername")
                 self.passwordField.stringValue = ""
@@ -413,8 +412,8 @@ final class PrefRetroAchievementsController: NSViewController {
                     object: nil,
                     userInfo: [RACredentialsTokenKey: token, RACredentialsUsernameKey: username]
                 )
-            case .failure(let error):
-                self.setStatus(error.localizedDescription, isError: true)
+            } else {
+                self.setStatus(error?.localizedDescription ?? "Login failed. Check username and password.", isError: true)
             }
         }
     }
@@ -444,67 +443,4 @@ extension PrefRetroAchievementsController: PreferencePane {
     var panelTitle: String { "Achievements" }
 
     var viewSize: NSSize { NSSize(width: 468, height: 580) }
-}
-
-
-
-// MARK: - RA API
-
-private enum RetroAchievementsAPI {
-
-    enum LoginError: LocalizedError {
-        case networkError(Error)
-        case invalidResponse
-        case authFailed(String)
-
-        var errorDescription: String? {
-            switch self {
-            case .networkError(let e): return "Network error: \(e.localizedDescription)"
-            case .invalidResponse:     return "Unexpected response from RetroAchievements."
-            case .authFailed(let msg): return msg
-            }
-        }
-    }
-
-    /// GET login credentials and return the RA token on success.
-    static func login(username: String, password: String,
-                      completion: @escaping (Result<String, LoginError>) -> Void) {
-        var components = URLComponents(string: "https://retroachievements.org/dorequest.php")!
-        components.queryItems = [
-            URLQueryItem(name: "r", value: "login2"),
-            URLQueryItem(name: "u", value: username),
-            URLQueryItem(name: "p", value: password),
-        ]
-        guard let url = components.url else {
-            completion(.failure(.invalidResponse))
-            return
-        }
-
-        var request = URLRequest(url: url)
-        request.httpMethod = "GET"
-        request.setValue("OpenEmu-Silicon/1.0 (macOS)", forHTTPHeaderField: "User-Agent")
-
-        URLSession.shared.dataTask(with: request) { data, response, error in
-            if let error = error {
-                NSLog("[RA] Network error: %@", error.localizedDescription)
-                DispatchQueue.main.async { completion(.failure(.networkError(error))) }
-                return
-            }
-
-            guard let data = data,
-                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
-            else {
-                DispatchQueue.main.async { completion(.failure(.invalidResponse)) }
-                return
-            }
-
-            if let token = json["Token"] as? String, !token.isEmpty {
-                DispatchQueue.main.async { completion(.success(token)) }
-            } else {
-                let message = (json["Error"] as? String) ?? "Login failed. Check username and password."
-                NSLog("[RA] Auth failed: %@", message)
-                DispatchQueue.main.async { completion(.failure(.authFailed(message))) }
-            }
-        }.resume()
-    }
 }

@@ -688,6 +688,9 @@
 		OE0RA0APPBUILDFILE0000001 /* PrefRetroAchievementsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = OE0RA0APPFILEREF00000001 /* PrefRetroAchievementsController.swift */; };
 		OE0RA0BUILDFILE0000000001 /* OERetroAchievementsTransport.m in Sources */ = {isa = PBXBuildFile; fileRef = OE0RA0FILEREF00000000001 /* OERetroAchievementsTransport.m */; };
 		OE0RC0BUILDFILE0000000001 /* rcheevos_build.c in Sources */ = {isa = PBXBuildFile; fileRef = OE0RC0FILEREF00000000001 /* rcheevos_build.c */; settings = {COMPILER_FLAGS = "-DRC_NO_THREADS=1"; }; };
+		OE0RA0APPBUILDFILE0000002 /* OERetroAchievementsTransport.m in Sources */ = {isa = PBXBuildFile; fileRef = OE0RA0FILEREF00000000001 /* OERetroAchievementsTransport.m */; };
+		OE0RC0APPBUILDFILE0000002 /* rcheevos_build.c in Sources */ = {isa = PBXBuildFile; fileRef = OE0RC0FILEREF00000000001 /* rcheevos_build.c */; settings = {COMPILER_FLAGS = "-DRC_NO_THREADS=1"; }; };
+		OE0RALOGIN0BUILDFILE0002 /* OERetroAchievementsLoginClient.m in Sources */ = {isa = PBXBuildFile; fileRef = OE0RALOGIN0FILEREF0002 /* OERetroAchievementsLoginClient.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -1948,6 +1951,8 @@
 		OE0RA0APPFILEREF00000001 /* PrefRetroAchievementsController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrefRetroAchievementsController.swift; sourceTree = "<group>"; };
 		OE0RA0FILEREF00000000001 /* OERetroAchievementsTransport.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = OERetroAchievementsTransport.m; path = ../OpenEmuKit/Source/OERetroAchievementsTransport.m; sourceTree = SOURCE_ROOT; };
 		OE0RC0FILEREF00000000001 /* rcheevos_build.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = rcheevos_build.c; path = ../Vendor/rcheevos/rcheevos_build.c; sourceTree = SOURCE_ROOT; };
+		OE0RALOGIN0FILEREF0001 /* OERetroAchievementsLoginClient.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = OERetroAchievementsLoginClient.h; path = ../OpenEmuKit/Source/OERetroAchievementsLoginClient.h; sourceTree = SOURCE_ROOT; };
+		OE0RALOGIN0FILEREF0002 /* OERetroAchievementsLoginClient.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = OERetroAchievementsLoginClient.m; path = ../OpenEmuKit/Source/OERetroAchievementsLoginClient.m; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -2953,6 +2958,8 @@
 				8F40EB7A1C1072B100683055 /* PrefCoresController.xib */,
 				CC0011223344556801900001 /* PrefScreenScraperController.swift */,
 				OE0RA0APPFILEREF00000001 /* PrefRetroAchievementsController.swift */,
+				OE0RALOGIN0FILEREF0001 /* OERetroAchievementsLoginClient.h */,
+				OE0RALOGIN0FILEREF0002 /* OERetroAchievementsLoginClient.m */,
 				CC0011223344557001900001 /* ScreenScraperDevCredentials.swift */,
 				83495DD319A38F31009DB6E5 /* PrefBiosController.swift */,
 				83495DD719A38F3D009DB6E5 /* PrefBiosController.xib */,
@@ -6286,6 +6293,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				OE0RALOGIN0BUILDFILE0002 /* OERetroAchievementsLoginClient.m in Sources */,
+				OE0RA0APPBUILDFILE0000002 /* OERetroAchievementsTransport.m in Sources */,
+				OE0RC0APPBUILDFILE0000002 /* rcheevos_build.c in Sources */,
 				C6252DC814E7A38000350A13 /* ControlsButtonSetupView.swift in Sources */,
 				0586AB22231A1E9A00BCDA6B /* OEGameLayerNotificationView.swift in Sources */,
 				0544B69923D16D0C00F63D61 /* ImageCollectionHeaderView.swift in Sources */,
@@ -8391,7 +8401,12 @@
 					"SUPPORTS_LIBRARY_REGISTRATION=1",
 				);
 				GCC_WARN_UNUSED_LABEL = YES;
-				HEADER_SEARCH_PATHS = "$(SRCROOT)/../OpenEmuKit/Source/OpenEmuKitPrivate/**";
+				HEADER_SEARCH_PATHS = (
+					"$(SRCROOT)/../OpenEmuKit/Source/OpenEmuKitPrivate/**",
+					"$(SRCROOT)/../OpenEmuKit/Source",
+					"$(SRCROOT)/../Vendor/rcheevos/include",
+					"$(SRCROOT)/../Vendor/rcheevos/src",
+				);
 				INFOPLIST_FILE = "OpenEmu-Info.plist";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.games";
 				INSTALL_PATH = /Applications;
@@ -8431,7 +8446,12 @@
 					"SUPPORTS_LIBRARY_REGISTRATION=1",
 				);
 				GCC_WARN_UNUSED_LABEL = YES;
-				HEADER_SEARCH_PATHS = "$(SRCROOT)/../OpenEmuKit/Source/OpenEmuKitPrivate/**";
+				HEADER_SEARCH_PATHS = (
+					"$(SRCROOT)/../OpenEmuKit/Source/OpenEmuKitPrivate/**",
+					"$(SRCROOT)/../OpenEmuKit/Source",
+					"$(SRCROOT)/../Vendor/rcheevos/include",
+					"$(SRCROOT)/../Vendor/rcheevos/src",
+				);
 				INFOPLIST_FILE = "OpenEmu-Info.plist";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.games";
 				INSTALL_PATH = /Applications;
