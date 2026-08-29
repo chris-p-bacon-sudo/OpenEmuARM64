@@ -452,19 +452,17 @@ final class GameControlsBar: NSWindow {
                 if hardcoreOn { toggleItem.isEnabled = false }
                 submenu.addItem(toggleItem)
 
-                if cheat.isUserAdded {
-                    submenu.addItem(.separator())
+                submenu.addItem(.separator())
 
-                    let editItem = NSMenuItem(title: NSLocalizedString("Edit…", comment: "Cheat submenu edit"), action: #selector(OEGameDocument.editCheat(_:)), keyEquivalent: "")
-                    editItem.representedObject = cheat
-                    if hardcoreOn { editItem.isEnabled = false }
-                    submenu.addItem(editItem)
+                let editItem = NSMenuItem(title: NSLocalizedString("Edit…", comment: "Cheat submenu edit"), action: #selector(OEGameDocument.editCheat(_:)), keyEquivalent: "")
+                editItem.representedObject = cheat
+                if hardcoreOn { editItem.isEnabled = false }
+                submenu.addItem(editItem)
 
-                    let removeItem = NSMenuItem(title: NSLocalizedString("Remove", comment: "Cheat submenu remove"), action: #selector(OEGameDocument.removeCheat(_:)), keyEquivalent: "")
-                    removeItem.representedObject = cheat
-                    if hardcoreOn { removeItem.isEnabled = false }
-                    submenu.addItem(removeItem)
-                }
+                let removeItem = NSMenuItem(title: NSLocalizedString("Remove", comment: "Cheat submenu remove"), action: #selector(OEGameDocument.removeCheat(_:)), keyEquivalent: "")
+                removeItem.representedObject = cheat
+                if hardcoreOn { removeItem.isEnabled = false }
+                submenu.addItem(removeItem)
 
                 cheatItem.submenu = submenu
                 menu.addItem(cheatItem)

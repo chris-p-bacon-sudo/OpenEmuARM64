@@ -1647,7 +1647,6 @@ final class OEGameDocument: NSDocument {
 
     func addCheatFromSearch(code: String, type: String, name: String, enabled: Bool) {
         let cheat = Cheat(code: code, type: type, name: name)
-        cheat.isUserAdded = true
         if enabled {
             cheat.isEnabled = true
             setCheat(cheat)
@@ -1658,10 +1657,8 @@ final class OEGameDocument: NSDocument {
     
     /// In order to load cheats, we need the core plugin and the ROM to be set.
     private func loadCheats() {
-        if supportsCheats,
-           let md5Hash = rom.md5Hash {
-            let cheatsXML = Cheats(md5Hash: md5Hash)
-            cheats = cheatsXML.allCheats + loadUserCheats()
+        if supportsCheats {
+            cheats = loadUserCheats()
         }
     }
 
@@ -1686,8 +1683,7 @@ final class OEGameDocument: NSDocument {
 
     private func saveUserCheats() {
         guard let url = userCheatsFileURL else { return }
-        let userCheats = cheats.filter(\.isUserAdded)
-        if let data = try? JSONEncoder().encode(userCheats) {
+        if let data = try? JSONEncoder().encode(cheats) {
             try? data.write(to: url, options: .atomic)
         }
     }
@@ -1750,7 +1746,6 @@ final class OEGameDocument: NSDocument {
             }
 
             let cheat = Cheat(code: code, type: "GameShark", name: name)
-            cheat.isUserAdded = true
 
             if shouldEnable {
                 cheat.isEnabled = true
@@ -2020,7 +2015,7 @@ final class OEGameDocument: NSDocument {
 
         cheat.isEnabled.toggle()
         setCheat(cheat)
-        if cheat.isUserAdded { saveUserCheats() }
+        saveUserCheats()
     }
 
     /// expects `sender.representedObject` to be a `Cheat` object
@@ -2053,7 +2048,6 @@ final class OEGameDocument: NSDocument {
 
             let edited = Cheat(code: newCode, type: cheat.type, name: alert.otherStringValue)
             edited.isEnabled = cheat.isEnabled
-            edited.isUserAdded = true
 
             if cheat.isEnabled {
                 gameCoreManager?.setCheat(cheat.code, withType: cheat.type, enabled: false)

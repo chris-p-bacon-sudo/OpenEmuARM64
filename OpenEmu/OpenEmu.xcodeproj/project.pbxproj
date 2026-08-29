@@ -565,7 +565,6 @@
 		94A4E98D179F9A4D00AD8C7D /* OEDBSaveStatesMedia.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94A4E98C179F9A4D00AD8C7D /* OEDBSaveStatesMedia.swift */; };
 		94A4E992179F9D0400AD8C7D /* OEDBScreenshotsMedia.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94A4E98F179F9D0400AD8C7D /* OEDBScreenshotsMedia.swift */; };
 		94A4E996179FAB9F00AD8C7D /* OEMediaViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 94A4E995179FAB9F00AD8C7D /* OEMediaViewController.m */; };
-		94AE2C1017B07D450018DFBB /* cheats-database.xml in Resources */ = {isa = PBXBuildFile; fileRef = 94AE2C0F17B07D450018DFBB /* cheats-database.xml */; };
 		94B28256189DF5AA00D80F3D /* OENDSSystemController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94B28255189DF5AA00D80F3D /* OENDSSystemController.swift */; };
 		94BE9E61171689B400AB08E6 /* OEColecoVisionSystemResponder.m in Sources */ = {isa = PBXBuildFile; fileRef = 94BE9E5F171689B400AB08E6 /* OEColecoVisionSystemResponder.m */; };
 		94BE9E6B171689C900AB08E6 /* Controller-Mappings.plist in Resources */ = {isa = PBXBuildFile; fileRef = 94BE9E65171689C900AB08E6 /* Controller-Mappings.plist */; };
@@ -1822,7 +1821,6 @@
 		94A4E98F179F9D0400AD8C7D /* OEDBScreenshotsMedia.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = OEDBScreenshotsMedia.swift; sourceTree = "<group>"; };
 		94A4E994179FAB9E00AD8C7D /* OEMediaViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OEMediaViewController.h; sourceTree = "<group>"; };
 		94A4E995179FAB9F00AD8C7D /* OEMediaViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = OEMediaViewController.m; sourceTree = "<group>"; };
-		94AE2C0F17B07D450018DFBB /* cheats-database.xml */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; path = "cheats-database.xml"; sourceTree = "<group>"; };
 		94B28255189DF5AA00D80F3D /* OENDSSystemController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = OENDSSystemController.swift; sourceTree = "<group>"; };
 		94BE9E50171683E000AB08E6 /* ColecoVision.oesystemplugin */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ColecoVision.oesystemplugin; sourceTree = BUILT_PRODUCTS_DIR; };
 		94BE9E54171683E000AB08E6 /* ColecoVision-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "ColecoVision-Info.plist"; sourceTree = "<group>"; };
@@ -2449,7 +2447,6 @@
 		01E7214A2523E798002CA16F /* Other Assets */ = {
 			isa = PBXGroup;
 			children = (
-				94AE2C0F17B07D450018DFBB /* cheats-database.xml */,
 				8F071F3A1C255362007B76DA /* Credits.rtf */,
 				87191CC51F6F5524006D2EE3 /* dsa_pub.pem */,
 				C60CDDD611780DF100EB472F /* OpenGL Format Table.txt */,
@@ -5666,7 +5663,6 @@
 				83495DD819A38F3D009DB6E5 /* PrefBiosController.xib in Resources */,
 				83338C2217A281C7007E32E9 /* secret.mp3 in Resources */,
 				05888F7425A111B000286232 /* ShaderParametersViewController.xib in Resources */,
-				94AE2C1017B07D450018DFBB /* cheats-database.xml in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
