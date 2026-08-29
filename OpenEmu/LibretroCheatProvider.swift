@@ -9,11 +9,24 @@ import os.log
 
 private let log = Logger(subsystem: "org.openemu.OpenEmu", category: "LibretroCheatProvider")
 
+/// Cached cheat file stored on disk per game.
+private struct LibretroCachedCheatFile: Codable {
+    let chtFileName: String
+    let etag: String?
+    let cheats: [LibretroCachedCheat]
+}
+
+private struct LibretroCachedCheat: Codable {
+    let name: String
+    let code: String
+}
+
 final class LibretroCheatProvider: CheatDatabaseProvider {
 
     let name = "Libretro"
 
     private static let datBaseURL = "https://raw.githubusercontent.com/libretro/libretro-database/master/metadat/no-intro/"
+    private static let chtBaseURL = "https://raw.githubusercontent.com/libretro/libretro-database/master/cht/"
 
     // OpenEmu system ID → Libretro directory/DAT name
     private let systemMap: [String: String] = [
@@ -28,18 +41,179 @@ final class LibretroCheatProvider: CheatDatabaseProvider {
     }
 
     func cheats(forMD5 md5: String, systemIdentifier: String) async throws -> [DatabaseCheat] {
+        guard let libretroSystem = systemMap[systemIdentifier] else { return [] }
+
+        // 1. Check local cache
+        if let cached = loadCachedCheats(md5: md5, systemIdentifier: systemIdentifier) {
+            log.info("Local cache hit for \(md5) (\(cached.chtFileName))")
+            // Try to update in case there's a newer version
+            let updated = try await fetchAndCacheCHT(
+                chtFileName: cached.chtFileName,
+                libretroSystem: libretroSystem,
+                md5: md5,
+                systemIdentifier: systemIdentifier,
+                existingETag: cached.etag
+            )
+            // If 304 not modified, return cached; otherwise return updated
+            let cheats = updated ?? cached.cheats
+            return cheats.map { DatabaseCheat(name: $0.name, code: $0.code, providerName: name) }
+        }
+
+        // 2. No local cache — resolve game name via DAT
         let gameName = try await lookupGameName(md5: md5, systemIdentifier: systemIdentifier)
         guard let gameName else {
             log.info("No game found for MD5 \(md5) in system \(systemIdentifier)")
             return []
         }
-        log.info("MD5 \(md5) → CHT file: \(gameName).cht")
+        let chtFileName = "\(gameName).cht"
+        log.info("MD5 \(md5) → \(chtFileName)")
 
-        // TODO: 2. Check local cache (ETag-based freshness)
-        // TODO: 3. Fetch CHT file from raw.githubusercontent.com if needed
-        // TODO: 4. Parse CHT file (handle both code-based and address-based formats)
-        // TODO: 5. Filter empty codes, clean up, cache result
-        return []
+        // 3. Download and cache the CHT file
+        let cheats = try await fetchAndCacheCHT(
+            chtFileName: chtFileName,
+            libretroSystem: libretroSystem,
+            md5: md5,
+            systemIdentifier: systemIdentifier,
+            existingETag: nil
+        )
+        guard let cheats else {
+            log.info("No CHT file found for \(chtFileName)")
+            return []
+        }
+        return cheats.map { DatabaseCheat(name: $0.name, code: $0.code, providerName: name) }
+    }
+
+    // MARK: - Local Cache
+
+    private func cacheFileURL(md5: String, systemIdentifier: String) -> URL? {
+        guard let base = OELibraryDatabase.default?.databaseFolderURL else { return nil }
+        let dir = base
+            .appendingPathComponent("CheatDatabase", isDirectory: true)
+            .appendingPathComponent("libretro", isDirectory: true)
+            .appendingPathComponent(systemIdentifier, isDirectory: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir.appendingPathComponent("\(md5.uppercased()).json")
+    }
+
+    private func loadCachedCheats(md5: String, systemIdentifier: String) -> LibretroCachedCheatFile? {
+        guard let url = cacheFileURL(md5: md5, systemIdentifier: systemIdentifier),
+              let data = try? Data(contentsOf: url),
+              let cached = try? JSONDecoder().decode(LibretroCachedCheatFile.self, from: data)
+        else { return nil }
+        return cached
+    }
+
+    private func saveCachedCheats(_ file: LibretroCachedCheatFile, md5: String, systemIdentifier: String) {
+        guard let url = cacheFileURL(md5: md5, systemIdentifier: systemIdentifier),
+              let data = try? JSONEncoder().encode(file)
+        else { return }
+        try? data.write(to: url, options: .atomic)
+    }
+
+    // MARK: - CHT Fetch
+
+    /// Downloads (or conditionally updates) a CHT file. Returns parsed cheats, or nil if 304/not found.
+    private func fetchAndCacheCHT(
+        chtFileName: String,
+        libretroSystem: String,
+        md5: String,
+        systemIdentifier: String,
+        existingETag: String?
+    ) async throws -> [LibretroCachedCheat]? {
+        let encoded = "\(libretroSystem)/\(chtFileName)"
+            .addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? chtFileName
+        guard let url = URL(string: "\(Self.chtBaseURL)\(encoded)") else { return nil }
+
+        var request = URLRequest(url: url)
+        if let etag = existingETag {
+            request.setValue("\"\(etag)\"", forHTTPHeaderField: "If-None-Match")
+            log.debug("Checking for CHT update: \(chtFileName)")
+        } else {
+            log.info("Downloading CHT: \(chtFileName)")
+        }
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse else { return nil }
+
+        switch httpResponse.statusCode {
+        case 304:
+            log.debug("CHT not modified: \(chtFileName)")
+            return nil
+        case 404:
+            log.info("CHT not found: \(chtFileName)")
+            return nil
+        case 200:
+            break
+        default:
+            log.warning("Unexpected HTTP \(httpResponse.statusCode) for \(chtFileName)")
+            return nil
+        }
+
+        let newETag = httpResponse.value(forHTTPHeaderField: "ETag")?.replacingOccurrences(of: "\"", with: "")
+        let cheats = parseCHTFile(data)
+        log.info("CHT parsed: \(chtFileName) → \(cheats.count) cheats")
+
+        for cheat in cheats {
+            log.debug("\(cheat.name) - \(cheat.code)")
+        }
+
+        let cached = LibretroCachedCheatFile(chtFileName: chtFileName, etag: newETag, cheats: cheats)
+        saveCachedCheats(cached, md5: md5, systemIdentifier: systemIdentifier)
+
+        return cheats
+    }
+
+    // MARK: - CHT Parser
+
+    private func parseCHTFile(_ data: Data) -> [LibretroCachedCheat] {
+        guard let content = String(data: data, encoding: .utf8) else { return [] }
+
+        // Group fields by cheat index: "cheat0" → ["desc": "...", "code": "...", "address": "...", ...]
+        var groups: [String: [String: String]] = [:]
+        for line in content.components(separatedBy: .newlines) {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            if trimmed.isEmpty { continue }
+            guard let eqRange = trimmed.range(of: " = ") else { continue }
+
+            let key = String(trimmed[..<eqRange.lowerBound])
+            let raw = String(trimmed[eqRange.upperBound...])
+            let value = raw.hasPrefix("\"") && raw.hasSuffix("\"") && raw.count >= 2
+                ? String(raw.dropFirst().dropLast())
+                : raw
+
+            // Split "cheat0_desc" → prefix "cheat0", field "desc"
+            guard let underIdx = key.firstIndex(of: "_") else { continue }
+            let prefix = String(key[..<underIdx])
+            let field = String(key[key.index(after: underIdx)...])
+            groups[prefix, default: [:]][field] = value
+        }
+
+        var cheats: [LibretroCachedCheat] = []
+        var seenCodes: Set<String> = []
+
+        for index in 0..<groups.count {
+            let prefix = "cheat\(index)"
+            guard let fields = groups[prefix] else { continue }
+            guard let desc = fields["desc"], !desc.isEmpty else { continue }
+
+            var code = fields["code"] ?? ""
+
+            // If code is empty, try to synthesize from address + value (Format B)
+            // TODO: handle big_endian and memory_search_size for multi-byte systems
+            // TODO: filter by cheat_type — only type 1 (set to value) is usable; types 2-7 need RetroArch's RAM engine
+            if code.isEmpty, let addrStr = fields["address"], let valStr = fields["value"],
+               let addr = UInt(addrStr), let val = UInt(valStr) {
+                code = String(format: "%02X:%02X", addr, val)
+            }
+
+            guard !code.isEmpty else { continue }
+            let cleaned = code.replacingOccurrences(of: " ", with: "")
+            guard !seenCodes.contains(cleaned) else { continue }
+            seenCodes.insert(cleaned)
+            cheats.append(LibretroCachedCheat(name: desc, code: cleaned))
+        }
+
+        return cheats
     }
 
     // MARK: - DAT Lookup
@@ -67,7 +241,6 @@ final class LibretroCheatProvider: CheatDatabaseProvider {
 
     // MARK: - DAT Parser (clrmamepro format)
 
-    /// Parses a No-Intro DAT file and returns [uppercased MD5 → game name].
     private func parseDATFile(_ data: Data) -> [String: String] {
         guard let content = String(data: data, encoding: .utf8) else { return [:] }
         var result: [String: String] = [:]
