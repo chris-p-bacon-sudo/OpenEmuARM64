@@ -16,17 +16,17 @@ struct DatabaseCheat: Sendable {
 protocol CheatDatabaseProvider {
     var name: String { get }
     func supportsSystem(_ systemIdentifier: String) -> Bool
-    func cheats(forMD5 md5: String, systemID: String) async throws -> [DatabaseCheat]
+    func cheats(forMD5 md5: String, systemIdentifier: String) async throws -> [DatabaseCheat]
 }
 
 /// Facade that aggregates cheat database providers and presents a unified interface to the UI.
 final class CheatDatabaseService {
 
-    static let shared = CheatDatabaseService()
+    static let shared = CheatDatabaseService(providers: [LibretroCheatProvider()])
 
     private let providers: [CheatDatabaseProvider]
 
-    init(providers: [CheatDatabaseProvider] = []) {
+    init(providers: [CheatDatabaseProvider]) {
         self.providers = providers
     }
 
@@ -36,11 +36,11 @@ final class CheatDatabaseService {
     }
 
     /// Fetches cheats from all providers that support the system, merges and returns them.
-    func cheats(forMD5 md5: String, systemID: String) async throws -> [DatabaseCheat] {
+    func cheats(forMD5 md5: String, systemIdentifier: String) async throws -> [DatabaseCheat] {
         // TODO: query each supporting provider concurrently, merge results
         var results: [DatabaseCheat] = []
-        for provider in providers where provider.supportsSystem(systemID) {
-            let providerCheats = try await provider.cheats(forMD5: md5, systemID: systemID)
+        for provider in providers where provider.supportsSystem(systemIdentifier) {
+            let providerCheats = try await provider.cheats(forMD5: md5, systemIdentifier: systemIdentifier)
             results.append(contentsOf: providerCheats)
         }
         return results
