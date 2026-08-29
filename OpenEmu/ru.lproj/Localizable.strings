@@ -710,6 +710,8 @@ You can go to the Controls preferences to check which associations were affected
 	<string>Добавить Чит-код</string>
 	<key>Cheat Search…</key>
 	<string>Поиск чит-кодов…</string>
+    <key>Browse Online Cheats…</key>
+    <string>Обзор онлайн чит-кодов…</string>
 	<key>Cheat Search</key>
 	<string>Поиск чит-кодов</string>
 	<key>Store Values</key>

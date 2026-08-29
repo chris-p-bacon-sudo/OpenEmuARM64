@@ -434,6 +434,12 @@ final class GameControlsBar: NSWindow {
             menu.addItem(searchItem)
         }
 
+        if gameViewController.supportsOnlineCheats {
+            let browseItem = NSMenuItem(title: NSLocalizedString("Browse Online Cheats…", comment: ""), action: #selector(OEGameDocument.browseOnlineCheats(_:)), keyEquivalent: "")
+            if hardcoreOn { browseItem.isEnabled = false }
+            menu.addItem(browseItem)
+        }
+
         let cheats = gameViewController.document.cheats
         if !cheats.isEmpty {
             menu.addItem(.separator())

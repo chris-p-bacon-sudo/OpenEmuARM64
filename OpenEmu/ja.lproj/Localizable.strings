@@ -705,6 +705,8 @@ You can go to the Controls preferences to check which associations were affected
 	<string>チートコードを追加</string>
 	<key>Cheat Search…</key>
 	<string>チート検索…</string>
+    <key>Browse Online Cheats…</key>
+    <string>オンラインチートを参照…</string>
 	<key>Cheat Search</key>
 	<string>チート検索</string>
 	<key>Store Values</key>

@@ -680,6 +680,8 @@ You can go to the Controls preferences to check which associations were affected
 	<string>أضف الغش</string>
 	<key>Cheat Search…</key>
 	<string>بحث عن شفرات غش…</string>
+    <key>Browse Online Cheats…</key>
+    <string>تصفح الغش عبر الإنترنت…</string>
 	<key>Cheat Search</key>
 	<string>بحث عن شفرات غش</string>
 	<key>Store Values</key>

@@ -722,6 +722,8 @@ You can go to the Controls preferences to check which associations were affected
 	<string>Add Cheat</string>
 	<key>Cheat Search…</key>
 	<string>Cheat Search…</string>
+    <key>Browse Online Cheats…</key>
+    <string>Browse Online Cheats…</string>
 	<key>Cheat Search</key>
 	<string>Cheat Search</string>
 	<key>Store Values</key>

@@ -706,6 +706,8 @@ Vous pouvez aller dans les préférences Contrôles pour vérifier les associati
 	<string>Ajouter un code</string>
 	<key>Cheat Search…</key>
 	<string>Recherche de codes…</string>
+    <key>Browse Online Cheats…</key>
+    <string>Parcourir les codes en ligne…</string>
 	<key>Cheat Search</key>
 	<string>Recherche de codes</string>
 	<key>Store Values</key>

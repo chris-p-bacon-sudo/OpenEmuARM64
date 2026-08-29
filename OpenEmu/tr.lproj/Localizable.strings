@@ -710,6 +710,8 @@ Hangi ilişkilendirmelerin etkilendiğini kontrol etmek için Kontrolcü tercihl
 	<string>Hile ekle</string>
 	<key>Cheat Search…</key>
 	<string>Hile Ara…</string>
+    <key>Browse Online Cheats…</key>
+    <string>Çevrimiçi Hilelere Göz At…</string>
 	<key>Cheat Search</key>
 	<string>Hile Ara</string>
 	<key>Store Values</key>

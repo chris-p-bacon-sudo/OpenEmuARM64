@@ -712,6 +712,8 @@ Puoi andare nelle Preferenze Controlli per verificare quali impostazioni sono st
 	<string>Aggiungi trucco</string>
 	<key>Cheat Search…</key>
 	<string>Cerca trucchi…</string>
+    <key>Browse Online Cheats…</key>
+    <string>Sfoglia trucchi online…</string>
 	<key>Cheat Search</key>
 	<string>Cerca trucchi</string>
 	<key>Store Values</key>

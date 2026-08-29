@@ -708,6 +708,8 @@ Du kannst die Tastenbelegung in den Einstellungen unter „Steuerung“ überpr�
 	<string>Cheat hinzufügen</string>
 	<key>Cheat Search…</key>
 	<string>Cheat-Suche…</string>
+    <key>Browse Online Cheats…</key>
+    <string>Online-Cheats durchsuchen…</string>
 	<key>Cheat Search</key>
 	<string>Cheat-Suche</string>
 	<key>Store Values</key>

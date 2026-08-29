@@ -710,6 +710,8 @@ You can go to the Controls preferences to check which associations were affected
 	<string>Adicionar Trapaça</string>
 	<key>Cheat Search…</key>
 	<string>Buscar Trapaças…</string>
+    <key>Browse Online Cheats…</key>
+    <string>Explorar Trapaças Online…</string>
 	<key>Cheat Search</key>
 	<string>Buscar Trapaças</string>
 	<key>Store Values</key>

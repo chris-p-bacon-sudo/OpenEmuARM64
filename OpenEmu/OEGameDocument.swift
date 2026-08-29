@@ -1634,6 +1634,10 @@ final class OEGameDocument: NSDocument {
         return corePlugin.supportsCheatSearch(forSystemIdentifier: systemPlugin.systemIdentifier)
     }
 
+    var supportsOnlineCheats: Bool {
+        return CheatDatabaseService.shared.supportsSystem(systemPlugin.systemIdentifier)
+    }
+
     func fetchReadableMemoryRegions(completionHandler block: @escaping ([OEMemoryRegionDescriptor]) -> Void) {
         gameCoreManager?.readableMemoryRegionDescriptors(completionHandler: block)
     }
@@ -1643,6 +1647,10 @@ final class OEGameDocument: NSDocument {
             cheatSearchWindowController = CheatSearchWindowController(document: self)
         }
         cheatSearchWindowController?.showWindow(self)
+    }
+
+    @IBAction func browseOnlineCheats(_ sender: Any?) {
+        // TODO: open CheatBrowserWindowController
     }
 
     func addCheatFromSearch(code: String, type: String, name: String, enabled: Bool) {
