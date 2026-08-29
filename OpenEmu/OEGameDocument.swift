@@ -1651,6 +1651,12 @@ final class OEGameDocument: NSDocument {
 
     @IBAction func browseOnlineCheats(_ sender: Any?) {
         // TODO: open CheatBrowserWindowController
+        guard let md5 = rom.md5Hash else { return }
+        let systemID = systemPlugin.systemIdentifier
+        Task {
+            let results = try await CheatDatabaseService.shared.cheats(forMD5: md5, systemIdentifier: systemID)
+            NSLog("[Cheats] Browse Online: %d results for MD5 %@", results.count, md5)
+        }
     }
 
     func addCheatFromSearch(code: String, type: String, name: String, enabled: Bool) {
