@@ -4,6 +4,10 @@
 // modification, are permitted under the BSD 2-Clause license.
 
 import Foundation
+import OpenEmuBase
+import os.log
+
+private let log = Logger(subsystem: "org.openemu.OpenEmu", category: "CheatDatabaseService")
 
 /// A cheat entry returned by a provider, before import into the user's cheat list.
 struct DatabaseCheat: Sendable {
@@ -35,14 +39,18 @@ final class CheatDatabaseService {
         providers.contains { $0.supportsSystem(systemIdentifier) }
     }
 
-    /// Fetches cheats from all providers that support the system, merges and deduplicates.
+    /// Fetches cheats from all providers that support the system, merges, deduplicates, and filters invalid formats.
     /// Provider ordering determines precedence — earlier providers win on duplicate codes.
-    func cheats(forMD5 md5: String, systemIdentifier: String) async throws -> [DatabaseCheat] {
+    func cheats(forMD5 md5: String, systemIdentifier: String, coreIdentifier: String) async throws -> [DatabaseCheat] {
         var results: [DatabaseCheat] = []
         var seenCodes: Set<String> = []
         for provider in providers where provider.supportsSystem(systemIdentifier) {
             let providerCheats = try await provider.cheats(forMD5: md5, systemIdentifier: systemIdentifier)
             for cheat in providerCheats {
+                guard CheatCodeValidator.isValid(code: cheat.code, systemIdentifier: systemIdentifier, coreIdentifier: coreIdentifier) else {
+                    log.info("Skipping invalid cheat code: \(cheat.code) (\(cheat.name)) from \(provider.name)")
+                    continue
+                }
                 let normalized = cheat.code.replacingOccurrences(of: " ", with: "").lowercased()
                 guard !seenCodes.contains(normalized) else { continue }
                 seenCodes.insert(normalized)

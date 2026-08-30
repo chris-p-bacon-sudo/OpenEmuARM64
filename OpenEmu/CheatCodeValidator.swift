@@ -1,0 +1,58 @@
+// Copyright (c) 2026, OpenEmu Team
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted under the BSD 2-Clause license.
+
+import Foundation
+import OpenEmuBase
+
+/// Validates cheat codes against the formats a given core can handle.
+/// TODO: move to a protocol on each core once cores declare supported formats via Info.plist
+enum CheatCodeValidator {
+
+    /// Returns true if the code (possibly multi-part with '+') is valid for the given core and system.
+    static func isValid(code: String, systemIdentifier: String, coreIdentifier: String) -> Bool {
+        code.components(separatedBy: "+")
+            .allSatisfy { isValidSingle($0.trimmingCharacters(in: .whitespaces), systemIdentifier: systemIdentifier, coreIdentifier: coreIdentifier) }
+    }
+
+    private static func isValidSingle(_ code: String, systemIdentifier: String, coreIdentifier: String) -> Bool {
+        switch systemIdentifier {
+        case OESystemIdentifierAtari2600:
+            return isRawAddressValue(code)
+
+        case OESystemIdentifierSMS, OESystemIdentifierGameGear, OESystemIdentifierSG1000:
+            if coreIdentifier == "org.openemu.CrabEmu" {
+                return isActionReplayCode(code) || isRawAddressValue(code)
+            }
+            return isGameGenieCode(code) || isActionReplayCode(code) || isRawAddressValue(code)
+
+        default:
+            return true
+        }
+    }
+
+    // MARK: - Format Checks
+
+    /// Raw address:value hex format (e.g., "7B:03", "00C0:25")
+    static func isRawAddressValue(_ code: String) -> Bool {
+        guard code.contains(":") else { return false }
+        let parts = code.split(separator: ":")
+        return parts.count == 2 && parts.allSatisfy { $0.allSatisfy(\.isHexDigit) }
+    }
+
+    /// Game Genie: XX-XXX (short) or XXX-XXX-XXX (long)
+    static func isGameGenieCode(_ code: String) -> Bool {
+        guard code.contains("-") else { return false }
+        let parts = code.split(separator: "-")
+        let allHex = parts.allSatisfy { $0.allSatisfy(\.isHexDigit) }
+        return allHex && (parts.count == 2 || parts.count == 3)
+    }
+
+    /// Action Replay: XXXX-XXXX (2 groups of 4 hex chars)
+    static func isActionReplayCode(_ code: String) -> Bool {
+        guard code.contains("-") else { return false }
+        let parts = code.split(separator: "-")
+        return parts.count == 2 && parts.allSatisfy { $0.count == 4 && $0.allSatisfy(\.isHexDigit) }
+    }
+}

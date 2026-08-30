@@ -31,6 +31,7 @@ final class LibretroCheatProvider: CheatDatabaseProvider {
     // OpenEmu system ID → Libretro directory/DAT name
     private let systemMap: [String: String] = [
         OESystemIdentifierAtari2600: "Atari - 2600",
+        OESystemIdentifierSMS:       "Sega - Master System - Mark III",
     ]
 
     // In-memory cache: systemIdentifier → [uppercased MD5 → game name]
