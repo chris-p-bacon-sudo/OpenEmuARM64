@@ -11,9 +11,13 @@ private let log = Logger(subsystem: "org.openemu.OpenEmu", category: "LibretroCh
 
 /// Cached cheat file stored on disk per game.
 private struct LibretroCachedCheatFile: Codable {
+    let sources: [LibretroCachedSource]
+    let cheats: [LibretroCachedCheat]
+}
+
+private struct LibretroCachedSource: Codable {
     let chtFileName: String
     let etag: String?
-    let cheats: [LibretroCachedCheat]
 }
 
 private struct LibretroCachedCheat: Codable {
@@ -50,17 +54,24 @@ final class LibretroCheatProvider: CheatDatabaseProvider {
 
         // 1. Check local cache
         if let cached = loadCachedCheats(md5: md5, systemIdentifier: systemIdentifier) {
-            log.info("Local cache hit for \(md5) (\(cached.chtFileName))")
-            // Try to update in case there's a newer version
-            let updated = try await fetchAndCacheCHT(
-                chtFileName: cached.chtFileName,
-                libretroSystem: libretroSystem,
-                md5: md5,
-                systemIdentifier: systemIdentifier,
-                existingETag: cached.etag
-            )
-            // If 304 not modified, return cached; otherwise return updated
-            let cheats = updated ?? cached.cheats
+            log.info("Local cache hit for \(md5) (\(cached.sources.map(\.chtFileName).joined(separator: ", ")))")
+            // Try to update each cached source
+            var anyUpdated = false
+            var allCheats: [LibretroCachedCheat] = []
+            for source in cached.sources {
+                if let updated = try await downloadCHT(chtFileName: source.chtFileName, libretroSystem: libretroSystem, systemIdentifier: systemIdentifier, existingETag: source.etag) {
+                    allCheats.append(contentsOf: updated.cheats)
+                    anyUpdated = true
+                } else {
+                    // 304 not modified — keep cached cheats for this source
+                    let sourceCheats = cached.cheats // all cached cheats (no per-source split)
+                    if !anyUpdated { allCheats = sourceCheats; break }
+                }
+            }
+            let cheats = anyUpdated ? dedup(allCheats) : cached.cheats
+            if anyUpdated {
+                saveCachedCheats(LibretroCachedCheatFile(sources: cached.sources, cheats: cheats), md5: md5, systemIdentifier: systemIdentifier)
+            }
             return cheats.map { DatabaseCheat(name: $0.name, code: $0.code, providerName: name) }
         }
 
@@ -70,21 +81,28 @@ final class LibretroCheatProvider: CheatDatabaseProvider {
             log.info("No game found for MD5 \(md5) in system \(systemIdentifier)")
             return []
         }
-        let chtFileName = "\(gameName).cht"
-        log.info("MD5 \(md5) → \(chtFileName)")
+        let baseChtName = "\(gameName).cht"
+        log.info("MD5 \(md5) → \(baseChtName)")
 
-        // 3. Download and cache the CHT file
-        let cheats = try await fetchAndCacheCHT(
-            chtFileName: chtFileName,
-            libretroSystem: libretroSystem,
-            md5: md5,
-            systemIdentifier: systemIdentifier,
-            existingETag: nil
-        )
-        guard let cheats else {
-            log.info("No CHT file found for \(chtFileName)")
+        // 3. Download plain + all device-suffixed variants, merge
+        var allCheats: [LibretroCachedCheat] = []
+        var sources: [LibretroCachedSource] = []
+
+        let candidates = [baseChtName] + Self.chtSuffixes.map { "\(gameName) (\($0)).cht" }
+        for candidate in candidates {
+            if let result = try await downloadCHT(chtFileName: candidate, libretroSystem: libretroSystem, systemIdentifier: systemIdentifier, existingETag: nil) {
+                allCheats.append(contentsOf: result.cheats)
+                sources.append(LibretroCachedSource(chtFileName: candidate, etag: result.etag))
+            }
+        }
+
+        guard !allCheats.isEmpty else {
+            log.info("No CHT files found for \(gameName)")
             return []
         }
+
+        let cheats = dedup(allCheats)
+        saveCachedCheats(LibretroCachedCheatFile(sources: sources, cheats: cheats), md5: md5, systemIdentifier: systemIdentifier)
         return cheats.map { DatabaseCheat(name: $0.name, code: $0.code, providerName: name) }
     }
 
@@ -117,14 +135,21 @@ final class LibretroCheatProvider: CheatDatabaseProvider {
 
     // MARK: - CHT Fetch
 
-    /// Downloads (or conditionally updates) a CHT file. Returns parsed cheats, or nil if 304/not found.
-    private func fetchAndCacheCHT(
+    // Known cheat device suffixes appended to CHT filenames in the Libretro database
+    private static let chtSuffixes = ["Action Replay", "Code Breaker", "Game Genie", "Game Shark"]
+
+    private struct CHTDownloadResult {
+        let cheats: [LibretroCachedCheat]
+        let etag: String?
+    }
+
+    /// Single HTTP fetch for a CHT file. Returns parsed cheats + etag on 200, nil on 304/404/error.
+    private func downloadCHT(
         chtFileName: String,
         libretroSystem: String,
-        md5: String,
         systemIdentifier: String,
         existingETag: String?
-    ) async throws -> [LibretroCachedCheat]? {
+    ) async throws -> CHTDownloadResult? {
         let encoded = "\(libretroSystem)/\(chtFileName)"
             .addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? chtFileName
         guard let url = URL(string: "\(Self.chtBaseURL)\(encoded)") else { return nil }
@@ -145,7 +170,7 @@ final class LibretroCheatProvider: CheatDatabaseProvider {
             log.debug("CHT not modified: \(chtFileName)")
             return nil
         case 404:
-            log.info("CHT not found: \(chtFileName)")
+            log.debug("CHT not found: \(chtFileName)")
             return nil
         case 200:
             break
@@ -157,11 +182,17 @@ final class LibretroCheatProvider: CheatDatabaseProvider {
         let newETag = httpResponse.value(forHTTPHeaderField: "ETag")?.replacingOccurrences(of: "\"", with: "")
         let cheats = parseCHTFile(data, systemIdentifier: systemIdentifier)
         log.info("CHT parsed: \(chtFileName) → \(cheats.count) cheats")
+        return CHTDownloadResult(cheats: cheats, etag: newETag)
+    }
 
-        let cached = LibretroCachedCheatFile(chtFileName: chtFileName, etag: newETag, cheats: cheats)
-        saveCachedCheats(cached, md5: md5, systemIdentifier: systemIdentifier)
-
-        return cheats
+    private func dedup(_ cheats: [LibretroCachedCheat]) -> [LibretroCachedCheat] {
+        var seen: Set<String> = []
+        return cheats.filter {
+            let key = $0.code.lowercased()
+            guard !seen.contains(key) else { return false }
+            seen.insert(key)
+            return true
+        }
     }
 
     // MARK: - CHT Parser
