@@ -35,6 +35,10 @@ enum CheatCodeValidator {
                 || isNESGameGenieCode(code)
                 || isNESProActionRockyCode(code)
 
+        case OESystemIdentifierN64:
+            // Mupen64Plus: 12 hex char GameShark only (8 address + 4 value)
+            return isN64GameSharkCode(code)
+
         case OESystemIdentifierSMS, OESystemIdentifierGameGear, OESystemIdentifierSG1000:
             if coreIdentifier == "org.openemu.CrabEmu" {
                 return isSMSActionReplayCode(code) || isRawAddressValue(code)
@@ -98,6 +102,11 @@ enum CheatCodeValidator {
         let upper = code.uppercased()
         return (upper.count == 6 || upper.count == 8)
             && upper.allSatisfy { nesGameGenieChars.contains($0) }
+    }
+
+    /// N64 GameShark: exactly 12 hex characters (8 address + 4 value, e.g. "8033B21D0064")
+    static func isN64GameSharkCode(_ code: String) -> Bool {
+        return code.count == 12 && code.allSatisfy(\.isHexDigit)
     }
 
     /// SMS/GG Action Replay: XXXX-XXXX (2 groups of 4 hex chars)

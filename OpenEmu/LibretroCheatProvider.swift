@@ -34,6 +34,7 @@ final class LibretroCheatProvider: CheatDatabaseProvider {
         OESystemIdentifierSMS:       "Sega - Master System - Mark III",
         OESystemIdentifierNES:       "Nintendo - Nintendo Entertainment System",
         OESystemIdentifierFDS:       "Nintendo - Family Computer Disk System",
+        OESystemIdentifierN64:       "Nintendo - Nintendo 64",
     ]
 
     // In-memory cache: systemIdentifier → [uppercased MD5 → game name]
@@ -206,7 +207,9 @@ final class LibretroCheatProvider: CheatDatabaseProvider {
             }
 
             guard !code.isEmpty else { continue }
+            // Normalize separators: some CHT files use ';' instead of '+'
             let cleaned = code.replacingOccurrences(of: " ", with: "")
+                              .replacingOccurrences(of: ";", with: "+")
             guard !seenCodes.contains(cleaned) else { continue }
             seenCodes.insert(cleaned)
             cheats.append(LibretroCachedCheat(name: desc, code: cleaned))
