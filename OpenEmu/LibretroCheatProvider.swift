@@ -153,10 +153,6 @@ final class LibretroCheatProvider: CheatDatabaseProvider {
         let cheats = parseCHTFile(data)
         log.info("CHT parsed: \(chtFileName) → \(cheats.count) cheats")
 
-        for cheat in cheats {
-            log.debug("\(cheat.name) - \(cheat.code)")
-        }
-
         let cached = LibretroCachedCheatFile(chtFileName: chtFileName, etag: newETag, cheats: cheats)
         saveCachedCheats(cached, md5: md5, systemIdentifier: systemIdentifier)
 

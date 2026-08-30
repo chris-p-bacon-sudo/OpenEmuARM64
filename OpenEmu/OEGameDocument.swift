@@ -1656,6 +1656,10 @@ final class OEGameDocument: NSDocument {
         Task {
             let results = try await CheatDatabaseService.shared.cheats(forMD5: md5, systemIdentifier: systemID)
             NSLog("[Cheats] Browse Online: %d results for MD5 %@", results.count, md5)
+
+            for cheat in results {
+                NSLog("\(cheat.name) (\(cheat.providerName)) - \(cheat.code)")
+            }
         }
     }
 

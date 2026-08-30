@@ -240,6 +240,7 @@
 		5A575DFD1E92D23600491B0D /* Cheats.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A575DFC1E92D23600491B0D /* Cheats.swift */; };
 		AA0000011000000100000002 /* CheatDatabaseService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000011000000100000001 /* CheatDatabaseService.swift */; };
 		AA0000011000000100000004 /* LibretroCheatProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000011000000100000003 /* LibretroCheatProvider.swift */; };
+		AA0000011000000100000006 /* OpenEmuCheatProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000011000000100000005 /* OpenEmuCheatProvider.swift */; };
 		5A6C157C1DC96C3700839986 /* OEMediaViewController+TouchBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A6C157B1DC96C3700839986 /* OEMediaViewController+TouchBar.swift */; };
 		5A6E80A71DCA6B210022F2AE /* OEGameCollectionViewController+TouchBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A6E80A61DCA6B210022F2AE /* OEGameCollectionViewController+TouchBar.swift */; };
 		5A79F7951C15F542003124D5 /* PreferencesWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A79F7941C15F542003124D5 /* PreferencesWindowController.swift */; };
@@ -567,6 +568,7 @@
 		94A4E98D179F9A4D00AD8C7D /* OEDBSaveStatesMedia.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94A4E98C179F9A4D00AD8C7D /* OEDBSaveStatesMedia.swift */; };
 		94A4E992179F9D0400AD8C7D /* OEDBScreenshotsMedia.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94A4E98F179F9D0400AD8C7D /* OEDBScreenshotsMedia.swift */; };
 		94A4E996179FAB9F00AD8C7D /* OEMediaViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 94A4E995179FAB9F00AD8C7D /* OEMediaViewController.m */; };
+		94AE2C1017B07D450018DFBB /* cheats-database.xml in Resources */ = {isa = PBXBuildFile; fileRef = 94AE2C0F17B07D450018DFBB /* cheats-database.xml */; };
 		94B28256189DF5AA00D80F3D /* OENDSSystemController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94B28255189DF5AA00D80F3D /* OENDSSystemController.swift */; };
 		94BE9E61171689B400AB08E6 /* OEColecoVisionSystemResponder.m in Sources */ = {isa = PBXBuildFile; fileRef = 94BE9E5F171689B400AB08E6 /* OEColecoVisionSystemResponder.m */; };
 		94BE9E6B171689C900AB08E6 /* Controller-Mappings.plist in Resources */ = {isa = PBXBuildFile; fileRef = 94BE9E65171689C900AB08E6 /* Controller-Mappings.plist */; };
@@ -1325,6 +1327,7 @@
 		5A575DFC1E92D23600491B0D /* Cheats.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Cheats.swift; sourceTree = "<group>"; };
 		AA0000011000000100000001 /* CheatDatabaseService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CheatDatabaseService.swift; sourceTree = "<group>"; };
 		AA0000011000000100000003 /* LibretroCheatProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibretroCheatProvider.swift; sourceTree = "<group>"; };
+		AA0000011000000100000005 /* OpenEmuCheatProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenEmuCheatProvider.swift; sourceTree = "<group>"; };
 		5A6C157B1DC96C3700839986 /* OEMediaViewController+TouchBar.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "OEMediaViewController+TouchBar.swift"; sourceTree = "<group>"; };
 		5A6E80A61DCA6B210022F2AE /* OEGameCollectionViewController+TouchBar.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "OEGameCollectionViewController+TouchBar.swift"; sourceTree = "<group>"; };
 		5A79F7941C15F542003124D5 /* PreferencesWindowController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PreferencesWindowController.swift; sourceTree = "<group>"; };
@@ -1825,6 +1828,7 @@
 		94A4E98F179F9D0400AD8C7D /* OEDBScreenshotsMedia.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = OEDBScreenshotsMedia.swift; sourceTree = "<group>"; };
 		94A4E994179FAB9E00AD8C7D /* OEMediaViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OEMediaViewController.h; sourceTree = "<group>"; };
 		94A4E995179FAB9F00AD8C7D /* OEMediaViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = OEMediaViewController.m; sourceTree = "<group>"; };
+		94AE2C0F17B07D450018DFBB /* cheats-database.xml */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; path = "cheats-database.xml"; sourceTree = "<group>"; };
 		94B28255189DF5AA00D80F3D /* OENDSSystemController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = OENDSSystemController.swift; sourceTree = "<group>"; };
 		94BE9E50171683E000AB08E6 /* ColecoVision.oesystemplugin */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ColecoVision.oesystemplugin; sourceTree = BUILT_PRODUCTS_DIR; };
 		94BE9E54171683E000AB08E6 /* ColecoVision-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "ColecoVision-Info.plist"; sourceTree = "<group>"; };
@@ -2451,6 +2455,7 @@
 		01E7214A2523E798002CA16F /* Other Assets */ = {
 			isa = PBXGroup;
 			children = (
+				94AE2C0F17B07D450018DFBB /* cheats-database.xml */,
 				8F071F3A1C255362007B76DA /* Credits.rtf */,
 				87191CC51F6F5524006D2EE3 /* dsa_pub.pem */,
 				C60CDDD611780DF100EB472F /* OpenGL Format Table.txt */,
@@ -3301,6 +3306,7 @@
 				5A575DFC1E92D23600491B0D /* Cheats.swift */,
 				AA0000011000000100000001 /* CheatDatabaseService.swift */,
 				AA0000011000000100000003 /* LibretroCheatProvider.swift */,
+				AA0000011000000100000005 /* OpenEmuCheatProvider.swift */,
 			);
 			name = Utilities;
 			sourceTree = "<group>";
@@ -5637,6 +5643,7 @@
 				8F76285E255C835D00A1246D /* PrefControlsController2.xib in Resources */,
 				8F057160254E7EA5003B36FD /* MainMenu.strings in Resources */,
 				8F071F3B1C255362007B76DA /* Credits.rtf in Resources */,
+				94AE2C1017B07D450018DFBB /* cheats-database.xml in Resources */,
 				0544B69623D16D0C00F63D61 /* ImageCollectionViewItem.xib in Resources */,
 				83DEF7C1196C403400C7DF57 /* ControlLabels.strings in Resources */,
 				83B04E421968610F00CB985E /* Localizable.strings in Resources */,
@@ -6300,6 +6307,7 @@
 				5A575DFD1E92D23600491B0D /* Cheats.swift in Sources */,
 				AA0000011000000100000002 /* CheatDatabaseService.swift in Sources */,
 				AA0000011000000100000004 /* LibretroCheatProvider.swift in Sources */,
+				AA0000011000000100000006 /* OpenEmuCheatProvider.swift in Sources */,
 				53439A9A13B92C97005C0CC8 /* OEDBAllGamesCollection.swift in Sources */,
 				8FEE03E126D556610087CB51 /* OEDBRom.swift in Sources */,
 				83CACEC8196D6D1300999E70 /* Download.swift in Sources */,
