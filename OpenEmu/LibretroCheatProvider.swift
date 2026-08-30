@@ -32,6 +32,8 @@ final class LibretroCheatProvider: CheatDatabaseProvider {
     private let systemMap: [String: String] = [
         OESystemIdentifierAtari2600: "Atari - 2600",
         OESystemIdentifierSMS:       "Sega - Master System - Mark III",
+        OESystemIdentifierNES:       "Nintendo - Nintendo Entertainment System",
+        OESystemIdentifierFDS:       "Nintendo - Family Computer Disk System",
     ]
 
     // In-memory cache: systemIdentifier → [uppercased MD5 → game name]
