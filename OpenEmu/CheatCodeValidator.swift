@@ -19,7 +19,8 @@ enum CheatCodeValidator {
     private static func isValidSingle(_ code: String, systemIdentifier: String, coreIdentifier: String) -> Bool {
         switch systemIdentifier {
         case OESystemIdentifierAtari2600:
-            return isRawAddressValue(code)
+            // Stella: uInt16 address, uInt8 value
+            return isRawAddressValue(code, maxAddressHexChars: 4, maxValueHexChars: 2)
 
         case OESystemIdentifierSMS, OESystemIdentifierGameGear, OESystemIdentifierSG1000:
             if coreIdentifier == "org.openemu.CrabEmu" {
@@ -34,11 +35,14 @@ enum CheatCodeValidator {
 
     // MARK: - Format Checks
 
-    /// Raw address:value hex format (e.g., "7B:03", "00C0:25")
-    static func isRawAddressValue(_ code: String) -> Bool {
+    /// Raw address:value hex format with optional size constraints.
+    static func isRawAddressValue(_ code: String, maxAddressHexChars: Int? = nil, maxValueHexChars: Int? = nil) -> Bool {
         guard code.contains(":") else { return false }
         let parts = code.split(separator: ":")
-        return parts.count == 2 && parts.allSatisfy { $0.allSatisfy(\.isHexDigit) }
+        guard parts.count == 2, parts.allSatisfy({ $0.allSatisfy(\.isHexDigit) }) else { return false }
+        if let maxAddr = maxAddressHexChars, parts[0].count > maxAddr { return false }
+        if let maxVal = maxValueHexChars, parts[1].count > maxVal { return false }
+        return true
     }
 
     /// Game Genie: XX-XXX (short) or XXX-XXX-XXX (long)
