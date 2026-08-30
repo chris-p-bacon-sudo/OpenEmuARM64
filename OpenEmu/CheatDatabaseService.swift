@@ -35,13 +35,19 @@ final class CheatDatabaseService {
         providers.contains { $0.supportsSystem(systemIdentifier) }
     }
 
-    /// Fetches cheats from all providers that support the system, merges and returns them.
+    /// Fetches cheats from all providers that support the system, merges and deduplicates.
+    /// Provider ordering determines precedence — earlier providers win on duplicate codes.
     func cheats(forMD5 md5: String, systemIdentifier: String) async throws -> [DatabaseCheat] {
-        // TODO: query each supporting provider concurrently, merge results
         var results: [DatabaseCheat] = []
+        var seenCodes: Set<String> = []
         for provider in providers where provider.supportsSystem(systemIdentifier) {
             let providerCheats = try await provider.cheats(forMD5: md5, systemIdentifier: systemIdentifier)
-            results.append(contentsOf: providerCheats)
+            for cheat in providerCheats {
+                let normalized = cheat.code.replacingOccurrences(of: " ", with: "").lowercased()
+                guard !seenCodes.contains(normalized) else { continue }
+                seenCodes.insert(normalized)
+                results.append(cheat)
+            }
         }
         return results
     }
