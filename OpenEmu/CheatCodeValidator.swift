@@ -39,6 +39,10 @@ enum CheatCodeValidator {
             // Mupen64Plus: 12 hex char GameShark only (8 address + 4 value)
             return isN64GameSharkCode(code)
 
+        case OESystemIdentifierGBA:
+            // mGBA: 12 hex (CodeBreaker), 16 hex (GameShark/PAR v3), or VBA (address:value)
+            return isGBACode(code)
+
         case OESystemIdentifierGenesis:
             // GenesisPlus MD mode: Game Genie (XXXX-XXXX) or Patch/PAR (XXXXXX:XXXX)
             return isGenesisGameGenieCode(code) || isGenesisPARCode(code)
@@ -112,6 +116,18 @@ enum CheatCodeValidator {
     /// N64 GameShark: exactly 12 hex characters (8 address + 4 value, e.g. "8033B21D0064")
     static func isN64GameSharkCode(_ code: String) -> Bool {
         return code.count == 12 && code.allSatisfy(\.isHexDigit)
+    }
+
+    /// GBA code: 12 hex (CodeBreaker), 16 hex (GameShark/PAR v3), or VBA (8hex:value)
+    static func isGBACode(_ code: String) -> Bool {
+        if code.contains(":") {
+            // VBA format: 8-hex address : hex value
+            let parts = code.split(separator: ":")
+            return parts.count == 2 && parts[0].count == 8 && parts[0].allSatisfy(\.isHexDigit)
+                && parts[1].allSatisfy(\.isHexDigit)
+        }
+        // CodeBreaker (12 hex) or GameShark/PAR v3 (16 hex)
+        return (code.count == 12 || code.count == 16) && code.allSatisfy(\.isHexDigit)
     }
 
     private static let genesisGameGenieChars = Set("ABCDEFGHJKLMNPRSTVWXYZ0123456789")

@@ -40,6 +40,7 @@ final class LibretroCheatProvider: CheatDatabaseProvider {
         OESystemIdentifierFDS:       "Nintendo - Family Computer Disk System",
         OESystemIdentifierN64:       "Nintendo - Nintendo 64",
         OESystemIdentifierGenesis:   "Sega - Mega Drive - Genesis",
+        OESystemIdentifierGBA:       "Nintendo - Game Boy Advance",
     ]
 
     // In-memory cache: systemIdentifier → [uppercased MD5 → game name]
@@ -256,9 +257,33 @@ final class LibretroCheatProvider: CheatDatabaseProvider {
         switch systemIdentifier {
         case OESystemIdentifierGenesis:
             return normalizeGenesisCode(code)
+        case OESystemIdentifierGBA:
+            return normalizeGBACode(code)
         default:
             return code
         }
+    }
+
+    private func normalizeGBACode(_ code: String) -> String {
+        // Handle '+' used as address/value separator (8hex+4hex = CodeBreaker format)
+        // e.g., 8201ED74+0FFF → 8201ED740FFF, 00007358+000A+100092B8+0007 → 00007358000A+100092B80007
+        let parts = code.split(separator: "+")
+        if parts.count >= 2 && parts.count.isMultiple(of: 2) {
+            var pairs: [String] = []
+            var i = 0
+            while i < parts.count - 1 {
+                let addr = parts[i], val = parts[i + 1]
+                if addr.count == 8 && val.count == 4
+                    && addr.allSatisfy(\.isHexDigit) && val.allSatisfy(\.isHexDigit) {
+                    pairs.append("\(addr)\(val)")
+                    i += 2
+                } else {
+                    return code
+                }
+            }
+            if !pairs.isEmpty { return pairs.joined(separator: "+") }
+        }
+        return code
     }
 
     private func normalizeGenesisCode(_ code: String) -> String {
