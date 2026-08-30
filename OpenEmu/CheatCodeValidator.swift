@@ -43,6 +43,10 @@ enum CheatCodeValidator {
             // mGBA: 12 hex (CodeBreaker), 16 hex (GameShark/PAR v3), or VBA (address:value)
             return isGBACode(code)
 
+        case OESystemIdentifierSNES:
+            // SNES9x/BSNES: Game Genie (XXXX-XXXX), PAR (8 hex), or raw (6hex:2hex)
+            return isSNESGameGenieCode(code) || isSNESPARCode(code) || isRawAddressValue(code, addressHexChars: 6, valueHexChars: 2)
+
         case OESystemIdentifierGenesis:
             // GenesisPlus MD mode: Game Genie (XXXX-XXXX) or Patch/PAR (XXXXXX:XXXX)
             return isGenesisGameGenieCode(code) || isGenesisPARCode(code)
@@ -128,6 +132,18 @@ enum CheatCodeValidator {
         }
         // CodeBreaker (12 hex) or GameShark/PAR v3 (16 hex)
         return (code.count == 12 || code.count == 16) && code.allSatisfy(\.isHexDigit)
+    }
+
+    /// SNES Game Genie: XXXX-XXXX (9 chars, dash at pos 4, hex digits)
+    static func isSNESGameGenieCode(_ code: String) -> Bool {
+        guard code.count == 9, code[code.index(code.startIndex, offsetBy: 4)] == "-" else { return false }
+        let stripped = code.replacingOccurrences(of: "-", with: "")
+        return stripped.count == 8 && stripped.allSatisfy(\.isHexDigit)
+    }
+
+    /// SNES Pro Action Replay: exactly 8 hex characters
+    static func isSNESPARCode(_ code: String) -> Bool {
+        return code.count == 8 && code.allSatisfy(\.isHexDigit)
     }
 
     private static let genesisGameGenieChars = Set("ABCDEFGHJKLMNPRSTVWXYZ0123456789")

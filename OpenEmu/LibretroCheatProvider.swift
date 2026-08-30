@@ -41,6 +41,7 @@ final class LibretroCheatProvider: CheatDatabaseProvider {
         OESystemIdentifierN64:       "Nintendo - Nintendo 64",
         OESystemIdentifierGenesis:   "Sega - Mega Drive - Genesis",
         OESystemIdentifierGBA:       "Nintendo - Game Boy Advance",
+        OESystemIdentifierSNES:      "Nintendo - Super Nintendo Entertainment System",
     ]
 
     // In-memory cache: systemIdentifier → [uppercased MD5 → game name]
