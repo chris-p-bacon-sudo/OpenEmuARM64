@@ -35,6 +35,7 @@ final class LibretroCheatProvider: CheatDatabaseProvider {
         OESystemIdentifierNES:       "Nintendo - Nintendo Entertainment System",
         OESystemIdentifierFDS:       "Nintendo - Family Computer Disk System",
         OESystemIdentifierN64:       "Nintendo - Nintendo 64",
+        OESystemIdentifierGenesis:   "Sega - Mega Drive - Genesis",
     ]
 
     // In-memory cache: systemIdentifier → [uppercased MD5 → game name]
@@ -154,7 +155,7 @@ final class LibretroCheatProvider: CheatDatabaseProvider {
         }
 
         let newETag = httpResponse.value(forHTTPHeaderField: "ETag")?.replacingOccurrences(of: "\"", with: "")
-        let cheats = parseCHTFile(data)
+        let cheats = parseCHTFile(data, systemIdentifier: systemIdentifier)
         log.info("CHT parsed: \(chtFileName) → \(cheats.count) cheats")
 
         let cached = LibretroCachedCheatFile(chtFileName: chtFileName, etag: newETag, cheats: cheats)
@@ -165,7 +166,7 @@ final class LibretroCheatProvider: CheatDatabaseProvider {
 
     // MARK: - CHT Parser
 
-    private func parseCHTFile(_ data: Data) -> [LibretroCachedCheat] {
+    private func parseCHTFile(_ data: Data, systemIdentifier: String) -> [LibretroCachedCheat] {
         guard let content = String(data: data, encoding: .utf8) else { return [] }
 
         // Group fields by cheat index: "cheat0" → ["desc": "...", "code": "...", "address": "...", ...]
@@ -208,14 +209,52 @@ final class LibretroCheatProvider: CheatDatabaseProvider {
 
             guard !code.isEmpty else { continue }
             // Normalize separators: some CHT files use ';' instead of '+'
-            let cleaned = code.replacingOccurrences(of: " ", with: "")
+            var cleaned = code.replacingOccurrences(of: " ", with: "")
                               .replacingOccurrences(of: ";", with: "+")
+            cleaned = normalizeCode(cleaned, systemIdentifier: systemIdentifier)
             guard !seenCodes.contains(cleaned) else { continue }
             seenCodes.insert(cleaned)
             cheats.append(LibretroCachedCheat(name: desc, code: cleaned))
         }
 
         return cheats
+    }
+
+    /// Normalizes non-standard code formats into forms the core can parse.
+    private func normalizeCode(_ code: String, systemIdentifier: String) -> String {
+        switch systemIdentifier {
+        case OESystemIdentifierGenesis:
+            return normalizeGenesisCode(code)
+        default:
+            return code
+        }
+    }
+
+    private func normalizeGenesisCode(_ code: String) -> String {
+        // 10 hex chars without separator → insert colon at position 6 (e.g., FF00220010 → FF0022:0010)
+        if code.count == 10 && !code.contains(":") && !code.contains("-") && code.allSatisfy(\.isHexDigit) {
+            let idx = code.index(code.startIndex, offsetBy: 6)
+            return "\(code[..<idx]):\(code[idx...])"
+        }
+        // Handle '+' used as address/value separator instead of multi-code joiner.
+        // Pattern: alternating 6-hex and 4-hex parts (e.g., FF002C+1800 or FF002C+1800+FF003C+2800)
+        let parts = code.split(separator: "+")
+        if parts.count >= 2 && parts.count.isMultiple(of: 2) {
+            var pairs: [String] = []
+            var i = 0
+            while i < parts.count - 1 {
+                let addr = parts[i], val = parts[i + 1]
+                if addr.count == 6 && val.count == 4
+                    && addr.allSatisfy(\.isHexDigit) && val.allSatisfy(\.isHexDigit) {
+                    pairs.append("\(addr):\(val)")
+                    i += 2
+                } else {
+                    return code
+                }
+            }
+            if !pairs.isEmpty { return pairs.joined(separator: "+") }
+        }
+        return code
     }
 
     // MARK: - DAT Lookup

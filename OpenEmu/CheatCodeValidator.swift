@@ -39,10 +39,15 @@ enum CheatCodeValidator {
             // Mupen64Plus: 12 hex char GameShark only (8 address + 4 value)
             return isN64GameSharkCode(code)
 
-        case OESystemIdentifierSMS, OESystemIdentifierGameGear, OESystemIdentifierSG1000:
+        case OESystemIdentifierGenesis:
+            // GenesisPlus MD mode: Game Genie (XXXX-XXXX) or Patch/PAR (XXXXXX:XXXX)
+            return isGenesisGameGenieCode(code) || isGenesisPARCode(code)
+
+        case OESystemIdentifierSMS:
             if coreIdentifier == "org.openemu.CrabEmu" {
                 return isSMSActionReplayCode(code) || isRawAddressValue(code)
             }
+            // Genesis Plus (default): also supports SMS Game Genie (XX-XXX or XXX-XXX-XXX)
             return isSMSGameGenieCode(code) || isSMSActionReplayCode(code) || isRawAddressValue(code)
 
         default:
@@ -107,6 +112,24 @@ enum CheatCodeValidator {
     /// N64 GameShark: exactly 12 hex characters (8 address + 4 value, e.g. "8033B21D0064")
     static func isN64GameSharkCode(_ code: String) -> Bool {
         return code.count == 12 && code.allSatisfy(\.isHexDigit)
+    }
+
+    private static let genesisGameGenieChars = Set("ABCDEFGHJKLMNPRSTVWXYZ0123456789")
+
+    /// Genesis Game Genie: XXXX-XXXX (9 chars with dash at pos 4, from alphabet without I/O/Q/U)
+    static func isGenesisGameGenieCode(_ code: String) -> Bool {
+        guard code.count == 9, code[code.index(code.startIndex, offsetBy: 4)] == "-" else { return false }
+        let stripped = code.replacingOccurrences(of: "-", with: "").uppercased()
+        return stripped.count == 8 && stripped.allSatisfy { genesisGameGenieChars.contains($0) }
+    }
+
+    /// Genesis Patch/PAR: XXXXXX:XXXX (6 hex address + colon + up to 4 hex value)
+    static func isGenesisPARCode(_ code: String) -> Bool {
+        guard code.contains(":") else { return false }
+        let parts = code.split(separator: ":")
+        guard parts.count == 2 else { return false }
+        return parts[0].count == 6 && parts[0].allSatisfy(\.isHexDigit)
+            && parts[1].count >= 1 && parts[1].count <= 4 && parts[1].allSatisfy(\.isHexDigit)
     }
 
     /// SMS/GG Action Replay: XXXX-XXXX (2 groups of 4 hex chars)
