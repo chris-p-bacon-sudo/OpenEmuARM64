@@ -31,6 +31,8 @@ final class Cheat: Codable {
     let type: String
     var name: String
     var isEnabled = false
+    /// Set at runtime; not persisted. False when the current core can't handle this code format.
+    var isCompatibleWithCore = true
 
     private enum CodingKeys: String, CodingKey {
         case code, type, name, isEnabled, isUserAdded

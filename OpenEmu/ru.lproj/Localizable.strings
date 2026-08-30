@@ -712,6 +712,8 @@ You can go to the Controls preferences to check which associations were affected
 	<string>Поиск чит-кодов…</string>
     <key>Browse Online Cheats…</key>
     <string>Обзор онлайн чит-кодов…</string>
+    <key>Not supported by this emulator.</key>
+    <string>Не поддерживается этим эмулятором.</string>
 	<key>Cheat Search</key>
 	<string>Поиск чит-кодов</string>
 	<key>Store Values</key>

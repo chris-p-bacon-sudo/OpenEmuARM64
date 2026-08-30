@@ -1473,6 +1473,7 @@ final class OEGameDocument: NSDocument {
             }
             
             self.setUpGameCoreManager(using: plugin) {
+                self.validateCheatCompatibility()
                 self.startEmulation()
             }
         }
@@ -1678,6 +1679,18 @@ final class OEGameDocument: NSDocument {
     private func loadCheats() {
         if supportsCheats {
             cheats = loadUserCheats()
+            validateCheatCompatibility()
+        }
+    }
+
+    /// Marks cheats as incompatible if the current core can't handle their code format.
+    private func validateCheatCompatibility() {
+        let systemID = systemPlugin.systemIdentifier
+        let coreID = corePlugin.bundleIdentifier
+        for cheat in cheats {
+            cheat.isCompatibleWithCore = CheatCodeValidator.isValid(
+                code: cheat.code, systemIdentifier: systemID, coreIdentifier: coreID
+            )
         }
     }
 

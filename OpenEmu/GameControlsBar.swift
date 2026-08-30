@@ -447,15 +447,18 @@ final class GameControlsBar: NSWindow {
             for cheat in cheats {
                 let cheatItem = NSMenuItem(title: cheat.name, action: nil, keyEquivalent: "")
                 cheatItem.state = cheat.isEnabled ? .on : .off
-                if hardcoreOn { cheatItem.isEnabled = false }
+                if hardcoreOn || !cheat.isCompatibleWithCore { cheatItem.isEnabled = false }
+                if !cheat.isCompatibleWithCore {
+                    cheatItem.toolTip = NSLocalizedString("Not supported by this emulator.", comment: "Cheat incompatible with current core")
+                }
 
                 let submenu = NSMenu()
-                if hardcoreOn { submenu.autoenablesItems = false }
+                if hardcoreOn || !cheat.isCompatibleWithCore { submenu.autoenablesItems = false }
 
                 let toggleItem = NSMenuItem(title: NSLocalizedString("Enabled", comment: "Cheat submenu toggle"), action: #selector(OEGameDocument.toggleCheat(_:)), keyEquivalent: "")
                 toggleItem.representedObject = cheat
                 toggleItem.state = cheat.isEnabled ? .on : .off
-                if hardcoreOn { toggleItem.isEnabled = false }
+                if hardcoreOn || !cheat.isCompatibleWithCore { toggleItem.isEnabled = false }
                 submenu.addItem(toggleItem)
 
                 submenu.addItem(.separator())

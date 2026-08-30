@@ -712,6 +712,8 @@ Podeu anar a les preferències dels controls per comprovar quines associacions s
 	<string>Cerca de trucs…</string>
     <key>Browse Online Cheats…</key>
     <string>Navegar per trucs en línia…</string>
+    <key>Not supported by this emulator.</key>
+    <string>No compatible amb aquest emulador.</string>
 	<key>Cheat Search</key>
 	<string>Cerca de trucs</string>
 	<key>Store Values</key>

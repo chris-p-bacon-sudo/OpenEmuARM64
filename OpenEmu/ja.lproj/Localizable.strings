@@ -707,6 +707,8 @@ You can go to the Controls preferences to check which associations were affected
 	<string>チート検索…</string>
     <key>Browse Online Cheats…</key>
     <string>オンラインチートを参照…</string>
+    <key>Not supported by this emulator.</key>
+    <string>このエミュレータでは対応していません。</string>
 	<key>Cheat Search</key>
 	<string>チート検索</string>
 	<key>Store Values</key>
