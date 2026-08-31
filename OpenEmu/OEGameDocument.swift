@@ -1971,7 +1971,7 @@ final class OEGameDocument: NSDocument {
                 offset += 1
             }
         }
-        return codes.joined(separator: "\n")
+        return codes.joined(separator: "+")
     }
 
     // MARK: N64 GameShark (TTXXXXXX YYYY)

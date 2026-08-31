@@ -72,6 +72,9 @@ enum CheatCodeValidator {
             // Genesis Plus (default): also supports SMS Game Genie (XX-XXX or XXX-XXX-XXX)
             return isSMSGameGenieCode(code) || isSMSActionReplayCode(code) || isRawAddressValue(code)
 
+        case OESystemIdentifierGameGear, OESystemIdentifierSG1000:
+            return isSMSGameGenieCode(code) || isSMSActionReplayCode(code) || isRawAddressValue(code)
+
         default:
             return true
         }
