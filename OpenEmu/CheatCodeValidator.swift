@@ -61,7 +61,7 @@ enum CheatCodeValidator {
             // SNES9x/BSNES: Game Genie (XXXX-XXXX), PAR (8 hex), or raw (6hex:2hex)
             return isSNESGameGenieCode(code) || isSNESPARCode(code) || isRawAddressValue(code, addressHexChars: 6, valueHexChars: 2)
 
-        case OESystemIdentifierGenesis:
+        case OESystemIdentifierGenesis, OESystemIdentifierSegaCD:
             // GenesisPlus MD mode: Game Genie (XXXX-XXXX) or Patch/PAR (XXXXXX:XXXX)
             return isGenesisGameGenieCode(code) || isGenesisPARCode(code)
 

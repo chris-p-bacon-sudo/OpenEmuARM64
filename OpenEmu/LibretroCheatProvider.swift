@@ -34,7 +34,7 @@ final class LibretroCheatProvider: CheatDatabaseProvider {
     private static let chtBaseURL = "https://raw.githubusercontent.com/libretro/libretro-database/master/cht/"
 
     // Disc-based systems use redump DATs instead of no-intro
-    private static let redumpSystems: Set<String> = [OESystemIdentifierPSX]
+    private static let redumpSystems: Set<String> = [OESystemIdentifierPSX, OESystemIdentifierSegaCD]
 
     // OpenEmu system ID → Libretro directory/DAT name
     private let systemMap: [String: String] = [
@@ -44,6 +44,7 @@ final class LibretroCheatProvider: CheatDatabaseProvider {
         OESystemIdentifierFDS:       "Nintendo - Family Computer Disk System",
         OESystemIdentifierN64:       "Nintendo - Nintendo 64",
         OESystemIdentifierGenesis:   "Sega - Mega Drive - Genesis",
+        OESystemIdentifierSegaCD:    "Sega - Mega-CD - Sega CD",
         OESystemIdentifierGBA:       "Nintendo - Game Boy Advance",
         OESystemIdentifierSNES:      "Nintendo - Super Nintendo Entertainment System",
         OESystemIdentifierNDS:       "Nintendo - Nintendo DS",
@@ -67,7 +68,7 @@ final class LibretroCheatProvider: CheatDatabaseProvider {
         systemMap[systemIdentifier] != nil
     }
 
-    func cheats(forMD5 md5: String, serial: String?, systemIdentifier: String) async throws -> [DatabaseCheat] {
+    func cheats(forMD5 md5: String, serial: String?, gameName: String?, systemIdentifier: String) async throws -> [DatabaseCheat] {
         guard let libretroSystem = systemMap[systemIdentifier] else { return [] }
 
         // 1. Check local cache
@@ -95,20 +96,32 @@ final class LibretroCheatProvider: CheatDatabaseProvider {
 
         // 2. No local cache — resolve game name via DAT (try MD5 first, then serial)
         let lookup = try await lookupGameName(md5: md5, serial: serial, systemIdentifier: systemIdentifier)
-        guard let lookup else {
+
+        if lookup == nil && (gameName == nil || !Self.redumpSystems.contains(systemIdentifier)) {
             log.info("No game found for MD5 \(md5) / serial \(serial ?? "nil") in system \(systemIdentifier)")
             return []
         }
-        let resolvedSystem = lookup.libretroSystem
-        let baseChtName = "\(lookup.name).cht"
-        log.info("MD5 \(md5) → \(baseChtName) (in \(resolvedSystem))")
+
+        let resolvedSystem = lookup?.libretroSystem ?? libretroSystem
+        log.info("MD5 \(md5) → \(lookup?.name ?? "nil") (in \(resolvedSystem))")
 
         // 3. Download plain + device-suffixed + region-variant candidates, merge
         var allCheats: [LibretroCachedCheat] = []
         var sources: [LibretroCachedSource] = []
 
-        let useRegionFallback = Self.redumpSystems.contains(systemIdentifier)
-        let gameNames = [lookup.name] + (useRegionFallback ? regionVariants(for: lookup.name) : [])
+        let useRegionFallback = systemIdentifier == OESystemIdentifierPSX
+        var gameNames: [String] = []
+        if let name = lookup?.name {
+            gameNames.append(name)
+            if useRegionFallback { gameNames += regionVariants(for: name) }
+        }
+
+        // Fallback for redump systems: try the library game name if DAT name didn't work or wasn't found
+        if let gameName, Self.redumpSystems.contains(systemIdentifier), !gameNames.contains(gameName) {
+            gameNames.append(gameName)
+            if useRegionFallback { gameNames += regionVariants(for: gameName) }
+        }
+
         for gameName in gameNames {
             let candidates = ["\(gameName).cht"] + Self.chtSuffixes.map { "\(gameName) (\($0)).cht" }
             for candidate in candidates {
@@ -121,7 +134,7 @@ final class LibretroCheatProvider: CheatDatabaseProvider {
         }
 
         guard !allCheats.isEmpty else {
-            log.info("No CHT files found for \(lookup.name)")
+            log.info("No CHT files found for \(gameNames.joined(separator: ", "))")
             return []
         }
 
@@ -428,11 +441,50 @@ final class LibretroCheatProvider: CheatDatabaseProvider {
 
     // MARK: - DAT Lookup
 
+    /// Generates progressively shorter serial variants for fuzzy matching against DAT entries.
+    /// e.g. "MK-4407 -00" → ["MK-4407 -00", "MK-4407-00", "MK-4407", "4407"]
+    private func serialLookupKeys(_ serial: String) -> [String] {
+        let raw = serial.trimmingCharacters(in: .whitespaces).uppercased()
+        var keys: [String] = [raw]
+
+        let collapsed = raw.replacingOccurrences(of: " ", with: "")
+        if collapsed != raw { keys.append(collapsed) }
+
+        // Strip revision suffix: "-XX" at end where XX is digits
+        for base in [raw, collapsed] {
+            if let range = base.range(of: #"-\d+$"#, options: .regularExpression) {
+                let stripped = String(base[..<range.lowerBound]).trimmingCharacters(in: .whitespaces)
+                if !stripped.isEmpty && !keys.contains(stripped) {
+                    keys.append(stripped)
+                }
+            }
+        }
+
+        // Strip manufacturer prefix (e.g. "MK-") if remainder starts with a digit
+        for key in Array(keys) {
+            if let idx = key.firstIndex(of: "-") {
+                let rest = String(key[key.index(after: idx)...])
+                if let first = rest.first, first.isNumber, !keys.contains(rest) {
+                    keys.append(rest)
+                }
+            }
+        }
+
+        return keys
+    }
+
+    private func lookupBySerial(_ serial: String, in cache: [String: (name: String, libretroSystem: String)]) -> (name: String, libretroSystem: String)? {
+        for key in serialLookupKeys(serial) {
+            if let result = cache[key] { return result }
+        }
+        return nil
+    }
+
     private func lookupGameName(md5: String, serial: String?, systemIdentifier: String) async throws -> (name: String, libretroSystem: String)? {
         if let cached = datCache[systemIdentifier] {
             log.debug("DAT cache hit for \(systemIdentifier)")
             if let result = cached[md5.uppercased()] { return result }
-            if let serial, let result = cached[serial.uppercased()] { return result }
+            if let serial, let result = lookupBySerial(serial, in: cached) { return result }
             return nil
         }
 
@@ -460,7 +512,7 @@ final class LibretroCheatProvider: CheatDatabaseProvider {
         }
         datCache[systemIdentifier] = merged
         if let result = merged[md5.uppercased()] { return result }
-        if let serial, let result = merged[serial.uppercased()] { return result }
+        if let serial, let result = lookupBySerial(serial, in: merged) { return result }
         return nil
     }
 

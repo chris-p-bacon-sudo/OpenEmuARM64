@@ -20,7 +20,7 @@ struct DatabaseCheat: Sendable {
 protocol CheatDatabaseProvider {
     var name: String { get }
     func supportsSystem(_ systemIdentifier: String) -> Bool
-    func cheats(forMD5 md5: String, serial: String?, systemIdentifier: String) async throws -> [DatabaseCheat]
+    func cheats(forMD5 md5: String, serial: String?, gameName: String?, systemIdentifier: String) async throws -> [DatabaseCheat]
 }
 
 /// Facade that aggregates cheat database providers and presents a unified interface to the UI.
@@ -41,11 +41,11 @@ final class CheatDatabaseService {
 
     /// Fetches cheats from all providers that support the system, merges, deduplicates, and filters invalid formats.
     /// Provider ordering determines precedence — earlier providers win on duplicate codes.
-    func cheats(forMD5 md5: String, serial: String?, systemIdentifier: String, coreIdentifier: String) async throws -> [DatabaseCheat] {
+    func cheats(forMD5 md5: String, serial: String?, gameName: String? = nil, systemIdentifier: String, coreIdentifier: String) async throws -> [DatabaseCheat] {
         var results: [DatabaseCheat] = []
         var seenCodes: Set<String> = []
         for provider in providers where provider.supportsSystem(systemIdentifier) {
-            let providerCheats = try await provider.cheats(forMD5: md5, serial: serial, systemIdentifier: systemIdentifier)
+            let providerCheats = try await provider.cheats(forMD5: md5, serial: serial, gameName: gameName, systemIdentifier: systemIdentifier)
             for cheat in providerCheats {
                 guard CheatCodeValidator.isValid(code: cheat.code, systemIdentifier: systemIdentifier, coreIdentifier: coreIdentifier) else {
                     log.info("Skipping invalid cheat code: \(cheat.code) (\(cheat.name)) from \(provider.name)")
