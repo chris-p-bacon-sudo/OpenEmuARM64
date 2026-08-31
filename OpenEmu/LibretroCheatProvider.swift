@@ -48,6 +48,7 @@ final class LibretroCheatProvider: CheatDatabaseProvider {
         OESystemIdentifierSNES:      "Nintendo - Super Nintendo Entertainment System",
         OESystemIdentifierNDS:       "Nintendo - Nintendo DS",
         OESystemIdentifierGameGear:  "Sega - Game Gear",
+        OESystemIdentifierSG1000:    "Sega - SG-1000",
         OESystemIdentifierGB:        "Nintendo - Game Boy",
         OESystemIdentifierColecoVision: "Coleco - ColecoVision",
         OESystemIdentifierPSX:       "Sony - PlayStation",
