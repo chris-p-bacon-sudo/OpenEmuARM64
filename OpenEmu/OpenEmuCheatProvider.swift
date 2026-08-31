@@ -20,7 +20,7 @@ final class OpenEmuCheatProvider: CheatDatabaseProvider {
         return database.keys.contains(systemIdentifier)
     }
 
-    func cheats(forMD5 md5: String, systemIdentifier: String) async throws -> [DatabaseCheat] {
+    func cheats(forMD5 md5: String, serial: String?, systemIdentifier: String) async throws -> [DatabaseCheat] {
         loadIfNeeded()
         return database[systemIdentifier]?[md5.lowercased()] ?? []
     }

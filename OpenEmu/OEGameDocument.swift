@@ -1655,8 +1655,9 @@ final class OEGameDocument: NSDocument {
         guard let md5 = rom.md5Hash else { return }
         let systemID = systemPlugin.systemIdentifier
         let coreID = corePlugin.bundleIdentifier
+        let serial = rom.serial
         Task {
-            let results = try await CheatDatabaseService.shared.cheats(forMD5: md5, systemIdentifier: systemID, coreIdentifier: coreID)
+            let results = try await CheatDatabaseService.shared.cheats(forMD5: md5, serial: serial, systemIdentifier: systemID, coreIdentifier: coreID)
             NSLog("[Cheats] Browse Online: %d results for MD5 %@", results.count, md5)
 
             for cheat in results {

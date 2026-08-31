@@ -29,8 +29,12 @@ final class LibretroCheatProvider: CheatDatabaseProvider {
 
     let name = "Libretro"
 
-    private static let datBaseURL = "https://raw.githubusercontent.com/libretro/libretro-database/master/metadat/no-intro/"
+    private static let datBaseURLNoIntro = "https://raw.githubusercontent.com/libretro/libretro-database/master/metadat/no-intro/"
+    private static let datBaseURLRedump = "https://raw.githubusercontent.com/libretro/libretro-database/master/metadat/redump/"
     private static let chtBaseURL = "https://raw.githubusercontent.com/libretro/libretro-database/master/cht/"
+
+    // Disc-based systems use redump DATs instead of no-intro
+    private static let redumpSystems: Set<String> = [OESystemIdentifierPSX]
 
     // OpenEmu system ID → Libretro directory/DAT name
     private let systemMap: [String: String] = [
@@ -46,6 +50,7 @@ final class LibretroCheatProvider: CheatDatabaseProvider {
         OESystemIdentifierGameGear:  "Sega - Game Gear",
         OESystemIdentifierGB:        "Nintendo - Game Boy",
         OESystemIdentifierColecoVision: "Coleco - ColecoVision",
+        OESystemIdentifierPSX:       "Sony - PlayStation",
     ]
 
     // Systems where a single system ID maps to multiple Libretro DAT/CHT directories
@@ -53,14 +58,15 @@ final class LibretroCheatProvider: CheatDatabaseProvider {
         OESystemIdentifierGB: ["Nintendo - Game Boy", "Nintendo - Game Boy Color"],
     ]
 
-    // In-memory cache: systemIdentifier → [uppercased MD5 → (gameName, libretroSystem)]
+    // In-memory cache: systemIdentifier → [key → (gameName, libretroSystem)]
+    // Keys are uppercased MD5 hashes and serial numbers
     private var datCache: [String: [String: (name: String, libretroSystem: String)]] = [:]
 
     func supportsSystem(_ systemIdentifier: String) -> Bool {
         systemMap[systemIdentifier] != nil
     }
 
-    func cheats(forMD5 md5: String, systemIdentifier: String) async throws -> [DatabaseCheat] {
+    func cheats(forMD5 md5: String, serial: String?, systemIdentifier: String) async throws -> [DatabaseCheat] {
         guard let libretroSystem = systemMap[systemIdentifier] else { return [] }
 
         // 1. Check local cache
@@ -86,26 +92,31 @@ final class LibretroCheatProvider: CheatDatabaseProvider {
             return cheats.map { DatabaseCheat(name: $0.name, code: $0.code, providerName: name) }
         }
 
-        // 2. No local cache — resolve game name via DAT
-        let lookup = try await lookupGameName(md5: md5, systemIdentifier: systemIdentifier)
+        // 2. No local cache — resolve game name via DAT (try MD5 first, then serial)
+        let lookup = try await lookupGameName(md5: md5, serial: serial, systemIdentifier: systemIdentifier)
         guard let lookup else {
-            log.info("No game found for MD5 \(md5) in system \(systemIdentifier)")
+            log.info("No game found for MD5 \(md5) / serial \(serial ?? "nil") in system \(systemIdentifier)")
             return []
         }
         let resolvedSystem = lookup.libretroSystem
         let baseChtName = "\(lookup.name).cht"
         log.info("MD5 \(md5) → \(baseChtName) (in \(resolvedSystem))")
 
-        // 3. Download plain + all device-suffixed variants, merge
+        // 3. Download plain + device-suffixed + region-variant candidates, merge
         var allCheats: [LibretroCachedCheat] = []
         var sources: [LibretroCachedSource] = []
 
-        let candidates = [baseChtName] + Self.chtSuffixes.map { "\(lookup.name) (\($0)).cht" }
-        for candidate in candidates {
-            if let result = try await downloadCHT(chtFileName: candidate, libretroSystem: resolvedSystem, systemIdentifier: systemIdentifier, existingETag: nil) {
-                allCheats.append(contentsOf: result.cheats)
-                sources.append(LibretroCachedSource(chtFileName: candidate, etag: result.etag))
+        let useRegionFallback = Self.redumpSystems.contains(systemIdentifier)
+        let gameNames = [lookup.name] + (useRegionFallback ? regionVariants(for: lookup.name) : [])
+        for gameName in gameNames {
+            let candidates = ["\(gameName).cht"] + Self.chtSuffixes.map { "\(gameName) (\($0)).cht" }
+            for candidate in candidates {
+                if let result = try await downloadCHT(chtFileName: candidate, libretroSystem: resolvedSystem, systemIdentifier: systemIdentifier, existingETag: nil) {
+                    allCheats.append(contentsOf: result.cheats)
+                    sources.append(LibretroCachedSource(chtFileName: candidate, etag: result.etag))
+                }
             }
+            if !allCheats.isEmpty { break }
         }
 
         guard !allCheats.isEmpty else {
@@ -130,6 +141,24 @@ final class LibretroCheatProvider: CheatDatabaseProvider {
         return dir.appendingPathComponent("\(md5.uppercased()).json")
     }
 
+    /// Returns alternate game names with different region combinations for CHT fallback.
+    private static let regionFallbacks: [String: [String]] = [
+        "USA":    ["USA, Europe", "USA, Japan", "World"],
+        "Europe": ["USA, Europe", "Europe, Japan", "World"],
+        "Japan":  ["USA, Japan", "Europe, Japan", "World"],
+    ]
+
+    private func regionVariants(for gameName: String) -> [String] {
+        for (region, alternates) in Self.regionFallbacks {
+            let tag = "(\(region))"
+            if gameName.hasSuffix(tag) {
+                let base = String(gameName.dropLast(tag.count)).trimmingCharacters(in: .whitespaces)
+                return alternates.map { "\(base) (\($0))" }
+            }
+        }
+        return []
+    }
+
     private func loadCachedCheats(md5: String, systemIdentifier: String) -> LibretroCachedCheatFile? {
         guard let url = cacheFileURL(md5: md5, systemIdentifier: systemIdentifier),
               let data = try? Data(contentsOf: url),
@@ -148,7 +177,7 @@ final class LibretroCheatProvider: CheatDatabaseProvider {
     // MARK: - CHT Fetch
 
     // Known cheat device suffixes appended to CHT filenames in the Libretro database
-    private static let chtSuffixes = ["Action Replay", "Code Breaker", "Game Genie", "Game Shark", "GameShark"]
+    private static let chtSuffixes = ["Action Replay", "Code Breaker", "Game Buster", "Game Genie", "Game Shark", "GameShark"]
 
     private struct CHTDownloadResult {
         let cheats: [LibretroCachedCheat]
@@ -274,6 +303,8 @@ final class LibretroCheatProvider: CheatDatabaseProvider {
             return normalizeNDSCode(code)
         case OESystemIdentifierGameGear:
             return normalizeGameGearCode(code)
+        case OESystemIdentifierPSX:
+            return normalizePSXCode(code)
         default:
             return code
         }
@@ -293,6 +324,40 @@ final class LibretroCheatProvider: CheatDatabaseProvider {
             i += 3
         }
         return ggCodes.joined(separator: "+")
+    }
+
+    private func normalizePSXCode(_ code: String) -> String {
+        // Fix common typo: letter O/o used instead of zero
+        var code = code.replacingOccurrences(of: "O", with: "0").replacingOccurrences(of: "o", with: "0")
+        // PSX codes in Libretro use '+' as separator within codes, not between codes.
+        // Two patterns: 8hex+4hex (GameShark) and 4hex+4hex+4hex (GameBuster)
+        // Both need to be concatenated into 12-hex codes, then joined by '+' as multi-code separator.
+        let parts = code.split(separator: "+").map { String($0) }
+        guard parts.allSatisfy({ $0.allSatisfy(\.isHexDigit) }) else { return code }
+
+        var codes: [String] = []
+        var i = 0
+        while i < parts.count {
+            // Try 8+4 (GameShark: XXXXXXXX+XXXX → XXXXXXXXXXXX)
+            if i + 1 < parts.count && parts[i].count == 8 && parts[i + 1].count == 4 {
+                codes.append("\(parts[i])\(parts[i + 1])")
+                i += 2
+            }
+            // Try 4+4+4 (GameBuster: XXXX+XXXX+XXXX → XXXXXXXXXXXX)
+            else if i + 2 < parts.count && parts[i].count == 4 && parts[i + 1].count == 4 && parts[i + 2].count == 4 {
+                codes.append("\(parts[i])\(parts[i + 1])\(parts[i + 2])")
+                i += 3
+            }
+            // Already 12 hex (standalone GameShark)
+            else if parts[i].count == 12 {
+                codes.append(parts[i])
+                i += 1
+            }
+            else {
+                return code
+            }
+        }
+        return codes.joined(separator: "+")
     }
 
     private func normalizeNDSCode(_ code: String) -> String {
@@ -362,10 +427,12 @@ final class LibretroCheatProvider: CheatDatabaseProvider {
 
     // MARK: - DAT Lookup
 
-    private func lookupGameName(md5: String, systemIdentifier: String) async throws -> (name: String, libretroSystem: String)? {
+    private func lookupGameName(md5: String, serial: String?, systemIdentifier: String) async throws -> (name: String, libretroSystem: String)? {
         if let cached = datCache[systemIdentifier] {
             log.debug("DAT cache hit for \(systemIdentifier)")
-            return cached[md5.uppercased()]
+            if let result = cached[md5.uppercased()] { return result }
+            if let serial, let result = cached[serial.uppercased()] { return result }
+            return nil
         }
 
         guard let libretroSystem = systemMap[systemIdentifier] else { return nil }
@@ -375,26 +442,40 @@ final class LibretroCheatProvider: CheatDatabaseProvider {
         for datSystem in datSystems {
             log.info("Downloading DAT for \(datSystem)…")
             let encoded = datSystem.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? datSystem
-            guard let url = URL(string: "\(Self.datBaseURL)\(encoded).dat") else { continue }
+            let datBaseURL = Self.redumpSystems.contains(systemIdentifier) ? Self.datBaseURLRedump : Self.datBaseURLNoIntro
+            guard let url = URL(string: "\(datBaseURL)\(encoded).dat") else { continue }
             let (data, _) = try await URLSession.shared.data(from: url)
             let parsed = parseDATFile(data)
-            log.info("DAT loaded for \(datSystem): \(parsed.count) games indexed")
-            for (md5Key, gameName) in parsed {
-                if merged[md5Key] == nil {
-                    merged[md5Key] = (name: gameName, libretroSystem: datSystem)
+            log.info("DAT loaded for \(datSystem): \(parsed.count) entries indexed")
+            for entry in parsed {
+                let value = (name: entry.name, libretroSystem: datSystem)
+                if let md5 = entry.md5, merged[md5] == nil {
+                    merged[md5] = value
+                }
+                if let serial = entry.serial, merged[serial] == nil {
+                    merged[serial] = value
                 }
             }
         }
         datCache[systemIdentifier] = merged
-        return merged[md5.uppercased()]
+        if let result = merged[md5.uppercased()] { return result }
+        if let serial, let result = merged[serial.uppercased()] { return result }
+        return nil
     }
 
     // MARK: - DAT Parser (clrmamepro format)
 
-    private func parseDATFile(_ data: Data) -> [String: String] {
-        guard let content = String(data: data, encoding: .utf8) else { return [:] }
-        var result: [String: String] = [:]
+    private struct DATEntry {
+        let name: String
+        let md5: String?
+        let serial: String?
+    }
+
+    private func parseDATFile(_ data: Data) -> [DATEntry] {
+        guard let content = String(data: data, encoding: .utf8) else { return [] }
+        var results: [DATEntry] = []
         var currentName: String?
+        var currentSerial: String?
 
         for line in content.components(separatedBy: .newlines) {
             let trimmed = line.trimmingCharacters(in: .whitespaces)
@@ -403,17 +484,23 @@ final class LibretroCheatProvider: CheatDatabaseProvider {
                 let start = trimmed.index(trimmed.startIndex, offsetBy: 6)
                 if let end = trimmed.lastIndex(of: "\""), end > start {
                     currentName = String(trimmed[start..<end])
+                    currentSerial = nil
+                }
+            } else if trimmed.hasPrefix("serial \""), let name = currentName {
+                let start = trimmed.index(trimmed.startIndex, offsetBy: 8)
+                if let end = trimmed.lastIndex(of: "\""), end > start {
+                    currentSerial = String(trimmed[start..<end])
                 }
             } else if trimmed.contains("md5 "), let name = currentName {
                 if let md5Range = trimmed.range(of: "md5 ") {
                     let afterMD5 = trimmed[md5Range.upperBound...]
-                    let md5Value = afterMD5.prefix(while: { !$0.isWhitespace })
+                    let md5Value = String(afterMD5.prefix(while: { !$0.isWhitespace }))
                     if md5Value.count == 32 {
-                        result[md5Value.uppercased()] = name
+                        results.append(DATEntry(name: name, md5: md5Value.uppercased(), serial: currentSerial?.uppercased()))
                     }
                 }
             }
         }
-        return result
+        return results
     }
 }

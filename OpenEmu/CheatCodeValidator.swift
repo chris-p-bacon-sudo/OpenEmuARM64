@@ -12,13 +12,14 @@ enum CheatCodeValidator {
 
     /// Returns true if the code (possibly multi-part with '+') is valid for the given core and system.
     static func isValid(code: String, systemIdentifier: String, coreIdentifier: String) -> Bool {
+        let normalized = code.replacingOccurrences(of: " ", with: "")
         // NDS: each '+'-separated part must be a 16-hex AR line (already normalized by provider)
         if systemIdentifier == OESystemIdentifierNDS {
-            return code.components(separatedBy: "+")
-                .allSatisfy { isNDSActionReplayCode($0.trimmingCharacters(in: .whitespaces)) }
+            return normalized.components(separatedBy: "+")
+                .allSatisfy { isNDSActionReplayCode($0) }
         }
-        return code.components(separatedBy: "+")
-            .allSatisfy { isValidSingle($0.trimmingCharacters(in: .whitespaces), systemIdentifier: systemIdentifier, coreIdentifier: coreIdentifier) }
+        return normalized.components(separatedBy: "+")
+            .allSatisfy { isValidSingle($0, systemIdentifier: systemIdentifier, coreIdentifier: coreIdentifier) }
     }
 
     private static func isValidSingle(_ code: String, systemIdentifier: String, coreIdentifier: String) -> Bool {
@@ -43,6 +44,10 @@ enum CheatCodeValidator {
         case OESystemIdentifierN64:
             // Mupen64Plus: 12 hex char GameShark only (8 address + 4 value)
             return isN64GameSharkCode(code)
+
+        case OESystemIdentifierPSX:
+            // Mednafen: 12 hex (PSX GameShark) or raw address:value
+            return isPSXGameSharkCode(code) || isRawAddressValue(code)
 
         case OESystemIdentifierGBA:
             // mGBA: 12 hex (CodeBreaker), 16 hex (GameShark/PAR v3), or VBA (address:value)
@@ -133,6 +138,11 @@ enum CheatCodeValidator {
 
     /// N64 GameShark: exactly 12 hex characters (8 address + 4 value, e.g. "8033B21D0064")
     static func isN64GameSharkCode(_ code: String) -> Bool {
+        return code.count == 12 && code.allSatisfy(\.isHexDigit)
+    }
+
+    /// PSX GameShark: exactly 12 hex characters (type byte + 24-bit address + 16-bit value)
+    static func isPSXGameSharkCode(_ code: String) -> Bool {
         return code.count == 12 && code.allSatisfy(\.isHexDigit)
     }
 
