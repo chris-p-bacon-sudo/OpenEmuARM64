@@ -1,4 +1,4 @@
-Core plugin versions built from commit 2e0492d8b
+Core plugin versions built from commit dcf5f98ff
 
 BSNES 115.4
 DeSmuME 0.9.14.2

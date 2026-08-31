@@ -31,6 +31,7 @@ for plugin in "$CORES_SRC"/*.oecoreplugin; do
   echo "  $name"
   rm -rf "$CORES_DEST/$name"
   ditto "$plugin" "$CORES_DEST/$name"
+  xattr -cr "$CORES_DEST/$name"
 done
 
 echo ""

@@ -291,10 +291,12 @@ if [ "$SIGN_ID" != "-" ]; then
   info "Signing app with Developer ID..."
   deep_sign "$APP_PATH" "$SIGN_ID"
   # Re-sign with entitlements: helper needs JIT/library-validation for core loading
-  HELPER="$APP_PATH/Contents/Resources/OpenEmuHelperApp"
   HELPER_ENT="$REPO_ROOT/OpenEmu/OpenEmuHelperApp/OpenEmuHelperApp.entitlements"
   APP_ENT="$REPO_ROOT/OpenEmu/OpenEmu.entitlements"
-  codesign --force --sign "$SIGN_ID" --options runtime --timestamp --entitlements "$HELPER_ENT" "$HELPER"
+  # Sign BOTH copies — MacOS/ is the one launched via Bundle.main.url(forAuxiliaryExecutable:)
+  for helper in "$APP_PATH/Contents/MacOS/OpenEmuHelperApp" "$APP_PATH/Contents/Resources/OpenEmuHelperApp"; do
+    [ -f "$helper" ] && codesign --force --sign "$SIGN_ID" --options runtime --timestamp --entitlements "$HELPER_ENT" "$helper"
+  done
   codesign --force --sign "$SIGN_ID" --options runtime --timestamp --entitlements "$APP_ENT" "$APP_PATH"
 else
   info "Ad-hoc signing app..."
