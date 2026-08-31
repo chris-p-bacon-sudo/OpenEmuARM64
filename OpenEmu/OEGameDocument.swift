@@ -1673,6 +1673,7 @@ final class OEGameDocument: NSDocument {
         }
         cheats.append(cheat)
         saveUserCheats()
+        validateCheatCompatibility()
     }
     
     /// In order to load cheats, we need the core plugin and the ROM to be set.
@@ -1786,6 +1787,7 @@ final class OEGameDocument: NSDocument {
 
             cheats.append(cheat)
             saveUserCheats()
+            validateCheatCompatibility()
             return
         }
     }

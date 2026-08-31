@@ -445,28 +445,35 @@ final class GameControlsBar: NSWindow {
             menu.addItem(.separator())
 
             for cheat in cheats {
+                let compatible = cheat.isCompatibleWithCore
                 let cheatItem = NSMenuItem(title: cheat.name, action: nil, keyEquivalent: "")
                 cheatItem.state = cheat.isEnabled ? .on : .off
-                if hardcoreOn || !cheat.isCompatibleWithCore { cheatItem.isEnabled = false }
-                if !cheat.isCompatibleWithCore {
+                if hardcoreOn { cheatItem.isEnabled = false }
+                if !compatible {
                     cheatItem.toolTip = NSLocalizedString("Not supported by this emulator.", comment: "Cheat incompatible with current core")
+                    let attrs: [NSAttributedString.Key: Any] = [
+                        .foregroundColor: NSColor.systemRed.withAlphaComponent(0.7)
+                    ]
+                    cheatItem.attributedTitle = NSAttributedString(string: cheat.name, attributes: attrs)
                 }
 
                 let submenu = NSMenu()
-                if hardcoreOn || !cheat.isCompatibleWithCore { submenu.autoenablesItems = false }
+                if hardcoreOn { submenu.autoenablesItems = false }
 
-                let toggleItem = NSMenuItem(title: NSLocalizedString("Enabled", comment: "Cheat submenu toggle"), action: #selector(OEGameDocument.toggleCheat(_:)), keyEquivalent: "")
-                toggleItem.representedObject = cheat
-                toggleItem.state = cheat.isEnabled ? .on : .off
-                if hardcoreOn || !cheat.isCompatibleWithCore { toggleItem.isEnabled = false }
-                submenu.addItem(toggleItem)
+                if compatible {
+                    let toggleItem = NSMenuItem(title: NSLocalizedString("Enabled", comment: "Cheat submenu toggle"), action: #selector(OEGameDocument.toggleCheat(_:)), keyEquivalent: "")
+                    toggleItem.representedObject = cheat
+                    toggleItem.state = cheat.isEnabled ? .on : .off
+                    if hardcoreOn { toggleItem.isEnabled = false }
+                    submenu.addItem(toggleItem)
 
-                submenu.addItem(.separator())
+                    submenu.addItem(.separator())
 
-                let editItem = NSMenuItem(title: NSLocalizedString("Edit…", comment: "Cheat submenu edit"), action: #selector(OEGameDocument.editCheat(_:)), keyEquivalent: "")
-                editItem.representedObject = cheat
-                if hardcoreOn { editItem.isEnabled = false }
-                submenu.addItem(editItem)
+                    let editItem = NSMenuItem(title: NSLocalizedString("Edit…", comment: "Cheat submenu edit"), action: #selector(OEGameDocument.editCheat(_:)), keyEquivalent: "")
+                    editItem.representedObject = cheat
+                    if hardcoreOn { editItem.isEnabled = false }
+                    submenu.addItem(editItem)
+                }
 
                 let removeItem = NSMenuItem(title: NSLocalizedString("Remove", comment: "Cheat submenu remove"), action: #selector(OEGameDocument.removeCheat(_:)), keyEquivalent: "")
                 removeItem.representedObject = cheat
