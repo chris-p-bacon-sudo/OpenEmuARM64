@@ -44,10 +44,16 @@ final class LibretroCheatProvider: CheatDatabaseProvider {
         OESystemIdentifierSNES:      "Nintendo - Super Nintendo Entertainment System",
         OESystemIdentifierNDS:       "Nintendo - Nintendo DS",
         OESystemIdentifierGameGear:  "Sega - Game Gear",
+        OESystemIdentifierGB:        "Nintendo - Game Boy",
     ]
 
-    // In-memory cache: systemIdentifier → [uppercased MD5 → game name]
-    private var datCache: [String: [String: String]] = [:]
+    // Systems where a single system ID maps to multiple Libretro DAT/CHT directories
+    private let systemFallbacks: [String: [String]] = [
+        OESystemIdentifierGB: ["Nintendo - Game Boy", "Nintendo - Game Boy Color"],
+    ]
+
+    // In-memory cache: systemIdentifier → [uppercased MD5 → (gameName, libretroSystem)]
+    private var datCache: [String: [String: (name: String, libretroSystem: String)]] = [:]
 
     func supportsSystem(_ systemIdentifier: String) -> Bool {
         systemMap[systemIdentifier] != nil
@@ -80,28 +86,29 @@ final class LibretroCheatProvider: CheatDatabaseProvider {
         }
 
         // 2. No local cache — resolve game name via DAT
-        let gameName = try await lookupGameName(md5: md5, systemIdentifier: systemIdentifier)
-        guard let gameName else {
+        let lookup = try await lookupGameName(md5: md5, systemIdentifier: systemIdentifier)
+        guard let lookup else {
             log.info("No game found for MD5 \(md5) in system \(systemIdentifier)")
             return []
         }
-        let baseChtName = "\(gameName).cht"
-        log.info("MD5 \(md5) → \(baseChtName)")
+        let resolvedSystem = lookup.libretroSystem
+        let baseChtName = "\(lookup.name).cht"
+        log.info("MD5 \(md5) → \(baseChtName) (in \(resolvedSystem))")
 
         // 3. Download plain + all device-suffixed variants, merge
         var allCheats: [LibretroCachedCheat] = []
         var sources: [LibretroCachedSource] = []
 
-        let candidates = [baseChtName] + Self.chtSuffixes.map { "\(gameName) (\($0)).cht" }
+        let candidates = [baseChtName] + Self.chtSuffixes.map { "\(lookup.name) (\($0)).cht" }
         for candidate in candidates {
-            if let result = try await downloadCHT(chtFileName: candidate, libretroSystem: libretroSystem, systemIdentifier: systemIdentifier, existingETag: nil) {
+            if let result = try await downloadCHT(chtFileName: candidate, libretroSystem: resolvedSystem, systemIdentifier: systemIdentifier, existingETag: nil) {
                 allCheats.append(contentsOf: result.cheats)
                 sources.append(LibretroCachedSource(chtFileName: candidate, etag: result.etag))
             }
         }
 
         guard !allCheats.isEmpty else {
-            log.info("No CHT files found for \(gameName)")
+            log.info("No CHT files found for \(lookup.name)")
             return []
         }
 
@@ -140,7 +147,7 @@ final class LibretroCheatProvider: CheatDatabaseProvider {
     // MARK: - CHT Fetch
 
     // Known cheat device suffixes appended to CHT filenames in the Libretro database
-    private static let chtSuffixes = ["Action Replay", "Code Breaker", "Game Genie", "Game Shark"]
+    private static let chtSuffixes = ["Action Replay", "Code Breaker", "Game Genie", "Game Shark", "GameShark"]
 
     private struct CHTDownloadResult {
         let cheats: [LibretroCachedCheat]
@@ -354,25 +361,31 @@ final class LibretroCheatProvider: CheatDatabaseProvider {
 
     // MARK: - DAT Lookup
 
-    private func lookupGameName(md5: String, systemIdentifier: String) async throws -> String? {
+    private func lookupGameName(md5: String, systemIdentifier: String) async throws -> (name: String, libretroSystem: String)? {
         if let cached = datCache[systemIdentifier] {
             log.debug("DAT cache hit for \(systemIdentifier)")
             return cached[md5.uppercased()]
         }
 
         guard let libretroSystem = systemMap[systemIdentifier] else { return nil }
-        log.info("Downloading DAT for \(libretroSystem)…")
 
-        let encoded = libretroSystem.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? libretroSystem
-        let urlString = "\(Self.datBaseURL)\(encoded).dat"
-        guard let url = URL(string: urlString) else { return nil }
-
-        let (data, _) = try await URLSession.shared.data(from: url)
-        let parsed = parseDATFile(data)
-        datCache[systemIdentifier] = parsed
-        log.info("DAT loaded for \(libretroSystem): \(parsed.count) games indexed")
-
-        return parsed[md5.uppercased()]
+        let datSystems = systemFallbacks[systemIdentifier] ?? [libretroSystem]
+        var merged: [String: (name: String, libretroSystem: String)] = [:]
+        for datSystem in datSystems {
+            log.info("Downloading DAT for \(datSystem)…")
+            let encoded = datSystem.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? datSystem
+            guard let url = URL(string: "\(Self.datBaseURL)\(encoded).dat") else { continue }
+            let (data, _) = try await URLSession.shared.data(from: url)
+            let parsed = parseDATFile(data)
+            log.info("DAT loaded for \(datSystem): \(parsed.count) games indexed")
+            for (md5Key, gameName) in parsed {
+                if merged[md5Key] == nil {
+                    merged[md5Key] = (name: gameName, libretroSystem: datSystem)
+                }
+            }
+        }
+        datCache[systemIdentifier] = merged
+        return merged[md5.uppercased()]
     }
 
     // MARK: - DAT Parser (clrmamepro format)

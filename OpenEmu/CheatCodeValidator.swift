@@ -48,6 +48,10 @@ enum CheatCodeValidator {
             // mGBA: 12 hex (CodeBreaker), 16 hex (GameShark/PAR v3), or VBA (address:value)
             return isGBACode(code)
 
+        case OESystemIdentifierGB:
+            // Gambatte: GB GameShark (8 hex, e.g. 01FF4AD8) or GB Game Genie (XXX-XXX-XXX)
+            return isGBGameSharkCode(code) || isSMSGameGenieCode(code)
+
         case OESystemIdentifierSNES:
             // SNES9x/BSNES: Game Genie (XXXX-XXXX), PAR (8 hex), or raw (6hex:2hex)
             return isSNESGameGenieCode(code) || isSNESPARCode(code) || isRawAddressValue(code, addressHexChars: 6, valueHexChars: 2)
@@ -111,6 +115,11 @@ enum CheatCodeValidator {
         let parts = code.split(separator: "-")
         let allHex = parts.allSatisfy { $0.allSatisfy(\.isHexDigit) }
         return allHex && (parts.count == 2 || parts.count == 3)
+    }
+
+    /// GB GameShark: exactly 8 hex characters (e.g., 01FF4AD8)
+    static func isGBGameSharkCode(_ code: String) -> Bool {
+        return code.count == 8 && code.allSatisfy(\.isHexDigit)
     }
 
     private static let nesGameGenieChars = Set("AEPOZXLUGKISTVYN")
