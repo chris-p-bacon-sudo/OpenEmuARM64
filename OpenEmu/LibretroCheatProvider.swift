@@ -43,6 +43,7 @@ final class LibretroCheatProvider: CheatDatabaseProvider {
         OESystemIdentifierGBA:       "Nintendo - Game Boy Advance",
         OESystemIdentifierSNES:      "Nintendo - Super Nintendo Entertainment System",
         OESystemIdentifierNDS:       "Nintendo - Nintendo DS",
+        OESystemIdentifierGameGear:  "Sega - Game Gear",
     ]
 
     // In-memory cache: systemIdentifier → [uppercased MD5 → game name]
@@ -263,9 +264,27 @@ final class LibretroCheatProvider: CheatDatabaseProvider {
             return normalizeGBACode(code)
         case OESystemIdentifierNDS:
             return normalizeNDSCode(code)
+        case OESystemIdentifierGameGear:
+            return normalizeGameGearCode(code)
         default:
             return code
         }
+    }
+
+    private func normalizeGameGearCode(_ code: String) -> String {
+        // Some GG Game Genie codes use '+' instead of '-' as separator (e.g., 96D+355+A22 → 96D-355-A22)
+        // Detect groups of 3-hex parts joined by '+' and convert to dash-separated Game Genie
+        let parts = code.split(separator: "+")
+        guard parts.count >= 3 && parts.count.isMultiple(of: 3)
+            && parts.allSatisfy({ $0.count == 3 && $0.allSatisfy(\.isHexDigit) })
+        else { return code }
+        var ggCodes: [String] = []
+        var i = 0
+        while i < parts.count - 2 {
+            ggCodes.append("\(parts[i])-\(parts[i+1])-\(parts[i+2])")
+            i += 3
+        }
+        return ggCodes.joined(separator: "+")
     }
 
     private func normalizeNDSCode(_ code: String) -> String {
