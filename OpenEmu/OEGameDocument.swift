@@ -1658,11 +1658,15 @@ final class OEGameDocument: NSDocument {
         let serial = rom.serial
         let gameName = rom.game?.displayName
         Task {
-            let results = try await CheatDatabaseService.shared.cheats(forMD5: md5, serial: serial, gameName: gameName, systemIdentifier: systemID, coreIdentifier: coreID)
-            NSLog("[Cheats] Browse Online: %d results for MD5 %@", results.count, md5)
+            do {
+                let results = try await CheatDatabaseService.shared.cheats(forMD5: md5, serial: serial, gameName: gameName, systemIdentifier: systemID, coreIdentifier: coreID)
+                NSLog("[Cheats] Browse Online: %d results for MD5 %@", results.count, md5)
 
-            for cheat in results {
-                NSLog("\(cheat.name) (\(cheat.providerName)) - \(cheat.code)")
+                for cheat in results {
+                    NSLog("\(cheat.name) (\(cheat.providerName)) - \(cheat.code)")
+                }
+            } catch {
+                NSLog("[Cheats] Browse Online failed: %@", error.localizedDescription)
             }
         }
     }

@@ -81,10 +81,12 @@ final class LibretroCheatProvider: CheatDatabaseProvider {
                 if let updated = try await downloadCHT(chtFileName: source.chtFileName, libretroSystem: libretroSystem, systemIdentifier: systemIdentifier, existingETag: source.etag) {
                     allCheats.append(contentsOf: updated.cheats)
                     anyUpdated = true
+                } else if !anyUpdated {
+                    // Nothing updated yet — return the full cached set as-is
+                    return cached.cheats.map { DatabaseCheat(name: $0.name, code: $0.code, providerName: name) }
                 } else {
-                    // 304 not modified — keep cached cheats for this source
-                    let sourceCheats = cached.cheats // all cached cheats (no per-source split)
-                    if !anyUpdated { allCheats = sourceCheats; break }
+                    // Some sources updated, this one didn't — keep cached cheats alongside fresh ones
+                    allCheats.append(contentsOf: cached.cheats)
                 }
             }
             let cheats = anyUpdated ? dedup(allCheats) : cached.cheats

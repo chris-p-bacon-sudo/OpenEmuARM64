@@ -31,17 +31,19 @@ final class Cheat: Codable {
     let type: String
     var name: String
     var isEnabled = false
+    var cheatSource: String?
     /// Set at runtime; not persisted. False when the current core can't handle this code format.
     var isCompatibleWithCore = true
 
     private enum CodingKeys: String, CodingKey {
-        case code, type, name, isEnabled, isUserAdded
+        case code, type, name, isEnabled, cheatSource
     }
 
-    init(code: String, type: String, name: String) {
+    init(code: String, type: String, name: String, cheatSource: String? = nil) {
         self.code = code
         self.type = type
         self.name = name
+        self.cheatSource = cheatSource
     }
 
     init(from decoder: Decoder) throws {
@@ -50,6 +52,7 @@ final class Cheat: Codable {
         type = try c.decode(String.self, forKey: .type)
         name = try c.decode(String.self, forKey: .name)
         isEnabled = try c.decodeIfPresent(Bool.self, forKey: .isEnabled) ?? false
+        cheatSource = try c.decodeIfPresent(String.self, forKey: .cheatSource)
     }
 
     func encode(to encoder: Encoder) throws {
@@ -58,5 +61,6 @@ final class Cheat: Codable {
         try c.encode(type, forKey: .type)
         try c.encode(name, forKey: .name)
         try c.encode(isEnabled, forKey: .isEnabled)
+        try c.encodeIfPresent(cheatSource, forKey: .cheatSource)
     }
 }
