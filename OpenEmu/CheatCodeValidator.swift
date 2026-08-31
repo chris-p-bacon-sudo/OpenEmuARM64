@@ -12,7 +12,12 @@ enum CheatCodeValidator {
 
     /// Returns true if the code (possibly multi-part with '+') is valid for the given core and system.
     static func isValid(code: String, systemIdentifier: String, coreIdentifier: String) -> Bool {
-        code.components(separatedBy: "+")
+        // NDS: each '+'-separated part must be a 16-hex AR line (already normalized by provider)
+        if systemIdentifier == OESystemIdentifierNDS {
+            return code.components(separatedBy: "+")
+                .allSatisfy { isNDSActionReplayCode($0.trimmingCharacters(in: .whitespaces)) }
+        }
+        return code.components(separatedBy: "+")
             .allSatisfy { isValidSingle($0.trimmingCharacters(in: .whitespaces), systemIdentifier: systemIdentifier, coreIdentifier: coreIdentifier) }
     }
 
@@ -144,6 +149,12 @@ enum CheatCodeValidator {
     /// SNES Pro Action Replay: exactly 8 hex characters
     static func isSNESPARCode(_ code: String) -> Bool {
         return code.count == 8 && code.allSatisfy(\.isHexDigit)
+    }
+
+    /// NDS Action Replay: 16 hex chars per line (8 address + 8 value). DeSmuME strips non-hex internally.
+    static func isNDSActionReplayCode(_ code: String) -> Bool {
+        let hex = code.filter(\.isHexDigit)
+        return !hex.isEmpty && hex.count.isMultiple(of: 16)
     }
 
     private static let genesisGameGenieChars = Set("ABCDEFGHJKLMNPRSTVWXYZ0123456789")

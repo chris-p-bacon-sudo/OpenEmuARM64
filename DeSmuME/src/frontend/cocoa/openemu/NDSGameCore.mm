@@ -882,6 +882,7 @@ void UpdateDisplayPropertiesFromStates(uint64_t displayModeStates, ClientDisplay
 	_inputHandler->ApplyInputs();
 	
 	pthread_rwlock_wrlock(&rwlockCoreExecute);
+	[cdsCheats internalManager]->ApplyToMaster();
 	NDS_exec<false>();
 	pthread_rwlock_unlock(&rwlockCoreExecute);
 	
@@ -1239,15 +1240,18 @@ void UpdateDisplayPropertiesFromStates(uint64_t displayModeStates, ClientDisplay
 	{
 		// If the cheat doesn't already exist, then create a new one and add it.
 		ClientCheatItem *newCheatItem = new ClientCheatItem;
-		newCheatItem->SetType(CheatType_ActionReplay); // Default to Action Replay for now
+		newCheatItem->SetType(CheatType_ActionReplay);
 		newCheatItem->SetFreezeType(CheatFreezeType_Normal);
-		newCheatItem->SetName(NULL); // OpenEmu takes care of this
-		newCheatItem->SetComments(NULL); // OpenEmu does not support cheat item comments
+		newCheatItem->SetName(NULL);
+		newCheatItem->SetComments(NULL);
 		newCheatItem->SetRawCodeString([code cStringUsingEncoding:NSUTF8StringEncoding], true);
 		newCheatItem->SetEnabled((enabled) ? true : false);
 		
 		cocoaCheatItem = [[self cdsCheats] addExistingItem:newCheatItem];
-		
+		if (cocoaCheatItem == nil) {
+				return;
+		}
+		[[self cdsCheats] update:cocoaCheatItem];
 		// OpenEmu doesn't currently save cheats per game, so assume that the
 		// cheat list is short and that code strings are unique. This allows
 		// us to get away with simply saving the cheat code string and hashing

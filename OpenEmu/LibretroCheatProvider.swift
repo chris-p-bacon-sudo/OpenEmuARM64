@@ -42,6 +42,7 @@ final class LibretroCheatProvider: CheatDatabaseProvider {
         OESystemIdentifierGenesis:   "Sega - Mega Drive - Genesis",
         OESystemIdentifierGBA:       "Nintendo - Game Boy Advance",
         OESystemIdentifierSNES:      "Nintendo - Super Nintendo Entertainment System",
+        OESystemIdentifierNDS:       "Nintendo - Nintendo DS",
     ]
 
     // In-memory cache: systemIdentifier → [uppercased MD5 → game name]
@@ -260,9 +261,27 @@ final class LibretroCheatProvider: CheatDatabaseProvider {
             return normalizeGenesisCode(code)
         case OESystemIdentifierGBA:
             return normalizeGBACode(code)
+        case OESystemIdentifierNDS:
+            return normalizeNDSCode(code)
         default:
             return code
         }
+    }
+
+    private func normalizeNDSCode(_ code: String) -> String {
+        // NDS AR codes: pairs of 8-hex parts joined by '+' need to be concatenated into 16-hex lines
+        // e.g., 620D5010+00000000+B20D5010+00000000 → 620D501000000000+B20D501000000000
+        let parts = code.split(separator: "+")
+        guard parts.count >= 2 && parts.count.isMultiple(of: 2)
+            && parts.allSatisfy({ $0.count == 8 && $0.allSatisfy(\.isHexDigit) })
+        else { return code }
+        var lines: [String] = []
+        var i = 0
+        while i < parts.count - 1 {
+            lines.append("\(parts[i])\(parts[i + 1])")
+            i += 2
+        }
+        return lines.joined(separator: "+")
     }
 
     private func normalizeGBACode(_ code: String) -> String {
