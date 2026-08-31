@@ -45,6 +45,7 @@ final class LibretroCheatProvider: CheatDatabaseProvider {
         OESystemIdentifierNDS:       "Nintendo - Nintendo DS",
         OESystemIdentifierGameGear:  "Sega - Game Gear",
         OESystemIdentifierGB:        "Nintendo - Game Boy",
+        OESystemIdentifierColecoVision: "Coleco - ColecoVision",
     ]
 
     // Systems where a single system ID maps to multiple Libretro DAT/CHT directories

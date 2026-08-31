@@ -23,7 +23,7 @@ enum CheatCodeValidator {
 
     private static func isValidSingle(_ code: String, systemIdentifier: String, coreIdentifier: String) -> Bool {
         switch systemIdentifier {
-        case OESystemIdentifierAtari2600:
+        case OESystemIdentifierAtari2600, OESystemIdentifierColecoVision:
             // Stella: scanHexInt is flexible on length, cast to uInt16/uInt8
             return isRawAddressValue(code, maxAddressHexChars: 4, maxValueHexChars: 2)
 
