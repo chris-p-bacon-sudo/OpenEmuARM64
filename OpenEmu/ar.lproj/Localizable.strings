@@ -688,6 +688,14 @@ You can go to the Controls preferences to check which associations were affected
 	<string>اللعبة</string>
 	<key>MD5</key>
 	<string>MD5</string>
+	<key>Cheat Name</key>
+	<string>اسم الغش</string>
+	<key>Provider</key>
+	<string>المزود</string>
+	<key>Status</key>
+	<string>الحالة</string>
+	<key>Action</key>
+	<string>إجراء</string>
     <key>Not supported by this emulator.</key>
     <string>غير مدعوم من هذا المحاكي.</string>
 	<key>Cheat Search</key>

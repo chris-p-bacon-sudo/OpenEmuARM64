@@ -713,6 +713,14 @@ You can go to the Controls preferences to check which associations were affected
 	<string>ゲーム</string>
 	<key>MD5</key>
 	<string>MD5</string>
+	<key>Cheat Name</key>
+	<string>チート名</string>
+	<key>Provider</key>
+	<string>提供元</string>
+	<key>Status</key>
+	<string>状態</string>
+	<key>Action</key>
+	<string>操作</string>
     <key>Not supported by this emulator.</key>
     <string>このエミュレータでは対応していません。</string>
 	<key>Cheat Search</key>

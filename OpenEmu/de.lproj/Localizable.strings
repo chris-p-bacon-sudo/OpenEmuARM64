@@ -716,6 +716,14 @@ Du kannst die Tastenbelegung in den Einstellungen unter „Steuerung“ überpr�
 	<string>Spiel</string>
 	<key>MD5</key>
 	<string>MD5</string>
+	<key>Cheat Name</key>
+	<string>Cheat-Name</string>
+	<key>Provider</key>
+	<string>Anbieter</string>
+	<key>Status</key>
+	<string>Status</string>
+	<key>Action</key>
+	<string>Aktion</string>
     <key>Not supported by this emulator.</key>
     <string>Von diesem Emulator nicht unterstützt.</string>
 	<key>Cheat Search</key>

@@ -718,6 +718,14 @@ You can go to the Controls preferences to check which associations were affected
 	<string>Jogo</string>
 	<key>MD5</key>
 	<string>MD5</string>
+	<key>Cheat Name</key>
+	<string>Nome da Trapaça</string>
+	<key>Provider</key>
+	<string>Fornecedor</string>
+	<key>Status</key>
+	<string>Estado</string>
+	<key>Action</key>
+	<string>Ação</string>
     <key>Not supported by this emulator.</key>
     <string>Não suportado por este emulador.</string>
 	<key>Cheat Search</key>

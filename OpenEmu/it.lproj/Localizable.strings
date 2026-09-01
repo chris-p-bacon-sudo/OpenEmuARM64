@@ -720,6 +720,14 @@ Puoi andare nelle Preferenze Controlli per verificare quali impostazioni sono st
 	<string>Gioco</string>
 	<key>MD5</key>
 	<string>MD5</string>
+	<key>Cheat Name</key>
+	<string>Nome trucco</string>
+	<key>Provider</key>
+	<string>Fornitore</string>
+	<key>Status</key>
+	<string>Stato</string>
+	<key>Action</key>
+	<string>Azione</string>
     <key>Not supported by this emulator.</key>
     <string>Non supportato da questo emulatore.</string>
 	<key>Cheat Search</key>

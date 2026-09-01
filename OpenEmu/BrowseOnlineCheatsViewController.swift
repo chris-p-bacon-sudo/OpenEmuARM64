@@ -37,6 +37,12 @@ final class BrowseOnlineCheatsViewController: NSViewController {
     private var md5Label: NSTextField!
     private var coreLabel: NSTextField!
 
+    // MARK: - Results Table
+    private var resultsTableView: NSTableView!
+
+    /// Applied to each row's cell so the content matches its column header.
+    private var columnAlignments: [NSUserInterfaceItemIdentifier: NSTextAlignment] = [:]
+
     override func loadView() {
         view = NSView(frame: NSRect(x: 0, y: 0, width: 620, height: 480))
     }
@@ -48,13 +54,92 @@ final class BrowseOnlineCheatsViewController: NSViewController {
         infoPanel.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(infoPanel)
 
+        let filterPanel = makeFilterPanel()
+        filterPanel.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(filterPanel)
+
+        let resultsScrollView = makeResultsTable()
+        resultsScrollView.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(resultsScrollView)
+
         NSLayoutConstraint.activate([
             infoPanel.topAnchor.constraint(equalTo: view.topAnchor, constant: 12),
             infoPanel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 12),
             infoPanel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -12),
+
+            filterPanel.topAnchor.constraint(equalTo: infoPanel.bottomAnchor),
+            filterPanel.leadingAnchor.constraint(equalTo: infoPanel.leadingAnchor),
+            filterPanel.trailingAnchor.constraint(equalTo: infoPanel.trailingAnchor),
+
+            resultsScrollView.topAnchor.constraint(equalTo: filterPanel.bottomAnchor, constant: 12),
+            resultsScrollView.leadingAnchor.constraint(equalTo: infoPanel.leadingAnchor),
+            resultsScrollView.trailingAnchor.constraint(equalTo: infoPanel.trailingAnchor),
+            resultsScrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -12),
         ])
 
         updateGameInfo()
+    }
+
+    // MARK: - Results Table
+
+    private func makeResultsTable() -> NSScrollView {
+        let tableView = NSTableView()
+        tableView.usesAlternatingRowBackgroundColors = true
+        tableView.allowsMultipleSelection = false
+        tableView.dataSource = self
+        tableView.delegate = self
+        tableView.headerView = NSTableHeaderView()
+        tableView.style = .fullWidth
+        tableView.columnAutoresizingStyle = .firstColumnOnlyAutoresizingStyle
+
+        let columns: [(String, String, CGFloat, NSTextAlignment)] = [
+            ("name", NSLocalizedString("Cheat Name", comment: "Browse online cheats table column header"), 302, .left),
+            ("provider", NSLocalizedString("Provider", comment: "Browse online cheats table column header"), 120, .center),
+            ("status", NSLocalizedString("Status", comment: "Browse online cheats table column header"), 120, .center),
+            ("action", NSLocalizedString("Action", comment: "Browse online cheats table column header"), 100, .center),
+        ]
+
+        for (index, column) in columns.enumerated() {
+            let (identifier, title, width, alignment) = column
+            let tableColumn = NSTableColumn(identifier: NSUserInterfaceItemIdentifier(identifier))
+            tableColumn.title = title
+            tableColumn.width = width
+            tableColumn.headerCell.alignment = alignment
+
+            if index == 0 {
+                tableColumn.minWidth = 150
+                tableColumn.maxWidth = .greatestFiniteMagnitude
+                tableColumn.resizingMask = .autoresizingMask
+            } else {
+                // Locked so the first column is the only one that absorbs width changes.
+                tableColumn.minWidth = width
+                tableColumn.maxWidth = width
+                tableColumn.resizingMask = []
+            }
+
+            tableView.addTableColumn(tableColumn)
+            columnAlignments[tableColumn.identifier] = alignment
+        }
+
+        resultsTableView = tableView
+
+        let scrollView = NSScrollView()
+        scrollView.documentView = tableView
+        scrollView.hasVerticalScroller = true
+        scrollView.hasHorizontalScroller = false
+        scrollView.borderType = .bezelBorder
+
+        return scrollView
+    }
+
+    // MARK: - Filter Panel
+
+    // TODO: populate with the controls that filter the results table.
+    private func makeFilterPanel() -> NSBox {
+        let box = NSBox()
+        box.titlePosition = .noTitle
+        box.contentView?.heightAnchor.constraint(equalToConstant: 40).isActive = true
+        return box
     }
 
     // MARK: - Game Info Panel
@@ -62,6 +147,8 @@ final class BrowseOnlineCheatsViewController: NSViewController {
     private func makeGameInfoPanel() -> NSBox {
         let box = NSBox()
         box.titlePosition = .noTitle
+        // Draws nothing, so the panel reads as part of the window rather than a second card.
+        box.isTransparent = true
 
         let gameTitle = makeTitleLabel(NSLocalizedString("Game", comment: "Browse online cheats info label"), width: 60)
         gameLabel = makeValueLabel(width: 280)
@@ -172,5 +259,21 @@ final class BrowseOnlineCheatsViewController: NSViewController {
                 NSLog("[Cheats] Browse Online failed: %@", error.localizedDescription)
             }
         }
+    }
+}
+
+// MARK: - Table Data Source
+
+extension BrowseOnlineCheatsViewController: NSTableViewDataSource {
+    func numberOfRows(in tableView: NSTableView) -> Int {
+        0
+    }
+}
+
+// MARK: - Table Delegate
+
+extension BrowseOnlineCheatsViewController: NSTableViewDelegate {
+    func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
+        nil
     }
 }

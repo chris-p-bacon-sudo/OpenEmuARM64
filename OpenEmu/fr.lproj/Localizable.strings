@@ -714,6 +714,14 @@ Vous pouvez aller dans les préférences Contrôles pour vérifier les associati
 	<string>Jeu</string>
 	<key>MD5</key>
 	<string>MD5</string>
+	<key>Cheat Name</key>
+	<string>Nom du code</string>
+	<key>Provider</key>
+	<string>Fournisseur</string>
+	<key>Status</key>
+	<string>État</string>
+	<key>Action</key>
+	<string>Action</string>
     <key>Not supported by this emulator.</key>
     <string>Non pris en charge par cet émulateur.</string>
 	<key>Cheat Search</key>
