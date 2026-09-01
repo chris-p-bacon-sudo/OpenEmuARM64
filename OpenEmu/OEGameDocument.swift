@@ -660,6 +660,7 @@ final class OEGameDocument: NSDocument {
                 self.didShowRetroAchievementsBootPlacard = false
                 
                 self.gameCoreManager = nil
+                self.pausedByGoingToBackground = false
 
                 self.cheatSearchWindowController?.close()
                 self.cheatSearchWindowController = nil
@@ -1202,6 +1203,12 @@ final class OEGameDocument: NSDocument {
                 if !pauseEmulation {
                     startEmulation()
                 }
+                return
+            }
+            // A resume arriving during or after teardown (a window regaining focus as the
+            // game window closes) would otherwise flip the status back to .playing, leaving
+            // the document "edited" with no core behind it.
+            if !pauseEmulation && (emulationStatus == .terminating || emulationStatus == .notSetup) {
                 return
             }
             if pauseEmulation {
@@ -2430,7 +2437,10 @@ final class OEGameDocument: NSDocument {
             supportsSaveStates,
             emulationStatus.rawValue > EmulationStatus.starting.rawValue,
             let rom = rom,
-            let core = corePlugin
+            let core = corePlugin,
+            // Without this the optional chaining below would skip the closure and the
+            // handler would never run, stranding canClose() and wedging the window shut.
+            let gameCoreManager = gameCoreManager
         else {
             handler?()
             return
@@ -2444,7 +2454,7 @@ final class OEGameDocument: NSDocument {
         }
         
         SentryService.addBreadcrumb(message: "Save state written: \(stateName)", category: "savestate")
-        gameCoreManager?.saveStateToFile(at: temporaryStateFileURL) { success, error in
+        gameCoreManager.saveStateToFile(at: temporaryStateFileURL) { success, error in
             if !success {
                 handler?()
                 return
