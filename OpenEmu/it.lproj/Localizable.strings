@@ -728,6 +728,8 @@ Puoi andare nelle Preferenze Controlli per verificare quali impostazioni sono st
 	<string>Stato</string>
 	<key>Action</key>
 	<string>Azione</string>
+	<key>Import</key>
+	<string>Importa</string>
     <key>Not supported by this emulator.</key>
     <string>Non supportato da questo emulatore.</string>
 	<key>Cheat Search</key>

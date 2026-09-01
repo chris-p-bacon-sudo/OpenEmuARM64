@@ -99,12 +99,14 @@ final class BrowseOnlineCheatsViewController: NSViewController {
         tableView.headerView = NSTableHeaderView()
         tableView.style = .fullWidth
         tableView.columnAutoresizingStyle = .firstColumnOnlyAutoresizingStyle
+        // Fixed, and does not grow for taller cell views — buttons and badges need this room.
+        tableView.rowHeight = 28
 
         let columns: [(String, String, CGFloat, NSTextAlignment)] = [
-            ("name", NSLocalizedString("Cheat Name", comment: "Browse online cheats table column header"), 302, .left),
-            ("provider", NSLocalizedString("Provider", comment: "Browse online cheats table column header"), 120, .center),
-            ("status", NSLocalizedString("Status", comment: "Browse online cheats table column header"), 120, .center),
-            ("action", NSLocalizedString("Action", comment: "Browse online cheats table column header"), 100, .center),
+            ("name", NSLocalizedString("Cheat Name", comment: "Browse online cheats table column header"), 362, .left),
+            ("provider", NSLocalizedString("Provider", comment: "Browse online cheats table column header"), 100, .left),
+            ("status", NSLocalizedString("Status", comment: "Browse online cheats table column header"), 100, .center),
+            ("action", NSLocalizedString("Action", comment: "Browse online cheats table column header"), 80, .center),
         ]
 
         for (index, column) in columns.enumerated() {
@@ -317,33 +319,88 @@ extension BrowseOnlineCheatsViewController: NSTableViewDelegate {
         guard let identifier = tableColumn?.identifier, row < cheats.count else { return nil }
         let cheat = cheats[row]
 
-        let cellID = NSUserInterfaceItemIdentifier("BrowseOnlineCheatsCell")
-        let cell: NSTextField
-        if let existing = tableView.makeView(withIdentifier: cellID, owner: nil) as? NSTextField {
-            cell = existing
-        } else {
-            cell = NSTextField(labelWithString: "")
-            cell.identifier = cellID
-            cell.lineBreakMode = .byTruncatingTail
-            cell.maximumNumberOfLines = 1
-            cell.cell?.truncatesLastVisibleLine = true
-            cell.allowsExpansionToolTips = true
+        if identifier.rawValue == "action" {
+            return makeActionCell(in: tableView)
         }
+
+        let cell = makeTextCell(in: tableView)
 
         switch identifier.rawValue {
         case "name":
-            cell.stringValue = cheat.name
+            cell.textField?.stringValue = cheat.name
         case "provider":
-            cell.stringValue = cheat.providerName
+            cell.textField?.stringValue = cheat.providerName
         default:
-            cell.stringValue = ""
+            cell.textField?.stringValue = ""
         }
-        cell.alignment = columnAlignments[identifier] ?? .left
+        cell.textField?.alignment = columnAlignments[identifier] ?? .left
+
+        return cell
+    }
+
+    private func makeTextCell(in tableView: NSTableView) -> NSTableCellView {
+        let cellID = NSUserInterfaceItemIdentifier("BrowseOnlineCheatsCell")
+        if let existing = tableView.makeView(withIdentifier: cellID, owner: nil) as? NSTableCellView {
+            return existing
+        }
+
+        let cell = NSTableCellView()
+        cell.identifier = cellID
+
+        let label = NSTextField(labelWithString: "")
+        label.lineBreakMode = .byTruncatingTail
+        label.maximumNumberOfLines = 1
+        label.cell?.truncatesLastVisibleLine = true
+        // AppKit shows this only while the text is actually clipped.
+        label.allowsExpansionToolTips = true
+        label.translatesAutoresizingMaskIntoConstraints = false
+        cell.addSubview(label)
+        cell.textField = label
+
+        NSLayoutConstraint.activate([
+            label.leadingAnchor.constraint(equalTo: cell.leadingAnchor, constant: 2),
+            label.trailingAnchor.constraint(equalTo: cell.trailingAnchor, constant: -2),
+            label.centerYAnchor.constraint(equalTo: cell.centerYAnchor),
+        ])
 
         return cell
     }
 
     func tableView(_ tableView: NSTableView, shouldSelectRow row: Int) -> Bool {
         false
+    }
+
+    private func makeActionCell(in tableView: NSTableView) -> NSView {
+        let cellID = NSUserInterfaceItemIdentifier("BrowseOnlineCheatsActionCell")
+        if let existing = tableView.makeView(withIdentifier: cellID, owner: nil) {
+            return existing
+        }
+
+        let container = NSView()
+        container.identifier = cellID
+
+        let button = NSButton(title: NSLocalizedString("Import", comment: "Browse online cheats row action button"),
+                              target: self,
+                              action: #selector(importClicked(_:)))
+        button.bezelStyle = .rounded
+        button.controlSize = .small
+        button.font = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)
+        button.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(button)
+
+        NSLayoutConstraint.activate([
+            button.centerXAnchor.constraint(equalTo: container.centerXAnchor),
+            button.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+        ])
+
+        return container
+    }
+
+    // TODO: import the cheat into the document.
+    @objc private func importClicked(_ sender: NSButton) {
+        // Asked at click time so the row stays correct across reloads and sorting.
+        let row = resultsTableView.row(for: sender)
+        guard row >= 0, row < cheats.count else { return }
+        NSLog("[Cheats] Import requested: %@", cheats[row].name)
     }
 }

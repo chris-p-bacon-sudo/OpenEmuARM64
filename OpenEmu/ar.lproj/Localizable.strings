@@ -696,6 +696,8 @@ You can go to the Controls preferences to check which associations were affected
 	<string>الحالة</string>
 	<key>Action</key>
 	<string>إجراء</string>
+	<key>Import</key>
+	<string>استيراد</string>
     <key>Not supported by this emulator.</key>
     <string>غير مدعوم من هذا المحاكي.</string>
 	<key>Cheat Search</key>

@@ -726,6 +726,8 @@ Hangi ilişkilendirmelerin etkilendiğini kontrol etmek için Kontrolcü tercihl
 	<string>Durum</string>
 	<key>Action</key>
 	<string>İşlem</string>
+	<key>Import</key>
+	<string>İçe Aktar</string>
     <key>Not supported by this emulator.</key>
     <string>Bu emülatör tarafından desteklenmiyor.</string>
 	<key>Cheat Search</key>

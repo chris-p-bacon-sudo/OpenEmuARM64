@@ -721,6 +721,8 @@ You can go to the Controls preferences to check which associations were affected
 	<string>状態</string>
 	<key>Action</key>
 	<string>操作</string>
+	<key>Import</key>
+	<string>インポート</string>
     <key>Not supported by this emulator.</key>
     <string>このエミュレータでは対応していません。</string>
 	<key>Cheat Search</key>

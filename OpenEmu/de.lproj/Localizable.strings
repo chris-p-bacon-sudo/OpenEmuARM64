@@ -724,6 +724,8 @@ Du kannst die Tastenbelegung in den Einstellungen unter „Steuerung“ überpr�
 	<string>Status</string>
 	<key>Action</key>
 	<string>Aktion</string>
+	<key>Import</key>
+	<string>Importieren</string>
     <key>Not supported by this emulator.</key>
     <string>Von diesem Emulator nicht unterstützt.</string>
 	<key>Cheat Search</key>

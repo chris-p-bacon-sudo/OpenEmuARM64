@@ -725,6 +725,8 @@ You can go to the Controls preferences to check which associations were affected
 	<string>Status</string>
 	<key>Action</key>
 	<string>Actie</string>
+	<key>Import</key>
+	<string>Importeren</string>
     <key>Not supported by this emulator.</key>
     <string>Niet ondersteund door deze emulator.</string>
 	<key>Cheat Search</key>
