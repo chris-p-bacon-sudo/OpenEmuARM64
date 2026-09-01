@@ -680,8 +680,11 @@ You can go to the Controls preferences to check which associations were affected
 	<string>أضف الغش</string>
 	<key>Cheat Search…</key>
 	<string>بحث عن شفرات غش…</string>
-    <key>Browse Online Cheats…</key>
-    <string>تصفح الغش عبر الإنترنت…</string>
+    
+		<key>Browse Online Cheats…</key>
+	<string>تصفح الغش عبر الإنترنت…</string>
+<key>Browse Online Cheats</key>
+	<string>تصفح الغش عبر الإنترنت</string>
     <key>Not supported by this emulator.</key>
     <string>غير مدعوم من هذا المحاكي.</string>
 	<key>Cheat Search</key>

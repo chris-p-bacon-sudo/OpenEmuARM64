@@ -706,8 +706,11 @@ Vous pouvez aller dans les préférences Contrôles pour vérifier les associati
 	<string>Ajouter un code</string>
 	<key>Cheat Search…</key>
 	<string>Recherche de codes…</string>
-    <key>Browse Online Cheats…</key>
-    <string>Parcourir les codes en ligne…</string>
+    
+		<key>Browse Online Cheats…</key>
+	<string>Parcourir les codes en ligne…</string>
+<key>Browse Online Cheats</key>
+	<string>Parcourir les codes en ligne</string>
     <key>Not supported by this emulator.</key>
     <string>Non pris en charge par cet émulateur.</string>
 	<key>Cheat Search</key>

@@ -709,8 +709,11 @@ You can go to the Controls preferences to check which associations were affected
 	<string>Voeg cheat toe</string>
 	<key>Cheat Search…</key>
 	<string>Cheat zoeken…</string>
-    <key>Browse Online Cheats…</key>
-    <string>Online cheats zoeken…</string>
+    
+		<key>Browse Online Cheats…</key>
+	<string>Online cheats zoeken…</string>
+<key>Browse Online Cheats</key>
+	<string>Online cheats zoeken</string>
     <key>Not supported by this emulator.</key>
     <string>Niet ondersteund door deze emulator.</string>
 	<key>Cheat Search</key>

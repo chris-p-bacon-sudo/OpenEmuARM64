@@ -162,6 +162,7 @@ final class OEGameDocument: NSDocument {
     
     private var gameCoreManager: GameCoreManager?
     private var cheatSearchWindowController: CheatSearchWindowController?
+    private var browseOnlineCheatsWindowController: BrowseOnlineCheatsWindowController?
     private var retroAchievementsWindowController: NSWindowController?
     @objc dynamic private(set) var retroAchievementsSessionInfo: [String: Any]?
     private var retroAchievementsSuppressedUnlockIDs = Set<UInt32>()
@@ -663,6 +664,8 @@ final class OEGameDocument: NSDocument {
 
                 self.cheatSearchWindowController?.close()
                 self.cheatSearchWindowController = nil
+                self.browseOnlineCheatsWindowController?.close()
+                self.browseOnlineCheatsWindowController = nil
 
                 if let lastPlayStartDate = self.lastPlayStartDate {
                     self.rom.addTimeIntervalToPlayTime(abs(lastPlayStartDate.timeIntervalSinceNow))
@@ -1651,24 +1654,10 @@ final class OEGameDocument: NSDocument {
     }
 
     @IBAction func browseOnlineCheats(_ sender: Any?) {
-        // TODO: open CheatBrowserWindowController
-        guard let md5 = rom.md5Hash else { return }
-        let systemID = systemPlugin.systemIdentifier
-        let coreID = corePlugin.bundleIdentifier
-        let serial = rom.serial
-        let gameName = rom.game?.displayName
-        Task {
-            do {
-                let results = try await CheatDatabaseService.shared.cheats(forMD5: md5, serial: serial, gameName: gameName, systemIdentifier: systemID, coreIdentifier: coreID)
-                NSLog("[Cheats] Browse Online: %d results for MD5 %@", results.count, md5)
-
-                for cheat in results {
-                    NSLog("\(cheat.name) (\(cheat.providerName)) - \(cheat.code)")
-                }
-            } catch {
-                NSLog("[Cheats] Browse Online failed: %@", error.localizedDescription)
-            }
+        if browseOnlineCheatsWindowController == nil {
+            browseOnlineCheatsWindowController = BrowseOnlineCheatsWindowController(document: self)
         }
+        browseOnlineCheatsWindowController?.showWindow(self)
     }
 
     func addCheatFromSearch(code: String, type: String, name: String, enabled: Bool) {

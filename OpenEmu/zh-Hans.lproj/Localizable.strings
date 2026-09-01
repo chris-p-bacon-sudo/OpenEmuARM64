@@ -709,8 +709,11 @@ You can go to the Controls preferences to check which associations were affected
 	<string>添加金手指</string>
 	<key>Cheat Search…</key>
 	<string>搜索金手指…</string>
-    <key>Browse Online Cheats…</key>
-    <string>浏览在线金手指…</string>
+    
+		<key>Browse Online Cheats…</key>
+	<string>浏览在线金手指…</string>
+<key>Browse Online Cheats</key>
+	<string>浏览在线金手指</string>
     <key>Not supported by this emulator.</key>
     <string>此模拟器不支持。</string>
 	<key>Cheat Search</key>

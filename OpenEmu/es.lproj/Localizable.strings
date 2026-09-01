@@ -708,8 +708,11 @@ You can go to the Controls preferences to check which associations were affected
 	<string>Añadir truco</string>
 	<key>Cheat Search…</key>
 	<string>Buscar trucos…</string>
-    <key>Browse Online Cheats…</key>
-    <string>Explorar trucos en línea…</string>
+    
+		<key>Browse Online Cheats…</key>
+	<string>Explorar trucos en línea…</string>
+<key>Browse Online Cheats</key>
+	<string>Explorar trucos en línea</string>
     <key>Not supported by this emulator.</key>
     <string>No compatible con este emulador.</string>
 	<key>Cheat Search</key>

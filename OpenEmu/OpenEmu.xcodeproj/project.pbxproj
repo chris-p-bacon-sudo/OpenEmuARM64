@@ -673,6 +673,8 @@
 		E0D3D5AF068C48148780583F /* Keyboard-Mappings.plist in Resources */ = {isa = PBXBuildFile; fileRef = C6534A32E31642F3805D9A90 /* Keyboard-Mappings.plist */; };
 		E66ED795617D681F41CFA7BD /* MSX.oesystemplugin in Copy System Plugins to App Plugins */ = {isa = PBXBuildFile; fileRef = FEB6625B187B791800D14713 /* MSX.oesystemplugin */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		E8D9112BFB38FBCEEA8B22DD /* CheatSearchWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED2D0AB7012BE11642E384A3 /* CheatSearchWindowController.swift */; };
+		E8D9112BFB38FBCEEA8B22DE /* BrowseOnlineCheatsWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED2D0AB7012BE11642E384A4 /* BrowseOnlineCheatsWindowController.swift */; };
+		E8D9112BFB38FBCEEA8B22DF /* BrowseOnlineCheatsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED2D0AB7012BE11642E384A5 /* BrowseOnlineCheatsViewController.swift */; };
 		E96D97FB8B2AA2119A472430 /* OpenEmuBase.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C6D120C317112E1300E868A8 /* OpenEmuBase.framework */; };
 		EB3D03D02A24B3C100EBABCD /* 3DO.oesystemplugin in Copy System Plugins to App Plugins */ = {isa = PBXBuildFile; fileRef = 943F99B31707DF3700270E89 /* 3DO.oesystemplugin */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		EF2FDBEB14CFFE06002A64F2 /* ControlsKeyButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8396CC5514068DA90096F791 /* ControlsKeyButton.swift */; };
@@ -1936,6 +1938,8 @@
 		DBFF44DC2E9D79C700B30F0A /* OENESSystemResponderClient.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = OENESSystemResponderClient.h; sourceTree = "<group>"; };
 		DBFF44DD2E9D79D400B30F0A /* OEFDSSystemResponderClient.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = OEFDSSystemResponderClient.h; sourceTree = "<group>"; };
 		ED2D0AB7012BE11642E384A3 /* CheatSearchWindowController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CheatSearchWindowController.swift; sourceTree = "<group>"; };
+		ED2D0AB7012BE11642E384A4 /* BrowseOnlineCheatsWindowController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BrowseOnlineCheatsWindowController.swift; sourceTree = "<group>"; };
+		ED2D0AB7012BE11642E384A5 /* BrowseOnlineCheatsViewController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BrowseOnlineCheatsViewController.swift; sourceTree = "<group>"; };
 		EFBD5D7714EFE19A00FBD1E0 /* NSColor+OEAdditions.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "NSColor+OEAdditions.swift"; sourceTree = "<group>"; };
 		EFBD5D7B14EFE26300FBD1E0 /* OEGridView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OEGridView.h; sourceTree = "<group>"; };
 		EFBD5D7C14EFE26300FBD1E0 /* OEGridView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = OEGridView.m; sourceTree = "<group>"; };
@@ -4106,6 +4110,8 @@
 				42A14B489D09FD1B597AD586 /* OECredentialStore.swift */,
 				ED2D0AB7012BE11642E384A3 /* CheatSearchWindowController.swift */,
 				8045ABD4E2FC2F0F03CEECB4 /* CheatSearchViewController.swift */,
+				ED2D0AB7012BE11642E384A4 /* BrowseOnlineCheatsWindowController.swift */,
+				ED2D0AB7012BE11642E384A5 /* BrowseOnlineCheatsViewController.swift */,
 			);
 			name = OpenEmu;
 			sourceTree = "<group>";
@@ -6479,6 +6485,8 @@
 				D3360575D5430005882E67D6 /* ArtworkImportReviewViewController.swift in Sources */,
 				E8D9112BFB38FBCEEA8B22DD /* CheatSearchWindowController.swift in Sources */,
 				FC582061983BED3F49DE43B5 /* CheatSearchViewController.swift in Sources */,
+				E8D9112BFB38FBCEEA8B22DE /* BrowseOnlineCheatsWindowController.swift in Sources */,
+				E8D9112BFB38FBCEEA8B22DF /* BrowseOnlineCheatsViewController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

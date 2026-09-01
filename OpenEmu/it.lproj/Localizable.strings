@@ -712,8 +712,11 @@ Puoi andare nelle Preferenze Controlli per verificare quali impostazioni sono st
 	<string>Aggiungi trucco</string>
 	<key>Cheat Search…</key>
 	<string>Cerca trucchi…</string>
-    <key>Browse Online Cheats…</key>
-    <string>Sfoglia trucchi online…</string>
+    
+		<key>Browse Online Cheats…</key>
+	<string>Sfoglia trucchi online…</string>
+<key>Browse Online Cheats</key>
+	<string>Sfoglia trucchi online</string>
     <key>Not supported by this emulator.</key>
     <string>Non supportato da questo emulatore.</string>
 	<key>Cheat Search</key>
