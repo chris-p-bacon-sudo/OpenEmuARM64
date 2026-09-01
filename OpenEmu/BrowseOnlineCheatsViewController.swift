@@ -39,6 +39,13 @@ final class BrowseOnlineCheatsViewController: NSViewController {
 
     // MARK: - Results Table
     private var resultsTableView: NSTableView!
+    private var resultsScrollView: NSScrollView!
+    private var loadingSpinner: NSProgressIndicator?
+    private var isLoading = false
+    private var hasLoaded = false
+
+    /// Fetched cheats kept in memory so filtering can work off them without refetching.
+    private var cheats: [DatabaseCheat] = []
 
     /// Applied to each row's cell so the content matches its column header.
     private var columnAlignments: [NSUserInterfaceItemIdentifier: NSTextAlignment] = [:]
@@ -61,6 +68,7 @@ final class BrowseOnlineCheatsViewController: NSViewController {
         let resultsScrollView = makeResultsTable()
         resultsScrollView.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(resultsScrollView)
+        self.resultsScrollView = resultsScrollView
 
         NSLayoutConstraint.activate([
             infoPanel.topAnchor.constraint(equalTo: view.topAnchor, constant: 12),
@@ -237,27 +245,59 @@ final class BrowseOnlineCheatsViewController: NSViewController {
         view.needsLayout = true
     }
 
+    // MARK: - Loading Indicator
+
+    private func showLoadingIndicator() {
+        isLoading = true
+
+        if loadingSpinner == nil {
+            let spinner = NSProgressIndicator()
+            spinner.style = .spinning
+            spinner.controlSize = .regular
+            spinner.translatesAutoresizingMaskIntoConstraints = false
+            resultsScrollView.superview?.addSubview(spinner)
+            NSLayoutConstraint.activate([
+                spinner.centerXAnchor.constraint(equalTo: resultsScrollView.centerXAnchor),
+                spinner.centerYAnchor.constraint(equalTo: resultsScrollView.centerYAnchor),
+            ])
+            loadingSpinner = spinner
+        }
+        loadingSpinner?.startAnimation(nil)
+        loadingSpinner?.isHidden = false
+        resultsTableView.isEnabled = false
+    }
+
+    private func hideLoadingIndicator() {
+        isLoading = false
+        loadingSpinner?.stopAnimation(nil)
+        loadingSpinner?.isHidden = true
+        resultsTableView.isEnabled = true
+    }
+
     // MARK: - Online Cheats
 
-    // TODO: wire results into the view instead of logging them.
     func fetchOnlineCheats() {
+        guard !isLoading, !hasLoaded else { return }
         guard let document = gameDocument else { return }
         guard let md5 = document.rom.md5Hash else { return }
         let systemID = document.systemPlugin.systemIdentifier
         let coreID = document.corePlugin.bundleIdentifier
         let serial = document.rom.serial
         let gameName = document.rom.game?.displayName
+
+        showLoadingIndicator()
+
         Task {
             do {
                 let results = try await CheatDatabaseService.shared.cheats(forMD5: md5, serial: serial, gameName: gameName, systemIdentifier: systemID, coreIdentifier: coreID)
-                NSLog("[Cheats] Browse Online: %d results for MD5 %@", results.count, md5)
-
-                for cheat in results {
-                    NSLog("\(cheat.name) (\(cheat.providerName)) - \(cheat.code)")
-                }
+                cheats = results.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+                hasLoaded = true
             } catch {
                 NSLog("[Cheats] Browse Online failed: %@", error.localizedDescription)
+                cheats = []
             }
+            resultsTableView.reloadData()
+            hideLoadingIndicator()
         }
     }
 }
@@ -266,7 +306,7 @@ final class BrowseOnlineCheatsViewController: NSViewController {
 
 extension BrowseOnlineCheatsViewController: NSTableViewDataSource {
     func numberOfRows(in tableView: NSTableView) -> Int {
-        0
+        cheats.count
     }
 }
 
@@ -274,6 +314,36 @@ extension BrowseOnlineCheatsViewController: NSTableViewDataSource {
 
 extension BrowseOnlineCheatsViewController: NSTableViewDelegate {
     func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
-        nil
+        guard let identifier = tableColumn?.identifier, row < cheats.count else { return nil }
+        let cheat = cheats[row]
+
+        let cellID = NSUserInterfaceItemIdentifier("BrowseOnlineCheatsCell")
+        let cell: NSTextField
+        if let existing = tableView.makeView(withIdentifier: cellID, owner: nil) as? NSTextField {
+            cell = existing
+        } else {
+            cell = NSTextField(labelWithString: "")
+            cell.identifier = cellID
+            cell.lineBreakMode = .byTruncatingTail
+            cell.maximumNumberOfLines = 1
+            cell.cell?.truncatesLastVisibleLine = true
+            cell.allowsExpansionToolTips = true
+        }
+
+        switch identifier.rawValue {
+        case "name":
+            cell.stringValue = cheat.name
+        case "provider":
+            cell.stringValue = cheat.providerName
+        default:
+            cell.stringValue = ""
+        }
+        cell.alignment = columnAlignments[identifier] ?? .left
+
+        return cell
+    }
+
+    func tableView(_ tableView: NSTableView, shouldSelectRow row: Int) -> Bool {
+        false
     }
 }
