@@ -726,6 +726,10 @@ You can go to the Controls preferences to check which associations were affected
     <string>Browse Online Cheats…</string>
 	<key>Browse Online Cheats</key>
 	<string>Browse Online Cheats</string>
+	<key>Game</key>
+	<string>Game</string>
+	<key>MD5</key>
+	<string>MD5</string>
     <key>Not supported by this emulator.</key>
     <string>Not supported by this emulator.</string>
 	<key>Cheat Search</key>

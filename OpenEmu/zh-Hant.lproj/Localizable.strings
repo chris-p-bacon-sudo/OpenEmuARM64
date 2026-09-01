@@ -709,11 +709,14 @@ You can go to the Controls preferences to check which associations were affected
 	<string>新增金手指</string>
 	<key>Cheat Search…</key>
 	<string>搜尋金手指…</string>
-    
-		<key>Browse Online Cheats…</key>
+	<key>Browse Online Cheats…</key>
 	<string>瀏覽線上金手指…</string>
-<key>Browse Online Cheats</key>
+	<key>Browse Online Cheats</key>
 	<string>瀏覽線上金手指</string>
+	<key>Game</key>
+	<string>遊戲</string>
+	<key>MD5</key>
+	<string>MD5</string>
     <key>Not supported by this emulator.</key>
     <string>此模擬器不支援。</string>
 	<key>Cheat Search</key>

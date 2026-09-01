@@ -30,8 +30,124 @@ final class BrowseOnlineCheatsViewController: NSViewController {
     // MARK: - Document reference
     weak var gameDocument: OEGameDocument?
 
+    // MARK: - Game Info Panel
+    private var gameLabel: NSTextField!
+    private var serialLabel: NSTextField!
+    private var systemLabel: NSTextField!
+    private var md5Label: NSTextField!
+    private var coreLabel: NSTextField!
+
     override func loadView() {
         view = NSView(frame: NSRect(x: 0, y: 0, width: 620, height: 480))
+    }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+
+        let infoPanel = makeGameInfoPanel()
+        infoPanel.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(infoPanel)
+
+        NSLayoutConstraint.activate([
+            infoPanel.topAnchor.constraint(equalTo: view.topAnchor, constant: 12),
+            infoPanel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 12),
+            infoPanel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -12),
+        ])
+
+        updateGameInfo()
+    }
+
+    // MARK: - Game Info Panel
+
+    private func makeGameInfoPanel() -> NSBox {
+        let box = NSBox()
+        box.titlePosition = .noTitle
+
+        let gameTitle = makeTitleLabel(NSLocalizedString("Game", comment: "Browse online cheats info label"), width: 60)
+        gameLabel = makeValueLabel(width: 280)
+        let md5Title = makeTitleLabel(NSLocalizedString("MD5", comment: "Browse online cheats info label"), width: 40)
+        md5Label = makeValueLabel(width: 220)
+
+        let systemTitle = makeTitleLabel(NSLocalizedString("System", comment: "Browse online cheats info label"), width: 60)
+        systemLabel = makeValueLabel(width: 140)
+        let coreTitle = makeTitleLabel(NSLocalizedString("Core", comment: "Browse online cheats info label"), width: 60)
+        coreTitle.alignment = .right
+        coreLabel = makeValueLabel(width: 140)
+        let serialTitle = makeTitleLabel(NSLocalizedString("Version", comment: "Browse online cheats info label"), width: 60)
+        serialTitle.alignment = .right
+        serialLabel = makeValueLabel(width: 140)
+
+        let outerStack = NSStackView()
+        outerStack.orientation = .vertical
+        outerStack.alignment = .leading
+        outerStack.spacing = 6
+        outerStack.translatesAutoresizingMaskIntoConstraints = false
+
+        outerStack.addArrangedSubview(makeInfoRow(cells: [gameTitle, gameLabel, md5Title, md5Label],
+                                                 gapsAfter: [gameLabel]))
+        outerStack.addArrangedSubview(makeInfoRow(cells: [systemTitle, systemLabel, coreTitle, coreLabel, serialTitle, serialLabel],
+                                                 gapsAfter: [systemLabel, coreLabel]))
+
+        box.contentView?.addSubview(outerStack)
+        if let contentView = box.contentView {
+            NSLayoutConstraint.activate([
+                outerStack.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 8),
+                outerStack.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 8),
+                outerStack.trailingAnchor.constraint(lessThanOrEqualTo: contentView.trailingAnchor, constant: -8),
+                outerStack.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -8),
+            ])
+        }
+
+        return box
+    }
+
+    /// `gapsAfter` marks the views that end a field, so the wider gap separates
+    /// fields rather than a title from its own value.
+    private func makeInfoRow(cells: [NSView], gapsAfter: [NSView] = []) -> NSStackView {
+        let row = NSStackView(views: cells)
+        row.orientation = .horizontal
+        row.alignment = .firstBaseline
+        row.distribution = .fill
+        row.spacing = 4
+        gapsAfter.forEach { row.setCustomSpacing(20, after: $0) }
+        return row
+    }
+
+    private func makeTitleLabel(_ title: String, width: CGFloat) -> NSTextField {
+        let label = makeInfoLabel(width: width)
+        label.stringValue = "\(title):"
+        label.font = NSFont.boldSystemFont(ofSize: NSFont.smallSystemFontSize)
+        label.textColor = .secondaryLabelColor
+        return label
+    }
+
+    private func makeValueLabel(width: CGFloat) -> NSTextField {
+        let label = makeInfoLabel(width: width)
+        label.font = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)
+        return label
+    }
+
+    private func makeInfoLabel(width: CGFloat) -> NSTextField {
+        let label = NSTextField(labelWithString: "")
+        label.lineBreakMode = .byTruncatingTail
+        label.maximumNumberOfLines = 1
+        label.cell?.truncatesLastVisibleLine = true
+        // AppKit shows this only while the text is actually clipped.
+        label.allowsExpansionToolTips = true
+        label.translatesAutoresizingMaskIntoConstraints = false
+        label.widthAnchor.constraint(equalToConstant: width).isActive = true
+        return label
+    }
+
+    private func updateGameInfo() {
+        guard let document = gameDocument else { return }
+        let placeholder = "—"
+        gameLabel.stringValue = document.rom.game?.displayName ?? placeholder
+        md5Label.stringValue = document.rom.md5Hash ?? placeholder
+        systemLabel.stringValue = document.systemPlugin.systemName
+        coreLabel.stringValue = document.corePlugin.displayName
+        serialLabel.stringValue = document.rom.serial ?? placeholder
+        view.needsLayout = true
     }
 
     // MARK: - Online Cheats

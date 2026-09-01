@@ -710,11 +710,14 @@ You can go to the Controls preferences to check which associations were affected
 	<string>Добавить Чит-код</string>
 	<key>Cheat Search…</key>
 	<string>Поиск чит-кодов…</string>
-    
-		<key>Browse Online Cheats…</key>
+	<key>Browse Online Cheats…</key>
 	<string>Обзор онлайн чит-кодов…</string>
-<key>Browse Online Cheats</key>
+	<key>Browse Online Cheats</key>
 	<string>Обзор онлайн чит-кодов</string>
+	<key>Game</key>
+	<string>Игра</string>
+	<key>MD5</key>
+	<string>MD5</string>
     <key>Not supported by this emulator.</key>
     <string>Не поддерживается этим эмулятором.</string>
 	<key>Cheat Search</key>

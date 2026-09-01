@@ -710,11 +710,14 @@ Hangi ilişkilendirmelerin etkilendiğini kontrol etmek için Kontrolcü tercihl
 	<string>Hile ekle</string>
 	<key>Cheat Search…</key>
 	<string>Hile Ara…</string>
-    
-		<key>Browse Online Cheats…</key>
+	<key>Browse Online Cheats…</key>
 	<string>Çevrimiçi Hilelere Göz At…</string>
-<key>Browse Online Cheats</key>
+	<key>Browse Online Cheats</key>
 	<string>Çevrimiçi Hilelere Göz At</string>
+	<key>Game</key>
+	<string>Oyun</string>
+	<key>MD5</key>
+	<string>MD5</string>
     <key>Not supported by this emulator.</key>
     <string>Bu emülatör tarafından desteklenmiyor.</string>
 	<key>Cheat Search</key>

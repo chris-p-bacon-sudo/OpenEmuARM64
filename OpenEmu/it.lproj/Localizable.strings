@@ -712,11 +712,14 @@ Puoi andare nelle Preferenze Controlli per verificare quali impostazioni sono st
 	<string>Aggiungi trucco</string>
 	<key>Cheat Search…</key>
 	<string>Cerca trucchi…</string>
-    
-		<key>Browse Online Cheats…</key>
+	<key>Browse Online Cheats…</key>
 	<string>Sfoglia trucchi online…</string>
-<key>Browse Online Cheats</key>
+	<key>Browse Online Cheats</key>
 	<string>Sfoglia trucchi online</string>
+	<key>Game</key>
+	<string>Gioco</string>
+	<key>MD5</key>
+	<string>MD5</string>
     <key>Not supported by this emulator.</key>
     <string>Non supportato da questo emulatore.</string>
 	<key>Cheat Search</key>

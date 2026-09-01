@@ -710,11 +710,14 @@ Podeu anar a les preferències dels controls per comprovar quines associacions s
 	<string>Afegeix un truc</string>
 	<key>Cheat Search…</key>
 	<string>Cerca de trucs…</string>
-    
-		<key>Browse Online Cheats…</key>
+	<key>Browse Online Cheats…</key>
 	<string>Navegar per trucs en línia…</string>
-<key>Browse Online Cheats</key>
+	<key>Browse Online Cheats</key>
 	<string>Navegar per trucs en línia</string>
+	<key>Game</key>
+	<string>Joc</string>
+	<key>MD5</key>
+	<string>MD5</string>
     <key>Not supported by this emulator.</key>
     <string>No compatible amb aquest emulador.</string>
 	<key>Cheat Search</key>
