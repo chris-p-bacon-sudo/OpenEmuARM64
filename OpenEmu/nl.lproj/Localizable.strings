@@ -747,6 +747,12 @@ You can go to the Controls preferences to check which associations were affected
 	<string>Bewaren</string>
 	<key>Click to add or edit notes for this cheat</key>
 	<string>Klik om notities voor deze cheat toe te voegen of te bewerken</string>
+	<key>Cheat Removed</key>
+	<string>Cheat verwijderd</string>
+	<key>Did this cheat code work for you?</key>
+	<string>Werkte deze cheatcode voor jou?</string>
+	<key>I don't know</key>
+	<string>Ik weet het niet</string>
 	<key>It works for me</key>
 	<string>Werkt bij mij</string>
 	<key>It does not work for me</key>

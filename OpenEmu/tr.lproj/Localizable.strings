@@ -748,6 +748,12 @@ Hangi ilişkilendirmelerin etkilendiğini kontrol etmek için Kontrolcü tercihl
 	<string>Kaydet</string>
 	<key>Click to add or edit notes for this cheat</key>
 	<string>Bu hile için not eklemek veya düzenlemek için tıklayın</string>
+	<key>Cheat Removed</key>
+	<string>Hile Kaldırıldı</string>
+	<key>Did this cheat code work for you?</key>
+	<string>Bu hile kodu sizin için işe yaradı mı?</string>
+	<key>I don't know</key>
+	<string>Bilmiyorum</string>
 	<key>It works for me</key>
 	<string>Bende çalışıyor</string>
 	<key>It does not work for me</key>

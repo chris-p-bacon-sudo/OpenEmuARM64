@@ -718,6 +718,12 @@ You can go to the Controls preferences to check which associations were affected
 	<string>حفظ</string>
 	<key>Click to add or edit notes for this cheat</key>
 	<string>انقر لإضافة أو تعديل ملاحظات هذا الخدع</string>
+	<key>Cheat Removed</key>
+	<string>تمت إزالة الخدع</string>
+	<key>Did this cheat code work for you?</key>
+	<string>هل نجح رمز الخدع هذا معك؟</string>
+	<key>I don't know</key>
+	<string>لا أعرف</string>
 	<key>It works for me</key>
 	<string>تعمل معي</string>
 	<key>It does not work for me</key>

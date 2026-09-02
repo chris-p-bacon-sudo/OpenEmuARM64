@@ -366,7 +366,19 @@ final class OEAlert: NSObject {
             needsRebuild = true
         }
     }
-    
+
+    /// Tints the button's bezel, for alerts where a color hint (e.g. a destructive default
+    /// button) is more useful than the plain system look.
+    var defaultButtonColor: NSColor? {
+        get { defaultButton.bezelColor }
+        set { defaultButton.bezelColor = newValue }
+    }
+
+    var alternateButtonColor: NSColor? {
+        get { alternateButton.bezelColor }
+        set { alternateButton.bezelColor = newValue }
+    }
+
     @objc func buttonAction(_ sender: NSButton) {
         if sender == defaultButton || sender == defaultTBButton {
             result = .alertFirstButtonReturn

@@ -747,6 +747,12 @@ You can go to the Controls preferences to check which associations were affected
 	<string>保存</string>
 	<key>Click to add or edit notes for this cheat</key>
 	<string>点击以添加或编辑此金手指的备注</string>
+	<key>Cheat Removed</key>
+	<string>金手指已移除</string>
+	<key>Did this cheat code work for you?</key>
+	<string>这个金手指代码对你有效吗？</string>
+	<key>I don't know</key>
+	<string>不清楚</string>
 	<key>It works for me</key>
 	<string>对我有效</string>
 	<key>It does not work for me</key>

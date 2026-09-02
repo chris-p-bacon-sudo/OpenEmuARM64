@@ -748,6 +748,12 @@ Podeu anar a les preferències dels controls per comprovar quines associacions s
 	<string>Desa</string>
 	<key>Click to add or edit notes for this cheat</key>
 	<string>Feu clic per afegir o editar notes per a aquest truc</string>
+	<key>Cheat Removed</key>
+	<string>Truc eliminat</string>
+	<key>Did this cheat code work for you?</key>
+	<string>Ha funcionat aquest truc per a tu?</string>
+	<key>I don't know</key>
+	<string>No ho sé</string>
 	<key>It works for me</key>
 	<string>A mi em funciona</string>
 	<key>It does not work for me</key>

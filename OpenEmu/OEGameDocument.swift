@@ -1702,6 +1702,7 @@ final class OEGameDocument: NSDocument {
         }
         cheats.remove(at: index)
         saveUserCheats()
+        promptCheatRemovalFeedback(code: cheat.code)
     }
     
     /// In order to load cheats, we need the core plugin and the ROM to be set.
@@ -2134,6 +2135,40 @@ final class OEGameDocument: NSDocument {
         }
         cheats.remove(at: index)
         saveUserCheats()
+        // Only imported cheats have known-good/bad feedback worth asking about — manual/Cheat Search
+        // codes aren't sourced from a shared database, so there's nothing to report back against.
+        if cheat.cheatSource != nil {
+            promptCheatRemovalFeedback(code: cheat.code)
+        }
+    }
+
+    /// Shared by every place a cheat gets removed — the menu's Remove item and Browse Online
+    /// Cheats' Remove button — so the "did it work" report is asked consistently either way.
+    func promptCheatRemovalFeedback(code: String) {
+        guard let md5 = rom.md5Hash else { return }
+
+        let alert = OEAlert()
+        alert.messageText = NSLocalizedString("Cheat Removed", comment: "Cheat removal feedback dialog title")
+        alert.informativeText = NSLocalizedString("Did this cheat code work for you?", comment: "Cheat removal feedback dialog question")
+        // Removing (rather than just disabling) a working cheat is unusual, so "No" gets the default/rightmost slot as the likely answer.
+        alert.defaultButtonTitle = NSLocalizedString("No", comment: "Cheat removal feedback dialog option")
+        alert.alternateButtonTitle = NSLocalizedString("Yes", comment: "Cheat removal feedback dialog option")
+        alert.alternateButtonColor = NSColor.systemGreen.blended(withFraction: 0.65, of: .systemGray)?.withAlphaComponent(0.4)
+        alert.otherButtonTitle = NSLocalizedString("I don't know", comment: "Cheat removal feedback dialog option")
+
+        let status: CheatFeedbackStatus
+        switch alert.runModal() {
+        case .alertFirstButtonReturn: status = .doesNotWork
+        case .alertSecondButtonReturn: status = .works
+        default: status = .unknown
+        }
+
+        CheatFeedbackService.shared.setStatus(status,
+                                             forCode: code,
+                                             md5: md5,
+                                             systemIdentifier: systemPlugin.systemIdentifier,
+                                             coreIdentifier: corePlugin.bundleIdentifier,
+                                             coreVersion: corePlugin.version)
     }
 
     func setCheat(_ cheat: Cheat) {

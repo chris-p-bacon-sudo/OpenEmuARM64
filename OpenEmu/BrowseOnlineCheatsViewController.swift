@@ -1166,18 +1166,29 @@ extension BrowseOnlineCheatsViewController: NSTableViewDelegate {
         let row = resultsTableView.row(for: sender)
         guard row >= 0, row < visibleCheats.count else { return }
         let cheat = visibleCheats[row]
+        let state = importState(for: cheat)
 
-        switch importState(for: cheat) {
+        switch state {
         case .notImported:
             gameDocument?.addImportedCheat(code: cheat.code, name: cheat.name, providerName: cheat.providerName)
         case .importedByThisFeature:
+            // Blocks on the "did it work" prompt, so statuses are re-read once it returns.
             gameDocument?.removeImportedCheat(code: cheat.code)
+            refreshStatuses()
         case .usedElsewhere:
             return
         }
 
         refreshImportedCodeKeys()
         resultsTableView?.reloadData()
+    }
+
+    private func refreshStatuses() {
+        guard let document = gameDocument, let md5 = document.rom.md5Hash else { return }
+        statuses = CheatFeedbackService.shared.statuses(forMD5: md5,
+                                                       systemIdentifier: document.systemPlugin.systemIdentifier,
+                                                       coreIdentifier: document.corePlugin.bundleIdentifier,
+                                                       coreVersion: document.corePlugin.version)
     }
 }
 

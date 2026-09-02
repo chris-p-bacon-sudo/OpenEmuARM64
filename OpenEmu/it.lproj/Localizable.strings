@@ -750,6 +750,12 @@ Puoi andare nelle Preferenze Controlli per verificare quali impostazioni sono st
 	<string>Salva</string>
 	<key>Click to add or edit notes for this cheat</key>
 	<string>Fai clic per aggiungere o modificare le note per questo trucco</string>
+	<key>Cheat Removed</key>
+	<string>Trucco rimosso</string>
+	<key>Did this cheat code work for you?</key>
+	<string>Questo codice trucco ha funzionato per te?</string>
+	<key>I don't know</key>
+	<string>Non lo so</string>
 	<key>It works for me</key>
 	<string>Per me funziona</string>
 	<key>It does not work for me</key>

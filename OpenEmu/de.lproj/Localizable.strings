@@ -746,6 +746,12 @@ Du kannst die Tastenbelegung in den Einstellungen unter „Steuerung“ überpr�
 	<string>Sichern</string>
 	<key>Click to add or edit notes for this cheat</key>
 	<string>Klicken, um Notizen für diesen Cheat hinzuzufügen oder zu bearbeiten</string>
+	<key>Cheat Removed</key>
+	<string>Cheat entfernt</string>
+	<key>Did this cheat code work for you?</key>
+	<string>Hat dieser Cheat-Code bei dir funktioniert?</string>
+	<key>I don't know</key>
+	<string>Weiß ich nicht</string>
 	<key>It works for me</key>
 	<string>Funktioniert bei mir</string>
 	<key>It does not work for me</key>

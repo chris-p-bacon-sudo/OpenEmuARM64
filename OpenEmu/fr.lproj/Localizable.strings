@@ -744,6 +744,12 @@ Vous pouvez aller dans les préférences Contrôles pour vérifier les associati
 	<string>Enregistrer</string>
 	<key>Click to add or edit notes for this cheat</key>
 	<string>Cliquez pour ajouter ou modifier des notes pour ce code</string>
+	<key>Cheat Removed</key>
+	<string>Code supprimé</string>
+	<key>Did this cheat code work for you?</key>
+	<string>Ce code a-t-il fonctionné pour vous ?</string>
+	<key>I don't know</key>
+	<string>Je ne sais pas</string>
 	<key>It works for me</key>
 	<string>Ça fonctionne pour moi</string>
 	<key>It does not work for me</key>

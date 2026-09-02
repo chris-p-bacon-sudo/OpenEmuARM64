@@ -743,6 +743,12 @@ You can go to the Controls preferences to check which associations were affected
 	<string>保存</string>
 	<key>Click to add or edit notes for this cheat</key>
 	<string>クリックしてこのチートのメモを追加・編集</string>
+	<key>Cheat Removed</key>
+	<string>チートを削除しました</string>
+	<key>Did this cheat code work for you?</key>
+	<string>このチートコードは有効でしたか？</string>
+	<key>I don't know</key>
+	<string>わからない</string>
 	<key>It works for me</key>
 	<string>動作しました</string>
 	<key>It does not work for me</key>

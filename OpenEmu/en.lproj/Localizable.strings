@@ -758,6 +758,12 @@ You can go to the Controls preferences to check which associations were affected
 	<string>Save</string>
 	<key>Click to add or edit notes for this cheat</key>
 	<string>Click to add or edit notes for this cheat</string>
+	<key>Cheat Removed</key>
+	<string>Cheat Removed</string>
+	<key>Did this cheat code work for you?</key>
+	<string>Did this cheat code work for you?</string>
+	<key>I don't know</key>
+	<string>I don't know</string>
 	<key>It works for me</key>
 	<string>It works for me</string>
 	<key>It does not work for me</key>
