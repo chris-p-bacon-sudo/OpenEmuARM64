@@ -738,6 +738,12 @@ Podeu anar a les preferències dels controls per comprovar quines associacions s
 	<string>Copia</string>
 	<key>Close</key>
 	<string>Tanca</string>
+	<key>Notes</key>
+	<string>Notes</string>
+	<key>Save</key>
+	<string>Desa</string>
+	<key>Click to add or edit notes for this cheat</key>
+	<string>Feu clic per afegir o editar notes per a aquest truc</string>
 	<key>It works for me</key>
 	<string>A mi em funciona</string>
 	<key>It does not work for me</key>

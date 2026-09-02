@@ -738,6 +738,12 @@ Hangi ilişkilendirmelerin etkilendiğini kontrol etmek için Kontrolcü tercihl
 	<string>Kopyala</string>
 	<key>Close</key>
 	<string>Kapat</string>
+	<key>Notes</key>
+	<string>Notlar</string>
+	<key>Save</key>
+	<string>Kaydet</string>
+	<key>Click to add or edit notes for this cheat</key>
+	<string>Bu hile için not eklemek veya düzenlemek için tıklayın</string>
 	<key>It works for me</key>
 	<string>Bende çalışıyor</string>
 	<key>It does not work for me</key>

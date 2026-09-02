@@ -736,6 +736,12 @@ You can go to the Controls preferences to check which associations were affected
 	<string>Copiar</string>
 	<key>Close</key>
 	<string>Cerrar</string>
+	<key>Notes</key>
+	<string>Notas</string>
+	<key>Save</key>
+	<string>Guardar</string>
+	<key>Click to add or edit notes for this cheat</key>
+	<string>Haz clic para añadir o editar notas para este truco</string>
 	<key>It works for me</key>
 	<string>A mí me funciona</string>
 	<key>It does not work for me</key>

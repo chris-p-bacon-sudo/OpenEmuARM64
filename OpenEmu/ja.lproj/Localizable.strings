@@ -733,6 +733,12 @@ You can go to the Controls preferences to check which associations were affected
 	<string>コピー</string>
 	<key>Close</key>
 	<string>閉じる</string>
+	<key>Notes</key>
+	<string>メモ</string>
+	<key>Save</key>
+	<string>保存</string>
+	<key>Click to add or edit notes for this cheat</key>
+	<string>クリックしてこのチートのメモを追加・編集</string>
 	<key>It works for me</key>
 	<string>動作しました</string>
 	<key>It does not work for me</key>

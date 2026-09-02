@@ -737,6 +737,12 @@ You can go to the Controls preferences to check which associations were affected
 	<string>Kopieer</string>
 	<key>Close</key>
 	<string>Sluit</string>
+	<key>Notes</key>
+	<string>Notities</string>
+	<key>Save</key>
+	<string>Bewaren</string>
+	<key>Click to add or edit notes for this cheat</key>
+	<string>Klik om notities voor deze cheat toe te voegen of te bewerken</string>
 	<key>It works for me</key>
 	<string>Werkt bij mij</string>
 	<key>It does not work for me</key>

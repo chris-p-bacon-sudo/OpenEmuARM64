@@ -708,6 +708,12 @@ You can go to the Controls preferences to check which associations were affected
 	<string>نسخ</string>
 	<key>Close</key>
 	<string>إغلاق</string>
+	<key>Notes</key>
+	<string>ملاحظات</string>
+	<key>Save</key>
+	<string>حفظ</string>
+	<key>Click to add or edit notes for this cheat</key>
+	<string>انقر لإضافة أو تعديل ملاحظات هذا الخدع</string>
 	<key>It works for me</key>
 	<string>تعمل معي</string>
 	<key>It does not work for me</key>

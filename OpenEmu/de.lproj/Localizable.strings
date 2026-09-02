@@ -736,6 +736,12 @@ Du kannst die Tastenbelegung in den Einstellungen unter „Steuerung“ überpr�
 	<string>Kopieren</string>
 	<key>Close</key>
 	<string>Schließen</string>
+	<key>Notes</key>
+	<string>Notizen</string>
+	<key>Save</key>
+	<string>Sichern</string>
+	<key>Click to add or edit notes for this cheat</key>
+	<string>Klicken, um Notizen für diesen Cheat hinzuzufügen oder zu bearbeiten</string>
 	<key>It works for me</key>
 	<string>Funktioniert bei mir</string>
 	<key>It does not work for me</key>

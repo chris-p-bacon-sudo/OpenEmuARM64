@@ -76,6 +76,7 @@ final class BrowseOnlineCheatsViewController: NSViewController {
 
     /// User-reported status for the current core build, keyed by normalized code.
     private var statuses: [String: CheatFeedbackStatus] = [:]
+    private var notes: [String: String] = [:]
 
     enum CheatStatus: Int {
         case works = 0
@@ -177,6 +178,7 @@ final class BrowseOnlineCheatsViewController: NSViewController {
             ("provider", NSLocalizedString("Provider", comment: "Browse online cheats table column header"), 100, .left),
             ("status", NSLocalizedString("Status", comment: "Browse online cheats table column header"), 100, .center),
             ("code", NSLocalizedString("Code", comment: "Browse online cheats table column header"), 40, .center),
+            ("notes", NSLocalizedString("Notes", comment: "Browse online cheats table column header"), 40, .center),
             ("action", NSLocalizedString("Action", comment: "Browse online cheats table column header"), 80, .center),
         ]
 
@@ -665,6 +667,10 @@ final class BrowseOnlineCheatsViewController: NSViewController {
                                                        systemIdentifier: systemID,
                                                        coreIdentifier: coreID,
                                                        coreVersion: document.corePlugin.version)
+        notes = CheatFeedbackService.shared.notes(forMD5: md5,
+                                                 systemIdentifier: systemID,
+                                                 coreIdentifier: coreID,
+                                                 coreVersion: document.corePlugin.version)
 
         Task {
             do {
@@ -711,6 +717,7 @@ final class BrowseOnlineCheatsViewController: NSViewController {
         cheats = []
         visibleCheats = []
         statuses = [:]
+        notes = [:]
         hasLoaded = false
 
         statusFilter = .all
@@ -788,6 +795,12 @@ extension BrowseOnlineCheatsViewController: NSTableViewDelegate {
 
         if identifier.rawValue == "code" {
             return makeCodeCell(in: tableView)
+        }
+
+        if identifier.rawValue == "notes" {
+            let cell = makeNotesCell(in: tableView)
+            cell.configure(hasNotes: hasNotes(for: cheat))
+            return cell
         }
 
         if identifier.rawValue == "status" {
@@ -878,7 +891,7 @@ extension BrowseOnlineCheatsViewController: NSTableViewDelegate {
         container.identifier = cellID
 
         let description = NSLocalizedString("Click to see the code", comment: "Browse online cheats code button description")
-        let button = NSButton(image: NSImage(systemSymbolName: "doc.text.magnifyingglass", accessibilityDescription: description) ?? NSImage(),
+        let button = NSButton(image: NSImage(systemSymbolName: "magnifyingglass", accessibilityDescription: description) ?? NSImage(),
                               target: self,
                               action: #selector(showCodeClicked(_:)))
         button.isBordered = false
@@ -900,6 +913,91 @@ extension BrowseOnlineCheatsViewController: NSTableViewDelegate {
         let row = resultsTableView.row(for: sender)
         guard row >= 0, row < visibleCheats.count else { return }
         presentCodeDialog(for: visibleCheats[row])
+    }
+
+    // MARK: - Notes Column
+
+    private func hasNotes(for cheat: DatabaseCheat) -> Bool {
+        !(notes[statusKey(for: cheat)]?.isEmpty ?? true)
+    }
+
+    private func makeNotesCell(in tableView: NSTableView) -> NotesCellView {
+        let cellID = NSUserInterfaceItemIdentifier("BrowseOnlineCheatsNotesCell")
+        if let existing = tableView.makeView(withIdentifier: cellID, owner: nil) as? NotesCellView {
+            return existing
+        }
+
+        let cell = NotesCellView(target: self, action: #selector(notesClicked(_:)))
+        cell.identifier = cellID
+        return cell
+    }
+
+    @objc private func notesClicked(_ sender: NSButton) {
+        let row = resultsTableView.row(for: sender)
+        guard row >= 0, row < visibleCheats.count else { return }
+        presentNotesDialog(for: visibleCheats[row])
+    }
+
+    private func presentNotesDialog(for cheat: DatabaseCheat) {
+        guard let window = view.window else { return }
+
+        let alert = NSAlert()
+        alert.alertStyle = .informational
+        alert.messageText = NSLocalizedString("Notes", comment: "Cheat notes dialog title")
+        alert.informativeText = cheat.name
+        alert.addButton(withTitle: NSLocalizedString("Save", comment: "Cheat notes dialog button"))
+        alert.addButton(withTitle: NSLocalizedString("Cancel", comment: "Cheat notes dialog button"))
+
+        let accessory = makeNotesAccessoryView(notes: notes[statusKey(for: cheat)] ?? "")
+        alert.accessoryView = accessory.view
+        alert.window.initialFirstResponder = accessory.textView
+
+        alert.beginSheetModal(for: window) { [weak self] response in
+            guard response == .alertFirstButtonReturn else { return }
+            self?.saveNotes(accessory.textView.string, for: cheat)
+        }
+    }
+
+    private func saveNotes(_ text: String, for cheat: DatabaseCheat) {
+        let key = statusKey(for: cheat)
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        notes[key] = trimmed.isEmpty ? nil : trimmed
+
+        if let document = gameDocument, let md5 = document.rom.md5Hash {
+            CheatFeedbackService.shared.setNotes(trimmed,
+                                                forCode: cheat.code,
+                                                md5: md5,
+                                                systemIdentifier: document.systemPlugin.systemIdentifier,
+                                                coreIdentifier: document.corePlugin.bundleIdentifier,
+                                                coreVersion: document.corePlugin.version)
+        }
+
+        resultsTableView?.reloadData()
+    }
+
+    /// Fixed size with its own scroller and an editable text view, mirroring the read-only code accessory.
+    private func makeNotesAccessoryView(notes: String) -> (view: NSScrollView, textView: NSTextView) {
+        let size = NSSize(width: 380, height: 120)
+
+        let textView = NSTextView(frame: NSRect(origin: .zero, size: size))
+        textView.string = notes
+        textView.isEditable = true
+        textView.isSelectable = true
+        textView.font = NSFont.systemFont(ofSize: NSFont.systemFontSize)
+        textView.textContainerInset = NSSize(width: 4, height: 4)
+        textView.isVerticallyResizable = true
+        textView.isHorizontallyResizable = false
+        textView.autoresizingMask = [.width]
+        textView.textContainer?.widthTracksTextView = true
+        textView.textContainer?.containerSize = NSSize(width: size.width, height: .greatestFiniteMagnitude)
+
+        let scrollView = NSScrollView(frame: NSRect(origin: .zero, size: size))
+        scrollView.documentView = textView
+        scrollView.hasVerticalScroller = true
+        scrollView.hasHorizontalScroller = false
+        scrollView.borderType = .bezelBorder
+
+        return (scrollView, textView)
     }
 
     // MARK: - Status Cell
@@ -1006,6 +1104,43 @@ extension BrowseOnlineCheatsViewController: NSTableViewDelegate {
         let row = resultsTableView.row(for: sender)
         guard row >= 0, row < visibleCheats.count else { return }
         NSLog("[Cheats] Import requested: %@", visibleCheats[row].name)
+    }
+}
+
+// MARK: - Notes Cell View
+
+/// A single button whose icon/tint reflect whether a note is already saved for the row.
+final class NotesCellView: NSView {
+
+    private let button = NSButton()
+
+    init(target: AnyObject?, action: Selector) {
+        super.init(frame: .zero)
+
+        button.isBordered = false
+        button.imagePosition = .imageOnly
+        button.target = target
+        button.action = action
+        button.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(button)
+
+        NSLayoutConstraint.activate([
+            button.centerXAnchor.constraint(equalTo: centerXAnchor),
+            button.centerYAnchor.constraint(equalTo: centerYAnchor),
+        ])
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    func configure(hasNotes: Bool) {
+        let description = NSLocalizedString("Click to add or edit notes for this cheat", comment: "Browse online cheats notes button description")
+        let config = NSImage.SymbolConfiguration(pointSize: 14, weight: .regular)
+        button.image = NSImage(systemSymbolName: "note.text", accessibilityDescription: description)?
+            .withSymbolConfiguration(config)
+        button.contentTintColor = hasNotes ? .systemYellow : .secondaryLabelColor
+        button.toolTip = description
     }
 }
 

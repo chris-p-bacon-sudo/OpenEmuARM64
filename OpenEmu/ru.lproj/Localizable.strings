@@ -738,6 +738,12 @@ You can go to the Controls preferences to check which associations were affected
 	<string>Копировать</string>
 	<key>Close</key>
 	<string>Закрыть</string>
+	<key>Notes</key>
+	<string>Заметки</string>
+	<key>Save</key>
+	<string>Сохранить</string>
+	<key>Click to add or edit notes for this cheat</key>
+	<string>Нажмите, чтобы добавить или изменить заметки к этому читу</string>
 	<key>It works for me</key>
 	<string>У меня работает</string>
 	<key>It does not work for me</key>

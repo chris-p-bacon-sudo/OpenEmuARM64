@@ -738,6 +738,12 @@ You can go to the Controls preferences to check which associations were affected
 	<string>Copiar</string>
 	<key>Close</key>
 	<string>Fechar</string>
+	<key>Notes</key>
+	<string>Notas</string>
+	<key>Save</key>
+	<string>Salvar</string>
+	<key>Click to add or edit notes for this cheat</key>
+	<string>Clique para adicionar ou editar notas para este cheat</string>
 	<key>It works for me</key>
 	<string>Funciona para mim</string>
 	<key>It does not work for me</key>

@@ -46,6 +46,8 @@ struct CheatFeedbackEntry: Codable, Sendable {
     let coreIdentifier: String
     let coreVersion: String
     let status: CheatFeedbackStatus
+    /// User-authored, freeform. `nil`/absent for existing files predating this field.
+    var notes: String?
     let updatedAt: Date
 }
 
@@ -100,9 +102,26 @@ final class CheatFeedbackService {
             .sorted { $0.updatedAt > $1.updatedAt }
     }
 
+    /// Notes for the given core build only, keyed by normalized code. Empty notes are never stored.
+    func notes(forMD5 md5: String,
+               systemIdentifier: String,
+               coreIdentifier: String,
+               coreVersion: String) -> [String: String] {
+        let entries = load(md5: md5, systemIdentifier: systemIdentifier)?.entries ?? []
+
+        var result: [String: String] = [:]
+        for entry in entries where entry.coreIdentifier == coreIdentifier && entry.coreVersion == coreVersion {
+            if let notes = entry.notes, !notes.isEmpty {
+                result[entry.code] = notes
+            }
+        }
+        return result
+    }
+
     // MARK: - Writing
 
     /// Records a report, replacing any previous one for the same code and core build.
+    /// Existing notes for that code/build are carried over untouched.
     func setStatus(_ status: CheatFeedbackStatus,
                    forCode code: String,
                    md5: String,
@@ -113,6 +132,10 @@ final class CheatFeedbackService {
         var file = load(md5: md5, systemIdentifier: systemIdentifier)
             ?? CheatFeedbackFile(schemaVersion: Self.schemaVersion, md5: md5, entries: [])
 
+        let existingNotes = file.entries.first {
+            $0.code == key && $0.coreIdentifier == coreIdentifier && $0.coreVersion == coreVersion
+        }?.notes
+
         file.entries.removeAll {
             $0.code == key && $0.coreIdentifier == coreIdentifier && $0.coreVersion == coreVersion
         }
@@ -121,6 +144,38 @@ final class CheatFeedbackService {
                                                coreIdentifier: coreIdentifier,
                                                coreVersion: coreVersion,
                                                status: status,
+                                               notes: existingNotes,
+                                               updatedAt: Date()))
+
+        save(file, md5: md5, systemIdentifier: systemIdentifier)
+    }
+
+    /// Records a personal note, replacing any previous one for the same code and core build.
+    /// Existing status for that code/build is carried over untouched. `nil`/empty removes the note.
+    func setNotes(_ notes: String?,
+                  forCode code: String,
+                  md5: String,
+                  systemIdentifier: String,
+                  coreIdentifier: String,
+                  coreVersion: String) {
+        let key = Self.key(for: code)
+        var file = load(md5: md5, systemIdentifier: systemIdentifier)
+            ?? CheatFeedbackFile(schemaVersion: Self.schemaVersion, md5: md5, entries: [])
+
+        let existingStatus = file.entries.first {
+            $0.code == key && $0.coreIdentifier == coreIdentifier && $0.coreVersion == coreVersion
+        }?.status ?? .unknown
+
+        file.entries.removeAll {
+            $0.code == key && $0.coreIdentifier == coreIdentifier && $0.coreVersion == coreVersion
+        }
+
+        let trimmed = notes?.trimmingCharacters(in: .whitespacesAndNewlines)
+        file.entries.append(CheatFeedbackEntry(code: key,
+                                               coreIdentifier: coreIdentifier,
+                                               coreVersion: coreVersion,
+                                               status: existingStatus,
+                                               notes: (trimmed?.isEmpty ?? true) ? nil : trimmed,
                                                updatedAt: Date()))
 
         save(file, md5: md5, systemIdentifier: systemIdentifier)
