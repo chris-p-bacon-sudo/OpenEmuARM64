@@ -723,6 +723,16 @@ You can go to the Controls preferences to check which associations were affected
 	<string>操作</string>
 	<key>Import</key>
 	<string>インポート</string>
+	<key>Code</key>
+	<string>コード</string>
+	<key>Cheat Code</key>
+	<string>チートコード</string>
+	<key>Click to see the code</key>
+	<string>クリックしてコードを表示</string>
+	<key>Copy</key>
+	<string>コピー</string>
+	<key>Close</key>
+	<string>閉じる</string>
     <key>Not supported by this emulator.</key>
     <string>このエミュレータでは対応していません。</string>
 	<key>Cheat Search</key>

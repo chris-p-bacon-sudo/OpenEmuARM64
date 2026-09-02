@@ -698,6 +698,16 @@ You can go to the Controls preferences to check which associations were affected
 	<string>إجراء</string>
 	<key>Import</key>
 	<string>استيراد</string>
+	<key>Code</key>
+	<string>الشفرة</string>
+	<key>Cheat Code</key>
+	<string>شفرة الغش</string>
+	<key>Click to see the code</key>
+	<string>انقر لرؤية الشفرة</string>
+	<key>Copy</key>
+	<string>نسخ</string>
+	<key>Close</key>
+	<string>إغلاق</string>
     <key>Not supported by this emulator.</key>
     <string>غير مدعوم من هذا المحاكي.</string>
 	<key>Cheat Search</key>

@@ -730,6 +730,16 @@ Puoi andare nelle Preferenze Controlli per verificare quali impostazioni sono st
 	<string>Azione</string>
 	<key>Import</key>
 	<string>Importa</string>
+	<key>Code</key>
+	<string>Codice</string>
+	<key>Cheat Code</key>
+	<string>Codice trucco</string>
+	<key>Click to see the code</key>
+	<string>Fai clic per vedere il codice</string>
+	<key>Copy</key>
+	<string>Copia</string>
+	<key>Close</key>
+	<string>Chiudi</string>
     <key>Not supported by this emulator.</key>
     <string>Non supportato da questo emulatore.</string>
 	<key>Cheat Search</key>

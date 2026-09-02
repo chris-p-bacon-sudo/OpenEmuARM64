@@ -728,6 +728,16 @@ Hangi ilişkilendirmelerin etkilendiğini kontrol etmek için Kontrolcü tercihl
 	<string>İşlem</string>
 	<key>Import</key>
 	<string>İçe Aktar</string>
+	<key>Code</key>
+	<string>Kod</string>
+	<key>Cheat Code</key>
+	<string>Hile Kodu</string>
+	<key>Click to see the code</key>
+	<string>Kodu görmek için tıklayın</string>
+	<key>Copy</key>
+	<string>Kopyala</string>
+	<key>Close</key>
+	<string>Kapat</string>
     <key>Not supported by this emulator.</key>
     <string>Bu emülatör tarafından desteklenmiyor.</string>
 	<key>Cheat Search</key>

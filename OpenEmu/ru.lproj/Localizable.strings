@@ -728,6 +728,16 @@ You can go to the Controls preferences to check which associations were affected
 	<string>Действие</string>
 	<key>Import</key>
 	<string>Импорт</string>
+	<key>Code</key>
+	<string>Код</string>
+	<key>Cheat Code</key>
+	<string>Чит-код</string>
+	<key>Click to see the code</key>
+	<string>Нажмите, чтобы увидеть код</string>
+	<key>Copy</key>
+	<string>Копировать</string>
+	<key>Close</key>
+	<string>Закрыть</string>
     <key>Not supported by this emulator.</key>
     <string>Не поддерживается этим эмулятором.</string>
 	<key>Cheat Search</key>

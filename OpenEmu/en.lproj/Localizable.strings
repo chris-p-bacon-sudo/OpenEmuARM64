@@ -740,6 +740,16 @@ You can go to the Controls preferences to check which associations were affected
 	<string>Action</string>
 	<key>Import</key>
 	<string>Import</string>
+	<key>Code</key>
+	<string>Code</string>
+	<key>Cheat Code</key>
+	<string>Cheat Code</string>
+	<key>Click to see the code</key>
+	<string>Click to see the code</string>
+	<key>Copy</key>
+	<string>Copy</string>
+	<key>Close</key>
+	<string>Close</string>
     <key>Not supported by this emulator.</key>
     <string>Not supported by this emulator.</string>
 	<key>Cheat Search</key>

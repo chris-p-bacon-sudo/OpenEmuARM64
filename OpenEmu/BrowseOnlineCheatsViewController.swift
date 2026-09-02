@@ -106,6 +106,7 @@ final class BrowseOnlineCheatsViewController: NSViewController {
             ("name", NSLocalizedString("Cheat Name", comment: "Browse online cheats table column header"), 362, .left),
             ("provider", NSLocalizedString("Provider", comment: "Browse online cheats table column header"), 100, .left),
             ("status", NSLocalizedString("Status", comment: "Browse online cheats table column header"), 100, .center),
+            ("code", NSLocalizedString("Code", comment: "Browse online cheats table column header"), 40, .center),
             ("action", NSLocalizedString("Action", comment: "Browse online cheats table column header"), 80, .center),
         ]
 
@@ -323,6 +324,10 @@ extension BrowseOnlineCheatsViewController: NSTableViewDelegate {
             return makeActionCell(in: tableView)
         }
 
+        if identifier.rawValue == "code" {
+            return makeCodeCell(in: tableView)
+        }
+
         let cell = makeTextCell(in: tableView)
 
         switch identifier.rawValue {
@@ -394,6 +399,83 @@ extension BrowseOnlineCheatsViewController: NSTableViewDelegate {
         ])
 
         return container
+    }
+
+    private func makeCodeCell(in tableView: NSTableView) -> NSView {
+        let cellID = NSUserInterfaceItemIdentifier("BrowseOnlineCheatsCodeCell")
+        if let existing = tableView.makeView(withIdentifier: cellID, owner: nil) {
+            return existing
+        }
+
+        let container = NSView()
+        container.identifier = cellID
+
+        let description = NSLocalizedString("Click to see the code", comment: "Browse online cheats code button description")
+        let button = NSButton(image: NSImage(systemSymbolName: "doc.text.magnifyingglass", accessibilityDescription: description) ?? NSImage(),
+                              target: self,
+                              action: #selector(showCodeClicked(_:)))
+        button.isBordered = false
+        button.imagePosition = .imageOnly
+        button.contentTintColor = .secondaryLabelColor
+        button.toolTip = description
+        button.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(button)
+
+        NSLayoutConstraint.activate([
+            button.centerXAnchor.constraint(equalTo: container.centerXAnchor),
+            button.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+        ])
+
+        return container
+    }
+
+    @objc private func showCodeClicked(_ sender: NSButton) {
+        let row = resultsTableView.row(for: sender)
+        guard row >= 0, row < cheats.count else { return }
+        presentCodeDialog(for: cheats[row])
+    }
+
+    private func presentCodeDialog(for cheat: DatabaseCheat) {
+        guard let window = view.window else { return }
+
+        let alert = NSAlert()
+        alert.alertStyle = .informational
+        alert.messageText = NSLocalizedString("Cheat Code", comment: "Cheat code dialog title")
+        alert.addButton(withTitle: NSLocalizedString("Copy", comment: "Cheat code dialog button"))
+        alert.addButton(withTitle: NSLocalizedString("Close", comment: "Cheat code dialog button"))
+        alert.accessoryView = makeCodeAccessoryView(code: cheat.code)
+
+        alert.beginSheetModal(for: window) { response in
+            guard response == .alertFirstButtonReturn else { return }
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(cheat.code, forType: .string)
+        }
+    }
+
+    /// Fixed size with its own scroller, so a one-line code and a long "+"-joined
+    /// list both present the same way.
+    private func makeCodeAccessoryView(code: String) -> NSScrollView {
+        let size = NSSize(width: 380, height: 120)
+
+        let textView = NSTextView(frame: NSRect(origin: .zero, size: size))
+        textView.string = code
+        textView.isEditable = false
+        textView.isSelectable = true
+        textView.font = NSFont.monospacedSystemFont(ofSize: NSFont.systemFontSize, weight: .regular)
+        textView.textContainerInset = NSSize(width: 4, height: 4)
+        textView.isVerticallyResizable = true
+        textView.isHorizontallyResizable = false
+        textView.autoresizingMask = [.width]
+        textView.textContainer?.widthTracksTextView = true
+        textView.textContainer?.containerSize = NSSize(width: size.width, height: .greatestFiniteMagnitude)
+
+        let scrollView = NSScrollView(frame: NSRect(origin: .zero, size: size))
+        scrollView.documentView = textView
+        scrollView.hasVerticalScroller = true
+        scrollView.hasHorizontalScroller = false
+        scrollView.borderType = .bezelBorder
+
+        return scrollView
     }
 
     // TODO: import the cheat into the document.

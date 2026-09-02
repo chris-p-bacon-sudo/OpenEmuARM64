@@ -726,6 +726,16 @@ Du kannst die Tastenbelegung in den Einstellungen unter „Steuerung“ überpr�
 	<string>Aktion</string>
 	<key>Import</key>
 	<string>Importieren</string>
+	<key>Code</key>
+	<string>Code</string>
+	<key>Cheat Code</key>
+	<string>Cheat-Code</string>
+	<key>Click to see the code</key>
+	<string>Klicken, um den Code anzuzeigen</string>
+	<key>Copy</key>
+	<string>Kopieren</string>
+	<key>Close</key>
+	<string>Schließen</string>
     <key>Not supported by this emulator.</key>
     <string>Von diesem Emulator nicht unterstützt.</string>
 	<key>Cheat Search</key>

@@ -724,6 +724,16 @@ Vous pouvez aller dans les préférences Contrôles pour vérifier les associati
 	<string>Action</string>
 	<key>Import</key>
 	<string>Importer</string>
+	<key>Code</key>
+	<string>Code</string>
+	<key>Cheat Code</key>
+	<string>Code de triche</string>
+	<key>Click to see the code</key>
+	<string>Cliquez pour voir le code</string>
+	<key>Copy</key>
+	<string>Copier</string>
+	<key>Close</key>
+	<string>Fermer</string>
     <key>Not supported by this emulator.</key>
     <string>Non pris en charge par cet émulateur.</string>
 	<key>Cheat Search</key>

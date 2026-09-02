@@ -727,6 +727,16 @@ You can go to the Controls preferences to check which associations were affected
 	<string>操作</string>
 	<key>Import</key>
 	<string>导入</string>
+	<key>Code</key>
+	<string>代码</string>
+	<key>Cheat Code</key>
+	<string>金手指代码</string>
+	<key>Click to see the code</key>
+	<string>点击查看代码</string>
+	<key>Copy</key>
+	<string>复制</string>
+	<key>Close</key>
+	<string>关闭</string>
     <key>Not supported by this emulator.</key>
     <string>此模拟器不支持。</string>
 	<key>Cheat Search</key>

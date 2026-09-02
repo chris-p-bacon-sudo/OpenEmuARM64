@@ -728,6 +728,16 @@ You can go to the Controls preferences to check which associations were affected
 	<string>Ação</string>
 	<key>Import</key>
 	<string>Importar</string>
+	<key>Code</key>
+	<string>Código</string>
+	<key>Cheat Code</key>
+	<string>Código da Trapaça</string>
+	<key>Click to see the code</key>
+	<string>Clique para ver o código</string>
+	<key>Copy</key>
+	<string>Copiar</string>
+	<key>Close</key>
+	<string>Fechar</string>
     <key>Not supported by this emulator.</key>
     <string>Não suportado por este emulador.</string>
 	<key>Cheat Search</key>
