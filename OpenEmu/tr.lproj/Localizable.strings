@@ -744,6 +744,14 @@ Hangi ilişkilendirmelerin etkilendiğini kontrol etmek için Kontrolcü tercihl
 	<string>Bende çalışmıyor</string>
 	<key>Not set</key>
 	<string>Ayarlanmadı</string>
+	<key>All</key>
+	<string>Tümü</string>
+	<key>Working</key>
+	<string>Çalışıyor</string>
+	<key>Not Working</key>
+	<string>Çalışmıyor</string>
+	<key>Use the controls below to filter by name and the status you chose</key>
+	<string>Ada ve seçtiğiniz duruma göre filtrelemek için aşağıdaki denetimleri kullanın</string>
     <key>Not supported by this emulator.</key>
     <string>Bu emülatör tarafından desteklenmiyor.</string>
 	<key>Cheat Search</key>

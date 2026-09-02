@@ -744,6 +744,14 @@ You can go to the Controls preferences to check which associations were affected
 	<string>Não funciona para mim</string>
 	<key>Not set</key>
 	<string>Não definido</string>
+	<key>All</key>
+	<string>Todos</string>
+	<key>Working</key>
+	<string>Funciona</string>
+	<key>Not Working</key>
+	<string>Não funciona</string>
+	<key>Use the controls below to filter by name and the status you chose</key>
+	<string>Use os controles abaixo para filtrar por nome e pelo estado que você escolheu</string>
     <key>Not supported by this emulator.</key>
     <string>Não suportado por este emulador.</string>
 	<key>Cheat Search</key>

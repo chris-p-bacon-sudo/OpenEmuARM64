@@ -744,6 +744,14 @@ Podeu anar a les preferències dels controls per comprovar quines associacions s
 	<string>A mi no em funciona</string>
 	<key>Not set</key>
 	<string>Sense definir</string>
+	<key>All</key>
+	<string>Tots</string>
+	<key>Working</key>
+	<string>Funciona</string>
+	<key>Not Working</key>
+	<string>No funciona</string>
+	<key>Use the controls below to filter by name and the status you chose</key>
+	<string>Utilitzeu els controls de sota per filtrar per nom i per l’estat que heu triat</string>
     <key>Not supported by this emulator.</key>
     <string>No compatible amb aquest emulador.</string>
 	<key>Cheat Search</key>

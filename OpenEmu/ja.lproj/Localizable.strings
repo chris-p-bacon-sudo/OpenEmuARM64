@@ -739,6 +739,14 @@ You can go to the Controls preferences to check which associations were affected
 	<string>動作しませんでした</string>
 	<key>Not set</key>
 	<string>未設定</string>
+	<key>All</key>
+	<string>すべて</string>
+	<key>Working</key>
+	<string>動作</string>
+	<key>Not Working</key>
+	<string>不動作</string>
+	<key>Use the controls below to filter by name and the status you chose</key>
+	<string>下のコントロールで名前と選んだ状態で絞り込めます</string>
     <key>Not supported by this emulator.</key>
     <string>このエミュレータでは対応していません。</string>
 	<key>Cheat Search</key>

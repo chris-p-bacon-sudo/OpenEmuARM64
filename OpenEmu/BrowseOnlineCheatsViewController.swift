@@ -37,6 +37,10 @@ final class BrowseOnlineCheatsViewController: NSViewController {
     private var md5Label: NSTextField!
     private var coreLabel: NSTextField!
 
+    // MARK: - Filter Panel
+    private var nameFilterField: NSTextField!
+    private var statusFilterRadios: [NSButton] = []
+
     // MARK: - Results Table
     private var resultsTableView: NSTableView!
     private var resultsScrollView: NSScrollView!
@@ -154,12 +158,118 @@ final class BrowseOnlineCheatsViewController: NSViewController {
 
     // MARK: - Filter Panel
 
-    // TODO: populate with the controls that filter the results table.
+    // TODO: apply these controls to the results table.
     private func makeFilterPanel() -> NSBox {
         let box = NSBox()
         box.titlePosition = .noTitle
-        box.contentView?.heightAnchor.constraint(equalToConstant: 40).isActive = true
+
+        let outerStack = NSStackView()
+        outerStack.orientation = .vertical
+        outerStack.alignment = .leading
+        outerStack.spacing = 8
+        outerStack.translatesAutoresizingMaskIntoConstraints = false
+
+        let infoRow = makeFilterInfoRow()
+        outerStack.addArrangedSubview(infoRow)
+
+        let controlsRow = NSStackView(views: [makeNameFilterView(), makeStatusFilterView()])
+        controlsRow.orientation = .horizontal
+        controlsRow.alignment = .firstBaseline
+        controlsRow.distribution = .fill
+        controlsRow.spacing = 20
+        outerStack.addArrangedSubview(controlsRow)
+
+        box.contentView?.addSubview(outerStack)
+        if let contentView = box.contentView {
+            NSLayoutConstraint.activate([
+                outerStack.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 8),
+                outerStack.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 8),
+                outerStack.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -8),
+                outerStack.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -8),
+            ])
+        }
+        controlsRow.widthAnchor.constraint(equalTo: outerStack.widthAnchor).isActive = true
+
         return box
+    }
+
+    private func makeFilterInfoRow() -> NSStackView {
+        let icon = NSImageView()
+        icon.image = NSImage(systemSymbolName: "info.circle", accessibilityDescription: nil)
+        icon.contentTintColor = .systemBlue
+        icon.setContentHuggingPriority(.required, for: .horizontal)
+
+        let label = NSTextField(labelWithString: NSLocalizedString("Use the controls below to filter by name and the status you chose",
+                                                                  comment: "Browse online cheats filter panel hint"))
+        label.font = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)
+        label.textColor = .systemBlue
+        label.lineBreakMode = .byTruncatingTail
+        label.maximumNumberOfLines = 1
+        label.allowsExpansionToolTips = true
+
+        let row = NSStackView(views: [icon, label])
+        row.orientation = .horizontal
+        row.alignment = .centerY
+        row.spacing = 6
+        return row
+    }
+
+    private func makeNameFilterView() -> NSView {
+        let label = NSTextField(labelWithString: "\(NSLocalizedString("Name", comment: "Browse online cheats filter label")):")
+        label.font = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)
+        label.setContentHuggingPriority(.required, for: .horizontal)
+        label.setContentCompressionResistancePriority(.required, for: .horizontal)
+
+        let field = NSTextField()
+        field.controlSize = .small
+        field.font = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)
+        field.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        nameFilterField = field
+
+        let row = NSStackView(views: [label, field])
+        row.orientation = .horizontal
+        row.alignment = .firstBaseline
+        row.distribution = .fill
+        row.spacing = 6
+        // Low hugging lets this column absorb the width the status column doesn't need.
+        row.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        return row
+    }
+
+    private func makeStatusFilterView() -> NSView {
+        let label = NSTextField(labelWithString: "\(NSLocalizedString("Status", comment: "Browse online cheats filter label")):")
+        label.font = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)
+
+        let titles = [
+            NSLocalizedString("All", comment: "Browse online cheats status filter option"),
+            NSLocalizedString("Working", comment: "Browse online cheats status filter option"),
+            NSLocalizedString("Not Working", comment: "Browse online cheats status filter option"),
+            NSLocalizedString("Not set", comment: "Browse online cheats status filter option"),
+        ]
+
+        var views: [NSView] = [label]
+        for (index, title) in titles.enumerated() {
+            let radio = NSButton(radioButtonWithTitle: title, target: self, action: #selector(statusFilterChanged(_:)))
+            radio.controlSize = .small
+            radio.font = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)
+            radio.tag = index
+            radio.state = index == 0 ? .on : .off
+            views.append(radio)
+            statusFilterRadios.append(radio)
+        }
+
+        let row = NSStackView(views: views)
+        row.orientation = .horizontal
+        row.alignment = .firstBaseline
+        row.distribution = .fill
+        row.spacing = 8
+        row.setContentHuggingPriority(.required, for: .horizontal)
+        row.setContentCompressionResistancePriority(.required, for: .horizontal)
+        return row
+    }
+
+    // TODO: filter the results.
+    @objc private func statusFilterChanged(_ sender: NSButton) {
     }
 
     // MARK: - Game Info Panel

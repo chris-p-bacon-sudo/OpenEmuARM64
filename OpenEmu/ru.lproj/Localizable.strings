@@ -744,6 +744,14 @@ You can go to the Controls preferences to check which associations were affected
 	<string>У меня не работает</string>
 	<key>Not set</key>
 	<string>Не задано</string>
+	<key>All</key>
+	<string>Все</string>
+	<key>Working</key>
+	<string>Работает</string>
+	<key>Not Working</key>
+	<string>Не работает</string>
+	<key>Use the controls below to filter by name and the status you chose</key>
+	<string>Используйте элементы ниже для фильтрации по названию и выбранному состоянию</string>
     <key>Not supported by this emulator.</key>
     <string>Не поддерживается этим эмулятором.</string>
 	<key>Cheat Search</key>

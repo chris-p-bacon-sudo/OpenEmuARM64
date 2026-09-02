@@ -740,6 +740,14 @@ Vous pouvez aller dans les préférences Contrôles pour vérifier les associati
 	<string>Ça ne fonctionne pas pour moi</string>
 	<key>Not set</key>
 	<string>Non défini</string>
+	<key>All</key>
+	<string>Tous</string>
+	<key>Working</key>
+	<string>Fonctionne</string>
+	<key>Not Working</key>
+	<string>Ne fonctionne pas</string>
+	<key>Use the controls below to filter by name and the status you chose</key>
+	<string>Utilisez les contrôles ci-dessous pour filtrer par nom et par l’état choisi</string>
     <key>Not supported by this emulator.</key>
     <string>Non pris en charge par cet émulateur.</string>
 	<key>Cheat Search</key>

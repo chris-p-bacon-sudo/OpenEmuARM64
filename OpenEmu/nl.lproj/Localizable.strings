@@ -743,6 +743,14 @@ You can go to the Controls preferences to check which associations were affected
 	<string>Werkt niet bij mij</string>
 	<key>Not set</key>
 	<string>Niet ingesteld</string>
+	<key>All</key>
+	<string>Alle</string>
+	<key>Working</key>
+	<string>Werkt</string>
+	<key>Not Working</key>
+	<string>Werkt niet</string>
+	<key>Use the controls below to filter by name and the status you chose</key>
+	<string>Gebruik de knoppen hieronder om te filteren op naam en de gekozen status</string>
     <key>Not supported by this emulator.</key>
     <string>Niet ondersteund door deze emulator.</string>
 	<key>Cheat Search</key>

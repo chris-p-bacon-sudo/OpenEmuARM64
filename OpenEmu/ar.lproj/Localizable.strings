@@ -714,6 +714,14 @@ You can go to the Controls preferences to check which associations were affected
 	<string>لا تعمل معي</string>
 	<key>Not set</key>
 	<string>غير محدد</string>
+	<key>All</key>
+	<string>الكل</string>
+	<key>Working</key>
+	<string>تعمل</string>
+	<key>Not Working</key>
+	<string>لا تعمل</string>
+	<key>Use the controls below to filter by name and the status you chose</key>
+	<string>استخدم عناصر التحكم أدناه للتصفية حسب الاسم والحالة التي اخترتها</string>
     <key>Not supported by this emulator.</key>
     <string>غير مدعوم من هذا المحاكي.</string>
 	<key>Cheat Search</key>

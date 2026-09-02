@@ -743,6 +743,14 @@ You can go to the Controls preferences to check which associations were affected
 	<string>对我无效</string>
 	<key>Not set</key>
 	<string>未设置</string>
+	<key>All</key>
+	<string>全部</string>
+	<key>Working</key>
+	<string>有效</string>
+	<key>Not Working</key>
+	<string>无效</string>
+	<key>Use the controls below to filter by name and the status you chose</key>
+	<string>使用下方控件按名称和所选状态筛选</string>
     <key>Not supported by this emulator.</key>
     <string>此模拟器不支持。</string>
 	<key>Cheat Search</key>

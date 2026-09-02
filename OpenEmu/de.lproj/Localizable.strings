@@ -742,6 +742,14 @@ Du kannst die Tastenbelegung in den Einstellungen unter „Steuerung“ überpr�
 	<string>Funktioniert bei mir nicht</string>
 	<key>Not set</key>
 	<string>Nicht festgelegt</string>
+	<key>All</key>
+	<string>Alle</string>
+	<key>Working</key>
+	<string>Funktioniert</string>
+	<key>Not Working</key>
+	<string>Funktioniert nicht</string>
+	<key>Use the controls below to filter by name and the status you chose</key>
+	<string>Mit den Steuerelementen unten nach Name und gewähltem Status filtern</string>
     <key>Not supported by this emulator.</key>
     <string>Von diesem Emulator nicht unterstützt.</string>
 	<key>Cheat Search</key>

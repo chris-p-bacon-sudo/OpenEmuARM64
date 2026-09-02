@@ -746,6 +746,14 @@ Puoi andare nelle Preferenze Controlli per verificare quali impostazioni sono st
 	<string>Per me non funziona</string>
 	<key>Not set</key>
 	<string>Non impostato</string>
+	<key>All</key>
+	<string>Tutti</string>
+	<key>Working</key>
+	<string>Funziona</string>
+	<key>Not Working</key>
+	<string>Non funziona</string>
+	<key>Use the controls below to filter by name and the status you chose</key>
+	<string>Usa i controlli qui sotto per filtrare per nome e per lo stato scelto</string>
     <key>Not supported by this emulator.</key>
     <string>Non supportato da questo emulatore.</string>
 	<key>Cheat Search</key>
