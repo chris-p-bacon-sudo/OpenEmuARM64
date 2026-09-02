@@ -83,6 +83,7 @@ final class BrowseOnlineCheatsWindowController: NSWindowController, NSWindowDele
 
     func windowDidBecomeKey(_ notification: Notification) {
         pauseEmulationIfNeeded()
+        browseViewController?.refreshDynamicState()
     }
 
     func resetForCoreChange() {

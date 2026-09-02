@@ -745,6 +745,16 @@ final class BrowseOnlineCheatsViewController: NSViewController {
         updateGameInfo()
         fetchOnlineCheats()
     }
+
+    /// Re-syncs status/import state without a refetch. Cheats can be added, edited, or removed
+    /// from elsewhere (Cheat Search, the game menu, this window's own Remove button) while this
+    /// window isn't focused, so the table would otherwise keep showing a stale Status/Import state.
+    func refreshDynamicState() {
+        guard hasLoaded else { return }
+        refreshStatuses()
+        refreshImportedCodeKeys()
+        resultsTableView?.reloadData()
+    }
 }
 
 // MARK: - Table Data Source
@@ -868,17 +878,6 @@ extension BrowseOnlineCheatsViewController: NSTableViewDelegate {
 
     func tableView(_ tableView: NSTableView, shouldSelectRow row: Int) -> Bool {
         false
-    }
-
-    /// Tints imported rows on top of the normal alternating background, rather than replacing it.
-    func tableView(_ tableView: NSTableView, rowViewForRow row: Int) -> NSTableRowView? {
-        let identifier = NSUserInterfaceItemIdentifier("BrowseOnlineCheatsRow")
-        let rowView = tableView.makeView(withIdentifier: identifier, owner: nil) as? ImportedCheatRowView ?? ImportedCheatRowView()
-        rowView.identifier = identifier
-        let state = row < visibleCheats.count ? importState(for: visibleCheats[row]) : .notImported
-        rowView.isImported = state == .importedByThisFeature
-        rowView.isDisabledForImport = state == .usedElsewhere
-        return rowView
     }
 
     private func refreshImportedCodeKeys() {
@@ -1189,30 +1188,6 @@ extension BrowseOnlineCheatsViewController: NSTableViewDelegate {
                                                        systemIdentifier: document.systemPlugin.systemIdentifier,
                                                        coreIdentifier: document.corePlugin.bundleIdentifier,
                                                        coreVersion: document.corePlugin.version)
-    }
-}
-
-// MARK: - Imported Cheat Row View
-
-/// Draws a translucent green tint over the normal alternating background, so imported
-/// rows stay distinguishable from each other rather than becoming a single flat color.
-final class ImportedCheatRowView: NSTableRowView {
-
-    var isImported = false {
-        didSet { needsDisplay = true }
-    }
-
-    /// Set when the row's code already exists elsewhere in the user's inventory, disabling Import.
-    var isDisabledForImport = false {
-        didSet { needsDisplay = true }
-    }
-
-    override func drawBackground(in dirtyRect: NSRect) {
-        super.drawBackground(in: dirtyRect)
-        if isImported {
-            NSColor.systemGreen.withAlphaComponent(0.1).setFill()
-            dirtyRect.fill()
-        }
     }
 }
 
