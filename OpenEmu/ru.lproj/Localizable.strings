@@ -756,6 +756,8 @@ You can go to the Controls preferences to check which associations were affected
 	<string>Показаны первые %1$@ из %2$@ читов. Уточните поиск.</string>
 	<key>No cheats found</key>
 	<string>Читы не найдены</string>
+	<key>%1$@ (%2$d of %3$d)</key>
+	<string>%1$@ (%2$d из %3$d)</string>
 	<key>Mark if the cheat worked for you or not</key>
 	<string>Отметьте, сработал ли чит-код у вас</string>
 	<key>Working</key>

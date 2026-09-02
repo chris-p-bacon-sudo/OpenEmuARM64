@@ -726,6 +726,8 @@ You can go to the Controls preferences to check which associations were affected
 	<string>عرض أول %1$@ من %2$@ خدعة. ضيّق بحثك.</string>
 	<key>No cheats found</key>
 	<string>لم يتم العثور على خدع</string>
+	<key>%1$@ (%2$d of %3$d)</key>
+	<string>%1$@ (%2$d من %3$d)</string>
 	<key>Mark if the cheat worked for you or not</key>
 	<string>حدد ما إذا كانت الشفرة قد عملت معك أم لا</string>
 	<key>Working</key>

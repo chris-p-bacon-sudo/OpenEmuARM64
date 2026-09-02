@@ -752,6 +752,8 @@ Vous pouvez aller dans les préférences Contrôles pour vérifier les associati
 	<string>Affichage des %1$@ premiers codes sur %2$@. Affinez votre recherche.</string>
 	<key>No cheats found</key>
 	<string>Aucun code trouvé</string>
+	<key>%1$@ (%2$d of %3$d)</key>
+	<string>%1$@ (%2$d sur %3$d)</string>
 	<key>Mark if the cheat worked for you or not</key>
 	<string>Indiquez si le code a fonctionné pour vous ou non</string>
 	<key>Working</key>

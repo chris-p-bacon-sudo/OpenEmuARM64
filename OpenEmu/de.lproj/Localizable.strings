@@ -754,6 +754,8 @@ Du kannst die Tastenbelegung in den Einstellungen unter „Steuerung“ überpr�
 	<string>Zeigt die ersten %1$@ von %2$@ Cheats. Grenze die Suche ein.</string>
 	<key>No cheats found</key>
 	<string>Keine Cheats gefunden</string>
+	<key>%1$@ (%2$d of %3$d)</key>
+	<string>%1$@ (%2$d von %3$d)</string>
 	<key>Mark if the cheat worked for you or not</key>
 	<string>Markieren, ob der Cheat bei dir funktioniert hat oder nicht</string>
 	<key>Working</key>

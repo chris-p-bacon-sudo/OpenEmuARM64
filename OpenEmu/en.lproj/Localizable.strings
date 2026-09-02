@@ -768,6 +768,8 @@ You can go to the Controls preferences to check which associations were affected
 	<string>Showing first %1$@ of %2$@ cheats. Narrow your search.</string>
 	<key>No cheats found</key>
 	<string>No cheats found</string>
+	<key>%1$@ (%2$d of %3$d)</key>
+	<string>%1$@ (%2$d of %3$d)</string>
 	<key>Mark if the cheat worked for you or not</key>
 	<string>Mark if the cheat worked for you or not</string>
 	<key>Working</key>

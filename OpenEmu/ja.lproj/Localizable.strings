@@ -751,6 +751,8 @@ You can go to the Controls preferences to check which associations were affected
 	<string>%2$@ 個のチートのうち最初の %1$@ 個を表示しています。検索を絞り込んでください。</string>
 	<key>No cheats found</key>
 	<string>チートが見つかりません</string>
+	<key>%1$@ (%2$d of %3$d)</key>
+	<string>%1$@（%3$d 件中 %2$d 件目）</string>
 	<key>Mark if the cheat worked for you or not</key>
 	<string>チートが動作したかどうかを記録します</string>
 	<key>Working</key>

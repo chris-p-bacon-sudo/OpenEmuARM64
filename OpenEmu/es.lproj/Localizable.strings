@@ -754,6 +754,8 @@ You can go to the Controls preferences to check which associations were affected
 	<string>Mostrando los primeros %1$@ de %2$@ trucos. Afína tu búsqueda.</string>
 	<key>No cheats found</key>
 	<string>No se encontraron trucos</string>
+	<key>%1$@ (%2$d of %3$d)</key>
+	<string>%1$@ (%2$d de %3$d)</string>
 	<key>Mark if the cheat worked for you or not</key>
 	<string>Marca si el truco te ha funcionado o no</string>
 	<key>Working</key>

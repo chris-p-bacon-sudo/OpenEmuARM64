@@ -669,7 +669,8 @@ final class BrowseOnlineCheatsViewController: NSViewController {
         Task {
             do {
                 let results = try await CheatDatabaseService.shared.cheats(forMD5: md5, serial: serial, gameName: gameName, systemIdentifier: systemID, coreIdentifier: coreID)
-                cheats = results.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+                let sorted = results.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+                cheats = Self.disambiguatingDuplicateNames(sorted)
                 hasLoaded = true
             } catch {
                 NSLog("[Cheats] Browse Online failed: %@", error.localizedDescription)
@@ -677,6 +678,30 @@ final class BrowseOnlineCheatsViewController: NSViewController {
             }
             applyFilters()
             hideLoadingIndicator()
+        }
+    }
+
+    // The Libretro CHT format has no notion of grouping (e.g. per-character cheats in an RPG),
+    // so identically named cheats are otherwise indistinguishable in the list.
+    // Scoped per provider — one provider's naming collisions shouldn't inflate another's count.
+    private static func disambiguatingDuplicateNames(_ cheats: [DatabaseCheat]) -> [DatabaseCheat] {
+        func key(_ cheat: DatabaseCheat) -> String { "\(cheat.providerName)\0\(cheat.name)" }
+
+        var totalCounts: [String: Int] = [:]
+        for cheat in cheats { totalCounts[key(cheat), default: 0] += 1 }
+
+        var seenCounts: [String: Int] = [:]
+        return cheats.map { cheat in
+            let total = totalCounts[key(cheat)] ?? 1
+            guard total > 1 else { return cheat }
+            let index = (seenCounts[key(cheat)] ?? 0) + 1
+            seenCounts[key(cheat)] = index
+            let disambiguatedName = String(
+                format: NSLocalizedString("%1$@ (%2$d of %3$d)",
+                                          comment: "Browse online cheats: disambiguates multiple cheats sharing the same name, e.g. \"99 Magic (2 of 7)\""),
+                cheat.name, index, total
+            )
+            return DatabaseCheat(name: disambiguatedName, code: cheat.code, providerName: cheat.providerName)
         }
     }
 

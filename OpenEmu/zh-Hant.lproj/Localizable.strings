@@ -755,6 +755,8 @@ You can go to the Controls preferences to check which associations were affected
 	<string>顯示 %2$@ 個金手指中的前 %1$@ 個。請縮小搜尋範圍。</string>
 	<key>No cheats found</key>
 	<string>未找到金手指</string>
+	<key>%1$@ (%2$d of %3$d)</key>
+	<string>%1$@（第 %3$d 個中的第 %2$d 個）</string>
 	<key>Mark if the cheat worked for you or not</key>
 	<string>標記該金手指對你是否有效</string>
 	<key>Working</key>

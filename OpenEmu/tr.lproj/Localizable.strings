@@ -756,6 +756,8 @@ Hangi ilişkilendirmelerin etkilendiğini kontrol etmek için Kontrolcü tercihl
 	<string>%2$@ hilenin ilk %1$@ tanesi gösteriliyor. Aramayı daraltın.</string>
 	<key>No cheats found</key>
 	<string>Hile bulunamadı</string>
+	<key>%1$@ (%2$d of %3$d)</key>
+	<string>%1$@ (%3$d hilenin %2$d.)</string>
 	<key>Mark if the cheat worked for you or not</key>
 	<string>Hilenin sizde çalışıp çalışmadığını işaretleyin</string>
 	<key>Working</key>

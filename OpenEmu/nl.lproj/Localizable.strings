@@ -755,6 +755,8 @@ You can go to the Controls preferences to check which associations were affected
 	<string>Eerste %1$@ van %2$@ cheats getoond. Verfijn je zoekopdracht.</string>
 	<key>No cheats found</key>
 	<string>Geen cheats gevonden</string>
+	<key>%1$@ (%2$d of %3$d)</key>
+	<string>%1$@ (%2$d van %3$d)</string>
 	<key>Mark if the cheat worked for you or not</key>
 	<string>Geef aan of de cheat bij jou werkte of niet</string>
 	<key>Working</key>
