@@ -83,7 +83,7 @@ final class LibretroCheatProvider: CheatDatabaseProvider {
                     anyUpdated = true
                 } else if !anyUpdated {
                     // Nothing updated yet — return the full cached set as-is
-                    return cached.cheats.map { DatabaseCheat(name: $0.name, code: $0.code, providerName: name) }
+                    return cached.cheats.map { DatabaseCheat(name: Self.decodingHTMLEntities($0.name), code: $0.code, providerName: name) }
                 } else {
                     // Some sources updated, this one didn't — keep cached cheats alongside fresh ones
                     allCheats.append(contentsOf: cached.cheats)
@@ -93,7 +93,7 @@ final class LibretroCheatProvider: CheatDatabaseProvider {
             if anyUpdated {
                 saveCachedCheats(LibretroCachedCheatFile(sources: cached.sources, cheats: cheats), md5: md5, systemIdentifier: systemIdentifier)
             }
-            return cheats.map { DatabaseCheat(name: $0.name, code: $0.code, providerName: name) }
+            return cheats.map { DatabaseCheat(name: Self.decodingHTMLEntities($0.name), code: $0.code, providerName: name) }
         }
 
         // 2. No local cache — resolve game name via DAT (try MD5 first, then serial)
@@ -142,7 +142,7 @@ final class LibretroCheatProvider: CheatDatabaseProvider {
 
         let cheats = dedup(allCheats)
         saveCachedCheats(LibretroCachedCheatFile(sources: sources, cheats: cheats), md5: md5, systemIdentifier: systemIdentifier)
-        return cheats.map { DatabaseCheat(name: $0.name, code: $0.code, providerName: name) }
+        return cheats.map { DatabaseCheat(name: Self.decodingHTMLEntities($0.name), code: $0.code, providerName: name) }
     }
 
     // MARK: - Local Cache
@@ -302,10 +302,39 @@ final class LibretroCheatProvider: CheatDatabaseProvider {
             cleaned = normalizeCode(cleaned, systemIdentifier: systemIdentifier)
             guard !seenCodes.contains(cleaned) else { continue }
             seenCodes.insert(cleaned)
-            cheats.append(LibretroCachedCheat(name: desc, code: cleaned))
+            cheats.append(LibretroCachedCheat(name: Self.decodingHTMLEntities(desc), code: cleaned))
         }
 
         return cheats
+    }
+
+    // Some CHT descriptions embed HTML entities (e.g. `&quot;`) instead of literal characters.
+    private static func decodingHTMLEntities(_ string: String) -> String {
+        guard string.contains("&") else { return string }
+
+        var result = string
+        let namedEntities: [(String, String)] = [
+            ("&quot;", "\""), ("&apos;", "'"), ("&lt;", "<"), ("&gt;", ">"), ("&nbsp;", "\u{00A0}"),
+        ]
+        for (entity, replacement) in namedEntities {
+            result = result.replacingOccurrences(of: entity, with: replacement)
+        }
+
+        if let regex = try? NSRegularExpression(pattern: "&#x?([0-9A-Fa-f]+);") {
+            let matches = regex.matches(in: result, range: NSRange(result.startIndex..., in: result))
+            for match in matches.reversed() {
+                guard let fullRange = Range(match.range, in: result),
+                      let digitsRange = Range(match.range(at: 1), in: result) else { continue }
+                let digits = String(result[digitsRange])
+                let isHex = result[fullRange].hasPrefix("&#x") || result[fullRange].hasPrefix("&#X")
+                guard let scalarValue = UInt32(digits, radix: isHex ? 16 : 10),
+                      let scalar = Unicode.Scalar(scalarValue) else { continue }
+                result.replaceSubrange(fullRange, with: String(scalar))
+            }
+        }
+
+        // Decode last so a literal "&amp;quot;" doesn't get double-unescaped into a quote.
+        return result.replacingOccurrences(of: "&amp;", with: "&")
     }
 
     /// Normalizes non-standard code formats into forms the core can parse.
