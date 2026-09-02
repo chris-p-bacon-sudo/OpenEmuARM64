@@ -47,9 +47,8 @@ final class BrowseOnlineCheatsViewController: NSViewController {
     /// Fetched cheats kept in memory so filtering can work off them without refetching.
     private var cheats: [DatabaseCheat] = []
 
-    /// User-reported status, keyed the same way the service deduplicates codes.
-    /// Not persisted yet.
-    private var statuses: [String: CheatStatus] = [:]
+    /// User-reported status for the current core build, keyed by normalized code.
+    private var statuses: [String: CheatFeedbackStatus] = [:]
 
     enum CheatStatus: Int {
         case works = 0
@@ -300,6 +299,11 @@ final class BrowseOnlineCheatsViewController: NSViewController {
 
         showLoadingIndicator()
 
+        statuses = CheatFeedbackService.shared.statuses(forMD5: md5,
+                                                       systemIdentifier: systemID,
+                                                       coreIdentifier: coreID,
+                                                       coreVersion: document.corePlugin.version)
+
         Task {
             do {
                 let results = try await CheatDatabaseService.shared.cheats(forMD5: md5, serial: serial, gameName: gameName, systemIdentifier: systemID, coreIdentifier: coreID)
@@ -312,6 +316,17 @@ final class BrowseOnlineCheatsViewController: NSViewController {
             resultsTableView.reloadData()
             hideLoadingIndicator()
         }
+    }
+
+    /// Feedback is scoped to a core build, so switching cores invalidates both the
+    /// fetched list and the reports shown against it.
+    func resetForCoreChange() {
+        cheats = []
+        statuses = [:]
+        hasLoaded = false
+        resultsTableView?.reloadData()
+        updateGameInfo()
+        fetchOnlineCheats()
     }
 }
 
@@ -453,11 +468,15 @@ extension BrowseOnlineCheatsViewController: NSTableViewDelegate {
     // MARK: - Status Cell
 
     private func statusKey(for cheat: DatabaseCheat) -> String {
-        cheat.code.replacingOccurrences(of: " ", with: "").lowercased()
+        CheatFeedbackService.key(for: cheat.code)
     }
 
     private func status(for cheat: DatabaseCheat) -> CheatStatus {
-        statuses[statusKey(for: cheat)] ?? .unknown
+        switch statuses[statusKey(for: cheat)] {
+        case .works: return .works
+        case .doesNotWork: return .doesNotWork
+        case .unknown, nil: return .unknown
+        }
     }
 
     private func makeStatusCell(in tableView: NSTableView) -> StatusCellView {
@@ -477,7 +496,25 @@ extension BrowseOnlineCheatsViewController: NSTableViewDelegate {
               let status = CheatStatus(rawValue: sender.tag)
         else { return }
 
-        statuses[statusKey(for: cheats[row])] = status
+        let cheat = cheats[row]
+        let key = statusKey(for: cheat)
+        let feedback: CheatFeedbackStatus
+        switch status {
+        case .works: feedback = .works
+        case .doesNotWork: feedback = .doesNotWork
+        case .unknown: feedback = .unknown
+        }
+
+        statuses[key] = feedback
+
+        if let document = gameDocument, let md5 = document.rom.md5Hash {
+            CheatFeedbackService.shared.setStatus(feedback,
+                                                 forCode: cheat.code,
+                                                 md5: md5,
+                                                 systemIdentifier: document.systemPlugin.systemIdentifier,
+                                                 coreIdentifier: document.corePlugin.bundleIdentifier,
+                                                 coreVersion: document.corePlugin.version)
+        }
 
         let column = resultsTableView.column(withIdentifier: NSUserInterfaceItemIdentifier("status"))
         guard column >= 0 else { return }

@@ -1484,6 +1484,7 @@ final class OEGameDocument: NSDocument {
             
             self.setUpGameCoreManager(using: plugin) {
                 self.validateCheatCompatibility()
+                self.browseOnlineCheatsWindowController?.resetForCoreChange()
                 self.startEmulation()
             }
         }

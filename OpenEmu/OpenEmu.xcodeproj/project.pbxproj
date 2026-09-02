@@ -239,6 +239,7 @@
 		5A575DFB1E92B6CE00491B0D /* BIOSFile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A575DFA1E92B6CE00491B0D /* BIOSFile.swift */; };
 		5A575DFD1E92D23600491B0D /* Cheats.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A575DFC1E92D23600491B0D /* Cheats.swift */; };
 		AA0000011000000100000002 /* CheatDatabaseService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000011000000100000001 /* CheatDatabaseService.swift */; };
+		AA0000011000000100000012 /* CheatFeedbackService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000011000000100000011 /* CheatFeedbackService.swift */; };
 		AA0000011000000100000004 /* LibretroCheatProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000011000000100000003 /* LibretroCheatProvider.swift */; };
 		AA0000011000000100000006 /* OpenEmuCheatProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000011000000100000005 /* OpenEmuCheatProvider.swift */; };
 		AA0000011000000100000008 /* CheatCodeValidator.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000011000000100000007 /* CheatCodeValidator.swift */; };
@@ -1329,6 +1330,7 @@
 		5A575DFA1E92B6CE00491B0D /* BIOSFile.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = BIOSFile.swift; sourceTree = "<group>"; };
 		5A575DFC1E92D23600491B0D /* Cheats.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Cheats.swift; sourceTree = "<group>"; };
 		AA0000011000000100000001 /* CheatDatabaseService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CheatDatabaseService.swift; sourceTree = "<group>"; };
+		AA0000011000000100000011 /* CheatFeedbackService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CheatFeedbackService.swift; sourceTree = "<group>"; };
 		AA0000011000000100000003 /* LibretroCheatProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibretroCheatProvider.swift; sourceTree = "<group>"; };
 		AA0000011000000100000005 /* OpenEmuCheatProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenEmuCheatProvider.swift; sourceTree = "<group>"; };
 		AA0000011000000100000007 /* CheatCodeValidator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CheatCodeValidator.swift; sourceTree = "<group>"; };
@@ -3311,6 +3313,7 @@
 				5A575DFA1E92B6CE00491B0D /* BIOSFile.swift */,
 				5A575DFC1E92D23600491B0D /* Cheats.swift */,
 				AA0000011000000100000001 /* CheatDatabaseService.swift */,
+				AA0000011000000100000011 /* CheatFeedbackService.swift */,
 				AA0000011000000100000003 /* LibretroCheatProvider.swift */,
 				AA0000011000000100000005 /* OpenEmuCheatProvider.swift */,
 				AA0000011000000100000007 /* CheatCodeValidator.swift */,
@@ -6315,6 +6318,7 @@
 				1E2F3DBB10DEAB4C0019AA84 /* OEVersionMigrationController.m in Sources */,
 				5A575DFD1E92D23600491B0D /* Cheats.swift in Sources */,
 				AA0000011000000100000002 /* CheatDatabaseService.swift in Sources */,
+				AA0000011000000100000012 /* CheatFeedbackService.swift in Sources */,
 				AA0000011000000100000004 /* LibretroCheatProvider.swift in Sources */,
 				AA0000011000000100000006 /* OpenEmuCheatProvider.swift in Sources */,
 				AA0000011000000100000008 /* CheatCodeValidator.swift in Sources */,

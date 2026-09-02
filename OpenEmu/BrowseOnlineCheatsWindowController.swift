@@ -85,6 +85,10 @@ final class BrowseOnlineCheatsWindowController: NSWindowController, NSWindowDele
         pauseEmulationIfNeeded()
     }
 
+    func resetForCoreChange() {
+        browseViewController?.resetForCoreChange()
+    }
+
     @objc private func gameWindowDidBecomeMain(_ notification: Notification) {
         guard shouldResumeOnGameFocus else { return }
         gameDocument?.isEmulationPaused = false
