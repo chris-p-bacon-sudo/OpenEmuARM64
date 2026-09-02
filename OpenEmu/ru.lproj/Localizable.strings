@@ -730,6 +730,8 @@ You can go to the Controls preferences to check which associations were affected
 	<string>Импорт</string>
 	<key>Code already used</key>
 	<string>Код уже используется</string>
+	<key>Remove</key>
+	<string>Удалить</string>
 	<key>Code</key>
 	<string>Код</string>
 	<key>Cheat Code</key>

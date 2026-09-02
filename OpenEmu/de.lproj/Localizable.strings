@@ -728,6 +728,8 @@ Du kannst die Tastenbelegung in den Einstellungen unter „Steuerung“ überpr�
 	<string>Importieren</string>
 	<key>Code already used</key>
 	<string>Code bereits verwendet</string>
+	<key>Remove</key>
+	<string>Entfernen</string>
 	<key>Code</key>
 	<string>Code</string>
 	<key>Cheat Code</key>

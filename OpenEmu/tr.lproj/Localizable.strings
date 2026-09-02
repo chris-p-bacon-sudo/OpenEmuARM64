@@ -730,6 +730,8 @@ Hangi ilişkilendirmelerin etkilendiğini kontrol etmek için Kontrolcü tercihl
 	<string>İçe Aktar</string>
 	<key>Code already used</key>
 	<string>Kod zaten kullanılıyor</string>
+	<key>Remove</key>
+	<string>Kaldır</string>
 	<key>Code</key>
 	<string>Kod</string>
 	<key>Cheat Code</key>

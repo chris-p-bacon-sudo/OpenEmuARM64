@@ -1678,6 +1678,31 @@ final class OEGameDocument: NSDocument {
         saveUserCheats()
         validateCheatCompatibility()
     }
+
+    /// `cheatSource` (the provider name) is what marks this as Browse Online Cheats-imported,
+    /// distinguishing it from cheats added manually or via Cheat Search.
+    func addImportedCheat(code: String, name: String, providerName: String) {
+        let cheat = Cheat(code: code, type: OECheatTypeGameShark, name: name, cheatSource: providerName)
+        cheat.isEnabled = true
+        setCheat(cheat)
+        cheats.append(cheat)
+        saveUserCheats()
+        validateCheatCompatibility()
+    }
+
+    /// Only removes a cheat that was itself imported, so a matching manual/Cheat Search entry is never touched.
+    func removeImportedCheat(code: String) {
+        let key = CheatFeedbackService.key(for: code)
+        guard let index = cheats.firstIndex(where: { $0.cheatSource != nil && CheatFeedbackService.key(for: $0.code) == key })
+        else { return }
+
+        let cheat = cheats[index]
+        if cheat.isEnabled {
+            gameCoreManager?.setCheat(cheat.code, withType: cheat.type, enabled: false)
+        }
+        cheats.remove(at: index)
+        saveUserCheats()
+    }
     
     /// In order to load cheats, we need the core plugin and the ROM to be set.
     private func loadCheats() {

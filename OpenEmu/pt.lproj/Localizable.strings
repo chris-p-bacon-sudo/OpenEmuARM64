@@ -730,6 +730,8 @@ You can go to the Controls preferences to check which associations were affected
 	<string>Importar</string>
 	<key>Code already used</key>
 	<string>Código já utilizado</string>
+	<key>Remove</key>
+	<string>Remover</string>
 	<key>Code</key>
 	<string>Código</string>
 	<key>Cheat Code</key>

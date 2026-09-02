@@ -441,10 +441,20 @@ final class GameControlsBar: NSWindow {
         }
 
         let cheats = gameViewController.document.cheats
+            // Stable sort: manual/Cheat Search entries first, Browse Online Cheats imports after.
+            .sorted { ($0.cheatSource != nil ? 1 : 0) < ($1.cheatSource != nil ? 1 : 0) }
         if !cheats.isEmpty {
             menu.addItem(.separator())
 
+            var didAddImportedSeparator = false
+
             for cheat in cheats {
+                // Marks the boundary between the user's own cheats and Browse Online Cheats imports.
+                if cheat.cheatSource != nil, !didAddImportedSeparator {
+                    menu.addItem(.separator())
+                    didAddImportedSeparator = true
+                }
+
                 let compatible = cheat.isCompatibleWithCore
                 let cheatItem = NSMenuItem(title: cheat.name, action: nil, keyEquivalent: "")
                 cheatItem.state = cheat.isEnabled ? .on : .off
@@ -467,12 +477,15 @@ final class GameControlsBar: NSWindow {
                     if hardcoreOn { toggleItem.isEnabled = false }
                     submenu.addItem(toggleItem)
 
-                    submenu.addItem(.separator())
+                    // Imported cheats aren't hand-authored, so there's nothing sensible to edit.
+                    if cheat.cheatSource == nil {
+                        submenu.addItem(.separator())
 
-                    let editItem = NSMenuItem(title: NSLocalizedString("Edit…", comment: "Cheat submenu edit"), action: #selector(OEGameDocument.editCheat(_:)), keyEquivalent: "")
-                    editItem.representedObject = cheat
-                    if hardcoreOn { editItem.isEnabled = false }
-                    submenu.addItem(editItem)
+                        let editItem = NSMenuItem(title: NSLocalizedString("Edit…", comment: "Cheat submenu edit"), action: #selector(OEGameDocument.editCheat(_:)), keyEquivalent: "")
+                        editItem.representedObject = cheat
+                        if hardcoreOn { editItem.isEnabled = false }
+                        submenu.addItem(editItem)
+                    }
                 }
 
                 let removeItem = NSMenuItem(title: NSLocalizedString("Remove", comment: "Cheat submenu remove"), action: #selector(OEGameDocument.removeCheat(_:)), keyEquivalent: "")

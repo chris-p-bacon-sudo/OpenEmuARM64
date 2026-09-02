@@ -700,6 +700,8 @@ You can go to the Controls preferences to check which associations were affected
 	<string>استيراد</string>
 	<key>Code already used</key>
 	<string>الرمز مستخدم بالفعل</string>
+	<key>Remove</key>
+	<string>إزالة</string>
 	<key>Code</key>
 	<string>الشفرة</string>
 	<key>Cheat Code</key>

@@ -730,6 +730,8 @@ Podeu anar a les preferències dels controls per comprovar quines associacions s
 	<string>Importa</string>
 	<key>Code already used</key>
 	<string>Codi ja utilitzat</string>
+	<key>Remove</key>
+	<string>Suprimeix</string>
 	<key>Code</key>
 	<string>Codi</string>
 	<key>Cheat Code</key>

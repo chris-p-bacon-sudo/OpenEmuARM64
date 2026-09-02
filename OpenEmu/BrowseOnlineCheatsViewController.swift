@@ -77,8 +77,18 @@ final class BrowseOnlineCheatsViewController: NSViewController {
     /// User-reported status for the current core build, keyed by normalized code.
     private var statuses: [String: CheatFeedbackStatus] = [:]
     private var notes: [String: String] = [:]
-    /// Normalized codes already present in the user's cheat inventory, recomputed whenever the table reloads.
+
+    /// Normalized codes of cheats already in the user's inventory that came from elsewhere
+    /// (manual "Add Cheat" or Cheat Search) — these block Import rather than offering Remove.
+    private var otherSourceCodeKeys: Set<String> = []
+    /// Normalized codes of cheats this feature itself imported, recomputed whenever the table reloads.
     private var importedCodeKeys: Set<String> = []
+
+    enum ImportState {
+        case notImported
+        case importedByThisFeature
+        case usedElsewhere
+    }
 
     enum CheatStatus: Int {
         case works = 0
@@ -345,7 +355,7 @@ final class BrowseOnlineCheatsViewController: NSViewController {
         let matchesName = name.count >= Self.minimumNameFilterLength
             && !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
 
-        importedCodeKeys = Set((gameDocument?.cheats ?? []).map { CheatFeedbackService.key(for: $0.code) })
+        refreshImportedCodeKeys()
 
         visibleCheats = cheats.filter { cheat in
             if matchesName, !cheat.name.localizedCaseInsensitiveContains(name) {
@@ -794,7 +804,7 @@ extension BrowseOnlineCheatsViewController: NSTableViewDelegate {
         let cheat = visibleCheats[row]
 
         if identifier.rawValue == "action" {
-            return makeActionCell(in: tableView, isImported: isImported(cheat))
+            return makeActionCell(in: tableView, state: importState(for: cheat))
         }
 
         if identifier.rawValue == "code" {
@@ -860,11 +870,35 @@ extension BrowseOnlineCheatsViewController: NSTableViewDelegate {
         false
     }
 
-    private func isImported(_ cheat: DatabaseCheat) -> Bool {
-        importedCodeKeys.contains(CheatFeedbackService.key(for: cheat.code))
+    /// Tints imported rows on top of the normal alternating background, rather than replacing it.
+    func tableView(_ tableView: NSTableView, rowViewForRow row: Int) -> NSTableRowView? {
+        let identifier = NSUserInterfaceItemIdentifier("BrowseOnlineCheatsRow")
+        let rowView = tableView.makeView(withIdentifier: identifier, owner: nil) as? ImportedCheatRowView ?? ImportedCheatRowView()
+        rowView.identifier = identifier
+        let state = row < visibleCheats.count ? importState(for: visibleCheats[row]) : .notImported
+        rowView.isImported = state == .importedByThisFeature
+        rowView.isDisabledForImport = state == .usedElsewhere
+        return rowView
     }
 
-    private func makeActionCell(in tableView: NSTableView, isImported: Bool) -> NSView {
+    private func refreshImportedCodeKeys() {
+        let allCheats = gameDocument?.cheats ?? []
+        otherSourceCodeKeys = Set(allCheats.filter { $0.cheatSource == nil }.map { CheatFeedbackService.key(for: $0.code) })
+        importedCodeKeys = Set(allCheats.filter { $0.cheatSource != nil }.map { CheatFeedbackService.key(for: $0.code) })
+    }
+
+    private func importState(for cheat: DatabaseCheat) -> ImportState {
+        let key = CheatFeedbackService.key(for: cheat.code)
+        if importedCodeKeys.contains(key) { return .importedByThisFeature }
+        if otherSourceCodeKeys.contains(key) { return .usedElsewhere }
+        return .notImported
+    }
+
+    // Muted rather than fully saturated, so the buttons read as a hint, not an alert.
+    private static let importButtonColor = NSColor.systemGreen.blended(withFraction: 0.65, of: .systemGray)?.withAlphaComponent(0.2)
+    private static let removeButtonColor = NSColor.systemRed.blended(withFraction: 0.65, of: .systemGray)?.withAlphaComponent(0.35)
+
+    private func makeActionCell(in tableView: NSTableView, state: ImportState) -> NSView {
         let cellID = NSUserInterfaceItemIdentifier("BrowseOnlineCheatsActionCell")
         let container: NSView
         let button: NSButton
@@ -877,9 +911,7 @@ extension BrowseOnlineCheatsViewController: NSTableViewDelegate {
             container = NSView()
             container.identifier = cellID
 
-            button = NSButton(title: NSLocalizedString("Import", comment: "Browse online cheats row action button"),
-                              target: self,
-                              action: #selector(importClicked(_:)))
+            button = NSButton(title: "", target: self, action: #selector(importClicked(_:)))
             button.bezelStyle = .rounded
             button.controlSize = .small
             button.font = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)
@@ -892,10 +924,23 @@ extension BrowseOnlineCheatsViewController: NSTableViewDelegate {
             ])
         }
 
-        button.isEnabled = !isImported
-        button.toolTip = isImported
-            ? NSLocalizedString("Code already used", comment: "Browse online cheats import button tooltip when the code is already in the user's inventory")
-            : nil
+        switch state {
+        case .notImported:
+            button.title = NSLocalizedString("Import", comment: "Browse online cheats row action button")
+            button.isEnabled = true
+            button.toolTip = nil
+            button.bezelColor = Self.importButtonColor
+        case .importedByThisFeature:
+            button.title = NSLocalizedString("Remove", comment: "Browse online cheats row action button, removes a previously imported cheat")
+            button.isEnabled = true
+            button.toolTip = nil
+            button.bezelColor = Self.removeButtonColor
+        case .usedElsewhere:
+            button.title = NSLocalizedString("Import", comment: "Browse online cheats row action button")
+            button.isEnabled = false
+            button.toolTip = NSLocalizedString("Code already used", comment: "Browse online cheats import button tooltip when the code is already in the user's inventory")
+            button.bezelColor = nil
+        }
 
         return container
     }
@@ -1116,12 +1161,47 @@ extension BrowseOnlineCheatsViewController: NSTableViewDelegate {
         return scrollView
     }
 
-    // TODO: import the cheat into the document.
     @objc private func importClicked(_ sender: NSButton) {
         // Asked at click time so the row stays correct across reloads and sorting.
         let row = resultsTableView.row(for: sender)
         guard row >= 0, row < visibleCheats.count else { return }
-        NSLog("[Cheats] Import requested: %@", visibleCheats[row].name)
+        let cheat = visibleCheats[row]
+
+        switch importState(for: cheat) {
+        case .notImported:
+            gameDocument?.addImportedCheat(code: cheat.code, name: cheat.name, providerName: cheat.providerName)
+        case .importedByThisFeature:
+            gameDocument?.removeImportedCheat(code: cheat.code)
+        case .usedElsewhere:
+            return
+        }
+
+        refreshImportedCodeKeys()
+        resultsTableView?.reloadData()
+    }
+}
+
+// MARK: - Imported Cheat Row View
+
+/// Draws a translucent green tint over the normal alternating background, so imported
+/// rows stay distinguishable from each other rather than becoming a single flat color.
+final class ImportedCheatRowView: NSTableRowView {
+
+    var isImported = false {
+        didSet { needsDisplay = true }
+    }
+
+    /// Set when the row's code already exists elsewhere in the user's inventory, disabling Import.
+    var isDisabledForImport = false {
+        didSet { needsDisplay = true }
+    }
+
+    override func drawBackground(in dirtyRect: NSRect) {
+        super.drawBackground(in: dirtyRect)
+        if isImported {
+            NSColor.systemGreen.withAlphaComponent(0.1).setFill()
+            dirtyRect.fill()
+        }
     }
 }
 

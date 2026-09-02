@@ -729,6 +729,8 @@ You can go to the Controls preferences to check which associations were affected
 	<string>Importeren</string>
 	<key>Code already used</key>
 	<string>Code al gebruikt</string>
+	<key>Remove</key>
+	<string>Verwijderen</string>
 	<key>Code</key>
 	<string>Code</string>
 	<key>Cheat Code</key>
