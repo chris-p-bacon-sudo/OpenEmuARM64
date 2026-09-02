@@ -26,7 +26,7 @@
 import Foundation
 import os.log
 
-private let log = Logger(subsystem: "org.openemu.OpenEmu", category: "CheatFeedbackService")
+// private let log = Logger(subsystem: "org.openemu.OpenEmu", category: "CheatFeedbackService")
 
 /// Whether a cheat code worked for the user on a specific core build.
 ///
@@ -203,7 +203,7 @@ final class CheatFeedbackService {
             decoder.dateDecodingStrategy = .iso8601
             return try decoder.decode(CheatFeedbackFile.self, from: data)
         } catch {
-            log.error("Failed to read cheat feedback for \(md5): \(error.localizedDescription)")
+            // log.error("Failed to read cheat feedback for \(md5): \(error.localizedDescription)")
             return nil
         }
     }
@@ -219,7 +219,7 @@ final class CheatFeedbackService {
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
             try encoder.encode(file).write(to: url, options: .atomic)
         } catch {
-            log.error("Failed to write cheat feedback for \(md5): \(error.localizedDescription)")
+            // log.error("Failed to write cheat feedback for \(md5): \(error.localizedDescription)")
         }
     }
 }

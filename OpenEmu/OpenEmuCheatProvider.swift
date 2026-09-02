@@ -6,7 +6,7 @@
 import Foundation
 import os.log
 
-private let log = Logger(subsystem: "org.openemu.OpenEmu", category: "OpenEmuCheatProvider")
+// private let log = Logger(subsystem: "org.openemu.OpenEmu", category: "OpenEmuCheatProvider")
 
 /// Provides cheats from the bundled cheats-database.xml file.
 final class OpenEmuCheatProvider: CheatDatabaseProvider {
@@ -38,7 +38,7 @@ final class OpenEmuCheatProvider: CheatDatabaseProvider {
         guard let url = Bundle.main.url(forResource: "cheats-database", withExtension: "xml"),
               let data = try? Data(contentsOf: url)
         else {
-            log.warning("cheats-database.xml not found in app bundle")
+            // log.warning("cheats-database.xml not found in app bundle")
             return
         }
 
@@ -47,8 +47,8 @@ final class OpenEmuCheatProvider: CheatDatabaseProvider {
         parser.delegate = delegate
         parser.parse()
         database = delegate.result
-        let totalCheats = database.values.flatMap(\.values).flatMap({ $0 }).count
-        log.info("Loaded bundled cheat database: \(totalCheats) cheats")
+        // let totalCheats = database.values.flatMap(\.values).flatMap({ $0 }).count
+        // log.info("Loaded bundled cheat database: \(totalCheats) cheats")
     }
 }
 

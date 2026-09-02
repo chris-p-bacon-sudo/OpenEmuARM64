@@ -7,7 +7,7 @@ import Foundation
 import OpenEmuBase
 import os.log
 
-private let log = Logger(subsystem: "org.openemu.OpenEmu", category: "LibretroCheatProvider")
+// private let log = Logger(subsystem: "org.openemu.OpenEmu", category: "LibretroCheatProvider")
 
 /// Cached cheat file stored on disk per game.
 private struct LibretroCachedCheatFile: Codable {
@@ -73,7 +73,7 @@ final class LibretroCheatProvider: CheatDatabaseProvider {
 
         // 1. Check local cache
         if let cached = loadCachedCheats(md5: md5, systemIdentifier: systemIdentifier) {
-            log.info("Local cache hit for \(md5) (\(cached.sources.map(\.chtFileName).joined(separator: ", ")))")
+            // log.info("Local cache hit for \(md5) (\(cached.sources.map(\.chtFileName).joined(separator: ", ")))")
             // Try to update each cached source
             var anyUpdated = false
             var allCheats: [LibretroCachedCheat] = []
@@ -100,12 +100,12 @@ final class LibretroCheatProvider: CheatDatabaseProvider {
         let lookup = try await lookupGameName(md5: md5, serial: serial, systemIdentifier: systemIdentifier)
 
         if lookup == nil && (gameName == nil || !Self.redumpSystems.contains(systemIdentifier)) {
-            log.info("No game found for MD5 \(md5) / serial \(serial ?? "nil") in system \(systemIdentifier)")
+            // log.info("No game found for MD5 \(md5) / serial \(serial ?? "nil") in system \(systemIdentifier)")
             return []
         }
 
         let resolvedSystem = lookup?.libretroSystem ?? libretroSystem
-        log.info("MD5 \(md5) → \(lookup?.name ?? "nil") (in \(resolvedSystem))")
+        // log.info("MD5 \(md5) → \(lookup?.name ?? "nil") (in \(resolvedSystem))")
 
         // 3. Download plain + device-suffixed + region-variant candidates, merge
         var allCheats: [LibretroCachedCheat] = []
@@ -136,7 +136,7 @@ final class LibretroCheatProvider: CheatDatabaseProvider {
         }
 
         guard !allCheats.isEmpty else {
-            log.info("No CHT files found for \(gameNames.joined(separator: ", "))")
+            // log.info("No CHT files found for \(gameNames.joined(separator: ", "))")
             return []
         }
 
@@ -214,9 +214,9 @@ final class LibretroCheatProvider: CheatDatabaseProvider {
         var request = URLRequest(url: url)
         if let etag = existingETag {
             request.setValue("\"\(etag)\"", forHTTPHeaderField: "If-None-Match")
-            log.debug("Checking for CHT update: \(chtFileName)")
+            // log.debug("Checking for CHT update: \(chtFileName)")
         } else {
-            log.info("Downloading CHT: \(chtFileName)")
+            // log.info("Downloading CHT: \(chtFileName)")
         }
 
         let (data, response) = try await URLSession.shared.data(for: request)
@@ -224,21 +224,21 @@ final class LibretroCheatProvider: CheatDatabaseProvider {
 
         switch httpResponse.statusCode {
         case 304:
-            log.debug("CHT not modified: \(chtFileName)")
+            // log.debug("CHT not modified: \(chtFileName)")
             return nil
         case 404:
-            log.debug("CHT not found: \(chtFileName)")
+            // log.debug("CHT not found: \(chtFileName)")
             return nil
         case 200:
             break
         default:
-            log.warning("Unexpected HTTP \(httpResponse.statusCode) for \(chtFileName)")
+            // log.warning("Unexpected HTTP \(httpResponse.statusCode) for \(chtFileName)")
             return nil
         }
 
         let newETag = httpResponse.value(forHTTPHeaderField: "ETag")?.replacingOccurrences(of: "\"", with: "")
         let cheats = parseCHTFile(data, systemIdentifier: systemIdentifier)
-        log.info("CHT parsed: \(chtFileName) → \(cheats.count) cheats")
+        // log.info("CHT parsed: \(chtFileName) → \(cheats.count) cheats")
         return CHTDownloadResult(cheats: cheats, etag: newETag)
     }
 
@@ -513,7 +513,7 @@ final class LibretroCheatProvider: CheatDatabaseProvider {
 
     private func lookupGameName(md5: String, serial: String?, systemIdentifier: String) async throws -> (name: String, libretroSystem: String)? {
         if let cached = datCache[systemIdentifier] {
-            log.debug("DAT cache hit for \(systemIdentifier)")
+            // log.debug("DAT cache hit for \(systemIdentifier)")
             if let result = cached[md5.uppercased()] { return result }
             if let serial, let result = lookupBySerial(serial, in: cached) { return result }
             return nil
@@ -524,13 +524,13 @@ final class LibretroCheatProvider: CheatDatabaseProvider {
         let datSystems = systemFallbacks[systemIdentifier] ?? [libretroSystem]
         var merged: [String: (name: String, libretroSystem: String)] = [:]
         for datSystem in datSystems {
-            log.info("Downloading DAT for \(datSystem)…")
+            // log.info("Downloading DAT for \(datSystem)…")
             let encoded = datSystem.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? datSystem
             let datBaseURL = Self.redumpSystems.contains(systemIdentifier) ? Self.datBaseURLRedump : Self.datBaseURLNoIntro
             guard let url = URL(string: "\(datBaseURL)\(encoded).dat") else { continue }
             let (data, _) = try await URLSession.shared.data(from: url)
             let parsed = parseDATFile(data)
-            log.info("DAT loaded for \(datSystem): \(parsed.count) entries indexed")
+            // log.info("DAT loaded for \(datSystem): \(parsed.count) entries indexed")
             for entry in parsed {
                 let value = (name: entry.name, libretroSystem: datSystem)
                 if let md5 = entry.md5, merged[md5] == nil {

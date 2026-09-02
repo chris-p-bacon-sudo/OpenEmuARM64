@@ -693,7 +693,7 @@ final class BrowseOnlineCheatsViewController: NSViewController {
                 cheats = Self.disambiguatingDuplicateNames(sorted)
                 hasLoaded = true
             } catch {
-                NSLog("[Cheats] Browse Online failed: %@", error.localizedDescription)
+                // NSLog("[Cheats] Browse Online failed: %@", error.localizedDescription)
                 cheats = []
             }
             applyFilters()

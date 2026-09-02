@@ -7,7 +7,7 @@ import Foundation
 import OpenEmuBase
 import os.log
 
-private let log = Logger(subsystem: "org.openemu.OpenEmu", category: "CheatDatabaseService")
+// private let log = Logger(subsystem: "org.openemu.OpenEmu", category: "CheatDatabaseService")
 
 /// A cheat entry returned by a provider, before import into the user's cheat list.
 struct DatabaseCheat: Sendable {
@@ -48,7 +48,7 @@ final class CheatDatabaseService {
             let providerCheats = try await provider.cheats(forMD5: md5, serial: serial, gameName: gameName, systemIdentifier: systemIdentifier)
             for cheat in providerCheats {
                 guard CheatCodeValidator.isValid(code: cheat.code, systemIdentifier: systemIdentifier, coreIdentifier: coreIdentifier) else {
-                    log.info("Skipping invalid cheat code: \(cheat.code) (\(cheat.name)) from \(provider.name)")
+                    // log.info("Skipping invalid cheat code: \(cheat.code) (\(cheat.name)) from \(provider.name)")
                     continue
                 }
                 let normalized = cheat.code.replacingOccurrences(of: " ", with: "").lowercased()
