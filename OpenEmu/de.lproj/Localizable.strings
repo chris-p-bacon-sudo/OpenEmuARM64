@@ -736,6 +736,12 @@ Du kannst die Tastenbelegung in den Einstellungen unter „Steuerung“ überpr�
 	<string>Kopieren</string>
 	<key>Close</key>
 	<string>Schließen</string>
+	<key>It works for me</key>
+	<string>Funktioniert bei mir</string>
+	<key>It does not work for me</key>
+	<string>Funktioniert bei mir nicht</string>
+	<key>Not set</key>
+	<string>Nicht festgelegt</string>
     <key>Not supported by this emulator.</key>
     <string>Von diesem Emulator nicht unterstützt.</string>
 	<key>Cheat Search</key>

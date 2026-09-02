@@ -737,6 +737,12 @@ You can go to the Controls preferences to check which associations were affected
 	<string>複製</string>
 	<key>Close</key>
 	<string>關閉</string>
+	<key>It works for me</key>
+	<string>對我有效</string>
+	<key>It does not work for me</key>
+	<string>對我無效</string>
+	<key>Not set</key>
+	<string>未設定</string>
     <key>Not supported by this emulator.</key>
     <string>此模擬器不支援。</string>
 	<key>Cheat Search</key>

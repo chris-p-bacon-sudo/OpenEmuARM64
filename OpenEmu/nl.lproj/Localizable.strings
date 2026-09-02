@@ -737,6 +737,12 @@ You can go to the Controls preferences to check which associations were affected
 	<string>Kopieer</string>
 	<key>Close</key>
 	<string>Sluit</string>
+	<key>It works for me</key>
+	<string>Werkt bij mij</string>
+	<key>It does not work for me</key>
+	<string>Werkt niet bij mij</string>
+	<key>Not set</key>
+	<string>Niet ingesteld</string>
     <key>Not supported by this emulator.</key>
     <string>Niet ondersteund door deze emulator.</string>
 	<key>Cheat Search</key>

@@ -734,6 +734,12 @@ Vous pouvez aller dans les préférences Contrôles pour vérifier les associati
 	<string>Copier</string>
 	<key>Close</key>
 	<string>Fermer</string>
+	<key>It works for me</key>
+	<string>Ça fonctionne pour moi</string>
+	<key>It does not work for me</key>
+	<string>Ça ne fonctionne pas pour moi</string>
+	<key>Not set</key>
+	<string>Non défini</string>
     <key>Not supported by this emulator.</key>
     <string>Non pris en charge par cet émulateur.</string>
 	<key>Cheat Search</key>

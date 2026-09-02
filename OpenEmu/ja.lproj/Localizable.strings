@@ -733,6 +733,12 @@ You can go to the Controls preferences to check which associations were affected
 	<string>コピー</string>
 	<key>Close</key>
 	<string>閉じる</string>
+	<key>It works for me</key>
+	<string>動作しました</string>
+	<key>It does not work for me</key>
+	<string>動作しませんでした</string>
+	<key>Not set</key>
+	<string>未設定</string>
     <key>Not supported by this emulator.</key>
     <string>このエミュレータでは対応していません。</string>
 	<key>Cheat Search</key>

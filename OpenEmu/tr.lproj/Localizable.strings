@@ -738,6 +738,12 @@ Hangi ilişkilendirmelerin etkilendiğini kontrol etmek için Kontrolcü tercihl
 	<string>Kopyala</string>
 	<key>Close</key>
 	<string>Kapat</string>
+	<key>It works for me</key>
+	<string>Bende çalışıyor</string>
+	<key>It does not work for me</key>
+	<string>Bende çalışmıyor</string>
+	<key>Not set</key>
+	<string>Ayarlanmadı</string>
     <key>Not supported by this emulator.</key>
     <string>Bu emülatör tarafından desteklenmiyor.</string>
 	<key>Cheat Search</key>

@@ -47,6 +47,16 @@ final class BrowseOnlineCheatsViewController: NSViewController {
     /// Fetched cheats kept in memory so filtering can work off them without refetching.
     private var cheats: [DatabaseCheat] = []
 
+    /// User-reported status, keyed the same way the service deduplicates codes.
+    /// Not persisted yet.
+    private var statuses: [String: CheatStatus] = [:]
+
+    enum CheatStatus: Int {
+        case works = 0
+        case doesNotWork = 1
+        case unknown = 2
+    }
+
     /// Applied to each row's cell so the content matches its column header.
     private var columnAlignments: [NSUserInterfaceItemIdentifier: NSTextAlignment] = [:]
 
@@ -328,6 +338,12 @@ extension BrowseOnlineCheatsViewController: NSTableViewDelegate {
             return makeCodeCell(in: tableView)
         }
 
+        if identifier.rawValue == "status" {
+            let cell = makeStatusCell(in: tableView)
+            cell.configure(status: status(for: cheat))
+            return cell
+        }
+
         let cell = makeTextCell(in: tableView)
 
         switch identifier.rawValue {
@@ -406,7 +422,6 @@ extension BrowseOnlineCheatsViewController: NSTableViewDelegate {
         if let existing = tableView.makeView(withIdentifier: cellID, owner: nil) {
             return existing
         }
-
         let container = NSView()
         container.identifier = cellID
 
@@ -433,6 +448,40 @@ extension BrowseOnlineCheatsViewController: NSTableViewDelegate {
         let row = resultsTableView.row(for: sender)
         guard row >= 0, row < cheats.count else { return }
         presentCodeDialog(for: cheats[row])
+    }
+
+    // MARK: - Status Cell
+
+    private func statusKey(for cheat: DatabaseCheat) -> String {
+        cheat.code.replacingOccurrences(of: " ", with: "").lowercased()
+    }
+
+    private func status(for cheat: DatabaseCheat) -> CheatStatus {
+        statuses[statusKey(for: cheat)] ?? .unknown
+    }
+
+    private func makeStatusCell(in tableView: NSTableView) -> StatusCellView {
+        let cellID = NSUserInterfaceItemIdentifier("BrowseOnlineCheatsStatusCell")
+        if let existing = tableView.makeView(withIdentifier: cellID, owner: nil) as? StatusCellView {
+            return existing
+        }
+
+        let cell = StatusCellView(target: self, action: #selector(statusClicked(_:)))
+        cell.identifier = cellID
+        return cell
+    }
+
+    @objc private func statusClicked(_ sender: NSButton) {
+        let row = resultsTableView.row(for: sender)
+        guard row >= 0, row < cheats.count,
+              let status = CheatStatus(rawValue: sender.tag)
+        else { return }
+
+        statuses[statusKey(for: cheats[row])] = status
+
+        let column = resultsTableView.column(withIdentifier: NSUserInterfaceItemIdentifier("status"))
+        guard column >= 0 else { return }
+        resultsTableView.reloadData(forRowIndexes: IndexSet(integer: row), columnIndexes: IndexSet(integer: column))
     }
 
     private func presentCodeDialog(for cheat: DatabaseCheat) {
@@ -485,4 +534,88 @@ extension BrowseOnlineCheatsViewController: NSTableViewDelegate {
         guard row >= 0, row < cheats.count else { return }
         NSLog("[Cheats] Import requested: %@", cheats[row].name)
     }
+}
+
+// MARK: - Status Cell View
+
+/// Three exclusive icon buttons. The filled symbol variant carries the selection
+/// alongside the tint, so the state is still readable without colour.
+final class StatusCellView: NSView {
+
+    typealias CheatStatus = BrowseOnlineCheatsViewController.CheatStatus
+
+    private struct Option {
+        let status: CheatStatus
+        let symbol: String
+        let selectedColor: NSColor
+        let description: String
+    }
+
+    /// Muted steel blue — the system blues are all fully saturated, which reads as
+    /// loud as the green and red for what is only the neutral "not tested" state.
+    private static let unknownColor = NSColor(name: nil) { appearance in
+        appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+            ? NSColor(calibratedRed: 0.52, green: 0.62, blue: 0.72, alpha: 1)
+            : NSColor(calibratedRed: 0.35, green: 0.46, blue: 0.57, alpha: 1)
+    }
+
+    private static let options: [Option] = [
+        Option(status: .works,
+               symbol: "checkmark.circle",
+               selectedColor: .systemGreen,
+               description: NSLocalizedString("It works for me", comment: "Browse online cheats status option")),
+        Option(status: .doesNotWork,
+               symbol: "xmark.circle",
+               selectedColor: .systemRed,
+               description: NSLocalizedString("It does not work for me", comment: "Browse online cheats status option")),
+        Option(status: .unknown,
+               symbol: "questionmark.circle",
+               selectedColor: unknownColor,
+               description: NSLocalizedString("Not set", comment: "Browse online cheats status option")),
+    ]
+
+    private var buttons: [NSButton] = []
+
+    init(target: AnyObject, action: Selector) {
+        super.init(frame: .zero)
+
+        let stack = NSStackView()
+        stack.orientation = .horizontal
+        stack.spacing = 6
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(stack)
+
+        for option in Self.options {
+            let button = NSButton(image: NSImage(), target: target, action: action)
+            button.isBordered = false
+            button.imagePosition = .imageOnly
+            button.tag = option.status.rawValue
+            button.toolTip = option.description
+            button.setAccessibilityLabel(option.description)
+            stack.addArrangedSubview(button)
+            buttons.append(button)
+        }
+
+        NSLayoutConstraint.activate([
+            stack.centerXAnchor.constraint(equalTo: centerXAnchor),
+            stack.centerYAnchor.constraint(equalTo: centerYAnchor),
+        ])
+    }
+
+    /// Re-applied on every configure pass — a recycled cell would otherwise keep
+    /// the previous row's selection.
+    func configure(status: CheatStatus) {
+        let config = NSImage.SymbolConfiguration(pointSize: 14, weight: .regular)
+
+        for (button, option) in zip(buttons, Self.options) {
+            let isSelected = option.status == status
+            let symbol = isSelected ? "\(option.symbol).fill" : option.symbol
+            button.image = NSImage(systemSymbolName: symbol, accessibilityDescription: option.description)?
+                .withSymbolConfiguration(config)
+            button.contentTintColor = isSelected ? option.selectedColor : .tertiaryLabelColor
+        }
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError() }
 }

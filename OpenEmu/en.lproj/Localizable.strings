@@ -750,6 +750,12 @@ You can go to the Controls preferences to check which associations were affected
 	<string>Copy</string>
 	<key>Close</key>
 	<string>Close</string>
+	<key>It works for me</key>
+	<string>It works for me</string>
+	<key>It does not work for me</key>
+	<string>It does not work for me</string>
+	<key>Not set</key>
+	<string>Not set</string>
     <key>Not supported by this emulator.</key>
     <string>Not supported by this emulator.</string>
 	<key>Cheat Search</key>

@@ -708,6 +708,12 @@ You can go to the Controls preferences to check which associations were affected
 	<string>نسخ</string>
 	<key>Close</key>
 	<string>إغلاق</string>
+	<key>It works for me</key>
+	<string>تعمل معي</string>
+	<key>It does not work for me</key>
+	<string>لا تعمل معي</string>
+	<key>Not set</key>
+	<string>غير محدد</string>
     <key>Not supported by this emulator.</key>
     <string>غير مدعوم من هذا المحاكي.</string>
 	<key>Cheat Search</key>

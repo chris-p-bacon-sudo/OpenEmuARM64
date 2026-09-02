@@ -738,6 +738,12 @@ You can go to the Controls preferences to check which associations were affected
 	<string>Копировать</string>
 	<key>Close</key>
 	<string>Закрыть</string>
+	<key>It works for me</key>
+	<string>У меня работает</string>
+	<key>It does not work for me</key>
+	<string>У меня не работает</string>
+	<key>Not set</key>
+	<string>Не задано</string>
     <key>Not supported by this emulator.</key>
     <string>Не поддерживается этим эмулятором.</string>
 	<key>Cheat Search</key>

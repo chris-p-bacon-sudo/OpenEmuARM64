@@ -738,6 +738,12 @@ Podeu anar a les preferències dels controls per comprovar quines associacions s
 	<string>Copia</string>
 	<key>Close</key>
 	<string>Tanca</string>
+	<key>It works for me</key>
+	<string>A mi em funciona</string>
+	<key>It does not work for me</key>
+	<string>A mi no em funciona</string>
+	<key>Not set</key>
+	<string>Sense definir</string>
     <key>Not supported by this emulator.</key>
     <string>No compatible amb aquest emulador.</string>
 	<key>Cheat Search</key>
