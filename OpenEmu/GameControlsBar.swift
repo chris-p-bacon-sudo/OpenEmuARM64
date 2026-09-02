@@ -458,6 +458,7 @@ final class GameControlsBar: NSWindow {
                 let compatible = cheat.isCompatibleWithCore
                 let cheatItem = NSMenuItem(title: cheat.name, action: nil, keyEquivalent: "")
                 cheatItem.state = cheat.isEnabled ? .on : .off
+                cheatItem.image = providerIcon(for: cheat.cheatSource)
                 if hardcoreOn { cheatItem.isEnabled = false }
                 if !compatible {
                     cheatItem.toolTip = NSLocalizedString("Not supported by this emulator.", comment: "Cheat incompatible with current core")
@@ -499,6 +500,16 @@ final class GameControlsBar: NSWindow {
         }
 
         return menu
+    }
+
+    /// `cheatSource` holds the provider name exactly as reported by `CheatDatabaseProvider.name`;
+    /// an unrecognized value (or `nil`, for manual/Cheat Search cheats) just means no icon.
+    private func providerIcon(for cheatSource: String?) -> NSImage? {
+        switch cheatSource {
+        case "OpenEmu": return NSImage(named: "cheat_provider_openemu")
+        case "Libretro": return NSImage(named: "cheat_provider_libretro")
+        default: return nil
+        }
     }
     
     var coresMenu: NSMenu? {
