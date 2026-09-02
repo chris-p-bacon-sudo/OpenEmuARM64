@@ -77,6 +77,8 @@ final class BrowseOnlineCheatsViewController: NSViewController {
     /// User-reported status for the current core build, keyed by normalized code.
     private var statuses: [String: CheatFeedbackStatus] = [:]
     private var notes: [String: String] = [:]
+    /// Normalized codes already present in the user's cheat inventory, recomputed whenever the table reloads.
+    private var importedCodeKeys: Set<String> = []
 
     enum CheatStatus: Int {
         case works = 0
@@ -342,6 +344,8 @@ final class BrowseOnlineCheatsViewController: NSViewController {
         let name = nameFilter
         let matchesName = name.count >= Self.minimumNameFilterLength
             && !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+
+        importedCodeKeys = Set((gameDocument?.cheats ?? []).map { CheatFeedbackService.key(for: $0.code) })
 
         visibleCheats = cheats.filter { cheat in
             if matchesName, !cheat.name.localizedCaseInsensitiveContains(name) {
@@ -790,7 +794,7 @@ extension BrowseOnlineCheatsViewController: NSTableViewDelegate {
         let cheat = visibleCheats[row]
 
         if identifier.rawValue == "action" {
-            return makeActionCell(in: tableView)
+            return makeActionCell(in: tableView, isImported: isImported(cheat))
         }
 
         if identifier.rawValue == "code" {
@@ -856,28 +860,42 @@ extension BrowseOnlineCheatsViewController: NSTableViewDelegate {
         false
     }
 
-    private func makeActionCell(in tableView: NSTableView) -> NSView {
+    private func isImported(_ cheat: DatabaseCheat) -> Bool {
+        importedCodeKeys.contains(CheatFeedbackService.key(for: cheat.code))
+    }
+
+    private func makeActionCell(in tableView: NSTableView, isImported: Bool) -> NSView {
         let cellID = NSUserInterfaceItemIdentifier("BrowseOnlineCheatsActionCell")
-        if let existing = tableView.makeView(withIdentifier: cellID, owner: nil) {
-            return existing
-        }
+        let container: NSView
+        let button: NSButton
 
-        let container = NSView()
-        container.identifier = cellID
+        if let existing = tableView.makeView(withIdentifier: cellID, owner: nil),
+           let existingButton = existing.subviews.first as? NSButton {
+            container = existing
+            button = existingButton
+        } else {
+            container = NSView()
+            container.identifier = cellID
 
-        let button = NSButton(title: NSLocalizedString("Import", comment: "Browse online cheats row action button"),
+            button = NSButton(title: NSLocalizedString("Import", comment: "Browse online cheats row action button"),
                               target: self,
                               action: #selector(importClicked(_:)))
-        button.bezelStyle = .rounded
-        button.controlSize = .small
-        button.font = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)
-        button.translatesAutoresizingMaskIntoConstraints = false
-        container.addSubview(button)
+            button.bezelStyle = .rounded
+            button.controlSize = .small
+            button.font = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)
+            button.translatesAutoresizingMaskIntoConstraints = false
+            container.addSubview(button)
 
-        NSLayoutConstraint.activate([
-            button.centerXAnchor.constraint(equalTo: container.centerXAnchor),
-            button.centerYAnchor.constraint(equalTo: container.centerYAnchor),
-        ])
+            NSLayoutConstraint.activate([
+                button.centerXAnchor.constraint(equalTo: container.centerXAnchor),
+                button.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+            ])
+        }
+
+        button.isEnabled = !isImported
+        button.toolTip = isImported
+            ? NSLocalizedString("Code already used", comment: "Browse online cheats import button tooltip when the code is already in the user's inventory")
+            : nil
 
         return container
     }

@@ -726,6 +726,8 @@ Du kannst die Tastenbelegung in den Einstellungen unter „Steuerung“ überpr�
 	<string>Aktion</string>
 	<key>Import</key>
 	<string>Importieren</string>
+	<key>Code already used</key>
+	<string>Code bereits verwendet</string>
 	<key>Code</key>
 	<string>Code</string>
 	<key>Cheat Code</key>

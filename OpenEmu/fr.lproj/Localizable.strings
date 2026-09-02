@@ -724,6 +724,8 @@ Vous pouvez aller dans les préférences Contrôles pour vérifier les associati
 	<string>Action</string>
 	<key>Import</key>
 	<string>Importer</string>
+	<key>Code already used</key>
+	<string>Code déjà utilisé</string>
 	<key>Code</key>
 	<string>Code</string>
 	<key>Cheat Code</key>

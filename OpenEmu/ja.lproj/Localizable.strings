@@ -723,6 +723,8 @@ You can go to the Controls preferences to check which associations were affected
 	<string>操作</string>
 	<key>Import</key>
 	<string>インポート</string>
+	<key>Code already used</key>
+	<string>このコードはすでに使用されています</string>
 	<key>Code</key>
 	<string>コード</string>
 	<key>Cheat Code</key>

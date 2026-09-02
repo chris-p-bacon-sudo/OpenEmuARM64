@@ -740,6 +740,8 @@ You can go to the Controls preferences to check which associations were affected
 	<string>Action</string>
 	<key>Import</key>
 	<string>Import</string>
+	<key>Code already used</key>
+	<string>Code already used</string>
 	<key>Code</key>
 	<string>Code</string>
 	<key>Cheat Code</key>

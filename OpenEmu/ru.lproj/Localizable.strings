@@ -728,6 +728,8 @@ You can go to the Controls preferences to check which associations were affected
 	<string>Действие</string>
 	<key>Import</key>
 	<string>Импорт</string>
+	<key>Code already used</key>
+	<string>Код уже используется</string>
 	<key>Code</key>
 	<string>Код</string>
 	<key>Cheat Code</key>

@@ -727,6 +727,8 @@ You can go to the Controls preferences to check which associations were affected
 	<string>操作</string>
 	<key>Import</key>
 	<string>导入</string>
+	<key>Code already used</key>
+	<string>代码已使用</string>
 	<key>Code</key>
 	<string>代码</string>
 	<key>Cheat Code</key>
