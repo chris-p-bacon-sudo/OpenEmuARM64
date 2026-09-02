@@ -752,6 +752,8 @@ You can go to the Controls preferences to check which associations were affected
 	<string>¿Funcionó este código de truco para ti?</string>
 	<key>I don't know</key>
 	<string>No lo sé</string>
+	<key>Set Status</key>
+	<string>Establecer estado</string>
 	<key>It works for me</key>
 	<string>A mí me funciona</string>
 	<key>It does not work for me</key>

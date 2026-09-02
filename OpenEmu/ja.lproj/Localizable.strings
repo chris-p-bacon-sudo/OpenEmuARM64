@@ -749,6 +749,8 @@ You can go to the Controls preferences to check which associations were affected
 	<string>このチートコードは有効でしたか？</string>
 	<key>I don't know</key>
 	<string>わからない</string>
+	<key>Set Status</key>
+	<string>ステータスを設定</string>
 	<key>It works for me</key>
 	<string>動作しました</string>
 	<key>It does not work for me</key>

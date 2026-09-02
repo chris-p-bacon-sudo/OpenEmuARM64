@@ -754,6 +754,8 @@ Podeu anar a les preferències dels controls per comprovar quines associacions s
 	<string>Ha funcionat aquest truc per a tu?</string>
 	<key>I don't know</key>
 	<string>No ho sé</string>
+	<key>Set Status</key>
+	<string>Estableix l'estat</string>
 	<key>It works for me</key>
 	<string>A mi em funciona</string>
 	<key>It does not work for me</key>

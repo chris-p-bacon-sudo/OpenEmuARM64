@@ -756,6 +756,8 @@ Puoi andare nelle Preferenze Controlli per verificare quali impostazioni sono st
 	<string>Questo codice trucco ha funzionato per te?</string>
 	<key>I don't know</key>
 	<string>Non lo so</string>
+	<key>Set Status</key>
+	<string>Imposta stato</string>
 	<key>It works for me</key>
 	<string>Per me funziona</string>
 	<key>It does not work for me</key>

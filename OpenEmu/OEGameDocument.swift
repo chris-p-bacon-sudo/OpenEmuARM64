@@ -2147,6 +2147,13 @@ final class OEGameDocument: NSDocument {
     func promptCheatRemovalFeedback(code: String) {
         guard let md5 = rom.md5Hash else { return }
 
+        let existingStatuses = CheatFeedbackService.shared.statuses(forMD5: md5,
+                                                                    systemIdentifier: systemPlugin.systemIdentifier,
+                                                                    coreIdentifier: corePlugin.bundleIdentifier,
+                                                                    coreVersion: corePlugin.version)
+        // Already reported on for this core build — don't ask again for a value the user already gave.
+        guard existingStatuses[CheatFeedbackService.key(for: code)] == nil else { return }
+
         let alert = OEAlert()
         alert.messageText = NSLocalizedString("Cheat Removed", comment: "Cheat removal feedback dialog title")
         alert.informativeText = NSLocalizedString("Did this cheat code work for you?", comment: "Cheat removal feedback dialog question")
@@ -2165,6 +2172,31 @@ final class OEGameDocument: NSDocument {
 
         CheatFeedbackService.shared.setStatus(status,
                                              forCode: code,
+                                             md5: md5,
+                                             systemIdentifier: systemPlugin.systemIdentifier,
+                                             coreIdentifier: corePlugin.bundleIdentifier,
+                                             coreVersion: corePlugin.version)
+    }
+
+    /// expects `sender.representedObject` to be a `Cheat` object
+    @IBAction func setCheatStatusWorks(_ sender: AnyObject) {
+        setCheatFeedbackStatus(.works, sender: sender)
+    }
+
+    /// expects `sender.representedObject` to be a `Cheat` object
+    @IBAction func setCheatStatusDoesNotWork(_ sender: AnyObject) {
+        setCheatFeedbackStatus(.doesNotWork, sender: sender)
+    }
+
+    /// expects `sender.representedObject` to be a `Cheat` object
+    @IBAction func setCheatStatusUnknown(_ sender: AnyObject) {
+        setCheatFeedbackStatus(.unknown, sender: sender)
+    }
+
+    private func setCheatFeedbackStatus(_ status: CheatFeedbackStatus, sender: AnyObject) {
+        guard let cheat = sender.representedObject as? Cheat, let md5 = rom.md5Hash else { return }
+        CheatFeedbackService.shared.setStatus(status,
+                                             forCode: cheat.code,
                                              md5: md5,
                                              systemIdentifier: systemPlugin.systemIdentifier,
                                              coreIdentifier: corePlugin.bundleIdentifier,

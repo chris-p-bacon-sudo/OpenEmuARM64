@@ -1245,7 +1245,8 @@ final class StatusCellView: NSView {
 
     /// Muted steel blue — the system blues are all fully saturated, which reads as
     /// loud as the green and red for what is only the neutral "not tested" state.
-    private static let unknownColor = NSColor(name: nil) { appearance in
+    /// Not private: reused by the game menu's "Set Status" submenu for the same icon set.
+    static let unknownColor = NSColor(name: nil) { appearance in
         appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
             ? NSColor(calibratedRed: 0.52, green: 0.62, blue: 0.72, alpha: 1)
             : NSColor(calibratedRed: 0.35, green: 0.46, blue: 0.57, alpha: 1)

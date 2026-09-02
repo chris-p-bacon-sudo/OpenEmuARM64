@@ -750,6 +750,8 @@ Vous pouvez aller dans les préférences Contrôles pour vérifier les associati
 	<string>Ce code a-t-il fonctionné pour vous ?</string>
 	<key>I don't know</key>
 	<string>Je ne sais pas</string>
+	<key>Set Status</key>
+	<string>Définir le statut</string>
 	<key>It works for me</key>
 	<string>Ça fonctionne pour moi</string>
 	<key>It does not work for me</key>

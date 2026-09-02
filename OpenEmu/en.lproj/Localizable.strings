@@ -764,6 +764,8 @@ You can go to the Controls preferences to check which associations were affected
 	<string>Did this cheat code work for you?</string>
 	<key>I don't know</key>
 	<string>I don't know</string>
+	<key>Set Status</key>
+	<string>Set Status</string>
 	<key>It works for me</key>
 	<string>It works for me</string>
 	<key>It does not work for me</key>

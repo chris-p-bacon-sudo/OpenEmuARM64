@@ -753,6 +753,8 @@ You can go to the Controls preferences to check which associations were affected
 	<string>Werkte deze cheatcode voor jou?</string>
 	<key>I don't know</key>
 	<string>Ik weet het niet</string>
+	<key>Set Status</key>
+	<string>Status instellen</string>
 	<key>It works for me</key>
 	<string>Werkt bij mij</string>
 	<key>It does not work for me</key>

@@ -754,6 +754,8 @@ Hangi ilişkilendirmelerin etkilendiğini kontrol etmek için Kontrolcü tercihl
 	<string>Bu hile kodu sizin için işe yaradı mı?</string>
 	<key>I don't know</key>
 	<string>Bilmiyorum</string>
+	<key>Set Status</key>
+	<string>Durumu Ayarla</string>
 	<key>It works for me</key>
 	<string>Bende çalışıyor</string>
 	<key>It does not work for me</key>

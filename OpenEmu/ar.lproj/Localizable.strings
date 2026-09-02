@@ -724,6 +724,8 @@ You can go to the Controls preferences to check which associations were affected
 	<string>هل نجح رمز الخدع هذا معك؟</string>
 	<key>I don't know</key>
 	<string>لا أعرف</string>
+	<key>Set Status</key>
+	<string>تحديد الحالة</string>
 	<key>It works for me</key>
 	<string>تعمل معي</string>
 	<key>It does not work for me</key>

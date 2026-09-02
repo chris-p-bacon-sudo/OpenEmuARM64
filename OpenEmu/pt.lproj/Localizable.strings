@@ -754,6 +754,8 @@ You can go to the Controls preferences to check which associations were affected
 	<string>Esse código de cheat funcionou para você?</string>
 	<key>I don't know</key>
 	<string>Não sei</string>
+	<key>Set Status</key>
+	<string>Definir status</string>
 	<key>It works for me</key>
 	<string>Funciona para mim</string>
 	<key>It does not work for me</key>

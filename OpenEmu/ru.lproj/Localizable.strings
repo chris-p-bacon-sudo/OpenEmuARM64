@@ -754,6 +754,8 @@ You can go to the Controls preferences to check which associations were affected
 	<string>Сработал ли у вас этот чит?</string>
 	<key>I don't know</key>
 	<string>Не знаю</string>
+	<key>Set Status</key>
+	<string>Указать статус</string>
 	<key>It works for me</key>
 	<string>У меня работает</string>
 	<key>It does not work for me</key>

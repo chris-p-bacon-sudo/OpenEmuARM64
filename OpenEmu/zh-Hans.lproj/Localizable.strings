@@ -753,6 +753,8 @@ You can go to the Controls preferences to check which associations were affected
 	<string>这个金手指代码对你有效吗？</string>
 	<key>I don't know</key>
 	<string>不清楚</string>
+	<key>Set Status</key>
+	<string>设置状态</string>
 	<key>It works for me</key>
 	<string>对我有效</string>
 	<key>It does not work for me</key>
