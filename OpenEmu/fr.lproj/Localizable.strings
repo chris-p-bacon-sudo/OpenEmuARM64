@@ -742,6 +742,16 @@ Vous pouvez aller dans les préférences Contrôles pour vérifier les associati
 	<string>Non défini</string>
 	<key>All</key>
 	<string>Tous</string>
+	<key>%@ result found</key>
+	<string>%@ résultat trouvé</string>
+	<key>%@ results found</key>
+	<string>%@ résultats trouvés</string>
+	<key>Showing first %1$@ of %2$@ matches, narrow your search</key>
+	<string>Affichage des %1$@ premiers résultats sur %2$@, affinez votre recherche</string>
+	<key>Showing first %1$@ of %2$@ cheats. Narrow your search.</key>
+	<string>Affichage des %1$@ premiers codes sur %2$@. Affinez votre recherche.</string>
+	<key>No cheats found</key>
+	<string>Aucun code trouvé</string>
 	<key>Mark if the cheat worked for you or not</key>
 	<string>Indiquez si le code a fonctionné pour vous ou non</string>
 	<key>Working</key>

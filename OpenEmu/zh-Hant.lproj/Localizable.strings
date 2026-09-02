@@ -745,6 +745,16 @@ You can go to the Controls preferences to check which associations were affected
 	<string>未設定</string>
 	<key>All</key>
 	<string>全部</string>
+	<key>%@ result found</key>
+	<string>找到 %@ 個結果</string>
+	<key>%@ results found</key>
+	<string>找到 %@ 個結果</string>
+	<key>Showing first %1$@ of %2$@ matches, narrow your search</key>
+	<string>顯示 %2$@ 個結果中的前 %1$@ 個，請縮小範圍</string>
+	<key>Showing first %1$@ of %2$@ cheats. Narrow your search.</key>
+	<string>顯示 %2$@ 個金手指中的前 %1$@ 個。請縮小搜尋範圍。</string>
+	<key>No cheats found</key>
+	<string>未找到金手指</string>
 	<key>Mark if the cheat worked for you or not</key>
 	<string>標記該金手指對你是否有效</string>
 	<key>Working</key>

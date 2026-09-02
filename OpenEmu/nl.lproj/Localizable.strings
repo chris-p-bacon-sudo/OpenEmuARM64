@@ -745,6 +745,16 @@ You can go to the Controls preferences to check which associations were affected
 	<string>Niet ingesteld</string>
 	<key>All</key>
 	<string>Alle</string>
+	<key>%@ result found</key>
+	<string>%@ resultaat gevonden</string>
+	<key>%@ results found</key>
+	<string>%@ resultaten gevonden</string>
+	<key>Showing first %1$@ of %2$@ matches, narrow your search</key>
+	<string>Eerste %1$@ van %2$@ resultaten getoond, verfijn je zoekopdracht</string>
+	<key>Showing first %1$@ of %2$@ cheats. Narrow your search.</key>
+	<string>Eerste %1$@ van %2$@ cheats getoond. Verfijn je zoekopdracht.</string>
+	<key>No cheats found</key>
+	<string>Geen cheats gevonden</string>
 	<key>Mark if the cheat worked for you or not</key>
 	<string>Geef aan of de cheat bij jou werkte of niet</string>
 	<key>Working</key>

@@ -748,6 +748,16 @@ Puoi andare nelle Preferenze Controlli per verificare quali impostazioni sono st
 	<string>Non impostato</string>
 	<key>All</key>
 	<string>Tutti</string>
+	<key>%@ result found</key>
+	<string>%@ risultato trovato</string>
+	<key>%@ results found</key>
+	<string>%@ risultati trovati</string>
+	<key>Showing first %1$@ of %2$@ matches, narrow your search</key>
+	<string>Mostrati i primi %1$@ di %2$@ risultati, affina la ricerca</string>
+	<key>Showing first %1$@ of %2$@ cheats. Narrow your search.</key>
+	<string>Mostrati i primi %1$@ di %2$@ trucchi. Affina la ricerca.</string>
+	<key>No cheats found</key>
+	<string>Nessun trucco trovato</string>
 	<key>Mark if the cheat worked for you or not</key>
 	<string>Indica se il trucco ha funzionato per te oppure no</string>
 	<key>Working</key>

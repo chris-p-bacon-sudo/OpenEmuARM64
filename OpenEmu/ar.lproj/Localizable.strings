@@ -716,6 +716,16 @@ You can go to the Controls preferences to check which associations were affected
 	<string>غير محدد</string>
 	<key>All</key>
 	<string>الكل</string>
+	<key>%@ result found</key>
+	<string>تم العثور على %@ نتيجة</string>
+	<key>%@ results found</key>
+	<string>تم العثور على %@ نتيجة</string>
+	<key>Showing first %1$@ of %2$@ matches, narrow your search</key>
+	<string>عرض أول %1$@ من %2$@ نتيجة، ضيّق بحثك</string>
+	<key>Showing first %1$@ of %2$@ cheats. Narrow your search.</key>
+	<string>عرض أول %1$@ من %2$@ خدعة. ضيّق بحثك.</string>
+	<key>No cheats found</key>
+	<string>لم يتم العثور على خدع</string>
 	<key>Mark if the cheat worked for you or not</key>
 	<string>حدد ما إذا كانت الشفرة قد عملت معك أم لا</string>
 	<key>Working</key>

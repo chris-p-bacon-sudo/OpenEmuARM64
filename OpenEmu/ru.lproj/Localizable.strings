@@ -746,6 +746,16 @@ You can go to the Controls preferences to check which associations were affected
 	<string>Не задано</string>
 	<key>All</key>
 	<string>Все</string>
+	<key>%@ result found</key>
+	<string>Найдено %@ результат</string>
+	<key>%@ results found</key>
+	<string>Найдено %@ результатов</string>
+	<key>Showing first %1$@ of %2$@ matches, narrow your search</key>
+	<string>Показаны первые %1$@ из %2$@ результатов, уточните поиск</string>
+	<key>Showing first %1$@ of %2$@ cheats. Narrow your search.</key>
+	<string>Показаны первые %1$@ из %2$@ читов. Уточните поиск.</string>
+	<key>No cheats found</key>
+	<string>Читы не найдены</string>
 	<key>Mark if the cheat worked for you or not</key>
 	<string>Отметьте, сработал ли чит-код у вас</string>
 	<key>Working</key>

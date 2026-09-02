@@ -746,6 +746,16 @@ Hangi ilişkilendirmelerin etkilendiğini kontrol etmek için Kontrolcü tercihl
 	<string>Ayarlanmadı</string>
 	<key>All</key>
 	<string>Tümü</string>
+	<key>%@ result found</key>
+	<string>%@ sonuç bulundu</string>
+	<key>%@ results found</key>
+	<string>%@ sonuç bulundu</string>
+	<key>Showing first %1$@ of %2$@ matches, narrow your search</key>
+	<string>%2$@ sonucun ilk %1$@ tanesi gösteriliyor, aramayı daraltın</string>
+	<key>Showing first %1$@ of %2$@ cheats. Narrow your search.</key>
+	<string>%2$@ hilenin ilk %1$@ tanesi gösteriliyor. Aramayı daraltın.</string>
+	<key>No cheats found</key>
+	<string>Hile bulunamadı</string>
 	<key>Mark if the cheat worked for you or not</key>
 	<string>Hilenin sizde çalışıp çalışmadığını işaretleyin</string>
 	<key>Working</key>

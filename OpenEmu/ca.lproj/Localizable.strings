@@ -746,6 +746,16 @@ Podeu anar a les preferències dels controls per comprovar quines associacions s
 	<string>Sense definir</string>
 	<key>All</key>
 	<string>Tots</string>
+	<key>%@ result found</key>
+	<string>%@ resultat trobat</string>
+	<key>%@ results found</key>
+	<string>%@ resultats trobats</string>
+	<key>Showing first %1$@ of %2$@ matches, narrow your search</key>
+	<string>Es mostren els primers %1$@ de %2$@ resultats, afineu la cerca</string>
+	<key>Showing first %1$@ of %2$@ cheats. Narrow your search.</key>
+	<string>Es mostren els primers %1$@ de %2$@ trucs. Afineu la cerca.</string>
+	<key>No cheats found</key>
+	<string>No s'ha trobat cap truc</string>
 	<key>Mark if the cheat worked for you or not</key>
 	<string>Marqueu si el truc us ha funcionat o no</string>
 	<key>Working</key>

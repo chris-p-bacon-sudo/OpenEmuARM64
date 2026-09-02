@@ -746,6 +746,16 @@ You can go to the Controls preferences to check which associations were affected
 	<string>Não definido</string>
 	<key>All</key>
 	<string>Todos</string>
+	<key>%@ result found</key>
+	<string>%@ resultado encontrado</string>
+	<key>%@ results found</key>
+	<string>%@ resultados encontrados</string>
+	<key>Showing first %1$@ of %2$@ matches, narrow your search</key>
+	<string>Mostrando os primeiros %1$@ de %2$@ resultados, refine sua busca</string>
+	<key>Showing first %1$@ of %2$@ cheats. Narrow your search.</key>
+	<string>Mostrando os primeiros %1$@ de %2$@ cheats. Refine sua busca.</string>
+	<key>No cheats found</key>
+	<string>Nenhum cheat encontrado</string>
 	<key>Mark if the cheat worked for you or not</key>
 	<string>Marque se a trapaça funcionou para você ou não</string>
 	<key>Working</key>

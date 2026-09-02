@@ -67,6 +67,13 @@ final class BrowseOnlineCheatsViewController: NSViewController {
     /// The subset the table actually shows.
     private var visibleCheats: [DatabaseCheat] = []
 
+    private var resultsCountLabel: NSTextField!
+    private var emptyStateLabel: NSTextField!
+
+    /// Maximum rows handed to the table. Matches are kept in full in `visibleCheats`,
+    /// so the count reported below the table is still the real one.
+    private static let displayLimit = 100
+
     /// User-reported status for the current core build, keyed by normalized code.
     private var statuses: [String: CheatFeedbackStatus] = [:]
 
@@ -99,6 +106,25 @@ final class BrowseOnlineCheatsViewController: NSViewController {
         view.addSubview(resultsScrollView)
         self.resultsScrollView = resultsScrollView
 
+        let countLabel = NSTextField(labelWithString: "")
+        countLabel.font = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)
+        countLabel.textColor = .secondaryLabelColor
+        countLabel.lineBreakMode = .byTruncatingTail
+        countLabel.maximumNumberOfLines = 1
+        countLabel.allowsExpansionToolTips = true
+        countLabel.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(countLabel)
+        resultsCountLabel = countLabel
+
+        let emptyLabel = NSTextField(labelWithString: NSLocalizedString("No cheats found", comment: "Browse online cheats empty table"))
+        emptyLabel.font = NSFont.systemFont(ofSize: NSFont.systemFontSize)
+        emptyLabel.textColor = .secondaryLabelColor
+        emptyLabel.alignment = .center
+        emptyLabel.isHidden = true
+        emptyLabel.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(emptyLabel)
+        emptyStateLabel = emptyLabel
+
         NSLayoutConstraint.activate([
             infoPanel.topAnchor.constraint(equalTo: view.topAnchor, constant: 12),
             infoPanel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 12),
@@ -111,10 +137,18 @@ final class BrowseOnlineCheatsViewController: NSViewController {
             resultsScrollView.topAnchor.constraint(equalTo: filterPanel.bottomAnchor, constant: 12),
             resultsScrollView.leadingAnchor.constraint(equalTo: infoPanel.leadingAnchor),
             resultsScrollView.trailingAnchor.constraint(equalTo: infoPanel.trailingAnchor),
-            resultsScrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -12),
+
+            countLabel.topAnchor.constraint(equalTo: resultsScrollView.bottomAnchor, constant: 6),
+            countLabel.leadingAnchor.constraint(equalTo: infoPanel.leadingAnchor),
+            countLabel.trailingAnchor.constraint(equalTo: infoPanel.trailingAnchor),
+            countLabel.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -10),
+
+            emptyLabel.centerXAnchor.constraint(equalTo: resultsScrollView.centerXAnchor),
+            emptyLabel.centerYAnchor.constraint(equalTo: resultsScrollView.centerYAnchor),
         ])
 
         updateGameInfo()
+        updateResultsCountLabel()
     }
 
     // MARK: - Results Table
@@ -321,6 +355,40 @@ final class BrowseOnlineCheatsViewController: NSViewController {
         }
 
         resultsTableView?.reloadData()
+        updateResultsCountLabel()
+        updateEmptyState()
+    }
+
+    private func updateEmptyState() {
+        emptyStateLabel?.isHidden = isLoading || !visibleCheats.isEmpty
+    }
+
+    /// Reports the match count, and says so plainly when the table is only showing
+    /// a capped subset of them.
+    private func updateResultsCountLabel() {
+        guard let label = resultsCountLabel else { return }
+        let count = visibleCheats.count
+
+        if count == 0 {
+            label.stringValue = ""
+        } else if count > Self.displayLimit {
+            label.stringValue = String(
+                format: NSLocalizedString("Showing first %1$@ of %2$@ cheats. Narrow your search.",
+                                          comment: "Browse online cheats result count when capped"),
+                NumberFormatter.localizedString(from: NSNumber(value: Self.displayLimit), number: .decimal),
+                NumberFormatter.localizedString(from: NSNumber(value: count), number: .decimal)
+            )
+        } else if count == 1 {
+            label.stringValue = String(
+                format: NSLocalizedString("%@ result found", comment: "Browse online cheats single result count"),
+                NumberFormatter.localizedString(from: NSNumber(value: count), number: .decimal)
+            )
+        } else {
+            label.stringValue = String(
+                format: NSLocalizedString("%@ results found", comment: "Browse online cheats result count"),
+                NumberFormatter.localizedString(from: NSNumber(value: count), number: .decimal)
+            )
+        }
     }
 
     // MARK: - Status Column Header
@@ -569,6 +637,7 @@ final class BrowseOnlineCheatsViewController: NSViewController {
         loadingSpinner?.startAnimation(nil)
         loadingSpinner?.isHidden = false
         resultsTableView.isEnabled = false
+        updateEmptyState()
     }
 
     private func hideLoadingIndicator() {
@@ -576,6 +645,7 @@ final class BrowseOnlineCheatsViewController: NSViewController {
         loadingSpinner?.stopAnimation(nil)
         loadingSpinner?.isHidden = true
         resultsTableView.isEnabled = true
+        updateEmptyState()
     }
 
     // MARK: - Online Cheats
@@ -635,7 +705,7 @@ final class BrowseOnlineCheatsViewController: NSViewController {
 
 extension BrowseOnlineCheatsViewController: NSTableViewDataSource {
     func numberOfRows(in tableView: NSTableView) -> Int {
-        visibleCheats.count
+        min(visibleCheats.count, Self.displayLimit)
     }
 }
 
