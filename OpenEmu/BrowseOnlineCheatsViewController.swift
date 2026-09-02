@@ -833,17 +833,68 @@ extension BrowseOnlineCheatsViewController: NSTableViewDelegate {
             return cell
         }
 
+        if identifier.rawValue == "provider" {
+            let cell = makeProviderCell(in: tableView)
+            cell.textField?.stringValue = cheat.providerName
+            cell.textField?.alignment = columnAlignments[identifier] ?? .left
+            cell.imageView?.image = providerIcon(for: cheat.providerName)
+            return cell
+        }
+
         let cell = makeTextCell(in: tableView)
 
         switch identifier.rawValue {
         case "name":
             cell.textField?.stringValue = cheat.name
-        case "provider":
-            cell.textField?.stringValue = cheat.providerName
         default:
             cell.textField?.stringValue = ""
         }
         cell.textField?.alignment = columnAlignments[identifier] ?? .left
+
+        return cell
+    }
+
+    private func providerIcon(for providerName: String) -> NSImage? {
+        switch providerName {
+        case "OpenEmu": return NSImage(named: "cheat_provider_openemu")
+        case "Libretro": return NSImage(named: "cheat_provider_libretro")
+        default: return nil
+        }
+    }
+
+    private func makeProviderCell(in tableView: NSTableView) -> NSTableCellView {
+        let cellID = NSUserInterfaceItemIdentifier("BrowseOnlineCheatsProviderCell")
+        if let existing = tableView.makeView(withIdentifier: cellID, owner: nil) as? NSTableCellView {
+            return existing
+        }
+
+        let cell = NSTableCellView()
+        cell.identifier = cellID
+
+        let imageView = NSImageView()
+        imageView.imageScaling = .scaleProportionallyDown
+        imageView.translatesAutoresizingMaskIntoConstraints = false
+        cell.addSubview(imageView)
+        cell.imageView = imageView
+
+        let label = NSTextField(labelWithString: "")
+        label.lineBreakMode = .byTruncatingTail
+        label.maximumNumberOfLines = 1
+        label.cell?.truncatesLastVisibleLine = true
+        label.allowsExpansionToolTips = true
+        label.translatesAutoresizingMaskIntoConstraints = false
+        cell.addSubview(label)
+        cell.textField = label
+
+        NSLayoutConstraint.activate([
+            imageView.leadingAnchor.constraint(equalTo: cell.leadingAnchor, constant: 2),
+            imageView.centerYAnchor.constraint(equalTo: cell.centerYAnchor),
+            imageView.widthAnchor.constraint(equalToConstant: 16),
+            imageView.heightAnchor.constraint(equalToConstant: 16),
+            label.leadingAnchor.constraint(equalTo: imageView.trailingAnchor, constant: 4),
+            label.trailingAnchor.constraint(equalTo: cell.trailingAnchor, constant: -2),
+            label.centerYAnchor.constraint(equalTo: cell.centerYAnchor),
+        ])
 
         return cell
     }
