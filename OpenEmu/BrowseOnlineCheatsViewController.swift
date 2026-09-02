@@ -125,7 +125,14 @@ final class BrowseOnlineCheatsViewController: NSViewController {
         tableView.allowsMultipleSelection = false
         tableView.dataSource = self
         tableView.delegate = self
-        tableView.headerView = NSTableHeaderView()
+
+        let header = ResultsHeaderView()
+        header.infoIconRect = { [weak self] in self?.statusHeaderIconRect() }
+        header.onInfoIconClick = { [weak self, weak header] rect in
+            guard let self, let header else { return }
+            self.showStatusHeaderInfo(from: rect, in: header)
+        }
+        tableView.headerView = header
         tableView.style = .fullWidth
         tableView.columnAutoresizingStyle = .firstColumnOnlyAutoresizingStyle
         // Fixed, and does not grow for taller cell views — buttons and badges need this room.
@@ -162,6 +169,7 @@ final class BrowseOnlineCheatsViewController: NSViewController {
         }
 
         resultsTableView = tableView
+        updateStatusHeader()
 
         let scrollView = NSScrollView()
         scrollView.documentView = tableView
@@ -313,6 +321,137 @@ final class BrowseOnlineCheatsViewController: NSViewController {
         }
 
         resultsTableView?.reloadData()
+    }
+
+    // MARK: - Status Column Header
+
+    private static let statusHeaderHint = NSLocalizedString("Mark if the cheat worked for you or not",
+                                                           comment: "Browse online cheats status column tooltip")
+
+    private var statusHeaderIconSize: NSSize = .zero
+    private var statusHeaderTitle: NSAttributedString?
+    private var statusHeaderPopover: NSPopover?
+
+    /// Header cells take an attributed string but no subviews, so the icon rides
+    /// along as a text attachment.
+    private func updateStatusHeader() {
+        guard let column = resultsTableView?.tableColumn(withIdentifier: NSUserInterfaceItemIdentifier("status")) else { return }
+
+        let font = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.alignment = .center
+
+        let title = NSMutableAttributedString(
+            string: NSLocalizedString("Status", comment: "Browse online cheats table column header") + " ",
+            attributes: [
+                .font: font,
+                .paragraphStyle: paragraph,
+            ]
+        )
+
+        if let icon = statusHeaderIcon(font: font) {
+            statusHeaderIconSize = icon.size
+            let attachment = NSTextAttachment()
+            attachment.image = icon
+            // Centred on the text's cap height, otherwise it sits on the baseline.
+            attachment.bounds = CGRect(x: 0,
+                                       y: (font.capHeight - icon.size.height) / 2,
+                                       width: icon.size.width,
+                                       height: icon.size.height)
+            let attachmentString = NSMutableAttributedString(attachment: attachment)
+            attachmentString.addAttribute(.paragraphStyle, value: paragraph,
+                                          range: NSRange(location: 0, length: attachmentString.length))
+            title.append(attachmentString)
+        }
+
+        column.headerCell.attributedStringValue = title
+        statusHeaderTitle = title
+        resultsTableView?.headerView?.needsDisplay = true
+    }
+
+    /// Text attachments don't take the cell's text colour, so the symbol is tinted
+    /// for the current appearance and rebuilt when that changes.
+    private func statusHeaderIcon(font: NSFont) -> NSImage? {
+        let config = NSImage.SymbolConfiguration(pointSize: font.pointSize, weight: .semibold)
+        guard let symbol = NSImage(systemSymbolName: "info.circle", accessibilityDescription: Self.statusHeaderHint)?
+            .withSymbolConfiguration(config)
+        else { return nil }
+
+        var tint = NSColor.secondaryLabelColor
+        view.effectiveAppearance.performAsCurrentDrawingAppearance {
+            tint = NSColor.secondaryLabelColor.usingColorSpace(.sRGB) ?? .secondaryLabelColor
+        }
+
+        let tinted = NSImage(size: symbol.size, flipped: false) { rect in
+            symbol.draw(in: rect)
+            tint.set()
+            rect.fill(using: .sourceAtop)
+            return true
+        }
+        tinted.isTemplate = false
+        return tinted
+    }
+
+    /// The icon's rect inside the header, derived from the centred title's measured
+    /// width — header cells expose no layout information.
+    private func statusHeaderIconRect() -> NSRect? {
+        guard let tableView = resultsTableView,
+              let header = tableView.headerView,
+              let title = statusHeaderTitle,
+              statusHeaderIconSize.width > 0
+        else { return nil }
+
+        let column = tableView.column(withIdentifier: NSUserInterfaceItemIdentifier("status"))
+        guard column >= 0 else { return nil }
+
+        let headerRect = header.headerRect(ofColumn: column)
+        let textWidth = title.size().width
+        let iconSize = statusHeaderIconSize
+
+        return NSRect(x: headerRect.midX + textWidth / 2 - iconSize.width,
+                      y: headerRect.midY - iconSize.height / 2,
+                      width: iconSize.width,
+                      height: iconSize.height)
+    }
+
+    private func showStatusHeaderInfo(from rect: NSRect, in header: NSView) {
+        let maxWidth: CGFloat = 220
+
+        let label = NSTextField(wrappingLabelWithString: Self.statusHeaderHint)
+        label.font = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)
+        // Wrapping labels need this to resolve a height from a bounded width.
+        label.preferredMaxLayoutWidth = maxWidth
+        label.translatesAutoresizingMaskIntoConstraints = false
+
+        let content = NSView()
+        content.addSubview(label)
+        NSLayoutConstraint.activate([
+            label.topAnchor.constraint(equalTo: content.topAnchor, constant: 10),
+            label.leadingAnchor.constraint(equalTo: content.leadingAnchor, constant: 12),
+            label.trailingAnchor.constraint(equalTo: content.trailingAnchor, constant: -12),
+            label.bottomAnchor.constraint(equalTo: content.bottomAnchor, constant: -10),
+            label.widthAnchor.constraint(equalToConstant: maxWidth),
+        ])
+
+        content.layoutSubtreeIfNeeded()
+        content.frame = NSRect(origin: .zero, size: content.fittingSize)
+
+        let controller = NSViewController()
+        controller.view = content
+
+        let popover = NSPopover()
+        popover.contentViewController = controller
+        // Without this the popover collapses to a default minimum.
+        popover.contentSize = content.fittingSize
+        popover.behavior = .transient
+        popover.show(relativeTo: rect, of: header, preferredEdge: .maxY)
+        statusHeaderPopover = popover
+    }
+
+    override func viewDidLayout() {
+        super.viewDidLayout()
+        // Also covers appearance changes, which redraw the header and need a retinted icon.
+        updateStatusHeader()
     }
 
     // MARK: - Game Info Panel
@@ -507,6 +646,37 @@ extension BrowseOnlineCheatsViewController: NSTextFieldDelegate {
         guard (obj.object as? NSTextField) === nameFilterField else { return }
         nameFilter = nameFilterField.stringValue
         applyFilters()
+    }
+}
+
+// MARK: - Results Header View
+
+/// Routes clicks on the Status info icon to a callback, leaving every other click
+/// to the normal header behaviour.
+final class ResultsHeaderView: NSTableHeaderView {
+
+    var infoIconRect: (() -> NSRect?)?
+    var onInfoIconClick: ((NSRect) -> Void)?
+
+    private func hitRect() -> NSRect? {
+        // Widened so the small glyph is comfortable to hit.
+        infoIconRect?()?.insetBy(dx: -4, dy: -4)
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        let point = convert(event.locationInWindow, from: nil)
+        if let rect = hitRect(), rect.contains(point), let iconRect = infoIconRect?() {
+            onInfoIconClick?(iconRect)
+            return
+        }
+        super.mouseDown(with: event)
+    }
+
+    override func resetCursorRects() {
+        super.resetCursorRects()
+        if let rect = hitRect() {
+            addCursorRect(rect, cursor: .pointingHand)
+        }
     }
 }
 

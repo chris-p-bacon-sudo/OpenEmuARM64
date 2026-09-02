@@ -746,6 +746,8 @@ Hangi ilişkilendirmelerin etkilendiğini kontrol etmek için Kontrolcü tercihl
 	<string>Ayarlanmadı</string>
 	<key>All</key>
 	<string>Tümü</string>
+	<key>Mark if the cheat worked for you or not</key>
+	<string>Hilenin sizde çalışıp çalışmadığını işaretleyin</string>
 	<key>Working</key>
 	<string>Çalışıyor</string>
 	<key>Not Working</key>

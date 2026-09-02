@@ -741,6 +741,8 @@ You can go to the Controls preferences to check which associations were affected
 	<string>未設定</string>
 	<key>All</key>
 	<string>すべて</string>
+	<key>Mark if the cheat worked for you or not</key>
+	<string>チートが動作したかどうかを記録します</string>
 	<key>Working</key>
 	<string>動作</string>
 	<key>Not Working</key>

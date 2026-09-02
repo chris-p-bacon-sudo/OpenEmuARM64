@@ -716,6 +716,8 @@ You can go to the Controls preferences to check which associations were affected
 	<string>غير محدد</string>
 	<key>All</key>
 	<string>الكل</string>
+	<key>Mark if the cheat worked for you or not</key>
+	<string>حدد ما إذا كانت الشفرة قد عملت معك أم لا</string>
 	<key>Working</key>
 	<string>تعمل</string>
 	<key>Not Working</key>

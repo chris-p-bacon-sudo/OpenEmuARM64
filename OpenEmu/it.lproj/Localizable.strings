@@ -748,6 +748,8 @@ Puoi andare nelle Preferenze Controlli per verificare quali impostazioni sono st
 	<string>Non impostato</string>
 	<key>All</key>
 	<string>Tutti</string>
+	<key>Mark if the cheat worked for you or not</key>
+	<string>Indica se il trucco ha funzionato per te oppure no</string>
 	<key>Working</key>
 	<string>Funziona</string>
 	<key>Not Working</key>

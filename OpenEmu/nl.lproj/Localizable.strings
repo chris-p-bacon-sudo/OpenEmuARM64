@@ -745,6 +745,8 @@ You can go to the Controls preferences to check which associations were affected
 	<string>Niet ingesteld</string>
 	<key>All</key>
 	<string>Alle</string>
+	<key>Mark if the cheat worked for you or not</key>
+	<string>Geef aan of de cheat bij jou werkte of niet</string>
 	<key>Working</key>
 	<string>Werkt</string>
 	<key>Not Working</key>

@@ -746,6 +746,8 @@ You can go to the Controls preferences to check which associations were affected
 	<string>Não definido</string>
 	<key>All</key>
 	<string>Todos</string>
+	<key>Mark if the cheat worked for you or not</key>
+	<string>Marque se a trapaça funcionou para você ou não</string>
 	<key>Working</key>
 	<string>Funciona</string>
 	<key>Not Working</key>

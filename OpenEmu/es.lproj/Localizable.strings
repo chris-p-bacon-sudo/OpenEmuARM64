@@ -744,6 +744,8 @@ You can go to the Controls preferences to check which associations were affected
 	<string>Sin definir</string>
 	<key>All</key>
 	<string>Todos</string>
+	<key>Mark if the cheat worked for you or not</key>
+	<string>Marca si el truco te ha funcionado o no</string>
 	<key>Working</key>
 	<string>Funciona</string>
 	<key>Not Working</key>

@@ -746,6 +746,8 @@ You can go to the Controls preferences to check which associations were affected
 	<string>Не задано</string>
 	<key>All</key>
 	<string>Все</string>
+	<key>Mark if the cheat worked for you or not</key>
+	<string>Отметьте, сработал ли чит-код у вас</string>
 	<key>Working</key>
 	<string>Работает</string>
 	<key>Not Working</key>

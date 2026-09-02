@@ -742,6 +742,8 @@ Vous pouvez aller dans les préférences Contrôles pour vérifier les associati
 	<string>Non défini</string>
 	<key>All</key>
 	<string>Tous</string>
+	<key>Mark if the cheat worked for you or not</key>
+	<string>Indiquez si le code a fonctionné pour vous ou non</string>
 	<key>Working</key>
 	<string>Fonctionne</string>
 	<key>Not Working</key>

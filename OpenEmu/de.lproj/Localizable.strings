@@ -744,6 +744,8 @@ Du kannst die Tastenbelegung in den Einstellungen unter „Steuerung“ überpr�
 	<string>Nicht festgelegt</string>
 	<key>All</key>
 	<string>Alle</string>
+	<key>Mark if the cheat worked for you or not</key>
+	<string>Markieren, ob der Cheat bei dir funktioniert hat oder nicht</string>
 	<key>Working</key>
 	<string>Funktioniert</string>
 	<key>Not Working</key>

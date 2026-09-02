@@ -758,6 +758,8 @@ You can go to the Controls preferences to check which associations were affected
 	<string>Not set</string>
 	<key>All</key>
 	<string>All</string>
+	<key>Mark if the cheat worked for you or not</key>
+	<string>Mark if the cheat worked for you or not</string>
 	<key>Working</key>
 	<string>Working</string>
 	<key>Not Working</key>
