@@ -456,7 +456,8 @@ final class GameControlsBar: NSWindow {
                 }
 
                 let compatible = cheat.isCompatibleWithCore
-                let cheatItem = NSMenuItem(title: cheat.name, action: nil, keyEquivalent: "")
+                let displayName = Self.truncatedCheatMenuName(cheat.name)
+                let cheatItem = NSMenuItem(title: displayName, action: nil, keyEquivalent: "")
                 cheatItem.state = cheat.isEnabled ? .on : .off
                 cheatItem.image = providerIcon(for: cheat.cheatSource)
                 if hardcoreOn { cheatItem.isEnabled = false }
@@ -465,7 +466,10 @@ final class GameControlsBar: NSWindow {
                     let attrs: [NSAttributedString.Key: Any] = [
                         .foregroundColor: NSColor.systemRed.withAlphaComponent(0.7)
                     ]
-                    cheatItem.attributedTitle = NSAttributedString(string: cheat.name, attributes: attrs)
+                    cheatItem.attributedTitle = NSAttributedString(string: displayName, attributes: attrs)
+                } else if displayName != cheat.name {
+                    // Long names are truncated in the title, so the full name is still one hover away.
+                    cheatItem.toolTip = cheat.name
                 }
 
                 let submenu = NSMenu()
@@ -510,6 +514,15 @@ final class GameControlsBar: NSWindow {
         case "Libretro": return NSImage(named: "cheat_provider_libretro")
         default: return nil
         }
+    }
+
+    /// NSMenu has no width cap of its own — it sizes to whatever the longest title needs —
+    /// so long imported cheat names are truncated by character count instead.
+    private static let maxCheatMenuNameLength = 30
+
+    private static func truncatedCheatMenuName(_ name: String) -> String {
+        guard name.count > maxCheatMenuNameLength else { return name }
+        return "\(name.prefix(maxCheatMenuNameLength - 1))…"
     }
     
     var coresMenu: NSMenu? {
