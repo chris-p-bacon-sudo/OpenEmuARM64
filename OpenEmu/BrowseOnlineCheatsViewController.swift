@@ -41,6 +41,19 @@ final class BrowseOnlineCheatsViewController: NSViewController {
     private var nameFilterField: NSTextField!
     private var statusFilterRadios: [NSButton] = []
 
+    private var statusFilter: StatusFilter = .all
+    private var nameFilter = ""
+
+    /// Below this a name filter is treated as empty, so single letters don't wipe the list.
+    private static let minimumNameFilterLength = 2
+
+    enum StatusFilter: Int {
+        case all = 0
+        case working = 1
+        case notWorking = 2
+        case notSet = 3
+    }
+
     // MARK: - Results Table
     private var resultsTableView: NSTableView!
     private var resultsScrollView: NSScrollView!
@@ -50,6 +63,9 @@ final class BrowseOnlineCheatsViewController: NSViewController {
 
     /// Fetched cheats kept in memory so filtering can work off them without refetching.
     private var cheats: [DatabaseCheat] = []
+
+    /// The subset the table actually shows.
+    private var visibleCheats: [DatabaseCheat] = []
 
     /// User-reported status for the current core build, keyed by normalized code.
     private var statuses: [String: CheatFeedbackStatus] = [:]
@@ -224,6 +240,8 @@ final class BrowseOnlineCheatsViewController: NSViewController {
         field.controlSize = .small
         field.font = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)
         field.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        field.stringValue = nameFilter
+        field.delegate = self
         nameFilterField = field
 
         let row = NSStackView(views: [label, field])
@@ -253,7 +271,7 @@ final class BrowseOnlineCheatsViewController: NSViewController {
             radio.controlSize = .small
             radio.font = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)
             radio.tag = index
-            radio.state = index == 0 ? .on : .off
+            radio.state = index == statusFilter.rawValue ? .on : .off
             views.append(radio)
             statusFilterRadios.append(radio)
         }
@@ -268,8 +286,33 @@ final class BrowseOnlineCheatsViewController: NSViewController {
         return row
     }
 
-    // TODO: filter the results.
     @objc private func statusFilterChanged(_ sender: NSButton) {
+        guard let filter = StatusFilter(rawValue: sender.tag) else { return }
+        statusFilter = filter
+        applyFilters()
+    }
+
+    private func applyFilters() {
+        // Kept untrimmed so a leading space is meaningful — " 1" matches "Level 1"
+        // without also matching "10". Whitespace-only input still counts as no filter.
+        let name = nameFilter
+        let matchesName = name.count >= Self.minimumNameFilterLength
+            && !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+
+        visibleCheats = cheats.filter { cheat in
+            if matchesName, !cheat.name.localizedCaseInsensitiveContains(name) {
+                return false
+            }
+
+            switch statusFilter {
+            case .all: return true
+            case .working: return status(for: cheat) == .works
+            case .notWorking: return status(for: cheat) == .doesNotWork
+            case .notSet: return status(for: cheat) == .unknown
+            }
+        }
+
+        resultsTableView?.reloadData()
     }
 
     // MARK: - Game Info Panel
@@ -423,7 +466,7 @@ final class BrowseOnlineCheatsViewController: NSViewController {
                 NSLog("[Cheats] Browse Online failed: %@", error.localizedDescription)
                 cheats = []
             }
-            resultsTableView.reloadData()
+            applyFilters()
             hideLoadingIndicator()
         }
     }
@@ -432,8 +475,17 @@ final class BrowseOnlineCheatsViewController: NSViewController {
     /// fetched list and the reports shown against it.
     func resetForCoreChange() {
         cheats = []
+        visibleCheats = []
         statuses = [:]
         hasLoaded = false
+
+        statusFilter = .all
+        nameFilter = ""
+        nameFilterField?.stringValue = ""
+        for radio in statusFilterRadios {
+            radio.state = radio.tag == StatusFilter.all.rawValue ? .on : .off
+        }
+
         resultsTableView?.reloadData()
         updateGameInfo()
         fetchOnlineCheats()
@@ -444,7 +496,17 @@ final class BrowseOnlineCheatsViewController: NSViewController {
 
 extension BrowseOnlineCheatsViewController: NSTableViewDataSource {
     func numberOfRows(in tableView: NSTableView) -> Int {
-        cheats.count
+        visibleCheats.count
+    }
+}
+
+// MARK: - Name Filter
+
+extension BrowseOnlineCheatsViewController: NSTextFieldDelegate {
+    func controlTextDidChange(_ obj: Notification) {
+        guard (obj.object as? NSTextField) === nameFilterField else { return }
+        nameFilter = nameFilterField.stringValue
+        applyFilters()
     }
 }
 
@@ -452,8 +514,8 @@ extension BrowseOnlineCheatsViewController: NSTableViewDataSource {
 
 extension BrowseOnlineCheatsViewController: NSTableViewDelegate {
     func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
-        guard let identifier = tableColumn?.identifier, row < cheats.count else { return nil }
-        let cheat = cheats[row]
+        guard let identifier = tableColumn?.identifier, row < visibleCheats.count else { return nil }
+        let cheat = visibleCheats[row]
 
         if identifier.rawValue == "action" {
             return makeActionCell(in: tableView)
@@ -571,8 +633,8 @@ extension BrowseOnlineCheatsViewController: NSTableViewDelegate {
 
     @objc private func showCodeClicked(_ sender: NSButton) {
         let row = resultsTableView.row(for: sender)
-        guard row >= 0, row < cheats.count else { return }
-        presentCodeDialog(for: cheats[row])
+        guard row >= 0, row < visibleCheats.count else { return }
+        presentCodeDialog(for: visibleCheats[row])
     }
 
     // MARK: - Status Cell
@@ -602,11 +664,11 @@ extension BrowseOnlineCheatsViewController: NSTableViewDelegate {
 
     @objc private func statusClicked(_ sender: NSButton) {
         let row = resultsTableView.row(for: sender)
-        guard row >= 0, row < cheats.count,
+        guard row >= 0, row < visibleCheats.count,
               let status = CheatStatus(rawValue: sender.tag)
         else { return }
 
-        let cheat = cheats[row]
+        let cheat = visibleCheats[row]
         let key = statusKey(for: cheat)
         let feedback: CheatFeedbackStatus
         switch status {
@@ -626,9 +688,8 @@ extension BrowseOnlineCheatsViewController: NSTableViewDelegate {
                                                  coreVersion: document.corePlugin.version)
         }
 
-        let column = resultsTableView.column(withIdentifier: NSUserInterfaceItemIdentifier("status"))
-        guard column >= 0 else { return }
-        resultsTableView.reloadData(forRowIndexes: IndexSet(integer: row), columnIndexes: IndexSet(integer: column))
+        // Re-filtered rather than redrawn: the new status may exclude this row.
+        applyFilters()
     }
 
     private func presentCodeDialog(for cheat: DatabaseCheat) {
@@ -678,8 +739,8 @@ extension BrowseOnlineCheatsViewController: NSTableViewDelegate {
     @objc private func importClicked(_ sender: NSButton) {
         // Asked at click time so the row stays correct across reloads and sorting.
         let row = resultsTableView.row(for: sender)
-        guard row >= 0, row < cheats.count else { return }
-        NSLog("[Cheats] Import requested: %@", cheats[row].name)
+        guard row >= 0, row < visibleCheats.count else { return }
+        NSLog("[Cheats] Import requested: %@", visibleCheats[row].name)
     }
 }
 
