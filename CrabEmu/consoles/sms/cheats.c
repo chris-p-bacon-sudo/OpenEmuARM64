@@ -28,11 +28,16 @@
 int sms_cheats_enabled = 0;
 static int sms_cheats_initted = 0;
 static int count = 0;
+static sms_cheat_poke_func poke_func = NULL;
 
 TAILQ_HEAD(cheat_queue, smscheat_s) sms_cheats;
 
 extern uint8 *sms_write_map[256];
 extern int sms_bios_active;
+
+void sms_cheat_set_poke_func(sms_cheat_poke_func func) {
+    poke_func = func;
+}
 
 int sms_cheat_init(void) {
     if(sms_cheats_initted)
@@ -82,10 +87,13 @@ void sms_cheat_frame(void) {
 
     TAILQ_FOREACH(i, &sms_cheats, qentry) {
         if(i->enabled){
-            addr = (uint16)(i->ar_code >> 8);
+            addr = (uint16)(i->ar_code >> 16);
             data = (uint8)i->ar_code;
 
-            sms_write_map[addr >> 8][(uint8)addr] = data;
+            if(poke_func)
+                poke_func(addr, data);
+            else
+                sms_write_map[addr >> 8][(uint8)addr] = data;
         }
     }
 }

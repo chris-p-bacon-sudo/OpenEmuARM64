@@ -168,6 +168,7 @@ int sms_init(int video_system, int region, int borders) {
     gui_set_console((console_t *)&sms_cons);
 
     sms_cheat_init();
+    sms_cheat_set_poke_func(NULL);
 
     sms_mem_init();
     sms_vdp_init(video_system, borders);

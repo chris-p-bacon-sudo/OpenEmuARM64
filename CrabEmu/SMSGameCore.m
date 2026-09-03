@@ -500,6 +500,22 @@ const int ColecoVisionMap[] = {COLECOVISION_UP, COLECOVISION_DOWN, COLECOVISION_
 
 - (NSArray<OEMemoryRegionDescriptor *> *)readableMemoryRegions
 {
+    if (cur_console->console_type == CONSOLE_COLECOVISION)
+    {
+        uint8 *ramBase = coleco_get_ram();
+        if (!ramBase) return @[];
+
+        // Reported at 0x0000 (not the real $6000 CPU address) so cheat search
+        // and imported cheats match the RAM-relative addresses libretro .cht files use.
+        NSData *ramData = [NSData dataWithBytes:ramBase length:1024];
+        return @[
+            [OEMemoryRegionDescriptor descriptorWithName:@"RAM"
+                                                address:0x0000
+                                           addressBytes:2
+                                                   data:ramData]
+        ];
+    }
+
     uint8 *ramBase = sms_read_map[0xC0];
     if (!ramBase) return @[];
 

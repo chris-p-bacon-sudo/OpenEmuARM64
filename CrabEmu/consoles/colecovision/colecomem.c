@@ -782,3 +782,13 @@ void coleco_get_checksums(uint32 *crc, uint32 *adler) {
     *crc = rom_crc;
     *adler = rom_adler;
 }
+
+uint8 *coleco_get_ram(void) {
+    return ram;
+}
+
+void coleco_cheat_poke(uint16 addr, uint8 data) {
+    /* Cheat addresses are RAM-relative (0x0000-0x03FF), matching legacy
+       libretro .cht addresses, not the real $6000-$7FFF CPU range. */
+    ram[addr & 0x03FF] = data;
+}
