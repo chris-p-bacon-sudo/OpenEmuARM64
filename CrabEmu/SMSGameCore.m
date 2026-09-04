@@ -431,6 +431,15 @@ const int ColecoVisionMap[] = {COLECOVISION_UP, COLECOVISION_DOWN, COLECOVISION_
 
 #pragma mark - Cheats
 
+- (BOOL)isHexString:(NSString *)string
+{
+    if (string.length == 0)
+        return NO;
+
+    NSCharacterSet *nonHex = [[NSCharacterSet characterSetWithCharactersInString:@"0123456789abcdefABCDEF"] invertedSet];
+    return [string rangeOfCharacterFromSet:nonHex].location == NSNotFound;
+}
+
 - (void)setCheat:(NSString *)code setType:(NSString *)type setEnabled:(BOOL)enabled
 {
     // Sanitize
@@ -460,39 +469,43 @@ const int ColecoVisionMap[] = {COLECOVISION_UP, COLECOVISION_DOWN, COLECOVISION_
             multipleCodes = [key componentsSeparatedByString:@"+"];
             for (NSString *singleCode in multipleCodes)
             {
-                // Normalize raw format (ADDR:VAL) to 8-char AR (AAAAVVVV)
-                NSString *normalized = singleCode;
+                NSString *address = nil;
+                NSString *value = nil;
+
                 NSRange colon = [singleCode rangeOfString:@":"];
-                if (colon.location != NSNotFound) {
-                    NSString *addr = [singleCode substringToIndex:colon.location];
-                    NSString *val = [singleCode substringFromIndex:colon.location + 1];
-                    while (addr.length < 4) addr = [@"0" stringByAppendingString:addr];
-                    while (val.length < 4) val = [@"0" stringByAppendingString:val];
-                    normalized = [addr stringByAppendingString:val];
-                }
-
-                if ([normalized length] == 8)
+                if (colon.location != NSNotFound)
                 {
-                    // Action Replay GG/SMS format: XXXX-YYYY
-                    NSString *address = [normalized substringWithRange:NSMakeRange(0, 4)];
-                    NSString *value = [normalized substringWithRange:NSMakeRange(4, 4)];
-
-                    // Convert AR hex to int
-                    uint32_t outAddress, outValue;
-                    NSScanner *scanAddress = [NSScanner scannerWithString:address];
-                    NSScanner *scanValue = [NSScanner scannerWithString:value];
-                    if (![scanAddress scanHexInt:&outAddress] || ![scanValue scanHexInt:&outValue])
-                        continue;
-
-                    sms_cheat_t *arCode = (sms_cheat_t *)malloc(sizeof(sms_cheat_t));
-                    memset(arCode, 0, sizeof(sms_cheat_t));
-                    arCode->ar_code = (outAddress << 16) | outValue;
-                    strcpy(arCode->desc, [normalized UTF8String]);
-                    arCode->enabled = 1;
-
-                    sms_cheat_add(arCode);
-                    sms_cheat_enable();
+                    // Raw memory patch: ADDRESS:VALUE
+                    address = [singleCode substringToIndex:colon.location];
+                    value = [singleCode substringFromIndex:colon.location + 1];
                 }
+                else if (singleCode.length == 8)
+                {
+                    // Sega Action Replay, written 00AAAA-VV: 2-digit prefix, 16-bit address, 8-bit data
+                    address = [singleCode substringWithRange:NSMakeRange(2, 4)];
+                    value = [singleCode substringWithRange:NSMakeRange(6, 2)];
+                }
+                else
+                {
+                    continue;
+                }
+
+                if (![self isHexString:address] || ![self isHexString:value])
+                    continue;
+
+                uint32_t outAddress, outValue;
+                if (![[NSScanner scannerWithString:address] scanHexInt:&outAddress] ||
+                    ![[NSScanner scannerWithString:value] scanHexInt:&outValue])
+                    continue;
+
+                sms_cheat_t *arCode = (sms_cheat_t *)malloc(sizeof(sms_cheat_t));
+                memset(arCode, 0, sizeof(sms_cheat_t));
+                arCode->ar_code = ((outAddress & 0xFFFF) << 16) | (outValue & 0xFF);
+                strlcpy(arCode->desc, [singleCode UTF8String], sizeof(arCode->desc));
+                arCode->enabled = 1;
+
+                sms_cheat_add(arCode);
+                sms_cheat_enable();
             }
         }
     }
