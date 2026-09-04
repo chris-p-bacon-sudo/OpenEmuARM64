@@ -674,6 +674,7 @@ final class BrowseOnlineCheatsViewController: NSViewController {
         let coreID = document.corePlugin.bundleIdentifier
         let serial = document.rom.serial
         let gameName = document.rom.game?.displayName
+        let romURL = document.rom.url
 
         showLoadingIndicator()
 
@@ -688,7 +689,7 @@ final class BrowseOnlineCheatsViewController: NSViewController {
 
         Task {
             do {
-                let results = try await CheatDatabaseService.shared.cheats(forMD5: md5, serial: serial, gameName: gameName, systemIdentifier: systemID, coreIdentifier: coreID)
+                let results = try await CheatDatabaseService.shared.cheats(forMD5: md5, serial: serial, gameName: gameName, romURL: romURL, systemIdentifier: systemID, coreIdentifier: coreID)
                 let sorted = results.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
                 cheats = Self.disambiguatingDuplicateNames(sorted)
                 hasLoaded = true

@@ -25,6 +25,7 @@
 
 import Foundation
 import OpenEmuBase
+import CryptoKit
 import os.log
 
 // private let log = Logger(subsystem: "org.openemu.OpenEmu", category: "LibretroCheatProvider")
@@ -88,7 +89,7 @@ final class LibretroCheatProvider: CheatDatabaseProvider {
         systemMap[systemIdentifier] != nil
     }
 
-    func cheats(forMD5 md5: String, serial: String?, gameName: String?, systemIdentifier: String) async throws -> [DatabaseCheat] {
+    func cheats(forMD5 md5: String, serial: String?, gameName: String?, romURL: URL?, systemIdentifier: String) async throws -> [DatabaseCheat] {
         guard let libretroSystem = systemMap[systemIdentifier] else { return [] }
 
         // 1. Check local cache
@@ -117,7 +118,15 @@ final class LibretroCheatProvider: CheatDatabaseProvider {
         }
 
         // 2. No local cache — resolve game name via DAT (try MD5 first, then serial)
-        let lookup = try await lookupGameName(md5: md5, serial: serial, systemIdentifier: systemIdentifier)
+        // For disc systems, OpenEmu's stored MD5 hashes the .cue playlist file, not the disc data,
+        // so it never matches Libretro's per-track MD5s. Recompute the data track's MD5 when possible.
+        var lookupMD5 = md5
+        if Self.redumpSystems.contains(systemIdentifier), let romURL,
+           let recomputed = dataTrackMD5(forCueURL: romURL) {
+            lookupMD5 = recomputed
+        }
+
+        let lookup = try await lookupGameName(md5: lookupMD5, serial: serial, systemIdentifier: systemIdentifier)
 
         if lookup == nil && (gameName == nil || !Self.redumpSystems.contains(systemIdentifier)) {
             // log.info("No game found for MD5 \(md5) / serial \(serial ?? "nil") in system \(systemIdentifier)")
@@ -488,6 +497,97 @@ final class LibretroCheatProvider: CheatDatabaseProvider {
             if !pairs.isEmpty { return pairs.joined(separator: "+") }
         }
         return code
+    }
+
+    // MARK: - Data Track MD5 Recomputation
+
+    /// Describes where the disc's data track lives and how many bytes of it to hash.
+    /// `length == nil` means "hash the whole referenced file" (single-track disc, or the
+    /// data track already lives in its own separate file per the CUE's FILE statements).
+    private struct CUEDataTrackLayout {
+        let fileURL: URL
+        let length: Int?
+    }
+
+    /// Parses a CUE sheet to find the data track (always the first track) and, if a second
+    /// track shares the same underlying file (as with a merged chdman `extractcd` dump),
+    /// the byte offset where that second track begins.
+    private func parseCUEDataTrackLayout(cueURL: URL) -> CUEDataTrackLayout? {
+        guard let content = try? String(contentsOf: cueURL, encoding: .utf8) else { return nil }
+        let folderURL = cueURL.deletingLastPathComponent()
+
+        struct TrackEntry { var indices: [Int: (mm: Int, ss: Int, ff: Int)] = [:] }
+        struct FileSection { let fileName: String; var tracks: [TrackEntry] = [] }
+
+        var sections: [FileSection] = []
+
+        let filePattern = try! NSRegularExpression(pattern: #"^FILE\s+"([^"]+)""#)
+        let trackPattern = try! NSRegularExpression(pattern: #"^TRACK\s+\d+"#)
+        let indexPattern = try! NSRegularExpression(pattern: #"^INDEX\s+(\d+)\s+(\d+):(\d+):(\d+)"#)
+
+        for rawLine in content.components(separatedBy: .newlines) {
+            let line = rawLine.trimmingCharacters(in: .whitespaces)
+            let fullRange = NSRange(line.startIndex..., in: line)
+
+            if let match = filePattern.firstMatch(in: line, range: fullRange),
+               let nameRange = Range(match.range(at: 1), in: line) {
+                sections.append(FileSection(fileName: String(line[nameRange])))
+            } else if trackPattern.firstMatch(in: line, range: fullRange) != nil {
+                guard !sections.isEmpty else { continue }
+                sections[sections.count - 1].tracks.append(TrackEntry())
+            } else if let match = indexPattern.firstMatch(in: line, range: fullRange),
+                      let idxRange = Range(match.range(at: 1), in: line),
+                      let mmRange = Range(match.range(at: 2), in: line),
+                      let ssRange = Range(match.range(at: 3), in: line),
+                      let ffRange = Range(match.range(at: 4), in: line),
+                      let idx = Int(line[idxRange]), let mm = Int(line[mmRange]),
+                      let ss = Int(line[ssRange]), let ff = Int(line[ffRange]) {
+                guard !sections.isEmpty, !sections[sections.count - 1].tracks.isEmpty else { continue }
+                sections[sections.count - 1].tracks[sections[sections.count - 1].tracks.count - 1].indices[idx] = (mm, ss, ff)
+            }
+        }
+
+        guard let firstSection = sections.first, !firstSection.tracks.isEmpty else { return nil }
+        let dataTrackURL = folderURL.appendingPathComponent(firstSection.fileName)
+
+        // A second track in the SAME file section marks where the data track ends (merged dump)
+        if firstSection.tracks.count > 1 {
+            let secondTrack = firstSection.tracks[1]
+            if let msf = secondTrack.indices[0] ?? secondTrack.indices[1] {
+                let sectors = (msf.mm * 60 + msf.ss) * 75 + msf.ff
+                return CUEDataTrackLayout(fileURL: dataTrackURL, length: sectors * 2352)
+            }
+        }
+
+        // Single track, or the next track lives in its own separate file — hash the whole file
+        return CUEDataTrackLayout(fileURL: dataTrackURL, length: nil)
+    }
+
+    /// Recomputes the MD5 of just the disc's data track, matching how Libretro/Redump hash CD images.
+    /// OpenEmu's stored MD5 for CUE-based imports hashes the playlist text file, not disc content,
+    /// so it can never match the DAT — this recomputes it directly from the referenced binary.
+    private func dataTrackMD5(forCueURL cueURL: URL) -> String? {
+        guard cueURL.pathExtension.lowercased() == "cue" else { return nil }
+        guard let layout = parseCUEDataTrackLayout(cueURL: cueURL) else { return nil }
+
+        guard let file = try? FileHandle(forReadingFrom: layout.fileURL) else { return nil }
+        defer { try? file.close() }
+
+        var md5 = Insecure.MD5()
+        let bufferSize = 1024 * 1024
+        var remaining = layout.length
+
+        while true {
+            let toRead = remaining.map { min($0, bufferSize) } ?? bufferSize
+            guard toRead > 0, let data = try? file.read(upToCount: toRead), !data.isEmpty else { break }
+            md5.update(data: data)
+            if let r = remaining {
+                remaining = r - data.count
+                if remaining! <= 0 { break }
+            }
+        }
+
+        return md5.finalize().map { String(format: "%02X", $0) }.joined()
     }
 
     // MARK: - DAT Lookup
