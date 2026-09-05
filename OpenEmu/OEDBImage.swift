@@ -24,6 +24,15 @@
 
 import Cocoa
 
+extension Notification.Name {
+    /// Posted on the main thread when a background artwork availability check
+    /// or image decode (triggered by a cache miss in `isLocalImageAvailable`
+    /// or `image`) completes. userInfo[OEDBImageObjectIDKey] carries the
+    /// NSManagedObjectID of the OEDBImage that became available.
+    static let oeDBImageDidBecomeAvailable = Notification.Name("OEDBImageDidBecomeAvailableNotification")
+}
+let OEDBImageObjectIDKey = "OEDBImageObjectID"
+
 @objc
 final class OEDBImage: OEDBItem {
     
@@ -226,14 +235,45 @@ final class OEDBImage: OEDBItem {
         return relativePath
     }
     
+    private static let decodedImageCache: NSCache<NSString, NSImage> = {
+        let cache = NSCache<NSString, NSImage>()
+        cache.countLimit = 500
+        return cache
+    }()
+
+    private var _pendingImageDecodeRelativePath: String?
+
+    /// Synchronous on a cache hit. On a cache miss, kicks off a background
+    /// decode and returns nil immediately (a legal value for this property)
+    /// so scroll-driven datasource calls never block the main thread on
+    /// disk I/O + image decode. Callers should observe
+    /// `.oeDBImageDidBecomeAvailable` and reload once the decode completes.
     var image: NSImage? {
-        if let imageURL = imageURL {
-            return NSImage(contentsOf: imageURL)
-        } else {
-            return nil
+        guard let imageURL = imageURL, let key = uuid as NSString? else { return nil }
+
+        if let cached = OEDBImage.decodedImageCache.object(forKey: key) {
+            return cached
         }
+
+        let currentRelativePath = relativePath
+        if _pendingImageDecodeRelativePath != currentRelativePath {
+            _pendingImageDecodeRelativePath = currentRelativePath
+            let objectID = self.objectID
+            DispatchQueue.global(qos: .utility).async { [weak self] in
+                let decoded = NSImage(contentsOf: imageURL)
+                DispatchQueue.main.async {
+                    guard let self = self, self.relativePath == currentRelativePath else { return }
+                    self._pendingImageDecodeRelativePath = nil
+                    guard let decoded = decoded else { return }
+                    OEDBImage.decodedImageCache.setObject(decoded, forKey: key)
+                    NotificationCenter.default.post(name: .oeDBImageDidBecomeAvailable, object: nil,
+                                                     userInfo: [OEDBImageObjectIDKey: objectID])
+                }
+            }
+        }
+        return nil
     }
-    
+
     private var _cachedImageURL: URL?
     private var _cachedImageURLRelativePath: String?
 
@@ -267,21 +307,43 @@ final class OEDBImage: OEDBItem {
     
     private var _cachedIsLocalImageAvailable: Bool?
     private var _cachedIsLocalImageAvailableRelativePath: String?
+    private var _pendingLocalImageAvailabilityCheckRelativePath: String?
 
+    /// Synchronous on a cache hit. On a cache miss, returns `false` (falling
+    /// back to the placeholder path) and kicks off the disk stat in the
+    /// background, since this is called from scroll-driven datasource
+    /// methods on the main thread and must never block on I/O.
     var isLocalImageAvailable: Bool {
         let currentRelativePath = relativePath
         if let cached = _cachedIsLocalImageAvailable,
            _cachedIsLocalImageAvailableRelativePath == currentRelativePath {
             return cached
         }
-        let value = (try? imageURL?.checkResourceIsReachable()) ?? false
-        _cachedIsLocalImageAvailable = value
-        _cachedIsLocalImageAvailableRelativePath = currentRelativePath
-        return value
+
+        if _pendingLocalImageAvailabilityCheckRelativePath != currentRelativePath {
+            _pendingLocalImageAvailabilityCheckRelativePath = currentRelativePath
+            let url = imageURL
+            let objectID = self.objectID
+            DispatchQueue.global(qos: .utility).async { [weak self] in
+                let available = (try? url?.checkResourceIsReachable()) ?? false
+                DispatchQueue.main.async {
+                    guard let self = self, self.relativePath == currentRelativePath else { return }
+                    self._cachedIsLocalImageAvailable = available
+                    self._cachedIsLocalImageAvailableRelativePath = currentRelativePath
+                    self._pendingLocalImageAvailabilityCheckRelativePath = nil
+                    if available {
+                        NotificationCenter.default.post(name: .oeDBImageDidBecomeAvailable, object: nil,
+                                                         userInfo: [OEDBImageObjectIDKey: objectID])
+                    }
+                }
+            }
+        }
+        return false
     }
 
     func invalidateLocalImageAvailabilityCache() {
         _cachedIsLocalImageAvailable = nil
         _cachedIsLocalImageAvailableRelativePath = nil
+        _pendingLocalImageAvailabilityCheckRelativePath = nil
     }
 }

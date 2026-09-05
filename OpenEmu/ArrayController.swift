@@ -28,15 +28,23 @@ import Cocoa
 class ArrayController: NSArrayController {
     @objc var limit: Int = 0
     @objc var fetchSortDescriptors: [NSSortDescriptor] = []
-    
+    @objc var fetchBatchSize: Int = 0
+    @objc var relationshipKeyPathsForPrefetching: [String] = []
+
     override func fetch(with fetchRequest: NSFetchRequest<NSFetchRequestResult>?, merge: Bool) throws {
         let req = fetchRequest ?? makeFetchRequest()
         if fetchSortDescriptors.count > 0 {
             req.sortDescriptors = fetchSortDescriptors
         }
-        
+
         req.fetchLimit = max(0, limit)
-        
+        if fetchBatchSize > 0 {
+            req.fetchBatchSize = fetchBatchSize
+        }
+        if relationshipKeyPathsForPrefetching.count > 0 {
+            req.relationshipKeyPathsForPrefetching = relationshipKeyPathsForPrefetching
+        }
+
         return try super.fetch(with: req, merge: merge)
     }
     

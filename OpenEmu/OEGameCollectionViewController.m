@@ -53,6 +53,7 @@ static NSString * const OEGameTableSortDescriptorsKey = @"OEGameTableSortDescrip
 
 @property (strong) NSDate *listViewSelectionChangeDate;
 @property (readonly) OEArrayController *gamesController;
+@property (nonatomic) BOOL imageAvailabilityReloadScheduled;
 
 @end
 
@@ -73,6 +74,14 @@ static NSString * const OEGameTableSortDescriptorsKey = @"OEGameTableSortDescrip
     self.selectedViewTag = tag != -1 ? tag : 0;
 
     [[self listView] setDraggingSourceOperationMask:NSDragOperationCopy forLocal:NO];
+
+    // OEDBImage resolves artwork availability/decode in the background on a
+    // cache miss and posts this when a result becomes available, so the grid
+    // can pick up artwork that wasn't ready synchronously during layout.
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                              selector:@selector(OE_imageDidBecomeAvailable:)
+                                                  name:@"OEDBImageDidBecomeAvailableNotification"
+                                                object:nil];
 }
 
 - (void)viewWillAppear
@@ -126,7 +135,15 @@ static NSString * const OEGameTableSortDescriptorsKey = @"OEGameTableSortDescrip
     gamesController = [[OEArrayController alloc] init];
     [gamesController setAutomaticallyRearrangesObjects:YES];
     [gamesController setAutomaticallyPreparesContent:NO];
+    // usesLazyFetching=YES throws an NSInvalidArgumentException from Core Data
+    // here (confirmed by crash-testing) when combined with
+    // automaticallyRearrangesObjects — the two are a known-incompatible
+    // NSArrayController combo. fetchBatchSize + prefetching relationships
+    // still cut the fetch cost substantially without touching how
+    // NSArrayController materializes/rearranges its array.
     [gamesController setUsesLazyFetching:NO];
+    [gamesController setFetchBatchSize:100];
+    [gamesController setRelationshipKeyPathsForPrefetching:@[@"system", @"boxImage"]];
 
     [gamesController setManagedObjectContext:context];
     [gamesController setEntityName:@"Game"];
@@ -167,7 +184,24 @@ static NSString * const OEGameTableSortDescriptorsKey = @"OEGameTableSortDescrip
 
 - (void)dealloc
 {
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
     gamesController = nil;
+}
+
+// A freshly-opened large library can complete dozens of background artwork
+// checks/decodes in quick succession; coalesce them into a single reload
+// instead of invalidating the whole grid per completion.
+- (void)OE_imageDidBecomeAvailable:(NSNotification *)note
+{
+    if (self.imageAvailabilityReloadScheduled) return;
+    self.imageAvailabilityReloadScheduled = YES;
+
+    __weak typeof(self) weakSelf = self;
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.075 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        __strong typeof(self) strongSelf = weakSelf;
+        strongSelf.imageAvailabilityReloadScheduled = NO;
+        [strongSelf.gridView reloadData];
+    });
 }
 
 #pragma mark - Selection
