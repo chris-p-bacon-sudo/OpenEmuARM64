@@ -23,3 +23,5 @@
 #import "NSDocument+OEAdditions.h"
 #import "AppKit+ApplePrivate.h"
 #import "XADArchive+OE.h"
+
+#import "OERetroAchievementsLoginClient.h"
