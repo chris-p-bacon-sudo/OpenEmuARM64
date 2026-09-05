@@ -24,17 +24,17 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.3.0
         with:
           submodules: recursive
 
       - name: Set Xcode version
-        uses: maxim-lobanov/setup-xcode@v1
+        uses: maxim-lobanov/setup-xcode@1242409711ff5721add51979e9e11e23ebb7e5a4 # v1.6.0
         with:
           xcode-version: latest-stable
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@6d786de4d6f3531a740e445b53a42b622bbbace8 # v3
         with:
           languages: ${{ matrix.language }}
           build-mode: manual
@@ -57,6 +57,6 @@ jobs:
             CODE_SIGNING_REQUIRED=NO
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@6d786de4d6f3531a740e445b53a42b622bbbace8 # v3
         with:
           category: "/language:${{ matrix.language }}"
