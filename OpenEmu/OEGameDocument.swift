@@ -1189,6 +1189,7 @@ final class OEGameDocument: NSDocument {
             if HardcoreModePolicy.allows(.cheats, hardcoreEnabled: self.isHardcoreModeEnabled) {
                 self.cheats.filter(\.isEnabled).forEach { self.setCheat($0) }
             }
+            (self.gameWindowController as? GameWindowController)?.gameDidStartPlaying()
         }
 
         gameViewController.reflectEmulationPaused(false)

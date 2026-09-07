@@ -72,6 +72,19 @@ final class GameWindowController: NSWindowController {
     /// resize+recenter passes stacked back to back. See gameScreenSizeDidChange().
     private var pendingWindowResizeWorkItem: DispatchWorkItem?
 
+    /// True once emulation has actually started playing (see gameDidStartPlaying())
+    /// and the window has performed its one settle to the core's real resolution.
+    /// Before that point, cores can report their resolution more than once over
+    /// the course of booting — an initial guess before the disc is read, then one
+    /// or more corrected values once the real game/region is detected — and
+    /// resizing the window for every intermediate report is what made it visibly
+    /// jump around several times on launch. A fixed debounce delay can't reliably
+    /// span boot, since the gap between reports varies with how long the core
+    /// takes to get through its own boot sequence (PSX BIOS emulation in
+    /// particular can take a couple of seconds), so this ties the settle to the
+    /// actual "now playing" event instead of guessing a timeout.
+    private var hasSettledInitialWindowSize = false
+
     override init(window: NSWindow?) {
         snapDelegate = OEIntegralWindowResizingDelegate()
         
@@ -521,11 +534,27 @@ extension GameWindowController: GameIntegralScalingDelegate {
         }
     }
     
+    /// Called once by OEGameDocument when emulation first starts playing.
+    /// Applies the window's one and only settle to the core's now-stable
+    /// resolution, then behaves normally for any later, genuinely new
+    /// resolution reports (e.g. a game switching video mode mid-play).
+    func gameDidStartPlaying() {
+        guard !hasSettledInitialWindowSize else { return }
+        hasSettledInitialWindowSize = true
+        gameScreenSizeDidChange()
+    }
+
     func gameScreenSizeDidChange() {
         guard let window else { return }
 
         window.contentAspectRatio = gameDocument.gameViewController.defaultScreenSize
         updateContentSizeConstraints()
+
+        guard hasSettledInitialWindowSize else {
+            // Not playing yet — aspect ratio/constraints above are already
+            // current; the frame itself is left alone until gameDidStartPlaying().
+            return
+        }
 
         // Debounce only the visible frame change below — aspect ratio and size
         // constraints above are cheap metadata updates with no visible motion, so
