@@ -65,7 +65,13 @@ final class GameWindowController: NSWindowController {
     private var windowedIntegralScale = 0
     
     private var eventMonitor: Any?
-    
+
+    /// Coalesces bursts of core-driven screen size reports during boot (an initial
+    /// guess before the disc is read, then a corrected value once the real game/
+    /// region is detected) into one settled resize instead of several animated
+    /// resize+recenter passes stacked back to back. See gameScreenSizeDidChange().
+    private var pendingWindowResizeWorkItem: DispatchWorkItem?
+
     override init(window: NSWindow?) {
         snapDelegate = OEIntegralWindowResizingDelegate()
         
@@ -114,9 +120,10 @@ final class GameWindowController: NSWindowController {
     }
     
     deinit {
+        pendingWindowResizeWorkItem?.cancel()
         window?.delegate = nil
         window = nil
-        
+
         if let eventMonitor {
             NSEvent.removeMonitor(eventMonitor)
             self.eventMonitor = nil
@@ -516,19 +523,28 @@ extension GameWindowController: GameIntegralScalingDelegate {
     
     func gameScreenSizeDidChange() {
         guard let window else { return }
-        
+
         window.contentAspectRatio = gameDocument.gameViewController.defaultScreenSize
         updateContentSizeConstraints()
-        
+
+        // Debounce only the visible frame change below — aspect ratio and size
+        // constraints above are cheap metadata updates with no visible motion, so
+        // they stay immediate and correct on every call.
+        pendingWindowResizeWorkItem?.cancel()
+
         if fullScreenStatus == .nonFullScreen {
             let currentScale = windowedIntegralScale
-            if currentScale != Self.fitToWindowScale {
+            guard currentScale != Self.fitToWindowScale else { return }
+            let workItem = DispatchWorkItem { [weak self] in
+                guard let self, let window = self.window else { return }
                 var newWindowFrame = window.frame
-                newWindowFrame.size = windowSize(forGameViewIntegralScale: currentScale)
+                newWindowFrame.size = self.windowSize(forGameViewIntegralScale: currentScale)
                 newWindowFrame.origin.x = round(window.frame.midX - newWindowFrame.size.width / 2)
                 newWindowFrame.origin.y = round(window.frame.midY - newWindowFrame.size.height / 2)
                 window.setFrame(newWindowFrame, display: true, animate: true)
             }
+            pendingWindowResizeWorkItem = workItem
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15, execute: workItem)
         } else if fullScreenStatus == .fullScreen {
             let gv = gameDocument.gameViewController
             if fullScreenIntegralScale == Self.fitToWindowScale {
