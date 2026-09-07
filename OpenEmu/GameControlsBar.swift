@@ -434,37 +434,113 @@ final class GameControlsBar: NSWindow {
             menu.addItem(searchItem)
         }
 
+        if gameViewController.supportsOnlineCheats {
+            let browseItem = NSMenuItem(title: NSLocalizedString("Browse Online Cheats…", comment: ""), action: #selector(OEGameDocument.browseOnlineCheats(_:)), keyEquivalent: "")
+            if hardcoreOn { browseItem.isEnabled = false }
+            menu.addItem(browseItem)
+        }
+
         let cheats = gameViewController.document.cheats
+            // Stable sort: manual/Cheat Search entries first, Browse Online Cheats imports after.
+            .sorted { ($0.cheatSource != nil ? 1 : 0) < ($1.cheatSource != nil ? 1 : 0) }
         if !cheats.isEmpty {
             menu.addItem(.separator())
 
+            var didAddImportedSeparator = false
+
+            let document: OEGameDocument = gameViewController.document
+            let currentStatuses: [String: CheatFeedbackStatus]
+            if let md5 = document.rom.md5Hash {
+                currentStatuses = CheatFeedbackService.shared.statuses(forMD5: md5,
+                                                                      systemIdentifier: document.systemPlugin.systemIdentifier,
+                                                                      coreIdentifier: document.corePlugin.bundleIdentifier,
+                                                                      coreVersion: document.corePlugin.version)
+            } else {
+                currentStatuses = [:]
+            }
+
             for cheat in cheats {
-                let cheatItem = NSMenuItem(title: cheat.name, action: nil, keyEquivalent: "")
+                // Marks the boundary between the user's own cheats and Browse Online Cheats imports.
+                if cheat.cheatSource != nil, !didAddImportedSeparator {
+                    menu.addItem(.separator())
+                    didAddImportedSeparator = true
+                }
+
+                let compatible = cheat.isCompatibleWithCore
+                let displayName = Self.truncatedCheatMenuName(cheat.name)
+                let cheatItem = NSMenuItem(title: displayName, action: nil, keyEquivalent: "")
                 cheatItem.state = cheat.isEnabled ? .on : .off
+                cheatItem.image = providerIcon(for: cheat.cheatSource)
                 if hardcoreOn { cheatItem.isEnabled = false }
+                if !compatible {
+                    cheatItem.toolTip = NSLocalizedString("Not supported by this emulator.", comment: "Cheat incompatible with current core")
+                    let attrs: [NSAttributedString.Key: Any] = [
+                        .foregroundColor: NSColor.systemRed.withAlphaComponent(0.7)
+                    ]
+                    cheatItem.attributedTitle = NSAttributedString(string: displayName, attributes: attrs)
+                } else if displayName != cheat.name {
+                    // Long names are truncated in the title, so the full name is still one hover away.
+                    cheatItem.toolTip = cheat.name
+                }
 
                 let submenu = NSMenu()
                 if hardcoreOn { submenu.autoenablesItems = false }
 
-                let toggleItem = NSMenuItem(title: NSLocalizedString("Enabled", comment: "Cheat submenu toggle"), action: #selector(OEGameDocument.toggleCheat(_:)), keyEquivalent: "")
-                toggleItem.representedObject = cheat
-                toggleItem.state = cheat.isEnabled ? .on : .off
-                if hardcoreOn { toggleItem.isEnabled = false }
-                submenu.addItem(toggleItem)
-
-                if cheat.isUserAdded {
+                if compatible {
+                    let toggleItem = NSMenuItem(title: NSLocalizedString("Enabled", comment: "Cheat submenu toggle"), action: #selector(OEGameDocument.toggleCheat(_:)), keyEquivalent: "")
+                    toggleItem.representedObject = cheat
+                    toggleItem.state = cheat.isEnabled ? .on : .off
+                    if hardcoreOn { toggleItem.isEnabled = false }
+                    submenu.addItem(toggleItem)
                     submenu.addItem(.separator())
 
-                    let editItem = NSMenuItem(title: NSLocalizedString("Edit…", comment: "Cheat submenu edit"), action: #selector(OEGameDocument.editCheat(_:)), keyEquivalent: "")
-                    editItem.representedObject = cheat
-                    if hardcoreOn { editItem.isEnabled = false }
-                    submenu.addItem(editItem)
-
-                    let removeItem = NSMenuItem(title: NSLocalizedString("Remove", comment: "Cheat submenu remove"), action: #selector(OEGameDocument.removeCheat(_:)), keyEquivalent: "")
-                    removeItem.representedObject = cheat
-                    if hardcoreOn { removeItem.isEnabled = false }
-                    submenu.addItem(removeItem)
+                    // Imported cheats aren't hand-authored, so there's nothing sensible to edit.
+                    if cheat.cheatSource == nil {
+                        let editItem = NSMenuItem(title: NSLocalizedString("Edit…", comment: "Cheat submenu edit"), action: #selector(OEGameDocument.editCheat(_:)), keyEquivalent: "")
+                        editItem.representedObject = cheat
+                        if hardcoreOn { editItem.isEnabled = false }
+                        submenu.addItem(editItem)
+                    }
                 }
+
+                let removeItem = NSMenuItem(title: NSLocalizedString("Remove", comment: "Cheat submenu remove"), action: #selector(OEGameDocument.removeCheat(_:)), keyEquivalent: "")
+                removeItem.representedObject = cheat
+                if hardcoreOn { removeItem.isEnabled = false }
+
+                // Feedback is only meaningful for a cheat that came from a shared code database.
+                if cheat.cheatSource != nil {
+                    let currentStatus = currentStatuses[CheatFeedbackService.key(for: cheat.code)]
+
+                    let statusItem = NSMenuItem(title: NSLocalizedString("Set Status", comment: "Cheat submenu status feedback"), action: nil, keyEquivalent: "")
+                    if hardcoreOn { statusItem.isEnabled = false }
+
+                    let statusSubmenu = NSMenu()
+                    if hardcoreOn { statusSubmenu.autoenablesItems = false }
+
+                    for (status, title) in [
+                        (CheatFeedbackStatus.works, NSLocalizedString("Working", comment: "Cheat status feedback option")),
+                        (CheatFeedbackStatus.doesNotWork, NSLocalizedString("Not Working", comment: "Cheat status feedback option")),
+                        (CheatFeedbackStatus.unknown, NSLocalizedString("I don't know", comment: "Cheat status feedback option")),
+                    ] {
+                        let action: Selector
+                        switch status {
+                        case .works: action = #selector(OEGameDocument.setCheatStatusWorks(_:))
+                        case .doesNotWork: action = #selector(OEGameDocument.setCheatStatusDoesNotWork(_:))
+                        case .unknown: action = #selector(OEGameDocument.setCheatStatusUnknown(_:))
+                        }
+
+                        let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
+                        item.representedObject = cheat
+                        item.image = Self.statusMenuIcon(for: status, isSelected: currentStatus == status)
+                        if hardcoreOn { item.isEnabled = false }
+                        statusSubmenu.addItem(item)
+                    }
+
+                    statusItem.submenu = statusSubmenu
+                    submenu.addItem(statusItem)
+                }
+
+                submenu.addItem(removeItem)
 
                 cheatItem.submenu = submenu
                 menu.addItem(cheatItem)
@@ -472,6 +548,57 @@ final class GameControlsBar: NSWindow {
         }
 
         return menu
+    }
+
+    /// `cheatSource` holds the provider name exactly as reported by `CheatDatabaseProvider.name`;
+    /// an unrecognized value (or `nil`, for manual/Cheat Search cheats) just means no icon.
+    private func providerIcon(for cheatSource: String?) -> NSImage? {
+        switch cheatSource {
+        case "OpenEmu": return NSImage(named: "cheat_provider_openemu")
+        case "Libretro": return NSImage(named: "cheat_provider_libretro")
+        default: return nil
+        }
+    }
+
+    /// Mirrors `StatusCellView`'s icon set from the Browse Online Cheats results table, so the
+    /// same status reads the same way in both places. Unselected rows stay neutral on purpose —
+    /// nothing is highlighted for a cheat that was never reported on.
+    private static func statusMenuIcon(for status: CheatFeedbackStatus, isSelected: Bool) -> NSImage? {
+        let symbolBase: String
+        let selectedTint: NSColor
+        switch status {
+        case .works: symbolBase = "checkmark.circle"; selectedTint = .systemGreen
+        case .doesNotWork: symbolBase = "xmark.circle"; selectedTint = .systemRed
+        case .unknown: symbolBase = "questionmark.circle"; selectedTint = StatusCellView.unknownColor
+        }
+
+        let symbolName = isSelected ? "\(symbolBase).fill" : symbolBase
+        let config = NSImage.SymbolConfiguration(pointSize: 14, weight: .regular)
+        guard let symbol = NSImage(systemSymbolName: symbolName, accessibilityDescription: nil)?
+            .withSymbolConfiguration(config)
+        else { return nil }
+
+        // Menu item images are baked with a fixed color rather than acting as templates, so an
+        // unselected icon needs to match the menu's text color to stay visible — darkened,
+        // since the plain label color reads as too bright/harsh for an inactive icon.
+        let tint = isSelected ? selectedTint : (NSColor.labelColor.blended(withFraction: 0.5, of: .black) ?? .labelColor)
+        let tinted = NSImage(size: symbol.size, flipped: false) { rect in
+            symbol.draw(in: rect)
+            tint.set()
+            rect.fill(using: .sourceAtop)
+            return true
+        }
+        tinted.isTemplate = false
+        return tinted
+    }
+
+    /// NSMenu has no width cap of its own — it sizes to whatever the longest title needs —
+    /// so long imported cheat names are truncated by character count instead.
+    private static let maxCheatMenuNameLength = 30
+
+    private static func truncatedCheatMenuName(_ name: String) -> String {
+        guard name.count > maxCheatMenuNameLength else { return name }
+        return "\(name.prefix(maxCheatMenuNameLength - 1))…"
     }
     
     var coresMenu: NSMenu? {

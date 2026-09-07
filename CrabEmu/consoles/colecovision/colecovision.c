@@ -40,6 +40,7 @@
 #include "sn76489.h"
 #include "smsz80.h"
 #include "sound.h"
+#include "cheats.h"
 
 /* Import some stuff from the SMS emulation. Not exactly the cleanest way to do
    this, but it'll work for now. */
@@ -161,6 +162,9 @@ int coleco_init(int video_system) {
     sms_region = region;
 
     gui_set_console((console_t *)&colecovision_cons);
+
+    sms_cheat_init();
+    sms_cheat_set_poke_func(&coleco_cheat_poke);
 
     coleco_mem_init();
 
@@ -336,6 +340,8 @@ static void coleco_frame(int skip) {
     }
 
     sound_update_buffer(buf, samples << 1);
+
+    sms_cheat_frame();
 
     /* Reset the state for the next frame. */
     cycles_run -= cycles_to_run;

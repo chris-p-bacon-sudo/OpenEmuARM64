@@ -710,6 +710,82 @@ Hangi ilişkilendirmelerin etkilendiğini kontrol etmek için Kontrolcü tercihl
 	<string>Hile ekle</string>
 	<key>Cheat Search…</key>
 	<string>Hile Ara…</string>
+	<key>Browse Online Cheats…</key>
+	<string>Çevrimiçi Hilelere Göz At…</string>
+	<key>Browse Online Cheats</key>
+	<string>Çevrimiçi Hilelere Göz At</string>
+	<key>Game</key>
+	<string>Oyun</string>
+	<key>MD5</key>
+	<string>MD5</string>
+	<key>Cheat Name</key>
+	<string>Hile Adı</string>
+	<key>Provider</key>
+	<string>Sağlayıcı</string>
+	<key>Status</key>
+	<string>Durum</string>
+	<key>Action</key>
+	<string>İşlem</string>
+	<key>Import</key>
+	<string>İçe Aktar</string>
+	<key>Code already used</key>
+	<string>Kod zaten kullanılıyor</string>
+	<key>Remove</key>
+	<string>Kaldır</string>
+	<key>Code</key>
+	<string>Kod</string>
+	<key>Cheat Code</key>
+	<string>Hile Kodu</string>
+	<key>Click to see the code</key>
+	<string>Kodu görmek için tıklayın</string>
+	<key>Copy</key>
+	<string>Kopyala</string>
+	<key>Close</key>
+	<string>Kapat</string>
+	<key>Notes</key>
+	<string>Notlar</string>
+	<key>Save</key>
+	<string>Kaydet</string>
+	<key>Click to add or edit notes for this cheat</key>
+	<string>Bu hile için not eklemek veya düzenlemek için tıklayın</string>
+	<key>Cheat Removed</key>
+	<string>Hile Kaldırıldı</string>
+	<key>Did this cheat code work for you?</key>
+	<string>Bu hile kodu sizin için işe yaradı mı?</string>
+	<key>I don't know</key>
+	<string>Bilmiyorum</string>
+	<key>Set Status</key>
+	<string>Durumu Ayarla</string>
+	<key>It works for me</key>
+	<string>Bende çalışıyor</string>
+	<key>It does not work for me</key>
+	<string>Bende çalışmıyor</string>
+	<key>Not set</key>
+	<string>Ayarlanmadı</string>
+	<key>All</key>
+	<string>Tümü</string>
+	<key>%@ result found</key>
+	<string>%@ sonuç bulundu</string>
+	<key>%@ results found</key>
+	<string>%@ sonuç bulundu</string>
+	<key>Showing first %1$@ of %2$@ matches, narrow your search</key>
+	<string>%2$@ sonucun ilk %1$@ tanesi gösteriliyor, aramayı daraltın</string>
+	<key>Showing first %1$@ of %2$@ cheats. Narrow your search.</key>
+	<string>%2$@ hilenin ilk %1$@ tanesi gösteriliyor. Aramayı daraltın.</string>
+	<key>No cheats found</key>
+	<string>Hile bulunamadı</string>
+	<key>%1$@ (%2$d of %3$d)</key>
+	<string>%1$@ (%3$d hilenin %2$d.)</string>
+	<key>Mark if the cheat worked for you or not</key>
+	<string>Hilenin sizde çalışıp çalışmadığını işaretleyin</string>
+	<key>Working</key>
+	<string>Çalışıyor</string>
+	<key>Not Working</key>
+	<string>Çalışmıyor</string>
+	<key>Use the controls below to filter by name and the status you chose</key>
+	<string>Ada ve seçtiğiniz duruma göre filtrelemek için aşağıdaki denetimleri kullanın</string>
+    <key>Not supported by this emulator.</key>
+    <string>Bu emülatör tarafından desteklenmiyor.</string>
 	<key>Cheat Search</key>
 	<string>Hile Ara</string>
 	<key>Store Values</key>

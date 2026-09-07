@@ -710,6 +710,82 @@ You can go to the Controls preferences to check which associations were affected
 	<string>Добавить Чит-код</string>
 	<key>Cheat Search…</key>
 	<string>Поиск чит-кодов…</string>
+	<key>Browse Online Cheats…</key>
+	<string>Обзор онлайн чит-кодов…</string>
+	<key>Browse Online Cheats</key>
+	<string>Обзор онлайн чит-кодов</string>
+	<key>Game</key>
+	<string>Игра</string>
+	<key>MD5</key>
+	<string>MD5</string>
+	<key>Cheat Name</key>
+	<string>Название чит-кода</string>
+	<key>Provider</key>
+	<string>Источник</string>
+	<key>Status</key>
+	<string>Состояние</string>
+	<key>Action</key>
+	<string>Действие</string>
+	<key>Import</key>
+	<string>Импорт</string>
+	<key>Code already used</key>
+	<string>Код уже используется</string>
+	<key>Remove</key>
+	<string>Удалить</string>
+	<key>Code</key>
+	<string>Код</string>
+	<key>Cheat Code</key>
+	<string>Чит-код</string>
+	<key>Click to see the code</key>
+	<string>Нажмите, чтобы увидеть код</string>
+	<key>Copy</key>
+	<string>Копировать</string>
+	<key>Close</key>
+	<string>Закрыть</string>
+	<key>Notes</key>
+	<string>Заметки</string>
+	<key>Save</key>
+	<string>Сохранить</string>
+	<key>Click to add or edit notes for this cheat</key>
+	<string>Нажмите, чтобы добавить или изменить заметки к этому читу</string>
+	<key>Cheat Removed</key>
+	<string>Чит удалён</string>
+	<key>Did this cheat code work for you?</key>
+	<string>Сработал ли у вас этот чит?</string>
+	<key>I don't know</key>
+	<string>Не знаю</string>
+	<key>Set Status</key>
+	<string>Указать статус</string>
+	<key>It works for me</key>
+	<string>У меня работает</string>
+	<key>It does not work for me</key>
+	<string>У меня не работает</string>
+	<key>Not set</key>
+	<string>Не задано</string>
+	<key>All</key>
+	<string>Все</string>
+	<key>%@ result found</key>
+	<string>Найдено %@ результат</string>
+	<key>%@ results found</key>
+	<string>Найдено %@ результатов</string>
+	<key>Showing first %1$@ of %2$@ matches, narrow your search</key>
+	<string>Показаны первые %1$@ из %2$@ результатов, уточните поиск</string>
+	<key>Showing first %1$@ of %2$@ cheats. Narrow your search.</key>
+	<string>Показаны первые %1$@ из %2$@ читов. Уточните поиск.</string>
+	<key>No cheats found</key>
+	<string>Читы не найдены</string>
+	<key>%1$@ (%2$d of %3$d)</key>
+	<string>%1$@ (%2$d из %3$d)</string>
+	<key>Mark if the cheat worked for you or not</key>
+	<string>Отметьте, сработал ли чит-код у вас</string>
+	<key>Working</key>
+	<string>Работает</string>
+	<key>Not Working</key>
+	<string>Не работает</string>
+	<key>Use the controls below to filter by name and the status you chose</key>
+	<string>Используйте элементы ниже для фильтрации по названию и выбранному состоянию</string>
+    <key>Not supported by this emulator.</key>
+    <string>Не поддерживается этим эмулятором.</string>
 	<key>Cheat Search</key>
 	<string>Поиск чит-кодов</string>
 	<key>Store Values</key>

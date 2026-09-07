@@ -680,6 +680,82 @@ You can go to the Controls preferences to check which associations were affected
 	<string>أضف الغش</string>
 	<key>Cheat Search…</key>
 	<string>بحث عن شفرات غش…</string>
+	<key>Browse Online Cheats…</key>
+	<string>تصفح الغش عبر الإنترنت…</string>
+	<key>Browse Online Cheats</key>
+	<string>تصفح الغش عبر الإنترنت</string>
+	<key>Game</key>
+	<string>اللعبة</string>
+	<key>MD5</key>
+	<string>MD5</string>
+	<key>Cheat Name</key>
+	<string>اسم الغش</string>
+	<key>Provider</key>
+	<string>المزود</string>
+	<key>Status</key>
+	<string>الحالة</string>
+	<key>Action</key>
+	<string>إجراء</string>
+	<key>Import</key>
+	<string>استيراد</string>
+	<key>Code already used</key>
+	<string>الرمز مستخدم بالفعل</string>
+	<key>Remove</key>
+	<string>إزالة</string>
+	<key>Code</key>
+	<string>الشفرة</string>
+	<key>Cheat Code</key>
+	<string>شفرة الغش</string>
+	<key>Click to see the code</key>
+	<string>انقر لرؤية الشفرة</string>
+	<key>Copy</key>
+	<string>نسخ</string>
+	<key>Close</key>
+	<string>إغلاق</string>
+	<key>Notes</key>
+	<string>ملاحظات</string>
+	<key>Save</key>
+	<string>حفظ</string>
+	<key>Click to add or edit notes for this cheat</key>
+	<string>انقر لإضافة أو تعديل ملاحظات هذا الخدع</string>
+	<key>Cheat Removed</key>
+	<string>تمت إزالة الخدع</string>
+	<key>Did this cheat code work for you?</key>
+	<string>هل نجح رمز الخدع هذا معك؟</string>
+	<key>I don't know</key>
+	<string>لا أعرف</string>
+	<key>Set Status</key>
+	<string>تحديد الحالة</string>
+	<key>It works for me</key>
+	<string>تعمل معي</string>
+	<key>It does not work for me</key>
+	<string>لا تعمل معي</string>
+	<key>Not set</key>
+	<string>غير محدد</string>
+	<key>All</key>
+	<string>الكل</string>
+	<key>%@ result found</key>
+	<string>تم العثور على %@ نتيجة</string>
+	<key>%@ results found</key>
+	<string>تم العثور على %@ نتيجة</string>
+	<key>Showing first %1$@ of %2$@ matches, narrow your search</key>
+	<string>عرض أول %1$@ من %2$@ نتيجة، ضيّق بحثك</string>
+	<key>Showing first %1$@ of %2$@ cheats. Narrow your search.</key>
+	<string>عرض أول %1$@ من %2$@ خدعة. ضيّق بحثك.</string>
+	<key>No cheats found</key>
+	<string>لم يتم العثور على خدع</string>
+	<key>%1$@ (%2$d of %3$d)</key>
+	<string>%1$@ (%2$d من %3$d)</string>
+	<key>Mark if the cheat worked for you or not</key>
+	<string>حدد ما إذا كانت الشفرة قد عملت معك أم لا</string>
+	<key>Working</key>
+	<string>تعمل</string>
+	<key>Not Working</key>
+	<string>لا تعمل</string>
+	<key>Use the controls below to filter by name and the status you chose</key>
+	<string>استخدم عناصر التحكم أدناه للتصفية حسب الاسم والحالة التي اخترتها</string>
+    <key>Not supported by this emulator.</key>
+    <string>غير مدعوم من هذا المحاكي.</string>
 	<key>Cheat Search</key>
 	<string>بحث عن شفرات غش</string>
 	<key>Store Values</key>

@@ -709,6 +709,82 @@ You can go to the Controls preferences to check which associations were affected
 	<string>Voeg cheat toe</string>
 	<key>Cheat Search…</key>
 	<string>Cheat zoeken…</string>
+	<key>Browse Online Cheats…</key>
+	<string>Online cheats zoeken…</string>
+	<key>Browse Online Cheats</key>
+	<string>Online cheats zoeken</string>
+	<key>Game</key>
+	<string>Spel</string>
+	<key>MD5</key>
+	<string>MD5</string>
+	<key>Cheat Name</key>
+	<string>Cheatnaam</string>
+	<key>Provider</key>
+	<string>Aanbieder</string>
+	<key>Status</key>
+	<string>Status</string>
+	<key>Action</key>
+	<string>Actie</string>
+	<key>Import</key>
+	<string>Importeren</string>
+	<key>Code already used</key>
+	<string>Code al gebruikt</string>
+	<key>Remove</key>
+	<string>Verwijderen</string>
+	<key>Code</key>
+	<string>Code</string>
+	<key>Cheat Code</key>
+	<string>Cheatcode</string>
+	<key>Click to see the code</key>
+	<string>Klik om de code te zien</string>
+	<key>Copy</key>
+	<string>Kopieer</string>
+	<key>Close</key>
+	<string>Sluit</string>
+	<key>Notes</key>
+	<string>Notities</string>
+	<key>Save</key>
+	<string>Bewaren</string>
+	<key>Click to add or edit notes for this cheat</key>
+	<string>Klik om notities voor deze cheat toe te voegen of te bewerken</string>
+	<key>Cheat Removed</key>
+	<string>Cheat verwijderd</string>
+	<key>Did this cheat code work for you?</key>
+	<string>Werkte deze cheatcode voor jou?</string>
+	<key>I don't know</key>
+	<string>Ik weet het niet</string>
+	<key>Set Status</key>
+	<string>Status instellen</string>
+	<key>It works for me</key>
+	<string>Werkt bij mij</string>
+	<key>It does not work for me</key>
+	<string>Werkt niet bij mij</string>
+	<key>Not set</key>
+	<string>Niet ingesteld</string>
+	<key>All</key>
+	<string>Alle</string>
+	<key>%@ result found</key>
+	<string>%@ resultaat gevonden</string>
+	<key>%@ results found</key>
+	<string>%@ resultaten gevonden</string>
+	<key>Showing first %1$@ of %2$@ matches, narrow your search</key>
+	<string>Eerste %1$@ van %2$@ resultaten getoond, verfijn je zoekopdracht</string>
+	<key>Showing first %1$@ of %2$@ cheats. Narrow your search.</key>
+	<string>Eerste %1$@ van %2$@ cheats getoond. Verfijn je zoekopdracht.</string>
+	<key>No cheats found</key>
+	<string>Geen cheats gevonden</string>
+	<key>%1$@ (%2$d of %3$d)</key>
+	<string>%1$@ (%2$d van %3$d)</string>
+	<key>Mark if the cheat worked for you or not</key>
+	<string>Geef aan of de cheat bij jou werkte of niet</string>
+	<key>Working</key>
+	<string>Werkt</string>
+	<key>Not Working</key>
+	<string>Werkt niet</string>
+	<key>Use the controls below to filter by name and the status you chose</key>
+	<string>Gebruik de knoppen hieronder om te filteren op naam en de gekozen status</string>
+    <key>Not supported by this emulator.</key>
+    <string>Niet ondersteund door deze emulator.</string>
 	<key>Cheat Search</key>
 	<string>Cheat zoeken</string>
 	<key>Store Values</key>

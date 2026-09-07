@@ -709,6 +709,82 @@ You can go to the Controls preferences to check which associations were affected
 	<string>添加金手指</string>
 	<key>Cheat Search…</key>
 	<string>搜索金手指…</string>
+	<key>Browse Online Cheats…</key>
+	<string>浏览在线金手指…</string>
+	<key>Browse Online Cheats</key>
+	<string>浏览在线金手指</string>
+	<key>Game</key>
+	<string>游戏</string>
+	<key>MD5</key>
+	<string>MD5</string>
+	<key>Cheat Name</key>
+	<string>金手指名称</string>
+	<key>Provider</key>
+	<string>提供方</string>
+	<key>Status</key>
+	<string>状态</string>
+	<key>Action</key>
+	<string>操作</string>
+	<key>Import</key>
+	<string>导入</string>
+	<key>Code already used</key>
+	<string>代码已使用</string>
+	<key>Remove</key>
+	<string>移除</string>
+	<key>Code</key>
+	<string>代码</string>
+	<key>Cheat Code</key>
+	<string>金手指代码</string>
+	<key>Click to see the code</key>
+	<string>点击查看代码</string>
+	<key>Copy</key>
+	<string>复制</string>
+	<key>Close</key>
+	<string>关闭</string>
+	<key>Notes</key>
+	<string>备注</string>
+	<key>Save</key>
+	<string>保存</string>
+	<key>Click to add or edit notes for this cheat</key>
+	<string>点击以添加或编辑此金手指的备注</string>
+	<key>Cheat Removed</key>
+	<string>金手指已移除</string>
+	<key>Did this cheat code work for you?</key>
+	<string>这个金手指代码对你有效吗？</string>
+	<key>I don't know</key>
+	<string>不清楚</string>
+	<key>Set Status</key>
+	<string>设置状态</string>
+	<key>It works for me</key>
+	<string>对我有效</string>
+	<key>It does not work for me</key>
+	<string>对我无效</string>
+	<key>Not set</key>
+	<string>未设置</string>
+	<key>All</key>
+	<string>全部</string>
+	<key>%@ result found</key>
+	<string>找到 %@ 个结果</string>
+	<key>%@ results found</key>
+	<string>找到 %@ 个结果</string>
+	<key>Showing first %1$@ of %2$@ matches, narrow your search</key>
+	<string>显示 %2$@ 个结果中的前 %1$@ 个，请缩小范围</string>
+	<key>Showing first %1$@ of %2$@ cheats. Narrow your search.</key>
+	<string>显示 %2$@ 个金手指中的前 %1$@ 个。请缩小搜索范围。</string>
+	<key>No cheats found</key>
+	<string>未找到金手指</string>
+	<key>%1$@ (%2$d of %3$d)</key>
+	<string>%1$@（第 %3$d 个中的第 %2$d 个）</string>
+	<key>Mark if the cheat worked for you or not</key>
+	<string>标记该金手指对你是否有效</string>
+	<key>Working</key>
+	<string>有效</string>
+	<key>Not Working</key>
+	<string>无效</string>
+	<key>Use the controls below to filter by name and the status you chose</key>
+	<string>使用下方控件按名称和所选状态筛选</string>
+    <key>Not supported by this emulator.</key>
+    <string>此模拟器不支持。</string>
 	<key>Cheat Search</key>
 	<string>搜索金手指</string>
 	<key>Store Values</key>

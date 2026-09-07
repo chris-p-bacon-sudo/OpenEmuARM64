@@ -712,6 +712,82 @@ Puoi andare nelle Preferenze Controlli per verificare quali impostazioni sono st
 	<string>Aggiungi trucco</string>
 	<key>Cheat Search…</key>
 	<string>Cerca trucchi…</string>
+	<key>Browse Online Cheats…</key>
+	<string>Sfoglia trucchi online…</string>
+	<key>Browse Online Cheats</key>
+	<string>Sfoglia trucchi online</string>
+	<key>Game</key>
+	<string>Gioco</string>
+	<key>MD5</key>
+	<string>MD5</string>
+	<key>Cheat Name</key>
+	<string>Nome trucco</string>
+	<key>Provider</key>
+	<string>Fornitore</string>
+	<key>Status</key>
+	<string>Stato</string>
+	<key>Action</key>
+	<string>Azione</string>
+	<key>Import</key>
+	<string>Importa</string>
+	<key>Code already used</key>
+	<string>Codice già utilizzato</string>
+	<key>Remove</key>
+	<string>Rimuovi</string>
+	<key>Code</key>
+	<string>Codice</string>
+	<key>Cheat Code</key>
+	<string>Codice trucco</string>
+	<key>Click to see the code</key>
+	<string>Fai clic per vedere il codice</string>
+	<key>Copy</key>
+	<string>Copia</string>
+	<key>Close</key>
+	<string>Chiudi</string>
+	<key>Notes</key>
+	<string>Note</string>
+	<key>Save</key>
+	<string>Salva</string>
+	<key>Click to add or edit notes for this cheat</key>
+	<string>Fai clic per aggiungere o modificare le note per questo trucco</string>
+	<key>Cheat Removed</key>
+	<string>Trucco rimosso</string>
+	<key>Did this cheat code work for you?</key>
+	<string>Questo codice trucco ha funzionato per te?</string>
+	<key>I don't know</key>
+	<string>Non lo so</string>
+	<key>Set Status</key>
+	<string>Imposta stato</string>
+	<key>It works for me</key>
+	<string>Per me funziona</string>
+	<key>It does not work for me</key>
+	<string>Per me non funziona</string>
+	<key>Not set</key>
+	<string>Non impostato</string>
+	<key>All</key>
+	<string>Tutti</string>
+	<key>%@ result found</key>
+	<string>%@ risultato trovato</string>
+	<key>%@ results found</key>
+	<string>%@ risultati trovati</string>
+	<key>Showing first %1$@ of %2$@ matches, narrow your search</key>
+	<string>Mostrati i primi %1$@ di %2$@ risultati, affina la ricerca</string>
+	<key>Showing first %1$@ of %2$@ cheats. Narrow your search.</key>
+	<string>Mostrati i primi %1$@ di %2$@ trucchi. Affina la ricerca.</string>
+	<key>No cheats found</key>
+	<string>Nessun trucco trovato</string>
+	<key>%1$@ (%2$d of %3$d)</key>
+	<string>%1$@ (%2$d di %3$d)</string>
+	<key>Mark if the cheat worked for you or not</key>
+	<string>Indica se il trucco ha funzionato per te oppure no</string>
+	<key>Working</key>
+	<string>Funziona</string>
+	<key>Not Working</key>
+	<string>Non funziona</string>
+	<key>Use the controls below to filter by name and the status you chose</key>
+	<string>Usa i controlli qui sotto per filtrare per nome e per lo stato scelto</string>
+    <key>Not supported by this emulator.</key>
+    <string>Non supportato da questo emulatore.</string>
 	<key>Cheat Search</key>
 	<string>Cerca trucchi</string>
 	<key>Store Values</key>

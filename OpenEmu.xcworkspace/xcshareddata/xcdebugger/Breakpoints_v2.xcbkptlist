@@ -25,15 +25,6 @@
             symbolName = "malloc_error_break"
             moduleName = "">
             <Locations>
-               <Location
-                  uuid = "3B3AA7E0-9F23-477C-AA53-18416EDA1089 - 9d096611641b4e7c"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "malloc_error_break"
-                  moduleName = "libsystem_malloc.dylib"
-                  usesParentBreakpointCondition = "Yes">
-               </Location>
             </Locations>
          </BreakpointContent>
       </BreakpointProxy>

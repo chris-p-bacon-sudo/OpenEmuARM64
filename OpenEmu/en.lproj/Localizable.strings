@@ -722,6 +722,80 @@ You can go to the Controls preferences to check which associations were affected
 	<string>Add Cheat</string>
 	<key>Cheat Search…</key>
 	<string>Cheat Search…</string>
+    <key>Browse Online Cheats…</key>
+    <string>Browse Online Cheats…</string>
+	<key>Browse Online Cheats</key>
+	<string>Browse Online Cheats</string>
+	<key>Game</key>
+	<string>Game</string>
+	<key>MD5</key>
+	<string>MD5</string>
+	<key>Cheat Name</key>
+	<string>Cheat Name</string>
+	<key>Provider</key>
+	<string>Provider</string>
+	<key>Status</key>
+	<string>Status</string>
+	<key>Action</key>
+	<string>Action</string>
+	<key>Import</key>
+	<string>Import</string>
+	<key>Code already used</key>
+	<string>Code already used</string>
+	<key>Code</key>
+	<string>Code</string>
+	<key>Cheat Code</key>
+	<string>Cheat Code</string>
+	<key>Click to see the code</key>
+	<string>Click to see the code</string>
+	<key>Copy</key>
+	<string>Copy</string>
+	<key>Close</key>
+	<string>Close</string>
+	<key>Notes</key>
+	<string>Notes</string>
+	<key>Save</key>
+	<string>Save</string>
+	<key>Click to add or edit notes for this cheat</key>
+	<string>Click to add or edit notes for this cheat</string>
+	<key>Cheat Removed</key>
+	<string>Cheat Removed</string>
+	<key>Did this cheat code work for you?</key>
+	<string>Did this cheat code work for you?</string>
+	<key>I don't know</key>
+	<string>I don't know</string>
+	<key>Set Status</key>
+	<string>Set Status</string>
+	<key>It works for me</key>
+	<string>It works for me</string>
+	<key>It does not work for me</key>
+	<string>It does not work for me</string>
+	<key>Not set</key>
+	<string>Not set</string>
+	<key>All</key>
+	<string>All</string>
+	<key>%@ result found</key>
+	<string>%@ result found</string>
+	<key>%@ results found</key>
+	<string>%@ results found</string>
+	<key>Showing first %1$@ of %2$@ matches, narrow your search</key>
+	<string>Showing first %1$@ of %2$@ matches, narrow your search</string>
+	<key>Showing first %1$@ of %2$@ cheats. Narrow your search.</key>
+	<string>Showing first %1$@ of %2$@ cheats. Narrow your search.</string>
+	<key>No cheats found</key>
+	<string>No cheats found</string>
+	<key>%1$@ (%2$d of %3$d)</key>
+	<string>%1$@ (%2$d of %3$d)</string>
+	<key>Mark if the cheat worked for you or not</key>
+	<string>Mark if the cheat worked for you or not</string>
+	<key>Working</key>
+	<string>Working</string>
+	<key>Not Working</key>
+	<string>Not Working</string>
+	<key>Use the controls below to filter by name and the status you chose</key>
+	<string>Use the controls below to filter by name and the status you chose</string>
+    <key>Not supported by this emulator.</key>
+    <string>Not supported by this emulator.</string>
 	<key>Cheat Search</key>
 	<string>Cheat Search</string>
 	<key>Store Values</key>

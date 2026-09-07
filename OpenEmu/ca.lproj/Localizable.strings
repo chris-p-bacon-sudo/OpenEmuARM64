@@ -710,6 +710,82 @@ Podeu anar a les preferències dels controls per comprovar quines associacions s
 	<string>Afegeix un truc</string>
 	<key>Cheat Search…</key>
 	<string>Cerca de trucs…</string>
+	<key>Browse Online Cheats…</key>
+	<string>Navegar per trucs en línia…</string>
+	<key>Browse Online Cheats</key>
+	<string>Navegar per trucs en línia</string>
+	<key>Game</key>
+	<string>Joc</string>
+	<key>MD5</key>
+	<string>MD5</string>
+	<key>Cheat Name</key>
+	<string>Nom del truc</string>
+	<key>Provider</key>
+	<string>Proveïdor</string>
+	<key>Status</key>
+	<string>Estat</string>
+	<key>Action</key>
+	<string>Acció</string>
+	<key>Import</key>
+	<string>Importa</string>
+	<key>Code already used</key>
+	<string>Codi ja utilitzat</string>
+	<key>Remove</key>
+	<string>Suprimeix</string>
+	<key>Code</key>
+	<string>Codi</string>
+	<key>Cheat Code</key>
+	<string>Codi del truc</string>
+	<key>Click to see the code</key>
+	<string>Feu clic per veure el codi</string>
+	<key>Copy</key>
+	<string>Copia</string>
+	<key>Close</key>
+	<string>Tanca</string>
+	<key>Notes</key>
+	<string>Notes</string>
+	<key>Save</key>
+	<string>Desa</string>
+	<key>Click to add or edit notes for this cheat</key>
+	<string>Feu clic per afegir o editar notes per a aquest truc</string>
+	<key>Cheat Removed</key>
+	<string>Truc eliminat</string>
+	<key>Did this cheat code work for you?</key>
+	<string>Ha funcionat aquest truc per a tu?</string>
+	<key>I don't know</key>
+	<string>No ho sé</string>
+	<key>Set Status</key>
+	<string>Estableix l'estat</string>
+	<key>It works for me</key>
+	<string>A mi em funciona</string>
+	<key>It does not work for me</key>
+	<string>A mi no em funciona</string>
+	<key>Not set</key>
+	<string>Sense definir</string>
+	<key>All</key>
+	<string>Tots</string>
+	<key>%@ result found</key>
+	<string>%@ resultat trobat</string>
+	<key>%@ results found</key>
+	<string>%@ resultats trobats</string>
+	<key>Showing first %1$@ of %2$@ matches, narrow your search</key>
+	<string>Es mostren els primers %1$@ de %2$@ resultats, afineu la cerca</string>
+	<key>Showing first %1$@ of %2$@ cheats. Narrow your search.</key>
+	<string>Es mostren els primers %1$@ de %2$@ trucs. Afineu la cerca.</string>
+	<key>No cheats found</key>
+	<string>No s'ha trobat cap truc</string>
+	<key>%1$@ (%2$d of %3$d)</key>
+	<string>%1$@ (%2$d de %3$d)</string>
+	<key>Mark if the cheat worked for you or not</key>
+	<string>Marqueu si el truc us ha funcionat o no</string>
+	<key>Working</key>
+	<string>Funciona</string>
+	<key>Not Working</key>
+	<string>No funciona</string>
+	<key>Use the controls below to filter by name and the status you chose</key>
+	<string>Utilitzeu els controls de sota per filtrar per nom i per l’estat que heu triat</string>
+    <key>Not supported by this emulator.</key>
+    <string>No compatible amb aquest emulador.</string>
 	<key>Cheat Search</key>
 	<string>Cerca de trucs</string>
 	<key>Store Values</key>

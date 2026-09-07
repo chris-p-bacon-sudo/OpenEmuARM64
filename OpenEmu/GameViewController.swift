@@ -256,6 +256,10 @@ final class GameViewController: NSViewController {
         document.supportsCheatSearch
     }
 
+    var supportsOnlineCheats: Bool {
+        document.supportsOnlineCheats
+    }
+
     var supportsSaveStates: Bool {
         document.supportsSaveStates
     }

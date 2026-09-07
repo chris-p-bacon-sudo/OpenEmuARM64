@@ -38,6 +38,12 @@ extern void sms_cheat_reset(void);
 
 extern void sms_cheat_frame(void);
 
+/* Consoles that don't route through sms_write_map (e.g. ColecoVision) can
+   install a poke function so cheat writes reach their own memory map.
+   Pass NULL to restore the default sms_write_map behavior. */
+typedef void (*sms_cheat_poke_func)(uint16 addr, uint8 data);
+extern void sms_cheat_set_poke_func(sms_cheat_poke_func func);
+
 extern int sms_cheat_add(sms_cheat_t *c);
 extern int sms_cheat_remove(int index);
 extern int sms_cheat_count(void);

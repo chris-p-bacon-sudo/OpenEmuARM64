@@ -708,6 +708,82 @@ Du kannst die Tastenbelegung in den Einstellungen unter „Steuerung“ überpr�
 	<string>Cheat hinzufügen</string>
 	<key>Cheat Search…</key>
 	<string>Cheat-Suche…</string>
+	<key>Browse Online Cheats…</key>
+	<string>Online-Cheats durchsuchen…</string>
+	<key>Browse Online Cheats</key>
+	<string>Online-Cheats durchsuchen</string>
+	<key>Game</key>
+	<string>Spiel</string>
+	<key>MD5</key>
+	<string>MD5</string>
+	<key>Cheat Name</key>
+	<string>Cheat-Name</string>
+	<key>Provider</key>
+	<string>Anbieter</string>
+	<key>Status</key>
+	<string>Status</string>
+	<key>Action</key>
+	<string>Aktion</string>
+	<key>Import</key>
+	<string>Importieren</string>
+	<key>Code already used</key>
+	<string>Code bereits verwendet</string>
+	<key>Remove</key>
+	<string>Entfernen</string>
+	<key>Code</key>
+	<string>Code</string>
+	<key>Cheat Code</key>
+	<string>Cheat-Code</string>
+	<key>Click to see the code</key>
+	<string>Klicken, um den Code anzuzeigen</string>
+	<key>Copy</key>
+	<string>Kopieren</string>
+	<key>Close</key>
+	<string>Schließen</string>
+	<key>Notes</key>
+	<string>Notizen</string>
+	<key>Save</key>
+	<string>Sichern</string>
+	<key>Click to add or edit notes for this cheat</key>
+	<string>Klicken, um Notizen für diesen Cheat hinzuzufügen oder zu bearbeiten</string>
+	<key>Cheat Removed</key>
+	<string>Cheat entfernt</string>
+	<key>Did this cheat code work for you?</key>
+	<string>Hat dieser Cheat-Code bei dir funktioniert?</string>
+	<key>I don't know</key>
+	<string>Weiß ich nicht</string>
+	<key>Set Status</key>
+	<string>Status festlegen</string>
+	<key>It works for me</key>
+	<string>Funktioniert bei mir</string>
+	<key>It does not work for me</key>
+	<string>Funktioniert bei mir nicht</string>
+	<key>Not set</key>
+	<string>Nicht festgelegt</string>
+	<key>All</key>
+	<string>Alle</string>
+	<key>%@ result found</key>
+	<string>%@ Ergebnis gefunden</string>
+	<key>%@ results found</key>
+	<string>%@ Ergebnisse gefunden</string>
+	<key>Showing first %1$@ of %2$@ matches, narrow your search</key>
+	<string>Zeigt die ersten %1$@ von %2$@ Treffern, Suche eingrenzen</string>
+	<key>Showing first %1$@ of %2$@ cheats. Narrow your search.</key>
+	<string>Zeigt die ersten %1$@ von %2$@ Cheats. Grenze die Suche ein.</string>
+	<key>No cheats found</key>
+	<string>Keine Cheats gefunden</string>
+	<key>%1$@ (%2$d of %3$d)</key>
+	<string>%1$@ (%2$d von %3$d)</string>
+	<key>Mark if the cheat worked for you or not</key>
+	<string>Markieren, ob der Cheat bei dir funktioniert hat oder nicht</string>
+	<key>Working</key>
+	<string>Funktioniert</string>
+	<key>Not Working</key>
+	<string>Funktioniert nicht</string>
+	<key>Use the controls below to filter by name and the status you chose</key>
+	<string>Mit den Steuerelementen unten nach Name und gewähltem Status filtern</string>
+    <key>Not supported by this emulator.</key>
+    <string>Von diesem Emulator nicht unterstützt.</string>
 	<key>Cheat Search</key>
 	<string>Cheat-Suche</string>
 	<key>Store Values</key>

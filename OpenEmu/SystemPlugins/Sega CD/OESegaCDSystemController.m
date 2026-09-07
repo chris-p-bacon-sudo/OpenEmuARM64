@@ -53,40 +53,50 @@
     return OEFileSupportNo;
 }
 
+- (unsigned long long)_headerOffsetForFile:(__kindof OEFile *)file
+{
+    NSString *dataTrackString = [file readASCIIStringInRange:NSMakeRange(0x100, 16)];
+    NSString *otherDataTrackString = [file readASCIIStringInRange:NSMakeRange(0x110, 16)];
+
+    NSArray *dataTrackList = @[ @"SEGA GENESIS    ", @"SEGA MEGA DRIVE " ];
+
+    for(NSString *d in dataTrackList)
+    {
+        if([dataTrackString isEqualToString:d])
+            return 0x0100;
+        if([otherDataTrackString isEqualToString:d])
+            return 0x0110;
+    }
+    return 0;
+}
+
 - (NSString *)headerLookupForFile:(__kindof OEFile *)file
 {
     if (![file isKindOfClass:[OECUESheet class]])
         return nil;
 
-    // Read both offsets because of various dumps
-    NSString *dataTrackString = [file readASCIIStringInRange:NSMakeRange(0x100, 16)];
-    NSString *otherDataTrackString = [file readASCIIStringInRange:NSMakeRange(0x110, 16)];
+    unsigned long long offsetFound = [self _headerOffsetForFile:file];
 
-    unsigned long long offsetFound = 0;
-    NSArray *dataTrackList = @[ @"SEGA GENESIS    ", @"SEGA MEGA DRIVE " ];
-    
-    // Find which offset contains the 256-byte header
-    for(NSString *d in dataTrackList)
-    {
-        if([dataTrackString isEqualToString:d])
-        {
-            offsetFound = 0x0100;
-            break;
-        }
-        else if ([otherDataTrackString isEqualToString:d])
-        {
-            offsetFound = 0x0110;
-            break;
-        }
-    }
-
-    // Read the full header at the offset found
     NSData *headerDataTrackBuffer = [file readDataInRange:NSMakeRange(offsetFound, 256)];
-
-    // Format the hexadecimal representation and return
     NSString *hex = [headerDataTrackBuffer oe_hexStringRepresentation];
-    
+
     return hex;
+}
+
+- (NSString *)serialLookupForFile:(__kindof OEFile *)file
+{
+    if (![file isKindOfClass:[OECUESheet class]])
+        return nil;
+
+    unsigned long long offsetFound = [self _headerOffsetForFile:file];
+    if (offsetFound == 0)
+        return nil;
+
+    // Product serial is 12 bytes at offset 0x82 from header start (ROMPRODUCT in GenPlusGX)
+    NSString *serial = [file readASCIIStringInRange:NSMakeRange(offsetFound + 0x82, 12)];
+    serial = [serial stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+
+    return serial.length > 0 ? serial : nil;
 }
 
 @end

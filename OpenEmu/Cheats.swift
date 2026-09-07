@@ -26,103 +26,41 @@
 
 import Foundation
 
-/* XML cheats database format:
-     
-     <?xml version="1.0" encoding="UTF-8"?>
-     <systems>
-        <system id="openemu.system.nes">
-            <game title="Some Game">
-                <hashes>
-                    <hash md5="9e107d9d372bb6826bd81d3542a419d6" />
-                </hashes>
-                <cheats>
-                    <cheat code="048E:88" type="Action Replay" description="Invincibility" />
-                    <cheat code="010F4ED8+01424FD8" type="GameShark" description="Infinite Money" />
-                    <cheat code="69C4-AF6C+62C4-A7DC" type="Game Genie" description="Infinite time" />
-                </cheats>
-            </game>
-        </system>
-     ...
-     </systems>
-*/
-
-final class Cheats: NSObject {
-    
-    private(set) var allCheats: [Cheat] = []
-    private var didFindMD5Hash = false
-    private let md5Hash: String
-    
-    init(md5Hash: String) {
-        
-        self.md5Hash = md5Hash
-        
-        super.init()
-        
-        findCheats()
-    }
-    
-    private func findCheats() {
-
-        // TODO: Read cheats database from server instead of bundling with the app for easy updating.
-        guard let cheatsDatabaseURL = Bundle.main.url(forResource: "cheats-database", withExtension: "xml") else {
-            NSLog("[Cheats] cheats-database.xml not found in app bundle — no cheats available.")
-            return
-        }
-
-        guard let xml = try? Data(contentsOf: cheatsDatabaseURL) else {
-            NSLog("[Cheats] Failed to read cheats-database.xml at %@", cheatsDatabaseURL.path)
-            return
-        }
-
-        let parser = XMLParser(data: xml)
-        parser.delegate = self
-        parser.parse()
-    }
-}
-
-// MARK: - XMLParserDelegate
-
-extension Cheats: XMLParserDelegate {
-    
-    func parser(_ parser: XMLParser, didStartElement elementName: String, namespaceURI: String?, qualifiedName qName: String?, attributes attributeDict: [String : String] = [:]) {
-        
-        // Parse until we find our MD5 hash.
-        if elementName == "hash" && attributeDict["md5"]! as String == md5Hash {
-            
-            didFindMD5Hash = true
-            
-        // Parse cheats where MD5 hash was found.
-        } else if didFindMD5Hash && elementName == "cheat" {
-            
-            if let code = attributeDict["code"],
-               let type = attributeDict["type"],
-               let name = attributeDict["description"]
-            {
-                let cheat = Cheat(code: code, type: type, name: name)
-                allCheats.append(cheat)
-            }
-        }
-    }
-    
-    func parser(_ parser: XMLParser, didEndElement elementName: String, namespaceURI: String?, qualifiedName qName: String?) {
-        
-        // Stop parsing after all cheats have been found for MD5.
-        if didFindMD5Hash && elementName == "cheats" {
-            parser.abortParsing()
-        }
-    }
-}
-
 final class Cheat: Codable {
     let code: String
     let type: String
     var name: String
     var isEnabled = false
-    var isUserAdded = false
+    var cheatSource: String?
+    /// Set at runtime; not persisted. False when the current core can't handle this code format.
+    var isCompatibleWithCore = true
 
-    init(code: String, type: String, name: String) {
+    private enum CodingKeys: String, CodingKey {
+        case code, type, name, isEnabled, cheatSource
+    }
+
+    init(code: String, type: String, name: String, cheatSource: String? = nil) {
         self.code = code
         self.type = type
         self.name = name
+        self.cheatSource = cheatSource
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        code = try c.decode(String.self, forKey: .code)
+        type = try c.decode(String.self, forKey: .type)
+        name = try c.decode(String.self, forKey: .name)
+        isEnabled = try c.decodeIfPresent(Bool.self, forKey: .isEnabled) ?? false
+        cheatSource = try c.decodeIfPresent(String.self, forKey: .cheatSource)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(code, forKey: .code)
+        try c.encode(type, forKey: .type)
+        try c.encode(name, forKey: .name)
+        try c.encode(isEnabled, forKey: .isEnabled)
+        try c.encodeIfPresent(cheatSource, forKey: .cheatSource)
     }
 }

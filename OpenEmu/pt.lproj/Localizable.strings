@@ -710,6 +710,82 @@ You can go to the Controls preferences to check which associations were affected
 	<string>Adicionar Trapaça</string>
 	<key>Cheat Search…</key>
 	<string>Buscar Trapaças…</string>
+	<key>Browse Online Cheats…</key>
+	<string>Explorar Trapaças Online…</string>
+	<key>Browse Online Cheats</key>
+	<string>Explorar Trapaças Online</string>
+	<key>Game</key>
+	<string>Jogo</string>
+	<key>MD5</key>
+	<string>MD5</string>
+	<key>Cheat Name</key>
+	<string>Nome da Trapaça</string>
+	<key>Provider</key>
+	<string>Fornecedor</string>
+	<key>Status</key>
+	<string>Estado</string>
+	<key>Action</key>
+	<string>Ação</string>
+	<key>Import</key>
+	<string>Importar</string>
+	<key>Code already used</key>
+	<string>Código já utilizado</string>
+	<key>Remove</key>
+	<string>Remover</string>
+	<key>Code</key>
+	<string>Código</string>
+	<key>Cheat Code</key>
+	<string>Código da Trapaça</string>
+	<key>Click to see the code</key>
+	<string>Clique para ver o código</string>
+	<key>Copy</key>
+	<string>Copiar</string>
+	<key>Close</key>
+	<string>Fechar</string>
+	<key>Notes</key>
+	<string>Notas</string>
+	<key>Save</key>
+	<string>Salvar</string>
+	<key>Click to add or edit notes for this cheat</key>
+	<string>Clique para adicionar ou editar notas para este cheat</string>
+	<key>Cheat Removed</key>
+	<string>Cheat removido</string>
+	<key>Did this cheat code work for you?</key>
+	<string>Esse código de cheat funcionou para você?</string>
+	<key>I don't know</key>
+	<string>Não sei</string>
+	<key>Set Status</key>
+	<string>Definir status</string>
+	<key>It works for me</key>
+	<string>Funciona para mim</string>
+	<key>It does not work for me</key>
+	<string>Não funciona para mim</string>
+	<key>Not set</key>
+	<string>Não definido</string>
+	<key>All</key>
+	<string>Todos</string>
+	<key>%@ result found</key>
+	<string>%@ resultado encontrado</string>
+	<key>%@ results found</key>
+	<string>%@ resultados encontrados</string>
+	<key>Showing first %1$@ of %2$@ matches, narrow your search</key>
+	<string>Mostrando os primeiros %1$@ de %2$@ resultados, refine sua busca</string>
+	<key>Showing first %1$@ of %2$@ cheats. Narrow your search.</key>
+	<string>Mostrando os primeiros %1$@ de %2$@ cheats. Refine sua busca.</string>
+	<key>No cheats found</key>
+	<string>Nenhum cheat encontrado</string>
+	<key>%1$@ (%2$d of %3$d)</key>
+	<string>%1$@ (%2$d de %3$d)</string>
+	<key>Mark if the cheat worked for you or not</key>
+	<string>Marque se a trapaça funcionou para você ou não</string>
+	<key>Working</key>
+	<string>Funciona</string>
+	<key>Not Working</key>
+	<string>Não funciona</string>
+	<key>Use the controls below to filter by name and the status you chose</key>
+	<string>Use os controles abaixo para filtrar por nome e pelo estado que você escolheu</string>
+    <key>Not supported by this emulator.</key>
+    <string>Não suportado por este emulador.</string>
 	<key>Cheat Search</key>
 	<string>Buscar Trapaças</string>
 	<key>Store Values</key>

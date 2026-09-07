@@ -45,6 +45,9 @@ extern void coleco_mem_reset(void);
 
 extern void coleco_get_checksums(uint32 *crc, uint32 *adler);
 
+extern uint8 *coleco_get_ram(void);
+extern void coleco_cheat_poke(uint16 addr, uint8 data);
+
 ENDCLINK
 
 #endif /* !COLECOMEM_H */

@@ -41,6 +41,8 @@ extern NSString *const OESystemIdentifierNDS;
 extern NSString *const OESystemIdentifierGenesis;
 extern NSString *const OESystemIdentifierSMS;
 extern NSString *const OESystemIdentifierGameGear;
+extern NSString *const OESystemIdentifierSG1000;
+extern NSString *const OESystemIdentifierColecoVision;
 extern NSString *const OESystemIdentifierSegaCD;
 extern NSString *const OESystemIdentifierSega32X;
 extern NSString *const OESystemIdentifierAtari2600;
