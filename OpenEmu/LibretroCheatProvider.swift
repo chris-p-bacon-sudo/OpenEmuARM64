@@ -133,7 +133,7 @@ final class LibretroCheatProvider: CheatDatabaseProvider, @unchecked Sendable {
 
         let lookup = try await lookupGameName(md5: lookupMD5, serial: serial, systemIdentifier: systemIdentifier)
 
-        if lookup == nil && (gameName == nil || !Self.redumpSystems.contains(systemIdentifier)) {
+        if lookup == nil && gameName == nil {
             // log.info("No game found for MD5 \(md5) / serial \(serial ?? "nil") in system \(systemIdentifier)")
             return []
         }
@@ -149,12 +149,16 @@ final class LibretroCheatProvider: CheatDatabaseProvider, @unchecked Sendable {
         var gameNames: [String] = []
         if let name = lookup?.name {
             gameNames.append(name)
+            gameNames += compoundRegionVariants(for: name)
             if useRegionFallback { gameNames += regionVariants(for: name) }
         }
 
-        // Fallback for redump systems: try the library game name if DAT name didn't work or wasn't found
-        if let gameName, Self.redumpSystems.contains(systemIdentifier), !gameNames.contains(gameName) {
+        // Fallback: try the library game name if the DAT lookup didn't work or wasn't found.
+        // Not restricted to redump systems — cartridge dumps (NDS trim variance, N64 byte-order
+        // variance) can miss the MD5/serial DAT match too.
+        if let gameName, !gameNames.contains(gameName) {
             gameNames.append(gameName)
+            gameNames += compoundRegionVariants(for: gameName)
             if useRegionFallback { gameNames += regionVariants(for: gameName) }
         }
 
@@ -207,6 +211,18 @@ final class LibretroCheatProvider: CheatDatabaseProvider, @unchecked Sendable {
             }
         }
         return []
+    }
+
+    /// For names with a compound region tag like "(USA, Australia)", generates single-region
+    /// variants ("(USA)", "(Australia)"). Libretro's .cht filenames are often pinned to an
+    /// older no-intro naming convention with a single region, while the DAT (and OpenVGDB) can
+    /// carry a newer compound multi-region name for the same ROM.
+    private func compoundRegionVariants(for gameName: String) -> [String] {
+        guard gameName.hasSuffix(")"), let openParen = gameName.lastIndex(of: "(") else { return [] }
+        let inside = gameName[gameName.index(after: openParen)..<gameName.index(before: gameName.endIndex)]
+        guard inside.contains(",") else { return [] }
+        let base = String(gameName[..<openParen]).trimmingCharacters(in: .whitespaces)
+        return inside.split(separator: ",").map { "\(base) (\($0.trimmingCharacters(in: .whitespaces)))" }
     }
 
     private func loadCachedCheats(md5: String, systemIdentifier: String) -> LibretroCachedCheatFile? {

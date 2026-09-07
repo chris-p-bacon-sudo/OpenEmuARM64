@@ -1189,10 +1189,11 @@ final class OEGameDocument: NSDocument {
             if HardcoreModePolicy.allows(.cheats, hardcoreEnabled: self.isHardcoreModeEnabled) {
                 self.cheats.filter(\.isEnabled).forEach { self.setCheat($0) }
             }
+            (self.gameWindowController as? GameWindowController)?.gameDidStartPlaying()
         }
 
         gameViewController.reflectEmulationPaused(false)
-        gameViewController.showHardcoreNotification(isHardcoreModeEnabled)
+        gameViewController.announceHardcoreModeChange(isHardcoreModeEnabled)
     }
     
     private var retroAchievementsHardcorePausePreflightSatisfied = false
@@ -1360,7 +1361,7 @@ final class OEGameDocument: NSDocument {
                         self.gameCoreManager?.resetEmulation { [weak self] in
                             self?.isEmulationPaused = false
                         }
-                        self.gameViewController.showHardcoreNotification(true)
+                        self.gameViewController.announceHardcoreModeChange(true)
                     } else {
                         // User cancelled — revert the preference so UI and state agree.
                         // Post the change so the prefs checkbox can resync (#446); if we
@@ -1383,12 +1384,12 @@ final class OEGameDocument: NSDocument {
             gameCoreManager?.resetEmulation { [weak self] in
                 self?.isEmulationPaused = false
             }
-            gameViewController.showHardcoreNotification(false)
+            gameViewController.announceHardcoreModeChange(false)
         } else {
             // Either turning hardcore off, or turning it on without an RA session
             // (no enforcement, no reset, just record the preference).
             gameCoreManager?.setHardcoreEnabled(willEnforce)
-            gameViewController.showHardcoreNotification(willEnforce)
+            gameViewController.announceHardcoreModeChange(willEnforce)
         }
     }
     

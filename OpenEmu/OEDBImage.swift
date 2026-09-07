@@ -307,43 +307,34 @@ final class OEDBImage: OEDBItem {
     
     private var _cachedIsLocalImageAvailable: Bool?
     private var _cachedIsLocalImageAvailableRelativePath: String?
-    private var _pendingLocalImageAvailabilityCheckRelativePath: String?
 
-    /// Synchronous on a cache hit. On a cache miss, returns `false` (falling
-    /// back to the placeholder path) and kicks off the disk stat in the
-    /// background, since this is called from scroll-driven datasource
-    /// methods on the main thread and must never block on I/O.
+    /// A cheap on-disk existence check (a single stat() call), answered
+    /// synchronously and cached per relativePath. This intentionally does NOT
+    /// defer to a background check the way `image` does: imageUID() reflects
+    /// identity, not availability, but imageRepresentationType()/
+    /// imageRepresentation() still key off this to choose between the
+    /// placeholder and the real artwork — and IKImageBrowserView caches
+    /// representations by UID, so if this answer changed *after* the browser
+    /// already asked for a representation under a given UID, the browser
+    /// would be told to swap representation kind (placeholder image -> URL)
+    /// for an identity it considers unchanged. It doesn't handle that
+    /// gracefully — cells go blank/black instead of updating. A stat() call
+    /// is cheap enough to answer up front; the actual decode in `image` is
+    /// what needed to move off the main thread.
     var isLocalImageAvailable: Bool {
         let currentRelativePath = relativePath
         if let cached = _cachedIsLocalImageAvailable,
            _cachedIsLocalImageAvailableRelativePath == currentRelativePath {
             return cached
         }
-
-        if _pendingLocalImageAvailabilityCheckRelativePath != currentRelativePath {
-            _pendingLocalImageAvailabilityCheckRelativePath = currentRelativePath
-            let url = imageURL
-            let objectID = self.objectID
-            DispatchQueue.global(qos: .utility).async { [weak self] in
-                let available = (try? url?.checkResourceIsReachable()) ?? false
-                DispatchQueue.main.async {
-                    guard let self = self, self.relativePath == currentRelativePath else { return }
-                    self._cachedIsLocalImageAvailable = available
-                    self._cachedIsLocalImageAvailableRelativePath = currentRelativePath
-                    self._pendingLocalImageAvailabilityCheckRelativePath = nil
-                    if available {
-                        NotificationCenter.default.post(name: .oeDBImageDidBecomeAvailable, object: nil,
-                                                         userInfo: [OEDBImageObjectIDKey: objectID])
-                    }
-                }
-            }
-        }
-        return false
+        let available = (try? imageURL?.checkResourceIsReachable()) ?? false
+        _cachedIsLocalImageAvailable = available
+        _cachedIsLocalImageAvailableRelativePath = currentRelativePath
+        return available
     }
 
     func invalidateLocalImageAvailabilityCache() {
         _cachedIsLocalImageAvailable = nil
         _cachedIsLocalImageAvailableRelativePath = nil
-        _pendingLocalImageAvailabilityCheckRelativePath = nil
     }
 }

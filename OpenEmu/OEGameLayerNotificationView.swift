@@ -559,8 +559,7 @@ final class OERetroAchievementsIndicatorStackView: NSStackView {
 final class OEGameLayerNotificationView: NSImageView {
     
     static let OEShowNotificationsKey = "OEShowNotifications"
-    static let OEShowHardcoreIconKey = "OEShowHardcoreIcon"
-    
+
     public var disableNotifications: Bool = false
     
     lazy var quicksaveImage     = NSImage(named: "hud_quicksave_notification")
@@ -569,19 +568,10 @@ final class OEGameLayerNotificationView: NSImageView {
     lazy var rewindImage        = NSImage(named: "hud_rewind_notification")
     lazy var stepForwardImage   = NSImage(named: "hud_stepforward_notification")
     lazy var stepBackwardImage  = NSImage(named: "hud_stepbackward_notification")
-    /// Hardcore overlay image. Falls back to an SF Symbol when no custom asset exists
-    /// so the indicator works before final art ships.
-    lazy var hardcoreImage: NSImage? = {
-        if let named = NSImage(named: "hud_hardcore_notification") { return named }
-        let config = NSImage.SymbolConfiguration(pointSize: 64, weight: .bold)
-        return NSImage(systemSymbolName: "lock.shield.fill", accessibilityDescription: "Hardcore Mode")?
-            .withSymbolConfiguration(config)
-    }()
 
     var isFastForwarding: Bool  = false
     var isRewinding: Bool       = false
-    var isHardcoreMode: Bool    = false
-    
+
     override var wantsUpdateLayer: Bool { return true }
     
     var showNotifications: Bool {
@@ -621,27 +611,14 @@ final class OEGameLayerNotificationView: NSImageView {
         }
     }
 
-    @objc public func showHardcore(enabled: Bool) {
-        guard UserDefaults.standard.bool(forKey: Self.OEShowHardcoreIconKey) else {
-            // Deliberately leave isHardcoreMode untouched here rather than
-            // setting it directly: performNotification's idempotency guard
-            // (`if enabled && state { return }`) reads that same variable,
-            // so writing it out of band would desync the two and could
-            // permanently suppress the icon for the rest of the session if
-            // the user re-enables this preference while still in hardcore
-            // mode (the guard would see enabled && state both true and
-            // no-op before ever drawing anything).
-            if enabled {
-                postAccessibilityNotification(announcement: NSLocalizedString("Hardcore Mode", tableName: "ControlLabels", comment: ""))
-            }
-            return
-        }
-        performNotification(img: hardcoreImage, enabled: enabled, state: &isHardcoreMode)
-        if enabled {
-            postAccessibilityNotification(announcement: NSLocalizedString("Hardcore Mode", tableName: "ControlLabels", comment: ""))
-        }
+    /// Hardcore mode has no HUD overlay of its own — the game-start info popover
+    /// already shows a "Hardcore Mode" pill, so a persistent lock icon on top of
+    /// gameplay was redundant. VoiceOver users still get an announcement.
+    @objc public func announceHardcoreModeChange(enabled: Bool) {
+        guard enabled else { return }
+        postAccessibilityNotification(announcement: NSLocalizedString("Hardcore Mode", tableName: "ControlLabels", comment: ""))
     }
-    
+
     @objc public func showQuickSave() {
         performShowHideNotification(img: quicksaveImage)
         postAccessibilityNotification(announcement: NSLocalizedString("Quick Save", tableName: "ControlLabels", comment: ""))

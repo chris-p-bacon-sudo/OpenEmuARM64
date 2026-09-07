@@ -57,11 +57,10 @@ final class PrefRetroAchievementsController: NSViewController {
     private let hardcoreDivider = NSBox()
     private let hardcoreCheckbox = NSButton(checkboxWithTitle: "Hardcore mode (recommended)", target: nil, action: nil)
     private let hardcoreSubtitle = NSTextField(wrappingLabelWithString: "")
-    private let hardcoreIconCheckbox = NSButton(checkboxWithTitle: "Show hardcore mode icon during gameplay", target: nil, action: nil)
 
     private let supportedDivider = NSBox()
     private let supportedLabel   = NSTextField(labelWithString: "")
-    private let supportedGrid    = NSStackView()
+    private let supportedGrid    = NSGridView()
 
     private var hardcoreObserver: Any?
 
@@ -182,12 +181,6 @@ final class PrefRetroAchievementsController: NSViewController {
         hardcoreSubtitle.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(hardcoreSubtitle)
 
-        hardcoreIconCheckbox.target = self
-        hardcoreIconCheckbox.action = #selector(toggleHardcoreIcon(_:))
-        hardcoreIconCheckbox.state = UserDefaults.standard.bool(forKey: OEGameLayerNotificationView.OEShowHardcoreIconKey) ? .on : .off
-        hardcoreIconCheckbox.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(hardcoreIconCheckbox)
-
         NSLayoutConstraint.activate([
             headerLabel.topAnchor.constraint(equalTo: view.topAnchor, constant: 32),
             headerLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 36),
@@ -241,10 +234,6 @@ final class PrefRetroAchievementsController: NSViewController {
             hardcoreSubtitle.topAnchor.constraint(equalTo: hardcoreCheckbox.bottomAnchor, constant: 4),
             hardcoreSubtitle.leadingAnchor.constraint(equalTo: hardcoreCheckbox.leadingAnchor, constant: 20),
             hardcoreSubtitle.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -36),
-
-            hardcoreIconCheckbox.topAnchor.constraint(equalTo: hardcoreSubtitle.bottomAnchor, constant: 12),
-            hardcoreIconCheckbox.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 36),
-            hardcoreIconCheckbox.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -36),
         ])
 
         // ── Supported Systems ────────────────────────────────────────────────
@@ -257,14 +246,13 @@ final class PrefRetroAchievementsController: NSViewController {
         supportedLabel.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(supportedLabel)
 
-        supportedGrid.orientation = .vertical
-        supportedGrid.alignment = .leading
-        supportedGrid.spacing = 4
+        supportedGrid.rowSpacing = 6
+        supportedGrid.columnSpacing = 16
         supportedGrid.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(supportedGrid)
 
         NSLayoutConstraint.activate([
-            supportedDivider.topAnchor.constraint(equalTo: hardcoreIconCheckbox.bottomAnchor, constant: 24),
+            supportedDivider.topAnchor.constraint(equalTo: hardcoreSubtitle.bottomAnchor, constant: 24),
             supportedDivider.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 36),
             supportedDivider.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -36),
             supportedDivider.heightAnchor.constraint(equalToConstant: 1),
@@ -276,6 +264,7 @@ final class PrefRetroAchievementsController: NSViewController {
             supportedGrid.topAnchor.constraint(equalTo: supportedLabel.bottomAnchor, constant: 12),
             supportedGrid.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 36),
             supportedGrid.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -36),
+            supportedGrid.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -24),
         ])
     }
 
@@ -297,18 +286,21 @@ final class PrefRetroAchievementsController: NSViewController {
                 // OpenEmu models Game Boy and Game Boy Color as one system (openemu.system.gb);
                 // Gambatte detects the cartridge type and earns GBC achievements. Show both.
                 if id == "openemu.system.gb" { name = "Game Boy / Game Boy Color" }
+                // "Nintendo (NES)" loses its only distinguishing part once the parenthetical
+                // is stripped, leaving a bare, misleading "Nintendo" — unlike "Super Nintendo
+                // (SNES)", which reads fine as "Super Nintendo" on its own.
+                if id == "openemu.system.nes" { name = "Nintendo Entertainment System" }
                 return (name, sys.systemIcon)
             }
             .sorted { $0.0 < $1.0 }
 
+        // NSGridView keeps column widths consistent across every row — unlike the previous
+        // approach of one independent, equally-distributed NSStackView per row, where each
+        // row's column widths were sized from that row's own content alone, so columns drifted
+        // out of alignment from one row to the next.
         let columns = 3
         for rowStart in stride(from: 0, to: systems.count, by: columns) {
-            let rowStack = NSStackView()
-            rowStack.orientation = .horizontal
-            rowStack.spacing = 8
-            rowStack.distribution = .fillEqually
-            rowStack.translatesAutoresizingMaskIntoConstraints = false
-
+            var cells: [NSView] = []
             for i in rowStart ..< min(rowStart + columns, systems.count) {
                 let (name, icon) = systems[i]
 
@@ -324,7 +316,6 @@ final class PrefRetroAchievementsController: NSViewController {
                 let nameLabel = NSTextField(labelWithString: name)
                 nameLabel.font = .systemFont(ofSize: 12)
                 nameLabel.lineBreakMode = .byTruncatingTail
-                nameLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
 
                 let cell = NSStackView(views: [imageView, nameLabel])
                 cell.orientation = .horizontal
@@ -332,15 +323,30 @@ final class PrefRetroAchievementsController: NSViewController {
                 cell.alignment = .centerY
                 cell.translatesAutoresizingMaskIntoConstraints = false
 
-                rowStack.addArrangedSubview(cell)
+                cells.append(cell)
             }
-            // Pad partial last row so fillEqually keeps columns consistent
-            if rowStart + columns > systems.count {
-                for _ in systems.count ..< rowStart + columns {
-                    rowStack.addArrangedSubview(NSView())
-                }
+            // Pad a partial last row so NSGridView's column count stays consistent.
+            for _ in cells.count ..< columns {
+                cells.append(NSView())
             }
-            supportedGrid.addArrangedSubview(rowStack)
+            supportedGrid.addRow(with: cells)
+        }
+
+        // NSGridView sizes each column to its own widest cell by default, which left the
+        // "Nintendo Entertainment System" column far wider than the other two. Force all
+        // columns to one shared width, sized to fit the longest name across the whole list,
+        // so the columns actually line up as a grid rather than three ragged widths.
+        let font = NSFont.systemFont(ofSize: 12)
+        let maxNameWidth = systems.map { (name, _) in
+            ceil((name as NSString).size(withAttributes: [.font: font]).width)
+        }.max() ?? 0
+        let iconWidth: CGFloat = 16
+        let iconSpacing: CGFloat = 6
+        let columnWidth = iconWidth + iconSpacing + maxNameWidth
+
+        for column in 0 ..< columns where column < supportedGrid.numberOfColumns {
+            supportedGrid.column(at: column).xPlacement = .leading
+            supportedGrid.column(at: column).width = columnWidth
         }
     }
 
@@ -352,10 +358,6 @@ final class PrefRetroAchievementsController: NSViewController {
             object: nil,
             userInfo: [OEHardcoreEnabledKey: enabled]
         )
-    }
-
-    @objc private func toggleHardcoreIcon(_ sender: NSButton) {
-        UserDefaults.standard.set(sender.state == .on, forKey: OEGameLayerNotificationView.OEShowHardcoreIconKey)
     }
 
     // MARK: - Credential Management
