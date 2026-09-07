@@ -498,9 +498,15 @@ class AppDelegate: NSObject, UNUserNotificationCenterDelegate {
     ///
     /// Staleness is detected by prefix: any URL that doesn't start with
     /// `canonicalPrefix` is rewritten to `<prefix><lowercased-bundle-suffix>.xml`.
-    /// Only the plist is touched — the binary's signature is undisturbed and
-    /// the host's `disable-library-validation` entitlement covers any plugin
-    /// signature drift, so re-codesigning is not required.
+    ///
+    /// Rewriting the plist breaks the bundle's existing seal (Info.plist is part
+    /// of what codesign hashes), so each touched plugin is re-signed ad hoc
+    /// afterward. `disable-library-validation` only waives the "same signing
+    /// team" check — it does not let the OS load a bundle whose signature no
+    /// longer matches its own contents, so skipping this step leaves the core
+    /// unloadable (confirmed via a real crash: a plugin left in this state
+    /// fails `OECorePlugin.corePlugin(bundleAtURL:)`, which force-unwraps to nil
+    /// in `OpenEmuHelperApp.load(withStartupInfo:)`).
     fileprivate func refreshStaleCoreFeedURLs() {
         let canonicalPrefix = "https://raw.githubusercontent.com/OpenEmu-Silicon/OpenEmu-Silicon/main/Appcasts/"
         feedURLRefreshReport = ([], [])
@@ -547,6 +553,7 @@ class AppDelegate: NSObject, UNUserNotificationCenterDelegate {
                 plist["SUFeedURL"] = canonical
                 let newData = try PropertyListSerialization.data(fromPropertyList: plist, format: .xml, options: 0)
                 try newData.write(to: plistURL)
+                Self.resealPluginSignature(at: plugin)
                 refreshed.append(plugin.deletingPathExtension().lastPathComponent)
                 os_log(.info, log: .default, "SUFeedURL refresh: rewrote %{public}@ to %{public}@", plugin.lastPathComponent, canonical)
             } catch {
@@ -557,6 +564,32 @@ class AppDelegate: NSObject, UNUserNotificationCenterDelegate {
 
         feedURLRefreshReport = (refreshed, failed)
         os_log(.info, log: .default, "SUFeedURL refresh summary: refreshed=%{public}d failed=%{public}d", refreshed.count, failed.count)
+    }
+
+    /// Re-seals a plugin bundle after `refreshStaleCoreFeedURLs` has edited its
+    /// Info.plist in place. Runs synchronously and ad hoc (`-`) — a Developer-ID
+    /// re-sign would need the org's private signing key, which isn't present on
+    /// an end-user machine, and `disable-library-validation` (set on both the
+    /// host and the helper) is exactly the entitlement that already lets this
+    /// app load ad-hoc-signed plugins, the same mechanism `CoreDownload` relies
+    /// on for freshly downloaded cores. This only downgrades trust for a plugin
+    /// this code just modified; an untouched Developer-ID-signed plugin is left
+    /// alone entirely.
+    private static func resealPluginSignature(at pluginURL: URL) {
+        let sign = Process()
+        sign.executableURL = URL(fileURLWithPath: "/usr/bin/codesign")
+        sign.arguments = ["--force", "--sign", "-", pluginURL.path]
+        sign.standardOutput = FileHandle.nullDevice
+        sign.standardError = FileHandle.nullDevice
+        do {
+            try sign.run()
+            sign.waitUntilExit()
+            if sign.terminationStatus != 0 {
+                os_log(.error, log: .default, "Re-sign after SUFeedURL refresh failed (status %d) for %{public}@", sign.terminationStatus, pluginURL.lastPathComponent)
+            }
+        } catch {
+            os_log(.error, log: .default, "Failed to launch codesign after SUFeedURL refresh for %{public}@: %{public}@", pluginURL.lastPathComponent, error.localizedDescription)
+        }
     }
 
     /// One-shot diagnostic written at startup so we can see what core plugins
