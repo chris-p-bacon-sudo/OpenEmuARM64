@@ -26,10 +26,8 @@
 
 #import "OEPSXSystemResponder.h"
 #import "OEPSXSystemResponderClient.h"
-#import <OpenEmuBase/OELibretroCoreTranslator.h>
 
 @implementation OEPSXSystemResponder
-static const uint8_t kPSXLibretroMap[] = { 4, 5, 6, 7, 10, 8, 11, 9, 3, 2, 0, 1, 12, 13, 14, 15 };
 @dynamic client;
 
 + (Protocol *)gameSystemResponderClientProtocol;
@@ -41,20 +39,6 @@ static const uint8_t kPSXLibretroMap[] = { 4, 5, 6, 7, 10, 8, 11, 9, 3, 2, 0, 1,
 {
     NSUInteger k = aKey.key;
     id client = (id)self.client;
-    if ([client conformsToProtocol:@protocol(OEBridgeInputTranslation)]) {
-        int16_t val = (int16_t)round(value * 32767.0);
-        switch (k) {
-            case OEPSXLeftAnalogUp:    [(id<OEBridgeInputTranslation>)client receiveLibretroAnalogIndex:0 axis:1 value:-val forPort:aKey.player - 1]; break;
-            case OEPSXLeftAnalogDown:  [(id<OEBridgeInputTranslation>)client receiveLibretroAnalogIndex:0 axis:1 value:val  forPort:aKey.player - 1]; break;
-            case OEPSXLeftAnalogLeft:  [(id<OEBridgeInputTranslation>)client receiveLibretroAnalogIndex:0 axis:0 value:-val forPort:aKey.player - 1]; break;
-            case OEPSXLeftAnalogRight: [(id<OEBridgeInputTranslation>)client receiveLibretroAnalogIndex:0 axis:0 value:val  forPort:aKey.player - 1]; break;
-            case OEPSXRightAnalogUp:   [(id<OEBridgeInputTranslation>)client receiveLibretroAnalogIndex:1 axis:1 value:-val forPort:aKey.player - 1]; break;
-            case OEPSXRightAnalogDown: [(id<OEBridgeInputTranslation>)client receiveLibretroAnalogIndex:1 axis:1 value:val  forPort:aKey.player - 1]; break;
-            case OEPSXRightAnalogLeft: [(id<OEBridgeInputTranslation>)client receiveLibretroAnalogIndex:1 axis:0 value:-val forPort:aKey.player - 1]; break;
-            case OEPSXRightAnalogRight:[(id<OEBridgeInputTranslation>)client receiveLibretroAnalogIndex:1 axis:0 value:val  forPort:aKey.player - 1]; break;
-        }
-        return;
-    }
     [client didMovePSXJoystickDirection:(OEPSXButton)k withValue:value forPlayer:aKey.player];
 }
 
@@ -62,11 +46,6 @@ static const uint8_t kPSXLibretroMap[] = { 4, 5, 6, 7, 10, 8, 11, 9, 3, 2, 0, 1,
 {
     id client = (id)self.client;
     NSUInteger k = aKey.key;
-    if ([client conformsToProtocol:@protocol(OEBridgeInputTranslation)]) {
-        uint8_t btn = (k < sizeof(kPSXLibretroMap)) ? kPSXLibretroMap[k] : 0xFF;
-        [(id<OEBridgeInputTranslation>)client receiveLibretroButton:btn forPort:aKey.player - 1 pressed:YES];
-        return;
-    }
     [client didPushPSXButton:(OEPSXButton)k forPlayer:aKey.player];
 }
 
@@ -74,11 +53,6 @@ static const uint8_t kPSXLibretroMap[] = { 4, 5, 6, 7, 10, 8, 11, 9, 3, 2, 0, 1,
 {
     id client = (id)self.client;
     NSUInteger k = aKey.key;
-    if ([client conformsToProtocol:@protocol(OEBridgeInputTranslation)]) {
-        uint8_t btn = (k < sizeof(kPSXLibretroMap)) ? kPSXLibretroMap[k] : 0xFF;
-        [(id<OEBridgeInputTranslation>)client receiveLibretroButton:btn forPort:aKey.player - 1 pressed:NO];
-        return;
-    }
     [client didReleasePSXButton:(OEPSXButton)k forPlayer:aKey.player];
 }
 

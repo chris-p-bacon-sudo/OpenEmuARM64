@@ -26,10 +26,8 @@
 
 #import "OESaturnSystemResponder.h"
 #import "OESaturnSystemResponderClient.h"
-#import <OpenEmuBase/OELibretroCoreTranslator.h>
 
 @implementation OESaturnSystemResponder
-static const uint8_t kSaturnLibretroMap[] = { 4, 5, 6, 7, 1, 0, 8, 10, 9, 11, 12, 13, 3, 0xFF };
 @dynamic client;
 
 + (Protocol *)gameSystemResponderClientProtocol;
@@ -46,11 +44,6 @@ static const uint8_t kSaturnLibretroMap[] = { 4, 5, 6, 7, 1, 0, 8, 10, 9, 11, 12
 {
     id client = (id)self.client;
     NSUInteger k = aKey.key;
-    if ([client conformsToProtocol:@protocol(OEBridgeInputTranslation)]) {
-        uint8_t btn = (k < sizeof(kSaturnLibretroMap)) ? kSaturnLibretroMap[k] : 0xFF;
-        [(id<OEBridgeInputTranslation>)client receiveLibretroButton:btn forPort:aKey.player - 1 pressed:YES];
-        return;
-    }
     [client didPushSaturnButton:(OESaturnButton)k forPlayer:aKey.player];
 }
 
@@ -58,11 +51,6 @@ static const uint8_t kSaturnLibretroMap[] = { 4, 5, 6, 7, 1, 0, 8, 10, 9, 11, 12
 {
     id client = (id)self.client;
     NSUInteger k = aKey.key;
-    if ([client conformsToProtocol:@protocol(OEBridgeInputTranslation)]) {
-        uint8_t btn = (k < sizeof(kSaturnLibretroMap)) ? kSaturnLibretroMap[k] : 0xFF;
-        [(id<OEBridgeInputTranslation>)client receiveLibretroButton:btn forPort:aKey.player - 1 pressed:NO];
-        return;
-    }
     [client didReleaseSaturnButton:(OESaturnButton)k forPlayer:aKey.player];
 }
 
