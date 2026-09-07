@@ -553,7 +553,20 @@ class AppDelegate: NSObject, UNUserNotificationCenterDelegate {
                 plist["SUFeedURL"] = canonical
                 let newData = try PropertyListSerialization.data(fromPropertyList: plist, format: .xml, options: 0)
                 try newData.write(to: plistURL)
-                Self.resealPluginSignature(at: plugin)
+
+                guard Self.resealPluginSignature(at: plugin) else {
+                    // Re-signing failed — put the original plist back so this plugin's
+                    // SUFeedURL is still stale on the next launch and the loop above
+                    // (`if currentURL.hasPrefix(canonicalPrefix) { continue }`) doesn't
+                    // treat it as already handled. Without this, a plugin that failed to
+                    // re-sign here would be silently reported as refreshed and then
+                    // never retried, left permanently unloadable.
+                    try? data.write(to: plistURL)
+                    failed.append((plugin.lastPathComponent, "re-sign failed after SUFeedURL rewrite"))
+                    os_log(.error, log: .default, "SUFeedURL refresh: re-sign failed for %{public}@ — reverted plist so it retries next launch", plugin.lastPathComponent)
+                    continue
+                }
+
                 refreshed.append(plugin.deletingPathExtension().lastPathComponent)
                 os_log(.info, log: .default, "SUFeedURL refresh: rewrote %{public}@ to %{public}@", plugin.lastPathComponent, canonical)
             } catch {
@@ -575,7 +588,12 @@ class AppDelegate: NSObject, UNUserNotificationCenterDelegate {
     /// on for freshly downloaded cores. This only downgrades trust for a plugin
     /// this code just modified; an untouched Developer-ID-signed plugin is left
     /// alone entirely.
-    private static func resealPluginSignature(at pluginURL: URL) {
+    ///
+    /// Returns whether the re-sign actually succeeded, so the caller can avoid
+    /// reporting a plugin as fixed — and marking its feed URL as no longer
+    /// stale — when it isn't.
+    @discardableResult
+    private static func resealPluginSignature(at pluginURL: URL) -> Bool {
         let sign = Process()
         sign.executableURL = URL(fileURLWithPath: "/usr/bin/codesign")
         sign.arguments = ["--force", "--sign", "-", pluginURL.path]
@@ -586,9 +604,12 @@ class AppDelegate: NSObject, UNUserNotificationCenterDelegate {
             sign.waitUntilExit()
             if sign.terminationStatus != 0 {
                 os_log(.error, log: .default, "Re-sign after SUFeedURL refresh failed (status %d) for %{public}@", sign.terminationStatus, pluginURL.lastPathComponent)
+                return false
             }
+            return true
         } catch {
             os_log(.error, log: .default, "Failed to launch codesign after SUFeedURL refresh for %{public}@: %{public}@", pluginURL.lastPathComponent, error.localizedDescription)
+            return false
         }
     }
 
