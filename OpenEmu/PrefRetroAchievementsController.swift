@@ -57,7 +57,6 @@ final class PrefRetroAchievementsController: NSViewController {
     private let hardcoreDivider = NSBox()
     private let hardcoreCheckbox = NSButton(checkboxWithTitle: "Hardcore mode (recommended)", target: nil, action: nil)
     private let hardcoreSubtitle = NSTextField(wrappingLabelWithString: "")
-    private let hardcoreIconCheckbox = NSButton(checkboxWithTitle: "Show hardcore mode icon during gameplay", target: nil, action: nil)
 
     private let supportedDivider = NSBox()
     private let supportedLabel   = NSTextField(labelWithString: "")
@@ -182,12 +181,6 @@ final class PrefRetroAchievementsController: NSViewController {
         hardcoreSubtitle.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(hardcoreSubtitle)
 
-        hardcoreIconCheckbox.target = self
-        hardcoreIconCheckbox.action = #selector(toggleHardcoreIcon(_:))
-        hardcoreIconCheckbox.state = UserDefaults.standard.bool(forKey: OEGameLayerNotificationView.OEShowHardcoreIconKey) ? .on : .off
-        hardcoreIconCheckbox.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(hardcoreIconCheckbox)
-
         NSLayoutConstraint.activate([
             headerLabel.topAnchor.constraint(equalTo: view.topAnchor, constant: 32),
             headerLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 36),
@@ -241,10 +234,6 @@ final class PrefRetroAchievementsController: NSViewController {
             hardcoreSubtitle.topAnchor.constraint(equalTo: hardcoreCheckbox.bottomAnchor, constant: 4),
             hardcoreSubtitle.leadingAnchor.constraint(equalTo: hardcoreCheckbox.leadingAnchor, constant: 20),
             hardcoreSubtitle.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -36),
-
-            hardcoreIconCheckbox.topAnchor.constraint(equalTo: hardcoreSubtitle.bottomAnchor, constant: 12),
-            hardcoreIconCheckbox.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 36),
-            hardcoreIconCheckbox.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -36),
         ])
 
         // ── Supported Systems ────────────────────────────────────────────────
@@ -263,7 +252,7 @@ final class PrefRetroAchievementsController: NSViewController {
         view.addSubview(supportedGrid)
 
         NSLayoutConstraint.activate([
-            supportedDivider.topAnchor.constraint(equalTo: hardcoreIconCheckbox.bottomAnchor, constant: 24),
+            supportedDivider.topAnchor.constraint(equalTo: hardcoreSubtitle.bottomAnchor, constant: 24),
             supportedDivider.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 36),
             supportedDivider.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -36),
             supportedDivider.heightAnchor.constraint(equalToConstant: 1),
@@ -369,10 +358,6 @@ final class PrefRetroAchievementsController: NSViewController {
             object: nil,
             userInfo: [OEHardcoreEnabledKey: enabled]
         )
-    }
-
-    @objc private func toggleHardcoreIcon(_ sender: NSButton) {
-        UserDefaults.standard.set(sender.state == .on, forKey: OEGameLayerNotificationView.OEShowHardcoreIconKey)
     }
 
     // MARK: - Credential Management

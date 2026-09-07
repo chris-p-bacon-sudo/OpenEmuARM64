@@ -400,10 +400,10 @@ extension GameViewController {
         notificationView.showRewind(enabled: enable)
     }
 
-    func showHardcoreNotification(_ enable: Bool) {
-        notificationView.showHardcore(enabled: enable)
+    func announceHardcoreModeChange(_ enable: Bool) {
+        notificationView.announceHardcoreModeChange(enabled: enable)
     }
-    
+
     func showStepForwardNotification() {
         notificationView.showStepForward()
     }
