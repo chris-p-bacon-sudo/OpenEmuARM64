@@ -228,8 +228,10 @@ static uint32_t mednafen_rc_read_memory(uint32_t address, uint8_t *buffer,
         uint8_t *ram = MDFNLynx_GetRAMPointer();
         if (!ram) { return 0; }
         if (c && [c raLynxMemoryWarmingUp]) {
-            memset(buffer, 0, num_bytes);
-            return num_bytes;
+            // Mirror the post-warmup bounds so an out-of-range read short-reads consistently.
+            uint32_t n = (address >= 0x10000) ? 0 : MIN(num_bytes, 0x10000 - address);
+            memset(buffer, 0, n);
+            return n;
         }
         for (uint32_t i = 0; i < num_bytes; i++) {
             if (address + i >= 0x10000) { return i; }

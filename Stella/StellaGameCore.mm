@@ -142,7 +142,11 @@ static uint32_t stella_rc_read_memory(uint32_t address, uint8_t *buffer,
     _videoBuffer = nil;
     free(_sampleBuffer);
     _sampleBuffer = nil;
-    
+
+    // Drain the RA serial queue before freeing console so no in-flight read touches it.
+    [_raBridge shutdown];
+    _raBridge = nil;
+
     if (console) {
         delete console;
         console = nullptr;

@@ -21,6 +21,10 @@ fi
 
 cd "$SRC_DIR"
 
+# Existing checkouts may still point origin at the old stuartcarnie/mame remote;
+# repoint before fetching so the pinned revision resolves.
+git remote set-url origin "$REMOTE"
+
 git fetch --no-tags origin "$REVISION"
 git checkout --detach "$REVISION"
 

@@ -573,7 +573,9 @@ BOOL driverIsNotWorking(GameDriverOptions o)
         BOOL bigEndian = [dict[@"bigEndian"] boolValue];
         if (!bytes) continue;
 
-        uint8_t addrBytes = (address > 0xFFFF) ? 4 : (address > 0xFF) ? 3 : 2;
+        // Size the address width to the region's highest address, not its base.
+        uint32_t maxAddress = address + (uint32_t)bytes.length - 1;
+        uint8_t addrBytes = (maxAddress > 0xFFFF) ? 4 : (maxAddress > 0xFF) ? 3 : 2;
         uint8_t minDataBytes = bigEndian ? 2 : 1;
 
         [result addObject:[OEMemoryRegionDescriptor descriptorWithName:name

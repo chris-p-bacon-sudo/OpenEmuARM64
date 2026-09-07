@@ -28,7 +28,7 @@ deep_sign() {
   # Find all Mach-O files, sort by path depth (deepest first)
   find "$bundle" -type f \( -perm +111 -o -name "*.dylib" -o -name "*.so" \) -print0 \
     | xargs -0 file \
-    | grep -E "Mach-O|bundle" \
+    | { grep -E "Mach-O|bundle" || true; } \
     | cut -d: -f1 \
     | awk -F/ '{print NF, $0}' | sort -rn | cut -d' ' -f2- \
     | while read -r binary; do
@@ -113,6 +113,18 @@ done < <(tail -n +3 "$VERSIONS_FILE")
 # Track plist files modified for later revert
 MODIFIED_PLISTS=()
 
+# Revert the version bumps on any exit — including declining the failed-cores
+# prompt, which exits before step 4. Scoped to MODIFIED_PLISTS only; each entry
+# is restored with `git checkout --`. Guard the expansion for bash 3.2 + set -u.
+revert_modified_plists() {
+  [ ${#MODIFIED_PLISTS[@]} -gt 0 ] || return 0
+  local plist
+  for plist in "${MODIFIED_PLISTS[@]}"; do
+    git -C "$REPO_ROOT" checkout -- "$plist" 2>/dev/null || true
+  done
+}
+trap revert_modified_plists EXIT
+
 bump_last_segment() {
   local ver="$1"
   local prefix="${ver%.*}"
@@ -192,8 +204,9 @@ mkdir -p "$STAGING_DIR"
 CORES_STAGING="$STAGING_DIR/RA Review Cores"
 mkdir -p "$CORES_STAGING"
 
-DERIVED_DATA=$(find ~/Library/Developer/Xcode/DerivedData -maxdepth 1 \
-  -name "OpenEmu-metal-*" -type d 2>/dev/null | head -1)
+# Pin a script-owned DerivedData so every build writes here and every lookup
+# reads the artifact THIS run produced — not a stale hash Xcode rotated away.
+DERIVED_DATA="$BUILD_DIR/DerivedData"
 
 FAILED_CORES=()
 
@@ -218,6 +231,7 @@ for core in "${CORE_NAMES[@]}"; do
       -scheme "$SCHEME" \
       -configuration Release \
       -destination "$DESTINATION" \
+      -derivedDataPath "$DERIVED_DATA" \
       build 2>&1 | tail -3; then
     echo "  FAILED: $core"
     FAILED_CORES+=("$core")
@@ -225,8 +239,6 @@ for core in "${CORE_NAMES[@]}"; do
   fi
 
   # Locate the built plugin
-  DERIVED_DATA=$(find ~/Library/Developer/Xcode/DerivedData -maxdepth 1 \
-    -name "OpenEmu-metal-*" -type d 2>/dev/null | head -1)
   PLUGIN="$DERIVED_DATA/Build/Products/Release/${core}.oecoreplugin"
   if [ ! -d "$PLUGIN" ]; then
     echo "  WARNING: Plugin not found at $PLUGIN"
@@ -261,6 +273,8 @@ for plist in "${MODIFIED_PLISTS[@]}"; do
   git -C "$REPO_ROOT" checkout -- "$plist" 2>/dev/null || true
   info "Reverted: $(basename "$plist")"
 done
+# Reverted here; clear so the EXIT trap is a no-op on the normal path.
+MODIFIED_PLISTS=()
 
 # ── 5. Build the app ─────────────────────────────────────────────────────────
 step "5/8  Building OpenEmu app (Release)"
@@ -269,20 +283,22 @@ step "5/8  Building OpenEmu app (Release)"
 APP_PLIST="$REPO_ROOT/OpenEmu/OpenEmu-Info.plist"
 ORIGINAL_APP_VERSION=$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" "$APP_PLIST")
 /usr/libexec/PlistBuddy -c "Set CFBundleShortVersionString $APP_VERSION" "$APP_PLIST"
+# Cover the app plist under the EXIT trap in case the build below fails.
+MODIFIED_PLISTS=("$APP_PLIST")
 
 xcodebuild \
   -workspace "$WORKSPACE" \
   -scheme OpenEmu \
   -configuration Release \
   -destination "$DESTINATION" \
+  -derivedDataPath "$DERIVED_DATA" \
   build 2>&1 | tail -5
 
 # Revert app version bump
 /usr/libexec/PlistBuddy -c "Set CFBundleShortVersionString $ORIGINAL_APP_VERSION" "$APP_PLIST"
+MODIFIED_PLISTS=()
 
 # Locate the built app
-DERIVED_DATA=$(find ~/Library/Developer/Xcode/DerivedData -maxdepth 1 \
-  -name "OpenEmu-metal-*" -type d 2>/dev/null | head -1)
 APP_PATH="$DERIVED_DATA/Build/Products/Release/OpenEmu.app"
 [ -d "$APP_PATH" ] || die "Built app not found at $APP_PATH"
 
