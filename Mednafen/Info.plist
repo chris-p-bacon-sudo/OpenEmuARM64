@@ -21,7 +21,7 @@
 	<key>CFBundleSignature</key>
 	<string>????</string>
 	<key>CFBundleVersion</key>
-	<string>1.26.8.1</string>
+	<string>1.26.8.2</string>
 	<key>NSPrincipalClass</key>
 	<string>OEGameCoreController</string>
 	<key>OEGameCoreClass</key>
@@ -200,6 +200,8 @@
 			<true/>
 			<key>OEGameCoreSupportsMultipleDiscs</key>
 			<true/>
+			<key>OEGameCoreSupportsRetroAchievements</key>
+			<true/>
 			<key>OERequiredFiles</key>
 			<array>
 				<dict>
@@ -223,8 +225,6 @@
 					<integer>524288</integer>
 				</dict>
 			</array>
-			<key>OEGameCoreSupportsRetroAchievements</key>
-			<true/>
 		</dict>
 		<key>openemu.system.vb</key>
 		<dict>

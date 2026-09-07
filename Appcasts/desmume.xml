@@ -4,7 +4,18 @@
   xmlns:dc="http://purl.org/dc/elements/1.1/">
   <channel>
     <title>DeSmuME</title>
-        <item>
+            <item>
+      <title>DeSmuME 0.9.14.2</title>
+      <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
+      <enclosure
+        url="https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases/download/cores-v1.5.0/DeSmuME.oecoreplugin.zip"
+        sparkle:version="0.9.14.2"
+        sparkle:shortVersionString="0.9.14.2"
+        length="1836204"
+        sparkle:edSignature="wvd/GcHusN5Eg47EBRpJ6KDtrI8BHSGHeiO7ovSLsGTBwYJLdCmTIVMmZYRWaHxWR2chEfRDSIKovDG8UWGbCQ=="
+        type="application/octet-stream" />
+    </item>
+<item>
       <title>DeSmuME 0.9.14.1</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure

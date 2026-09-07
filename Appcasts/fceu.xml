@@ -4,7 +4,18 @@
   xmlns:dc="http://purl.org/dc/elements/1.1/">
   <channel>
     <title>FCEU</title>
-                    <item>
+                        <item>
+      <title>FCEU 2.6.12</title>
+      <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
+      <enclosure
+        url="https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/releases/download/cores-v1.5.0/FCEU.oecoreplugin.zip"
+        sparkle:version="2.6.12"
+        sparkle:shortVersionString="2.6.12"
+        length="561502"
+        sparkle:edSignature="PHuz3K42JT/HBPLrLrIQGA1BY3M60eCnZSY+fVoWYoJ+Q7BUfiOhOrTplSEXhOWI391MCSa2CHw/kDL6s6T7Aw=="
+        type="application/octet-stream" />
+    </item>
+<item>
       <title>FCEU 2.6.11</title>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
