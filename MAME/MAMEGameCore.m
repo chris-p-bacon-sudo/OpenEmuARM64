@@ -226,16 +226,8 @@ BOOL driverIsNotWorking(GameDriverOptions o)
     Options *opts = _osd.options;
     [opts setBasePath:self.supportDirectoryPath];
 
-    // Install bundled cheat database on first launch
-    NSString *cheatDir = [self.supportDirectoryPath stringByAppendingPathComponent:@"cheat"];
-    NSString *cheatDst = [cheatDir stringByAppendingPathComponent:@"cheat.7z"];
-    if (![[NSFileManager defaultManager] fileExistsAtPath:cheatDst]) {
-        NSString *cheatSrc = [[NSBundle bundleForClass:[self class]] pathForResource:@"cheat" ofType:@"7z"];
-        if (cheatSrc) {
-            [[NSFileManager defaultManager] createDirectoryAtPath:cheatDir withIntermediateDirectories:YES attributes:nil error:nil];
-            [[NSFileManager defaultManager] copyItemAtPath:cheatSrc toPath:cheatDst error:nil];
-        }
-    }
+    // Keep MAME's internal cheat menu off; OpenEmu provides its own cheat search.
+    opts.cheat = NO;
 
     opts.romsPath = romDir;
     BOOL prev;
