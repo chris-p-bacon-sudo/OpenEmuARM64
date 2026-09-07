@@ -133,6 +133,7 @@
 	<key>OEFileSuffixes</key>
 	<array>
 		<string>pce</string>
+		<string>sgx</string>
 	</array>
 	<key>OEGenericControlNamesKey</key>
 	<array>

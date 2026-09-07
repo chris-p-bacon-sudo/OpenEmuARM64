@@ -121,6 +121,9 @@ static bool BackupRAM_Dirty;
 static int64 BackupRAM_SaveDelay;
 static int64 CartNV_SaveDelay;
 
+const uint8* SS_GetWorkRAML(void) { return (const uint8*)WorkRAML; }
+const uint8* SS_GetWorkRAMH(void) { return (const uint8*)WorkRAMH; }
+
 #define SH7095_EXT_MAP_GRAN_BITS 16
 static uintptr_t SH7095_FastMap[1U << (32 - SH7095_EXT_MAP_GRAN_BITS)];
 

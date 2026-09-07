@@ -87,6 +87,9 @@ void PCE_PokeMainRAM(uint32 A, uint8 V)
  BaseRAM[A & ((IsSGX ? 32768 : 8192) - 1)] = V;
 }
 
+extern "C" uint8_t *MDFNPCE_GetMainRAMPointer(void) { return BaseRAM; }
+extern "C" uint32_t MDFNPCE_GetMainRAMSize(void) { return IsSGX ? 32768 : 8192; }
+
 
 
 HuC6280::readfunc NonCheatPCERead[0x100];

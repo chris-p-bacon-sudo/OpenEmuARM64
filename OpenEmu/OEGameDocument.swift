@@ -1072,9 +1072,8 @@ final class OEGameDocument: NSDocument {
     }
     
     @objc private func windowDidResignMain(_ notification: Notification) {
-        // Deferred a turn so the incoming main window has been established:
-        // this fires before the new window takes over, so asking who is main
-        // right now would always come back empty.
+        // Deferred one runloop turn to avoid a race where the pause fires
+        // while AppKit is still mid-transition between main windows.
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
 
@@ -1913,9 +1912,37 @@ final class OEGameDocument: NSDocument {
             return ConvertedCheat(code: Self.convertToGameSharkGB(code), type: OECheatTypeGameShark)
         case OESystemIdentifierNDS:
             return ConvertedCheat(code: Self.convertToActionReplayDS(code), type: OECheatTypeActionReplay)
+        case OESystemIdentifierSaturn:
+            return ConvertedCheat(code: Self.convertToSaturnAR(code), type: OECheatTypeActionReplay)
         default:
             return ConvertedCheat(code: Self.convertToRaw(code, addressBytes: addressBytes, minDataBytes: minDataBytes), type: OECheatTypeRaw)
         }
+    }
+
+    // MARK: Saturn Action Replay (TAAAAAAA VVVV)
+
+    private static func convertToSaturnAR(_ code: String) -> String {
+        guard let colonIdx = code.firstIndex(of: ":") else { return code }
+        let addressPart = String(code[code.startIndex..<colonIdx])
+        let valuePart = String(code[code.index(after: colonIdx)...])
+
+        let address = UInt64(addressPart, radix: 16) ?? 0
+        let value = UInt64(valuePart, radix: 16) ?? 0
+        let byteCount = max(1, (valuePart.count + 1) / 2)
+
+        if byteCount <= 2 {
+            // Type: 1 = word (2 bytes), 3 = byte (1 byte)
+            let typeNibble: UInt64 = (byteCount <= 1) ? 3 : 1
+            let arAddress = (typeNibble << 28) | (address & 0x0FFFFFFF)
+            return String(format: "%08X %04X", UInt32(arAddress), UInt32(value & 0xFFFF))
+        }
+
+        // Split 4-byte values into two word-writes (big-endian: high word first)
+        let highWord = UInt32((value >> 16) & 0xFFFF)
+        let lowWord = UInt32(value & 0xFFFF)
+        let arAddr1 = (UInt64(1) << 28) | (address & 0x0FFFFFFF)
+        let arAddr2 = (UInt64(1) << 28) | ((address + 2) & 0x0FFFFFFF)
+        return String(format: "%08X %04X+%08X %04X", UInt32(arAddr1), highWord, UInt32(arAddr2), lowWord)
     }
 
     // MARK: Raw format (ADDRESS:VALUE with padding and multi-byte splitting)
@@ -2791,7 +2818,8 @@ extension OEGameDocument {
             return supportsDisplayModeChange
         case #selector(showRetroAchievements(_:)):
             menuItem.title = NSLocalizedString("Achievements…", comment: "RetroAchievements menu item title")
-            return true
+            menuItem.isHidden = !isRetroAchievementsSessionSupported
+            return isRetroAchievementsSessionSupported
         default:
             return true
         }
