@@ -508,7 +508,15 @@ extension OEDBGame {
     }
     
     override func imageUID() -> String! {
-        if let image = boxImage, image.isLocalImageAvailable, image.relativePath != nil {
+        // Deliberately does NOT gate on isLocalImageAvailable. That check is
+        // synchronous-on-cache-hit / async-resolved-on-miss (see OEDBImage),
+        // so gating identity on it means the UID changes the moment the disk
+        // check resolves from unconfirmed to available — IKImageBrowserView
+        // caches by this UID, so a UID change reads as a brand new image
+        // rather than an update to the same one, forcing a full reload and
+        // flashing the placeholder back in every time. Identity only needs
+        // to reflect whether we have an image record with a path at all.
+        if let image = boxImage, image.relativePath != nil {
             return image.uuid
         } else {
             return ":MissingArtwork(\(system?.coverAspectRatio ?? 0))"
