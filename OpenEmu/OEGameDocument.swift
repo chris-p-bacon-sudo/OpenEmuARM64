@@ -888,10 +888,8 @@ final class OEGameDocument: NSDocument {
                let core = OECorePlugin.corePlugin(bundleIdentifier: coreIdentifier) {
                 return core
             } else {
-                let isRA: (OECorePlugin) -> Bool = { $0.bundleIdentifier.hasSuffix("-RetroArch") }
                 validPlugins.sort {
-                    if isRA($0) != isRA($1) { return !isRA($0) }
-                    return $0.displayName.caseInsensitiveCompare($1.displayName) == .orderedAscending
+                    $0.displayName.caseInsensitiveCompare($1.displayName) == .orderedAscending
                 }
                 return validPlugins.first!
             }

@@ -40,45 +40,12 @@ private extension NSUserInterfaceItemIdentifier {
     static let actionCell    = NSUserInterfaceItemIdentifier("actionCell")
 }
 
-// MARK: - RetroArch core model
-
-private struct RetroArchCore {
-    let coreName: String       // "mGBA"
-    let displayName: String    // "mGBA (RetroArch)"
-    let dylibURL: URL
-    let systemIDs: [String]    // OE system identifiers
-    let requiresHWRender: Bool // true → needs OpenGL/Vulkan context the bridge can't yet provide
-
-    var pluginName: String { "\(coreName)-RetroArch" }
-
-    var bundleIdentifier: String {
-        let plistURL = installedPluginURL.appendingPathComponent("Contents/Info.plist")
-        if let data = try? Data(contentsOf: plistURL),
-           let plist = (try? PropertyListSerialization.propertyList(from: data, options: [], format: nil)) as? [String: Any],
-           let id = plist["CFBundleIdentifier"] as? String {
-            return id
-        }
-        return "org.openemu.\(pluginName)"
-    }
-
-    var installedPluginURL: URL {
-        let coresDir = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Library/Application Support/OpenEmu/Cores")
-        return coresDir.appendingPathComponent("\(pluginName).oecoreplugin")
-    }
-
-    var isPluginInstalled: Bool {
-        FileManager.default.fileExists(atPath: installedPluginURL.path)
-    }
-}
-
 // MARK: - Data model
 
 private struct SystemEntry {
     let systemIdentifier: String
     let systemName: String
     var cores: [CoreDownload]
-    var retroArchCores: [RetroArchCore] = []
 
     var activeCoreID: String? {
         get { UserDefaults.standard.string(forKey: "defaultCore.\(systemIdentifier)") }
@@ -90,19 +57,10 @@ private struct SystemEntry {
         if let match = cores.first(where: { $0.bundleIdentifier.caseInsensitiveCompare(id) == .orderedSame }) {
             return match
         }
-        // Don't fall back if the active selection is a RetroArch core.
-        if retroArchCores.contains(where: { $0.bundleIdentifier.caseInsensitiveCompare(id) == .orderedSame }) {
-            return nil
-        }
         return cores.first(where: { !$0.canBeInstalled }) ?? cores.first
     }
 
-    var activeRetroArchCore: RetroArchCore? {
-        let id = activeCoreID ?? ""
-        return retroArchCores.first(where: { $0.bundleIdentifier.caseInsensitiveCompare(id) == .orderedSame })
-    }
-
-    var hasMultipleCoreOptions: Bool { (cores.count + retroArchCores.count) > 1 }
+    var hasMultipleCoreOptions: Bool { cores.count > 1 }
 }
 
 // MARK: - Controller
@@ -194,16 +152,13 @@ final class PrefCoresController: NSViewController {
     // MARK: - Data
 
     private func rebuildEntries() {
-        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            guard let self else { return }
-            let allRetroArch = self.scanRetroArchCores()
-            DispatchQueue.main.async { [weak self] in
-                self?.applyEntries(retroArchCores: allRetroArch)
-            }
+        DispatchQueue.main.async { [weak self] in
+            self?.applyEntries()
         }
     }
 
-    private func applyEntries(retroArchCores allRetroArch: [RetroArchCore]) {
+    private func applyEntries() {
+
         let collisions = OECorePlugin.collidingBundleIdentifiers
         if collisions.isEmpty {
             warningBanner.isHidden = true
@@ -228,47 +183,15 @@ final class PrefCoresController: NSViewController {
         }
 
         entries = map.map { sysID, value in
-            var entry = SystemEntry(
+            SystemEntry(
                 systemIdentifier: sysID,
                 systemName: value.name,
                 cores: value.cores.sorted { $0.name < $1.name }
             )
-            entry.retroArchCores = deduplicatedRetroArchCores(allRetroArch.filter { $0.systemIDs.contains(sysID) })
-            return entry
         }
         .sorted { $0.systemName < $1.systemName }
 
-        // Add rows for systems that only exist via RA cores (installed or not).
-        // Group all RA cores for the same sysID into one row.
-        var extraMap: [String: [RetroArchCore]] = [:]
-        for raCore in allRetroArch {
-            for sysID in raCore.systemIDs where !entries.contains(where: { $0.systemIdentifier == sysID }) {
-                extraMap[sysID, default: []].append(raCore)
-            }
-        }
-        for (sysID, raCores) in extraMap {
-            var entry = SystemEntry(systemIdentifier: sysID, systemName: displayName(for: sysID, fallback: sysID), cores: [])
-            entry.retroArchCores = deduplicatedRetroArchCores(raCores)
-            entries.append(entry)
-        }
-
-        entries.sort { $0.systemName < $1.systemName }
         tableView.reloadData()
-    }
-
-    private func deduplicatedRetroArchCores(_ cores: [RetroArchCore]) -> [RetroArchCore] {
-        var seen: [String: RetroArchCore] = [:]
-        for core in cores {
-            if let existing = seen[core.displayName] {
-                // Prefer the installed variant over an uninstalled duplicate
-                if core.isPluginInstalled && !existing.isPluginInstalled {
-                    seen[core.displayName] = core
-                }
-            } else {
-                seen[core.displayName] = core
-            }
-        }
-        return seen.values.sorted { $0.displayName < $1.displayName }
     }
 
     private func displayName(for sysID: String, fallback: String) -> String {
@@ -309,24 +232,6 @@ final class PrefCoresController: NSViewController {
             guard let core = entries[row].activeCore else { return }
             confirmRevert(core: core)
 
-        case .addRetroArch(let raCore):
-            entries[row].activeCoreID = raCore.bundleIdentifier
-            tableView.reloadData(forRowIndexes: IndexSet(integer: row), columnIndexes: IndexSet([1, 2, 3]))
-            if !raCore.isPluginInstalled {
-                installRetroArchPlugin(raCore) { [weak self] error in
-                    DispatchQueue.main.async {
-                        if let error = error {
-                            NSApp.presentError(error)
-                        } else {
-                            self?.enableSystems(for: raCore.systemIDs)
-                            self?.rebuildEntries()
-                        }
-                    }
-                }
-            } else {
-                // Plugin already on disk — ensure the system is visible without a restart.
-                enableSystems(for: raCore.systemIDs)
-            }
         }
     }
 
@@ -355,7 +260,6 @@ final class PrefCoresController: NSViewController {
 private enum ActionKind {
     case selectCore(bundleID: String)
     case install, update, check, revert
-    case addRetroArch(RetroArchCore)
 }
 
 // MARK: - NSTableViewDataSource
@@ -388,10 +292,7 @@ extension PrefCoresController: NSTableViewDelegate {
 
         case .coreColumn:
             let cell = makeTextCell(.coreCell)
-            if let ra = entry.activeRetroArchCore {
-                cell.textField?.stringValue = ra.displayName
-                cell.textField?.textColor = .secondaryLabelColor
-            } else if let core = entry.activeCore {
+            if let core = entry.activeCore {
                 let supportsRA = OECorePlugin
                     .corePlugin(bundleIdentifier: core.bundleIdentifier)?
                     .supportsRetroAchievements(forSystemIdentifier: entry.systemIdentifier) ?? false
@@ -413,8 +314,6 @@ extension PrefCoresController: NSTableViewDelegate {
                 let cur = core.version.isEmpty ? "—" : core.version
                 let lat = core.appcastItem?.version ?? cur
                 cell.textField?.stringValue = "Ver: \(cur)\nLat: \(lat)"
-            } else if entry.activeRetroArchCore != nil {
-                cell.textField?.stringValue = "RetroArch"
             } else {
                 cell.textField?.stringValue = "—"
             }
@@ -461,7 +360,6 @@ extension PrefCoresController: NSTableViewDelegate {
 
         let menu   = NSMenu()
         let active = entry.activeCore
-        let activeRA = entry.activeRetroArchCore
 
         // ── Manage installed core ────────────────────────────────────────────
         if let core = active {
@@ -480,7 +378,7 @@ extension PrefCoresController: NSTableViewDelegate {
                 mgmt = makeItem(NSLocalizedString("Check for Update", comment: ""), row: row, kind: .check)
             }
             menu.addItem(mgmt)
-        } else if activeRA == nil {
+        } else {
             menu.addItem(disabledItem(NSLocalizedString("No Core", comment: "")))
         }
 
@@ -498,37 +396,11 @@ extension PrefCoresController: NSTableViewDelegate {
                 item.state = core.bundleIdentifier.caseInsensitiveCompare(activeID ?? "") == .orderedSame ? .on : .off
                 menu.addItem(item)
             }
-
-            // ── RetroArch cores ──────────────────────────────────────────────
-            if !entry.retroArchCores.isEmpty {
-                menu.addItem(.separator())
-
-                for raCore in entry.retroArchCores {
-                    var label = raCore.isPluginInstalled ? raCore.displayName : "Add \(raCore.displayName)"
-                    if raCore.requiresHWRender { label += " — not yet supported" }
-                    let item  = makeItem(label, row: row, kind: .addRetroArch(raCore))
-                    item.state = raCore.bundleIdentifier.caseInsensitiveCompare(activeID ?? "") == .orderedSame ? .on : .off
-                    menu.addItem(item)
-                }
-            }
-        } else if !entry.retroArchCores.isEmpty && entry.cores.isEmpty {
-            // Only RetroArch options exist for this system.
-            if !menu.items.isEmpty { menu.addItem(.separator()) }
-            let activeID = entry.activeCoreID
-            for raCore in entry.retroArchCores {
-                var label = raCore.isPluginInstalled ? raCore.displayName : "Add \(raCore.displayName)"
-                if raCore.requiresHWRender { label += " — not yet supported" }
-                let item  = makeItem(label, row: row, kind: .addRetroArch(raCore))
-                item.state = raCore.bundleIdentifier.caseInsensitiveCompare(activeID ?? "") == .orderedSame ? .on : .off
-                menu.addItem(item)
-            }
         }
 
         // Title item (index 0 of a pull-down is the button label)
         let titleLabel: String
-        if let ra = activeRA {
-            titleLabel = ra.displayName
-        } else if let core = active {
+        if let core = active {
             if core.isDownloading {
                 titleLabel = "Downloading…"
             } else if core.canBeInstalled {
@@ -569,278 +441,6 @@ extension PrefCoresController: NSTableViewDelegate {
         let item = NSMenuItem(title: title, action: nil, keyEquivalent: "")
         item.isEnabled = false
         return item
-    }
-}
-
-// MARK: - RetroArch scanner
-
-extension PrefCoresController {
-
-    // Maps upstream RetroArch `.info` `systemid` values to OE system identifiers.
-    // Note: many upstream `systemid`s (commodore_c128, commodore_vic20, commodore_plus4,
-    // commodore_pet, commodore_cbm2, commodore_cbm5x0, commodore_c64_supercpu,
-    // commodore_c64dtv, atari_st, apple_ii, mac68k, dos, pc_88, pc_98, scummvm,
-    // 3ds, xbox, model3, mess, etc.) are intentionally absent because OE has no
-    // SystemPlugin for those systems — silently dropping them is correct.
-    private static let systemIDMap: [String: [String]] = [
-        // Nintendo
-        "game_boy_advance":      ["openemu.system.gba"],
-        "game_boy":              ["openemu.system.gb"],   // GBC ROMs use the GB system in OE
-        "super_nes":             ["openemu.system.snes"],
-        "nes":                   ["openemu.system.nes"],
-        "nintendo_64":           ["openemu.system.n64"],
-        "nds":                   ["openemu.system.nds"],  // OE uses "nds", not "ds"
-        "nintendo_ds":           ["openemu.system.nds"],
-        "gamecube":              ["openemu.system.gc", "openemu.system.wii"],  // Dolphin handles both
-        "wii":                   ["openemu.system.wii"],
-        "virtual_boy":           ["openemu.system.vb"],
-        // TODO: "game_and_watch" — no SystemPlugin for Game & Watch in OE; leaving
-        // it unmapped until that plugin lands so the install doesn't silently fail.
-        "pokemon_mini":          ["openemu.system.pokemonmini"],
-        // Sony
-        "playstation":           ["openemu.system.psx"],
-        "playstation_2":         ["openemu.system.ps2"],
-        "playstation2":          ["openemu.system.ps2"],  // alternate spelling used by some cores
-        "playstation_portable":  ["openemu.system.psp"],
-        // Sega
-        "dreamcast":             ["openemu.system.dc"],
-        "sega_genesis":          ["openemu.system.sg"],   // OE uses "sg", not "genesis"
-        "sega_mega_drive":       ["openemu.system.sg"],
-        "mega_drive":            ["openemu.system.sg"],   // used by Genesis Plus GX, BlastEm, PicoDrive
-        "sega_game_gear":        ["openemu.system.gg"],
-        "game_gear":             ["openemu.system.gg"],
-        "sega_master_system":    ["openemu.system.sms"],
-        "master_system":         ["openemu.system.sms"],  // used by Gearsystem, SMS Plus GX
-        "sega_saturn":           ["openemu.system.saturn"],
-        "sega_cd":               ["openemu.system.scd"],
-        "mega_cd":               ["openemu.system.scd"],  // alternate name used by some cores
-        "sg-1000":               ["openemu.system.sg1000"],
-        // Atari
-        "atari_2600":            ["openemu.system.2600"],
-        "atari_5200":            ["openemu.system.5200"],
-        "atari_7800":            ["openemu.system.7800"],
-        "atari_lynx":            ["openemu.system.lynx"],
-        "lynx":                  ["openemu.system.lynx"],
-        "atari_jaguar":          ["openemu.system.jaguar"],  // used by Virtual Jaguar RA
-        "jaguar":                ["openemu.system.jaguar"],
-        // NEC
-        "pc_engine":             ["openemu.system.pce"],
-        "pc_engine_cd":          ["openemu.system.pcecd"],
-        "pc_fx":                 ["openemu.system.pcfx"],   // Beetle PC-FX
-        // SNK
-        "neo_geo_pocket":        ["openemu.system.ngp"],
-        "neo_geo_pocket_color":  ["openemu.system.ngp"],
-        // Bandai
-        "wonderswan":            ["openemu.system.ws"],
-        "wonderswan_color":      ["openemu.system.ws"],
-        // Other consoles
-        "3do":                   ["openemu.system.3do"],
-        "colecovision":          ["openemu.system.colecovision"],
-        "intellivision":         ["openemu.system.intellivision"],
-        "intv":                  ["openemu.system.intellivision"],  // alternate spelling used by some cores
-        "odyssey2":              ["openemu.system.odyssey2"],
-        "supervision":           ["openemu.system.sv"],
-        "vectrex":               ["openemu.system.vectrex"],
-        // Commodore / home computers
-        "commodore_c64":         ["openemu.system.c64"],
-        "commodore_c64sc":       ["openemu.system.c64"],    // VICE x64sc
-        "commodore_64":          ["openemu.system.c64"],    // alternate spelling used by some cores
-        "msx":                   ["openemu.system.msx"],
-        // TODO: "amiga" / "commodore_amiga" — no SystemPlugin for Amiga in OE;
-        // leaving unmapped (PUAE, Amiberry) until that plugin lands so the
-        // install doesn't silently fail with no plugin to register against.
-        // Arcade
-        "fb_alpha":              ["openemu.system.arcade"],
-        "mame":                  ["openemu.system.arcade"],
-    ]
-
-    /// Read-only view of the upstream-RA `systemid` → OE system identifier map,
-    /// for the startup inventory diagnostic in AppDelegate.
-    static var retroArchSystemIDMap: [String: [String]] { systemIDMap }
-
-    private func scanRetroArchCores() -> [RetroArchCore] {
-        let fm = FileManager.default
-        let home = fm.homeDirectoryForCurrentUser
-        let coresDir = home.appendingPathComponent("Library/Application Support/RetroArch/cores")
-        let infoDir  = home.appendingPathComponent("Library/Application Support/RetroArch/info")
-
-        guard let files = try? fm.contentsOfDirectory(at: coresDir, includingPropertiesForKeys: nil) else {
-            return []
-        }
-
-        return files
-            .filter { $0.lastPathComponent.hasSuffix("_libretro.dylib") }
-            .compactMap { dylib -> RetroArchCore? in
-                let stem    = dylib.deletingPathExtension().lastPathComponent  // e.g. "mgba_libretro"
-                let infoURL = infoDir.appendingPathComponent("\(stem).info")
-                guard let parsed = parseInfoFile(at: infoURL) else { return nil }
-                let sysIDs = parsed.systemIDs
-                guard !sysIDs.isEmpty else { return nil }
-                return RetroArchCore(
-                    coreName:         parsed.coreName,
-                    displayName:      "\(parsed.coreName) (RetroArch)",
-                    dylibURL:         dylib,
-                    systemIDs:        sysIDs,
-                    requiresHWRender: parsed.requiresHWRender
-                )
-            }
-            .sorted { $0.displayName < $1.displayName }
-    }
-
-    private func parseInfoFile(at url: URL) -> (coreName: String, systemIDs: [String], requiresHWRender: Bool)? {
-        guard let text = try? String(contentsOf: url, encoding: .utf8) else { return nil }
-        var coreName: String?
-        var systemID: String?
-        var hwRender = false
-        for line in text.components(separatedBy: .newlines) {
-            let parts = line.components(separatedBy: "=")
-            guard parts.count >= 2 else { continue }
-            let key = parts[0].trimmingCharacters(in: .whitespaces)
-            let val = parts[1...].joined(separator: "=")
-                .trimmingCharacters(in: .whitespaces)
-                .trimmingCharacters(in: CharacterSet(charactersIn: "\""))
-            switch key {
-            case "corename": coreName = val
-            case "systemid": systemID = val
-            case "hw_render": hwRender = (val.lowercased() == "true")
-            default: break
-            }
-        }
-        guard let name = coreName, let sid = systemID else { return nil }
-        return (name, Self.systemIDMap[sid] ?? [], hwRender)
-    }
-
-    // MARK: - Plugin installation
-
-    /// Ensures the `OEDBSystem` for each system identifier is created and enabled, then posts
-    /// `OEDBSystemAvailabilityDidChange` so the sidebar and Library pane refresh immediately.
-    private func enableSystems(for systemIDs: [String]) {
-        guard let context = OELibraryDatabase.default?.mainThreadContext else { return }
-        var changed = false
-        for sysID in systemIDs {
-            guard let plugin = OESystemPlugin.systemPlugin(forIdentifier: sysID) else { continue }
-            let system = OEDBSystem.system(for: plugin, in: context)
-            // Only auto-enable when the system has never been explicitly configured.
-            // If the user deliberately disabled it, respect that choice.
-            if system.isEnabledByDefault {
-                system.isEnabled = true
-                changed = true
-            } else if system.isEnabled {
-                // Already enabled — just fire the notification so the sidebar refreshes
-                // after OECorePlugin.allPlugins gained the new core.
-                NotificationCenter.default.post(name: .OEDBSystemAvailabilityDidChange, object: system)
-            }
-        }
-        if changed {
-            try? context.save()
-        }
-    }
-
-    private func installRetroArchPlugin(_ core: RetroArchCore, completion: @escaping (Error?) -> Void) {
-        DispatchQueue.global(qos: .userInitiated).async {
-            do {
-                try self._createPlugin(core)
-                // Register the freshly-created bundle in OECorePlugin.allPlugins
-                // so pickers (right-click "Play With…", launch dialog) see it
-                // immediately instead of after the user restarts OpenEmu.
-                _ = try? OECorePlugin.plugin(bundleAtURL: core.installedPluginURL)
-                completion(nil)
-            } catch {
-                completion(error)
-            }
-        }
-    }
-
-    private func _createPlugin(_ core: RetroArchCore) throws {
-        let fm      = FileManager.default
-        let plugin  = core.installedPluginURL
-        guard !fm.fileExists(atPath: plugin.path) else { return }
-
-        let macOSDir  = plugin.appendingPathComponent("Contents/MacOS")
-        let plistURL  = plugin.appendingPathComponent("Contents/Info.plist")
-        try fm.createDirectory(at: macOSDir, withIntermediateDirectories: true)
-
-        // Source the stub executable from the canonical bridge bundle inside
-        // OpenEmu.app/Contents/Resources/. Falls back to scanning installed
-        // native cores only if the bundle hasn't been wired into the app yet
-        // (transition-period safety; remove the fallback once shipping).
-        let bridgeBin: URL
-        if let bundled = bundledBridgeExecutableURL() {
-            bridgeBin = bundled
-        } else if let template = findTemplateBinary() {
-            bridgeBin = template
-        } else {
-            throw NSError(domain: "OpenEmu", code: 1, userInfo: [
-                NSLocalizedDescriptionKey: "No bridge bundle or installed OpenEmu core found to seed the plugin executable."
-            ])
-        }
-        let binaryURL = macOSDir.appendingPathComponent(core.pluginName)
-        try fm.copyItem(at: bridgeBin, to: binaryURL)
-
-        // Write Info.plist. OEBridgeVersion stamps the stub with the translator
-        // version it ships against so the app can refresh stale stubs on launch.
-        let plist: [String: Any] = [
-            "CFBundleDevelopmentRegion": "English",
-            "CFBundleExecutable":        core.pluginName,
-            "CFBundleIdentifier":        "org.openemu.\(core.pluginName)",
-            "CFBundleInfoDictionaryVersion": "6.0",
-            "CFBundleName":              core.displayName,
-            "CFBundlePackageType":       "BNDL",
-            "CFBundleShortVersionString":"1.0",
-            "CFBundleVersion":           "1",
-            "NSPrincipalClass":          "OEGameCoreController",
-            "OEGameCoreClass":           "OELibretroCoreTranslator",
-            "OELibretroCorePath":        core.dylibURL.path,
-            "OEGameCoreName":            core.displayName,
-            "OESystemIdentifiers":       core.systemIDs,
-            "OEGameCorePlayerCount":     "2",
-            "OEBridgeVersion":           OELibretroBridgeVersion,
-        ]
-        let plistData = try PropertyListSerialization.data(fromPropertyList: plist, format: .xml, options: 0)
-        try plistData.write(to: plistURL)
-
-        // Ad-hoc codesign
-        let task = Process()
-        task.executableURL = URL(fileURLWithPath: "/usr/bin/codesign")
-        task.arguments     = ["--force", "--sign", "-", plugin.path]
-        try task.run()
-        task.waitUntilExit()
-    }
-
-    /// URL of the bridge plugin bundle shipped inside OpenEmu.app/Contents/PlugIns/,
-    /// or nil if it hasn't been built into this app (e.g. older build before the
-    /// bridge target landed). Lives in PlugIns rather than Resources because
-    /// Xcode's modern build system rejects copy-from-built-product into Resources
-    /// as a dependency cycle when the destination is being processed by the
-    /// app target's "Update Info.plist" run-script phase.
-    static func bundledBridgePluginURL() -> URL? {
-        let url = Bundle.main.bundleURL
-            .appendingPathComponent("Contents/PlugIns/OpenEmuLibretroBridge.oecoreplugin")
-        return FileManager.default.fileExists(atPath: url.path) ? url : nil
-    }
-
-    private func bundledBridgeExecutableURL() -> URL? {
-        guard let plugin = Self.bundledBridgePluginURL() else { return nil }
-        let exe = plugin.appendingPathComponent("Contents/MacOS/OpenEmuLibretroBridge")
-        return FileManager.default.fileExists(atPath: exe.path) ? exe : nil
-    }
-
-    private func findTemplateBinary() -> URL? {
-        let coresDir = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Library/Application Support/OpenEmu/Cores")
-        guard let plugins = try? FileManager.default.contentsOfDirectory(
-            at: coresDir, includingPropertiesForKeys: nil
-        ) else { return nil }
-
-        for plugin in plugins where plugin.pathExtension == "oecoreplugin" {
-            let macOS = plugin.appendingPathComponent("Contents/MacOS")
-            if let bins = try? FileManager.default.contentsOfDirectory(
-                at: macOS, includingPropertiesForKeys: nil
-            ), let bin = bins.first {
-                return bin
-            }
-        }
-        return nil
     }
 }
 

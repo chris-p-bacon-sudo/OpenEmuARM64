@@ -151,7 +151,6 @@
 		141554211442B7B100A01683 /* OEN64SystemResponder.m in Sources */ = {isa = PBXBuildFile; fileRef = 141554201442B7B100A01683 /* OEN64SystemResponder.m */; };
 		14CB5DAA16FE1F8300342817 /* OEAudioDeviceManager.m in Sources */ = {isa = PBXBuildFile; fileRef = 14CB5DA916FE1F8300342817 /* OEAudioDeviceManager.m */; };
 		14F6A926168180D00071386D /* GameWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14F6A925168180CF0071386D /* GameWindowController.swift */; };
-		14FEB8870D5948A1BCD26EEF /* OELibretroMetadata.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62C735BCE1E9487EA5A79659 /* OELibretroMetadata.swift */; };
 		170AA9A84CF138836883E194 /* OEGoogleDriveSecrets.template.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35F8401C31D685D3E7EAA048 /* OEGoogleDriveSecrets.template.swift */; };
 		1B32151514DDD49E00C5B50A /* OpenEmu.dae in Resources */ = {isa = PBXBuildFile; fileRef = 1B32151214DDD06500C5B50A /* OpenEmu.dae */; };
 		1B32151614DDD49E00C5B50A /* OpenEmuText.dae in Resources */ = {isa = PBXBuildFile; fileRef = 1B32151314DDD06500C5B50A /* OpenEmuText.dae */; };
@@ -1356,7 +1355,6 @@
 		5CCE228E57ED51524BAE52BB /* OESyncStatusOverlayView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OESyncStatusOverlayView.swift; sourceTree = "<group>"; };
 		5E22FBAAB2953D6C36ED0141 /* OpenEmuLibretroBridge-Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = "OpenEmuLibretroBridge-Info.plist"; sourceTree = "<group>"; };
 		60C6AA00A0A44B609186B94D /* OEWiiSystemController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = OEWiiSystemController.m; sourceTree = "<group>"; };
-		62C735BCE1E9487EA5A79659 /* OELibretroMetadata.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = OELibretroMetadata.swift; sourceTree = "<group>"; };
 		669734CE138046AC84F66296 /* OEWiiSystemController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OEWiiSystemController.h; sourceTree = "<group>"; };
 		68416A57049F48B997026285 /* Controller-Mappings.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "Controller-Mappings.plist"; sourceTree = "<group>"; };
 		6F74677D2124A2E934C10038 /* OESaveSyncManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OESaveSyncManager.swift; sourceTree = "<group>"; };
@@ -3138,7 +3136,6 @@
 			children = (
 				83CACEC7196D6D1300999E70 /* Download.swift */,
 				8375E14E1477FC0D0018DA1F /* CoreUpdater.swift */,
-				62C735BCE1E9487EA5A79659 /* OELibretroMetadata.swift */,
 				8F22765129D30551001FB9FA /* Core-Curation.md */,
 				6FAD47F297164AD6B87C99DF /* OECoreMigration.swift */,
 				839310BB147802380020058E /* CoreDownload.swift */,
@@ -6477,7 +6474,6 @@
 				94A4E98D179F9A4D00AD8C7D /* OEDBSaveStatesMedia.swift in Sources */,
 				56ECCDC1488945C2A09403D7 /* OECoreMigration.swift in Sources */,
 				8F9410C0273A0167004C47CC /* CoreUpdater.swift in Sources */,
-				14FEB8870D5948A1BCD26EEF /* OELibretroMetadata.swift in Sources */,
 				94A4E992179F9D0400AD8C7D /* OEDBScreenshotsMedia.swift in Sources */,
 				94A4E996179FAB9F00AD8C7D /* OEMediaViewController.m in Sources */,
 				8F4AEAC1273594E6005C6246 /* OpenVGDB.swift in Sources */,
