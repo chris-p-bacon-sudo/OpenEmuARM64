@@ -61,15 +61,9 @@ fi
 #    updates only flow through CoreUpdater's oecores.xml override, which is
 #    not guaranteed to exist forever and is silently bypassed by anything
 #    that drives Sparkle directly.
-# OpenEmu/LibretroBridge/ ships bundled inside the host app and updates with
-# the app itself (refreshed at launch via refreshStaleRetroArchStubs in
-# AppDelegate.swift). It legitimately has no per-plugin Sparkle channel.
 missing_sufeedurl=()
 while IFS= read -r plist; do
   [ -z "$plist" ] && continue
-  case "$plist" in
-    OpenEmu/LibretroBridge/*) continue ;;
-  esac
   if grep -q '<key>OEGameCoreClass</key>' "$plist" 2>/dev/null \
      && ! grep -q '<key>SUFeedURL</key>' "$plist" 2>/dev/null; then
     missing_sufeedurl+=("$plist")

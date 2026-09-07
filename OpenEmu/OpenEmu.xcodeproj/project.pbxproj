@@ -86,7 +86,6 @@
 		016F230D23F1A6CC00181842 /* InputLimitFormatter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83F4DE1214DFF9C200A82E36 /* InputLimitFormatter.swift */; };
 		016F9D2624DC88F6001DD1D2 /* OpenEmuSystem.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C6D120C417112E1300E868A8 /* OpenEmuSystem.framework */; };
 		01E2A2F323E60F7E00194150 /* PrefCoresController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01E2A2F223E60F7D00194150 /* PrefCoresController.swift */; };
-		02AA6289EF65A5AE1DE1D5F2 /* OpenEmuLibretroBridgeMain.m in Sources */ = {isa = PBXBuildFile; fileRef = F3EDB39D618D5D6F6914739F /* OpenEmuLibretroBridgeMain.m */; };
 		0519A89F25AA4CD800D71C21 /* ShaderControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0519A89E25AA4CD800D71C21 /* ShaderControl.swift */; };
 		051DDCB523E5D74400325147 /* AvailableLibrariesViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 051DDCB423E5D74400325147 /* AvailableLibrariesViewController.swift */; };
 		051DDCB723E5D9E400325147 /* AvailableLibrariesViewController.xib in Resources */ = {isa = PBXBuildFile; fileRef = 051DDCB623E5D9E400325147 /* AvailableLibrariesViewController.xib */; };
@@ -591,7 +590,6 @@
 		9ACAEF142DD44E2AACFFB26F /* OEWiiSystemResponder.m in Sources */ = {isa = PBXBuildFile; fileRef = 4C5E668B27CE43FF88AE57AF /* OEWiiSystemResponder.m */; };
 		B0AE59BFF66F969F8E586EBA /* Jaguar.oesystemplugin in Copy System Plugins to App Plugins */ = {isa = PBXBuildFile; fileRef = 943C80121708A62E00D8D93E /* Jaguar.oesystemplugin */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		C0D2C87DC8E70B924B0364B8 /* ArtworkFolderMatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5948C5F42D3088794677A8C0 /* ArtworkFolderMatcher.swift */; };
-		C3A0FE0857AF614EBC218749 /* OpenEmuLibretroBridge.oecoreplugin in Copy Libretro Bridge to App PlugIns */ = {isa = PBXBuildFile; fileRef = C44B2D2208894931909A8618 /* OpenEmuLibretroBridge.oecoreplugin */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		C6252DAC14E752E300350A13 /* Controller-Preferences.plist in Resources */ = {isa = PBXBuildFile; fileRef = C6252DAA14E752E300350A13 /* Controller-Preferences.plist */; };
 		C6252DAE14E7556800350A13 /* Controller-Preferences.plist in Resources */ = {isa = PBXBuildFile; fileRef = C6252DAD14E7556800350A13 /* Controller-Preferences.plist */; };
 		C6252DB214E7566600350A13 /* Controller-Preferences.plist in Resources */ = {isa = PBXBuildFile; fileRef = C6252DB114E7566600350A13 /* Controller-Preferences.plist */; };
@@ -973,13 +971,6 @@
 			remoteGlobalIDString = 94D7E8C815073BA000FBDD85;
 			remoteInfo = NDS;
 		};
-		9DDD84492506FB4C30CEA6AB /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 2A37F4A9FDCFA73011CA2CEA /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 3566477D77521BFC689DF38B;
-			remoteInfo = OpenEmuLibretroBridge;
-		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -1012,17 +1003,6 @@
 				0547FE2024E86D9F005C1FFC /* broker.xpc in Embed XPC Services */,
 			);
 			name = "Embed XPC Services";
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		71B41ED02BEFB50A5EC1311A /* Copy Libretro Bridge to App PlugIns */ = {
-			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
-			dstPath = "";
-			dstSubfolderSpec = 13;
-			files = (
-				C3A0FE0857AF614EBC218749 /* OpenEmuLibretroBridge.oecoreplugin in Copy Libretro Bridge to App PlugIns */,
-			);
-			name = "Copy Libretro Bridge to App PlugIns";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		828ED4F00E7D98F60059F397 /* Copy Frameworks to App Frameworks */ = {
@@ -1353,7 +1333,6 @@
 		5AFD06BC2058893B00DFE765 /* GameScannerViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameScannerViewController.swift; sourceTree = "<group>"; };
 		5C5F9C05070A447796EC6D4D /* OEWiiSystemResponderClient.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OEWiiSystemResponderClient.h; sourceTree = "<group>"; };
 		5CCE228E57ED51524BAE52BB /* OESyncStatusOverlayView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OESyncStatusOverlayView.swift; sourceTree = "<group>"; };
-		5E22FBAAB2953D6C36ED0141 /* OpenEmuLibretroBridge-Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = "OpenEmuLibretroBridge-Info.plist"; sourceTree = "<group>"; };
 		60C6AA00A0A44B609186B94D /* OEWiiSystemController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = OEWiiSystemController.m; sourceTree = "<group>"; };
 		669734CE138046AC84F66296 /* OEWiiSystemController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OEWiiSystemController.h; sourceTree = "<group>"; };
 		68416A57049F48B997026285 /* Controller-Mappings.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "Controller-Mappings.plist"; sourceTree = "<group>"; };
@@ -1868,7 +1847,6 @@
 		AC6CB8F335B64A48AE857C59 /* Wii.oesystemplugin */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = Wii.oesystemplugin; sourceTree = BUILT_PRODUCTS_DIR; };
 		AEF58A5A63D543529C6A8983 /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Images.xcassets; sourceTree = "<group>"; };
 		BD51C12166464EADB02A6758 /* Controller-Preferences.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "Controller-Preferences.plist"; sourceTree = "<group>"; };
-		C44B2D2208894931909A8618 /* OpenEmuLibretroBridge.oecoreplugin */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = OpenEmuLibretroBridge.oecoreplugin; sourceTree = BUILT_PRODUCTS_DIR; };
 		C60CDDD611780DF100EB472F /* OpenGL Format Table.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = "OpenGL Format Table.txt"; sourceTree = "<group>"; };
 		C6252DAA14E752E300350A13 /* Controller-Preferences.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "Controller-Preferences.plist"; sourceTree = "<group>"; };
 		C6252DAD14E7556800350A13 /* Controller-Preferences.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "Controller-Preferences.plist"; sourceTree = "<group>"; };
@@ -1949,7 +1927,6 @@
 		F1A2C86D1AAD0B3A00A17C80 /* fr */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.strings; name = fr; path = fr.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		F1A2C86E1AAD0B3B00A17C80 /* fr */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.strings; name = fr; path = fr.lproj/Localizable.strings; sourceTree = "<group>"; };
 		F1A2C86F1AAD0B3B00A17C80 /* fr */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.strings; name = fr; path = fr.lproj/ControlLabels.strings; sourceTree = "<group>"; };
-		F3EDB39D618D5D6F6914739F /* OpenEmuLibretroBridgeMain.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = OpenEmuLibretroBridgeMain.m; sourceTree = "<group>"; };
 		FEB66251187B62CA00D14713 /* OEMSXSystemController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = OEMSXSystemController.swift; sourceTree = "<group>"; };
 		FEB66253187B751700D14713 /* OEMSXSystemResponder.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OEMSXSystemResponder.h; sourceTree = "<group>"; };
 		FEB66254187B751700D14713 /* OEMSXSystemResponder.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = OEMSXSystemResponder.m; sourceTree = "<group>"; };
@@ -2052,15 +2029,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				3DB744AB1BD8BA9E00C23E74 /* OpenEmuSystem.framework in Frameworks */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		7C4A08B6F77FA002677AEE17 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				22041F6779860DD69DB04FDD /* Cocoa.framework in Frameworks */,
-				E96D97FB8B2AA2119A472430 /* OpenEmuBase.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -2696,7 +2664,6 @@
 				8F94DEBA250EC701003A1F33 /* OpenEmuQLThumbnail.appex */,
 				8F94DECF250ED838003A1F33 /* OpenEmuQLPreview.appex */,
 				8F7C2948288A2A2200A16C09 /* OECoreListUpdater */,
-				C44B2D2208894931909A8618 /* OpenEmuLibretroBridge.oecoreplugin */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -2823,7 +2790,6 @@
 				2A37F4C3FDCFA73011CA2CEA /* Frameworks */,
 				19C28FB0FE9D524F11CA2CBB /* Products */,
 				B8396A2616B1FF9F2C6C8029 /* OpenEmu */,
-				4B3C48037AA6D35C519F7C78 /* LibretroBridge */,
 			);
 			indentWidth = 4;
 			name = OpenEmu;
@@ -2929,16 +2895,6 @@
 				3DB744841BD8B9DE00C23E74 /* Controller-Preferences.plist */,
 			);
 			name = "Supporting Files";
-			sourceTree = "<group>";
-		};
-		4B3C48037AA6D35C519F7C78 /* LibretroBridge */ = {
-			isa = PBXGroup;
-			children = (
-				F3EDB39D618D5D6F6914739F /* OpenEmuLibretroBridgeMain.m */,
-				5E22FBAAB2953D6C36ED0141 /* OpenEmuLibretroBridge-Info.plist */,
-			);
-			name = LibretroBridge;
-			path = LibretroBridge;
 			sourceTree = "<group>";
 		};
 		53439A8613B92BEB005C0CC8 /* Alert */ = {
@@ -4549,23 +4505,6 @@
 			productReference = 277CBA4519DE54200059A2C1 /* Intellivision.oesystemplugin */;
 			productType = "com.apple.product-type.bundle";
 		};
-		3566477D77521BFC689DF38B /* OpenEmuLibretroBridge */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = 055E2E87917ED36EF6D433D1 /* Build configuration list for PBXNativeTarget "OpenEmuLibretroBridge" */;
-			buildPhases = (
-				2A3D5447CDD7226A7EB54FDB /* Sources */,
-				7C4A08B6F77FA002677AEE17 /* Frameworks */,
-				4B68B1CA19C2985A17FDFB6C /* Resources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-			);
-			name = OpenEmuLibretroBridge;
-			productName = OpenEmuLibretroBridge;
-			productReference = C44B2D2208894931909A8618 /* OpenEmuLibretroBridge.oecoreplugin */;
-			productType = "com.apple.product-type.bundle";
-		};
 		3887A7F51024D1F9000FC4CF /* OESaveStateQLPlugin */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 3887A7FB1024D1FA000FC4CF /* Build configuration list for PBXNativeTarget "OESaveStateQLPlugin" */;
@@ -4716,7 +4655,6 @@
 				0547FDDB24E8614C005C1FFC /* Copy Auxilliary Executables */,
 				0547FE1F24E86D9F005C1FFC /* Embed XPC Services */,
 				8F94DEC7250EC701003A1F33 /* Embed Foundation Extensions */,
-				71B41ED02BEFB50A5EC1311A /* Copy Libretro Bridge to App PlugIns */,
 				0121480D2537D48C007F3C84 /* Update Info.plist File Types */,
 				8FA5FB93283C5E7D00CC11A8 /* Update Info.plist Build Version */,
 			);
@@ -4727,7 +4665,6 @@
 				8F94DEC5250EC701003A1F33 /* PBXTargetDependency */,
 				8F94DEDB250ED838003A1F33 /* PBXTargetDependency */,
 				012148262537D7FD007F3C84 /* PBXTargetDependency */,
-				8C3EDA79716FE3BD460C1FF0 /* PBXTargetDependency */,
 			);
 			name = OpenEmu;
 			packageProductDependencies = (
@@ -5490,7 +5427,6 @@
 				05DB72A02532681B0098459D /* OpenEmuTests */,
 				012148042537C6D6007F3C84 /* OESystemPluginPostInstall */,
 				8F7C2947288A2A2200A16C09 /* OECoreListUpdater */,
-				3566477D77521BFC689DF38B /* OpenEmuLibretroBridge */,
 			);
 		};
 /* End PBXProject section */
@@ -5567,13 +5503,6 @@
 				3DB744C51BD8BACD00C23E74 /* Controller-Mappings.plist in Resources */,
 				3DB744C61BD8BACD00C23E74 /* Controller-Preferences.plist in Resources */,
 				3DB744C71BD8BACD00C23E74 /* Keyboard-Mappings.plist in Resources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		4B68B1CA19C2985A17FDFB6C /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -6228,14 +6157,6 @@
 			files = (
 				941ABD361A1605E50072686C /* OEIntellivisionSystemController.swift in Sources */,
 				277CBA4A19DE54A80059A2C1 /* OEIntellivisionSystemResponder.m in Sources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		2A3D5447CDD7226A7EB54FDB /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				02AA6289EF65A5AE1DE1D5F2 /* OpenEmuLibretroBridgeMain.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -6967,12 +6888,6 @@
 			target = 87FBC06C1BFC70FE00AECF5A /* Commodore 64 */;
 			targetProxy = 87FBC0C11BFC7A0000AECF5A /* PBXContainerItemProxy */;
 		};
-		8C3EDA79716FE3BD460C1FF0 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			name = OpenEmuLibretroBridge;
-			target = 3566477D77521BFC689DF38B /* OpenEmuLibretroBridge */;
-			targetProxy = 9DDD84492506FB4C30CEA6AB /* PBXContainerItemProxy */;
-		};
 		8F94DEC5250EC701003A1F33 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 8F94DEB9250EC701003A1F33 /* OpenEmuQLThumbnail */;
@@ -7632,19 +7547,6 @@
 				WRAPPER_EXTENSION = oesystemplugin;
 			};
 			name = Release;
-		};
-		57BAA997B6216713FB111CE5 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				COMBINE_HIDPI_IMAGES = YES;
-				INFOPLIST_FILE = "LibretroBridge/OpenEmuLibretroBridge-Info.plist";
-				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Bundles";
-				PRODUCT_BUNDLE_IDENTIFIER = org.openemu.OpenEmuLibretroBridge;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = macosx;
-				WRAPPER_EXTENSION = oecoreplugin;
-			};
-			name = Debug;
 		};
 		6820EAA40683463A8A3F2109 /* Debug */ = {
 			isa = XCBuildConfiguration;
@@ -8750,19 +8652,6 @@
 			};
 			name = Release;
 		};
-		D3480224DFF69572CE5F4D58 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				COMBINE_HIDPI_IMAGES = YES;
-				INFOPLIST_FILE = "LibretroBridge/OpenEmuLibretroBridge-Info.plist";
-				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Bundles";
-				PRODUCT_BUNDLE_IDENTIFIER = org.openemu.OpenEmuLibretroBridge;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = macosx;
-				WRAPPER_EXTENSION = oecoreplugin;
-			};
-			name = Release;
-		};
 		FEB66266187B791800D14713 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -8818,15 +8707,6 @@
 			buildConfigurations = (
 				0547FE2224E86D9F005C1FFC /* Debug */,
 				0547FE2324E86D9F005C1FFC /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		055E2E87917ED36EF6D433D1 /* Build configuration list for PBXNativeTarget "OpenEmuLibretroBridge" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				D3480224DFF69572CE5F4D58 /* Release */,
-				57BAA997B6216713FB111CE5 /* Debug */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
