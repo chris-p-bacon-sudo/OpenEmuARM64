@@ -275,6 +275,7 @@ final class PrefRetroAchievementsController: NSViewController {
             supportedGrid.topAnchor.constraint(equalTo: supportedLabel.bottomAnchor, constant: 12),
             supportedGrid.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 36),
             supportedGrid.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -36),
+            supportedGrid.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -24),
         ])
     }
 
@@ -342,8 +343,21 @@ final class PrefRetroAchievementsController: NSViewController {
             supportedGrid.addRow(with: cells)
         }
 
+        // NSGridView sizes each column to its own widest cell by default, which left the
+        // "Nintendo Entertainment System" column far wider than the other two. Force all
+        // columns to one shared width, sized to fit the longest name across the whole list,
+        // so the columns actually line up as a grid rather than three ragged widths.
+        let font = NSFont.systemFont(ofSize: 12)
+        let maxNameWidth = systems.map { (name, _) in
+            ceil((name as NSString).size(withAttributes: [.font: font]).width)
+        }.max() ?? 0
+        let iconWidth: CGFloat = 16
+        let iconSpacing: CGFloat = 6
+        let columnWidth = iconWidth + iconSpacing + maxNameWidth
+
         for column in 0 ..< columns where column < supportedGrid.numberOfColumns {
             supportedGrid.column(at: column).xPlacement = .leading
+            supportedGrid.column(at: column).width = columnWidth
         }
     }
 
