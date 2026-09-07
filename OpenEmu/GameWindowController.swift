@@ -66,23 +66,22 @@ final class GameWindowController: NSWindowController {
     
     private var eventMonitor: Any?
 
-    /// Coalesces bursts of core-driven screen size reports during boot (an initial
-    /// guess before the disc is read, then a corrected value once the real game/
-    /// region is detected) into one settled resize instead of several animated
-    /// resize+recenter passes stacked back to back. See gameScreenSizeDidChange().
-    private var pendingWindowResizeWorkItem: DispatchWorkItem?
+    /// Set once by gameDidStartPlaying(). Combined with hasSettledInitialWindowSize,
+    /// gates gameScreenSizeDidChange() so it only ever auto-resizes the window
+    /// frame once, at the moment emulation is confirmed playing — never before
+    /// (during boot) and never again after (see hasSettledInitialWindowSize).
+    private var isPlaying = false
 
-    /// True once emulation has actually started playing (see gameDidStartPlaying())
-    /// and the window has performed its one settle to the core's real resolution.
-    /// Before that point, cores can report their resolution more than once over
-    /// the course of booting — an initial guess before the disc is read, then one
-    /// or more corrected values once the real game/region is detected — and
-    /// resizing the window for every intermediate report is what made it visibly
-    /// jump around several times on launch. A fixed debounce delay can't reliably
-    /// span boot, since the gap between reports varies with how long the core
-    /// takes to get through its own boot sequence (PSX BIOS emulation in
-    /// particular can take a couple of seconds), so this ties the settle to the
-    /// actual "now playing" event instead of guessing a timeout.
+    /// True once the window has performed its one and only automatic resize.
+    /// Cores can report a resolution change more than once — not just during
+    /// boot (an initial guess before the disc is read, then a corrected value
+    /// once the real game/region is detected), but throughout gameplay too:
+    /// PSX games in particular were observed flipping between two native
+    /// resolutions repeatedly for different video modes, well after boot.
+    /// Reacting to every report by resizing the window fought any manual
+    /// resize the user did themselves, snapping it back within moments. Aspect
+    /// ratio/constraints still track every report; the frame itself is only
+    /// ever auto-resized this one time.
     private var hasSettledInitialWindowSize = false
 
     override init(window: NSWindow?) {
@@ -133,7 +132,6 @@ final class GameWindowController: NSWindowController {
     }
     
     deinit {
-        pendingWindowResizeWorkItem?.cancel()
         window?.delegate = nil
         window = nil
 
@@ -535,12 +533,12 @@ extension GameWindowController: GameIntegralScalingDelegate {
     }
     
     /// Called once by OEGameDocument when emulation first starts playing.
-    /// Applies the window's one and only settle to the core's now-stable
-    /// resolution, then behaves normally for any later, genuinely new
-    /// resolution reports (e.g. a game switching video mode mid-play).
+    /// Called once by OEGameDocument when emulation first starts playing.
+    /// Unblocks gameScreenSizeDidChange() to perform its one and only
+    /// automatic resize, using whatever resolution the core has reported
+    /// as of right now.
     func gameDidStartPlaying() {
-        guard !hasSettledInitialWindowSize else { return }
-        hasSettledInitialWindowSize = true
+        isPlaying = true
         gameScreenSizeDidChange()
     }
 
@@ -550,30 +548,21 @@ extension GameWindowController: GameIntegralScalingDelegate {
         window.contentAspectRatio = gameDocument.gameViewController.defaultScreenSize
         updateContentSizeConstraints()
 
-        guard hasSettledInitialWindowSize else {
-            // Not playing yet — aspect ratio/constraints above are already
-            // current; the frame itself is left alone until gameDidStartPlaying().
-            return
-        }
-
-        // Debounce only the visible frame change below — aspect ratio and size
-        // constraints above are cheap metadata updates with no visible motion, so
-        // they stay immediate and correct on every call.
-        pendingWindowResizeWorkItem?.cancel()
+        // Only the very first eligible call (once actually playing) is allowed
+        // to move/resize the frame — see hasSettledInitialWindowSize and
+        // isPlaying above for why every later report is intentionally ignored
+        // here. Aspect ratio/constraints above still stay current on every call.
+        guard isPlaying, !hasSettledInitialWindowSize else { return }
+        hasSettledInitialWindowSize = true
 
         if fullScreenStatus == .nonFullScreen {
             let currentScale = windowedIntegralScale
             guard currentScale != Self.fitToWindowScale else { return }
-            let workItem = DispatchWorkItem { [weak self] in
-                guard let self, let window = self.window else { return }
-                var newWindowFrame = window.frame
-                newWindowFrame.size = self.windowSize(forGameViewIntegralScale: currentScale)
-                newWindowFrame.origin.x = round(window.frame.midX - newWindowFrame.size.width / 2)
-                newWindowFrame.origin.y = round(window.frame.midY - newWindowFrame.size.height / 2)
-                window.setFrame(newWindowFrame, display: true, animate: true)
-            }
-            pendingWindowResizeWorkItem = workItem
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15, execute: workItem)
+            var newWindowFrame = window.frame
+            newWindowFrame.size = windowSize(forGameViewIntegralScale: currentScale)
+            newWindowFrame.origin.x = round(window.frame.midX - newWindowFrame.size.width / 2)
+            newWindowFrame.origin.y = round(window.frame.midY - newWindowFrame.size.height / 2)
+            window.setFrame(newWindowFrame, display: true, animate: true)
         } else if fullScreenStatus == .fullScreen {
             let gv = gameDocument.gameViewController
             if fullScreenIntegralScale == Self.fitToWindowScale {
