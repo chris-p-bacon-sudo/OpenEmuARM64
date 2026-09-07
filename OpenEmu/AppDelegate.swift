@@ -156,6 +156,7 @@ class AppDelegate: NSObject, UNUserNotificationCenterDelegate {
             OEForcePopoutGameWindowKey: true,
             OEPopoutGameWindowIntegerScalingOnlyKey: true,
             OEGameLayerNotificationView.OEShowNotificationsKey : true,
+            OEGameLayerNotificationView.OEShowHardcoreIconKey : true,
             OEAppearance.Application.key: OEAppearance.Application.dark.rawValue,
             OEAppearance.HUDBar.key: OEAppearance.HUDBar.vibrant.rawValue,
             OEAppearance.ControlsPrefs.key: OEAppearance.ControlsPrefs.wood.rawValue,

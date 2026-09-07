@@ -559,6 +559,7 @@ final class OERetroAchievementsIndicatorStackView: NSStackView {
 final class OEGameLayerNotificationView: NSImageView {
     
     static let OEShowNotificationsKey = "OEShowNotifications"
+    static let OEShowHardcoreIconKey = "OEShowHardcoreIcon"
     
     public var disableNotifications: Bool = false
     
@@ -621,6 +622,20 @@ final class OEGameLayerNotificationView: NSImageView {
     }
 
     @objc public func showHardcore(enabled: Bool) {
+        guard UserDefaults.standard.bool(forKey: Self.OEShowHardcoreIconKey) else {
+            // Deliberately leave isHardcoreMode untouched here rather than
+            // setting it directly: performNotification's idempotency guard
+            // (`if enabled && state { return }`) reads that same variable,
+            // so writing it out of band would desync the two and could
+            // permanently suppress the icon for the rest of the session if
+            // the user re-enables this preference while still in hardcore
+            // mode (the guard would see enabled && state both true and
+            // no-op before ever drawing anything).
+            if enabled {
+                postAccessibilityNotification(announcement: NSLocalizedString("Hardcore Mode", tableName: "ControlLabels", comment: ""))
+            }
+            return
+        }
         performNotification(img: hardcoreImage, enabled: enabled, state: &isHardcoreMode)
         if enabled {
             postAccessibilityNotification(announcement: NSLocalizedString("Hardcore Mode", tableName: "ControlLabels", comment: ""))
