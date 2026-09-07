@@ -481,7 +481,7 @@ const int ColecoVisionMap[] = {COLECOVISION_UP, COLECOVISION_DOWN, COLECOVISION_
                 }
                 else if (singleCode.length == 8)
                 {
-                    // Sega Action Replay, written 00AAAA-VV: 2-digit prefix, 16-bit address, 8-bit data
+                    // Sega Action Replay: 2-digit prefix, 16-bit address, 8-bit data (dash already stripped; position ignored)
                     address = [singleCode substringWithRange:NSMakeRange(2, 4)];
                     value = [singleCode substringWithRange:NSMakeRange(6, 2)];
                 }

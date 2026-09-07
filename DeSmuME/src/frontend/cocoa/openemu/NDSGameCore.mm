@@ -1249,6 +1249,8 @@ void UpdateDisplayPropertiesFromStates(uint64_t displayModeStates, ClientDisplay
 		
 		cocoaCheatItem = [[self cdsCheats] addExistingItem:newCheatItem];
 		if (cocoaCheatItem == nil) {
+				// Duplicate code: the list didn't take ownership, so free it here.
+				delete newCheatItem;
 				return;
 		}
 		[[self cdsCheats] update:cocoaCheatItem];

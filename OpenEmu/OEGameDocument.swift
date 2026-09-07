@@ -1682,7 +1682,11 @@ final class OEGameDocument: NSDocument {
     /// `cheatSource` (the provider name) is what marks this as Browse Online Cheats-imported,
     /// distinguishing it from cheats added manually or via Cheat Search.
     func addImportedCheat(code: String, name: String, providerName: String) {
-        let cheat = Cheat(code: code, type: OECheatTypeGameShark, name: name, cheatSource: providerName)
+        // BSNES is the only core that reads the cheat type — it strips ':' from raw
+        // address:value codes only when tagged Raw/Action Replay. Everyone else ignores
+        // the type or strips the colon itself, so the code shape is all we need.
+        let type = code.contains(":") ? OECheatTypeRaw : OECheatTypeGameShark
+        let cheat = Cheat(code: code, type: type, name: name, cheatSource: providerName)
         cheat.isEnabled = true
         setCheat(cheat)
         cheats.append(cheat)
@@ -2120,6 +2124,7 @@ final class OEGameDocument: NSDocument {
                 setCheat(edited)
             }
             saveUserCheats()
+            validateCheatCompatibility()
         }
     }
 

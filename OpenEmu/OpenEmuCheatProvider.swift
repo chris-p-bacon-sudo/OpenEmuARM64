@@ -29,11 +29,9 @@ import os.log
 // private let log = Logger(subsystem: "org.openemu.OpenEmu", category: "OpenEmuCheatProvider")
 
 /// Provides cheats from the bundled cheats-database.xml file.
-final class OpenEmuCheatProvider: CheatDatabaseProvider {
+final class OpenEmuCheatProvider: CheatDatabaseProvider, @unchecked Sendable {
 
     let name = "OpenEmu"
-
-    private var cache: [String: [DatabaseCheat]] = [:]
 
     func supportsSystem(_ systemIdentifier: String) -> Bool {
         loadIfNeeded()
@@ -50,8 +48,12 @@ final class OpenEmuCheatProvider: CheatDatabaseProvider {
     // systemIdentifier → [lowercased MD5 → [DatabaseCheat]]
     private var database: [String: [String: [DatabaseCheat]]] = [:]
     private var loaded = false
+    // supportsSystem (main thread) and cheats (off-actor) both trigger the lazy load; serialize it.
+    private let loadLock = NSLock()
 
     private func loadIfNeeded() {
+        loadLock.lock()
+        defer { loadLock.unlock() }
         guard !loaded else { return }
         loaded = true
 

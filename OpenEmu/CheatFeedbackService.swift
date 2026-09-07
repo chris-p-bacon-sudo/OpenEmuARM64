@@ -30,22 +30,26 @@ import os.log
 
 /// Whether a cheat code worked for the user on a specific core build.
 ///
-/// `unknown` is stored rather than implied by absence: retracting a report is
-/// itself a signal, and distinguishing it from "never reported" matters for the
-/// ranking service this feeds later.
+/// `unknown` is an explicit user signal ("I don't know" / retracting a report),
+/// distinct from a `nil` status on the entry, which means no report was ever made
+/// (e.g. a note-only entry). Keeping them separate matters for the "did this cheat
+/// work?" prompt and the ranking service this feeds later.
 enum CheatFeedbackStatus: String, Codable, Sendable {
     case works
     case doesNotWork
     case unknown
 }
 
-/// One report, scoped to the core build it was made against.
+/// One entry, scoped to the core build it was made against. Carries a report
+/// (`status`), a note, or both — a note alone leaves `status` nil so it isn't
+/// mistaken for a report.
 struct CheatFeedbackEntry: Codable, Sendable {
     /// Whitespace-stripped, lowercased — matches how `CheatDatabaseService` deduplicates.
     let code: String
     let coreIdentifier: String
     let coreVersion: String
-    let status: CheatFeedbackStatus
+    /// `nil` when the user has only left a note and never reported efficacy.
+    let status: CheatFeedbackStatus?
     /// User-authored, freeform. `nil`/absent for existing files predating this field.
     var notes: String?
     let updatedAt: Date
@@ -87,7 +91,8 @@ final class CheatFeedbackService {
 
         var result: [String: CheatFeedbackStatus] = [:]
         for entry in entries where entry.coreIdentifier == coreIdentifier && entry.coreVersion == coreVersion {
-            result[entry.code] = entry.status
+            // Skip note-only entries (nil status) so they don't read as a report.
+            if let status = entry.status { result[entry.code] = status }
         }
         return result
     }
@@ -151,7 +156,8 @@ final class CheatFeedbackService {
     }
 
     /// Records a personal note, replacing any previous one for the same code and core build.
-    /// Existing status for that code/build is carried over untouched. `nil`/empty removes the note.
+    /// A note never creates a report: an existing status is carried over, otherwise status stays nil.
+    /// `nil`/empty removes the note (and the whole entry if it had no status).
     func setNotes(_ notes: String?,
                   forCode code: String,
                   md5: String,
@@ -164,19 +170,24 @@ final class CheatFeedbackService {
 
         let existingStatus = file.entries.first {
             $0.code == key && $0.coreIdentifier == coreIdentifier && $0.coreVersion == coreVersion
-        }?.status ?? .unknown
+        }?.status
 
         file.entries.removeAll {
             $0.code == key && $0.coreIdentifier == coreIdentifier && $0.coreVersion == coreVersion
         }
 
         let trimmed = notes?.trimmingCharacters(in: .whitespacesAndNewlines)
-        file.entries.append(CheatFeedbackEntry(code: key,
-                                               coreIdentifier: coreIdentifier,
-                                               coreVersion: coreVersion,
-                                               status: existingStatus,
-                                               notes: (trimmed?.isEmpty ?? true) ? nil : trimmed,
-                                               updatedAt: Date()))
+        let newNotes = (trimmed?.isEmpty ?? true) ? nil : trimmed
+
+        // Don't persist an empty shell that has neither a status nor a note.
+        if existingStatus != nil || newNotes != nil {
+            file.entries.append(CheatFeedbackEntry(code: key,
+                                                   coreIdentifier: coreIdentifier,
+                                                   coreVersion: coreVersion,
+                                                   status: existingStatus,
+                                                   notes: newNotes,
+                                                   updatedAt: Date()))
+        }
 
         save(file, md5: md5, systemIdentifier: systemIdentifier)
     }

@@ -1062,20 +1062,30 @@ extension BrowseOnlineCheatsViewController: NSTableViewDelegate {
         alert.addButton(withTitle: NSLocalizedString("Save", comment: "Cheat notes dialog button"))
         alert.addButton(withTitle: NSLocalizedString("Cancel", comment: "Cheat notes dialog button"))
 
-        let accessory = makeNotesAccessoryView(notes: notes[statusKey(for: cheat)] ?? "")
+        let accessory = makeNotesAccessoryView(notes: notes[statusKey(for: cheat)] ?? "",
+                                               currentStatus: statuses[statusKey(for: cheat)])
         alert.accessoryView = accessory.view
         alert.window.initialFirstResponder = accessory.textView
 
         alert.beginSheetModal(for: window) { [weak self] response in
             guard response == .alertFirstButtonReturn else { return }
-            self?.saveNotes(accessory.textView.string, for: cheat)
+            self?.saveNotes(accessory.textView.string, feedbackSegment: accessory.feedback.selectedSegment, for: cheat)
         }
     }
 
-    private func saveNotes(_ text: String, for cheat: DatabaseCheat) {
+    private func saveNotes(_ text: String, feedbackSegment: Int, for cheat: DatabaseCheat) {
         let key = statusKey(for: cheat)
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         notes[key] = trimmed.isEmpty ? nil : trimmed
+
+        // Feedback here is optional: only write a status when the user actually picked a segment.
+        let feedback: CheatFeedbackStatus?
+        switch feedbackSegment {
+        case 0: feedback = .works
+        case 1: feedback = .doesNotWork
+        case 2: feedback = .unknown
+        default: feedback = nil
+        }
 
         if let document = gameDocument, let md5 = document.rom.md5Hash {
             CheatFeedbackService.shared.setNotes(trimmed,
@@ -1084,16 +1094,33 @@ extension BrowseOnlineCheatsViewController: NSTableViewDelegate {
                                                 systemIdentifier: document.systemPlugin.systemIdentifier,
                                                 coreIdentifier: document.corePlugin.bundleIdentifier,
                                                 coreVersion: document.corePlugin.version)
+
+            if let feedback {
+                CheatFeedbackService.shared.setStatus(feedback,
+                                                     forCode: cheat.code,
+                                                     md5: md5,
+                                                     systemIdentifier: document.systemPlugin.systemIdentifier,
+                                                     coreIdentifier: document.corePlugin.bundleIdentifier,
+                                                     coreVersion: document.corePlugin.version)
+                statuses[key] = feedback
+            }
         }
 
-        resultsTableView?.reloadData()
+        // A new status can change status-based filtering; otherwise just refresh the notes indicator.
+        if feedback != nil {
+            applyFilters()
+        } else {
+            resultsTableView?.reloadData()
+        }
     }
 
-    /// Fixed size with its own scroller and an editable text view, mirroring the read-only code accessory.
-    private func makeNotesAccessoryView(notes: String) -> (view: NSScrollView, textView: NSTextView) {
-        let size = NSSize(width: 380, height: 120)
+    /// Editable notes with an optional efficacy report below, so the user can leave a note
+    /// without being forced to rate the cheat.
+    private func makeNotesAccessoryView(notes: String, currentStatus: CheatFeedbackStatus?)
+        -> (view: NSView, textView: NSTextView, feedback: NSSegmentedControl) {
+        let width: CGFloat = 380
 
-        let textView = NSTextView(frame: NSRect(origin: .zero, size: size))
+        let textView = NSTextView(frame: NSRect(x: 0, y: 0, width: width, height: 120))
         textView.string = notes
         textView.isEditable = true
         textView.isSelectable = true
@@ -1103,15 +1130,54 @@ extension BrowseOnlineCheatsViewController: NSTableViewDelegate {
         textView.isHorizontallyResizable = false
         textView.autoresizingMask = [.width]
         textView.textContainer?.widthTracksTextView = true
-        textView.textContainer?.containerSize = NSSize(width: size.width, height: .greatestFiniteMagnitude)
+        textView.textContainer?.containerSize = NSSize(width: width, height: .greatestFiniteMagnitude)
 
-        let scrollView = NSScrollView(frame: NSRect(origin: .zero, size: size))
+        let scrollView = NSScrollView()
         scrollView.documentView = textView
         scrollView.hasVerticalScroller = true
         scrollView.hasHorizontalScroller = false
         scrollView.borderType = .bezelBorder
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
 
-        return (scrollView, textView)
+        let label = NSTextField(labelWithString: NSLocalizedString("Did it work?", comment: "Cheat notes dialog optional feedback prompt"))
+        label.font = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)
+        label.textColor = .secondaryLabelColor
+
+        let feedback = NSSegmentedControl(labels: [
+            NSLocalizedString("Working", comment: "Cheat status feedback option"),
+            NSLocalizedString("Not Working", comment: "Cheat status feedback option"),
+            NSLocalizedString("I don't know", comment: "Cheat status feedback option"),
+        ], trackingMode: .selectOne, target: nil, action: nil)
+        feedback.selectedSegment = Self.notesFeedbackSegment(for: currentStatus)
+
+        let feedbackRow = NSStackView(views: [label, feedback])
+        feedbackRow.orientation = .horizontal
+        feedbackRow.spacing = 8
+        feedbackRow.alignment = .centerY
+
+        let container = NSStackView(views: [scrollView, feedbackRow])
+        container.orientation = .vertical
+        container.spacing = 8
+        container.alignment = .leading
+
+        NSLayoutConstraint.activate([
+            scrollView.widthAnchor.constraint(equalToConstant: width),
+            scrollView.heightAnchor.constraint(equalToConstant: 120),
+        ])
+        container.layoutSubtreeIfNeeded()
+        container.frame = NSRect(origin: .zero, size: container.fittingSize)
+
+        return (container, textView, feedback)
+    }
+
+    /// Segment index for the optional feedback control; -1 (no selection) when there's no report yet.
+    private static func notesFeedbackSegment(for status: CheatFeedbackStatus?) -> Int {
+        switch status {
+        case .works: return 0
+        case .doesNotWork: return 1
+        case .unknown: return 2
+        case nil: return -1
+        }
     }
 
     // MARK: - Status Cell
@@ -1120,11 +1186,12 @@ extension BrowseOnlineCheatsViewController: NSTableViewDelegate {
         CheatFeedbackService.key(for: cheat.code)
     }
 
-    private func status(for cheat: DatabaseCheat) -> CheatStatus {
+    private func status(for cheat: DatabaseCheat) -> CheatStatus? {
         switch statuses[statusKey(for: cheat)] {
         case .works: return .works
         case .doesNotWork: return .doesNotWork
-        case .unknown, nil: return .unknown
+        case .unknown: return .unknown
+        case nil: return nil
         }
     }
 
@@ -1348,8 +1415,8 @@ final class StatusCellView: NSView {
     }
 
     /// Re-applied on every configure pass — a recycled cell would otherwise keep
-    /// the previous row's selection.
-    func configure(status: CheatStatus) {
+    /// the previous row's selection. `nil` highlights nothing (no report yet).
+    func configure(status: CheatStatus?) {
         let config = NSImage.SymbolConfiguration(pointSize: 14, weight: .regular)
 
         for (button, option) in zip(buttons, Self.options) {

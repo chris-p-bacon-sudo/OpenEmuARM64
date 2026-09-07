@@ -111,8 +111,8 @@ enum CheatCodeValidator {
         maxValueHexChars: Int? = nil
     ) -> Bool {
         guard code.contains(":"), !code.contains("?") else { return false }
-        let parts = code.split(separator: ":")
-        guard parts.count == 2, parts.allSatisfy({ $0.allSatisfy(\.isHexDigit) }) else { return false }
+        let parts = code.split(separator: ":", omittingEmptySubsequences: false)
+        guard parts.count == 2, parts.allSatisfy({ !$0.isEmpty && $0.allSatisfy(\.isHexDigit) }) else { return false }
         if let exact = addressHexChars, parts[0].count != exact { return false }
         if let exact = valueHexChars, parts[1].count != exact { return false }
         if let max = maxAddressHexChars, parts[0].count > max { return false }
@@ -140,9 +140,9 @@ enum CheatCodeValidator {
     /// SMS/GG Game Genie: XX-XXX (short) or XXX-XXX-XXX (long), hex chars with dashes
     static func isSMSGameGenieCode(_ code: String) -> Bool {
         guard code.contains("-") else { return false }
-        let parts = code.split(separator: "-")
-        let allHex = parts.allSatisfy { $0.allSatisfy(\.isHexDigit) }
-        return allHex && (parts.count == 2 || parts.count == 3)
+        let parts = code.split(separator: "-", omittingEmptySubsequences: false)
+        guard parts.count == 2 || parts.count == 3 else { return false }
+        return parts.allSatisfy { !$0.isEmpty && $0.allSatisfy(\.isHexDigit) }
     }
 
     /// GB GameShark: exactly 8 hex characters (e.g., 01FF4AD8)
@@ -211,7 +211,7 @@ enum CheatCodeValidator {
     /// Genesis Patch/PAR: XXXXXX:XXXX (6 hex address + colon + up to 4 hex value)
     static func isGenesisPARCode(_ code: String) -> Bool {
         guard code.contains(":") else { return false }
-        let parts = code.split(separator: ":")
+        let parts = code.split(separator: ":", omittingEmptySubsequences: false)
         guard parts.count == 2 else { return false }
         return parts[0].count == 6 && parts[0].allSatisfy(\.isHexDigit)
             && parts[1].count >= 1 && parts[1].count <= 4 && parts[1].allSatisfy(\.isHexDigit)

@@ -46,7 +46,7 @@ private struct LibretroCachedCheat: Codable {
     let code: String
 }
 
-final class LibretroCheatProvider: CheatDatabaseProvider {
+final class LibretroCheatProvider: CheatDatabaseProvider, @unchecked Sendable {
 
     let name = "Libretro"
 
@@ -84,6 +84,8 @@ final class LibretroCheatProvider: CheatDatabaseProvider {
     // In-memory cache: systemIdentifier → [key → (gameName, libretroSystem)]
     // Keys are uppercased MD5 hashes and serial numbers
     private var datCache: [String: [String: (name: String, libretroSystem: String)]] = [:]
+    // Guards datCache; cheats(forMD5:) runs off the caller's actor, so multiple windows can hit it at once.
+    private let datCacheLock = NSLock()
 
     func supportsSystem(_ systemIdentifier: String) -> Bool {
         systemMap[systemIdentifier] != nil
@@ -98,21 +100,24 @@ final class LibretroCheatProvider: CheatDatabaseProvider {
             // Try to update each cached source
             var anyUpdated = false
             var allCheats: [LibretroCachedCheat] = []
+            var updatedSources: [LibretroCachedSource] = []
             for source in cached.sources {
                 if let updated = try await downloadCHT(chtFileName: source.chtFileName, libretroSystem: libretroSystem, systemIdentifier: systemIdentifier, existingETag: source.etag) {
                     allCheats.append(contentsOf: updated.cheats)
+                    updatedSources.append(LibretroCachedSource(chtFileName: source.chtFileName, etag: updated.etag))
                     anyUpdated = true
                 } else if !anyUpdated {
                     // Nothing updated yet — return the full cached set as-is
                     return cached.cheats.map { DatabaseCheat(name: Self.decodingHTMLEntities($0.name), code: $0.code, providerName: name) }
                 } else {
-                    // Some sources updated, this one didn't — keep cached cheats alongside fresh ones
+                    // Some sources updated, this one didn't — keep cached cheats and this source's existing ETag
                     allCheats.append(contentsOf: cached.cheats)
+                    updatedSources.append(source)
                 }
             }
             let cheats = anyUpdated ? dedup(allCheats) : cached.cheats
             if anyUpdated {
-                saveCachedCheats(LibretroCachedCheatFile(sources: cached.sources, cheats: cheats), md5: md5, systemIdentifier: systemIdentifier)
+                saveCachedCheats(LibretroCachedCheatFile(sources: updatedSources, cheats: cheats), md5: md5, systemIdentifier: systemIdentifier)
             }
             return cheats.map { DatabaseCheat(name: Self.decodingHTMLEntities($0.name), code: $0.code, providerName: name) }
         }
@@ -320,8 +325,10 @@ final class LibretroCheatProvider: CheatDatabaseProvider {
             // TODO: handle big_endian and memory_search_size for multi-byte systems
             // TODO: filter by cheat_type — only type 1 (set to value) is usable; types 2-7 need RetroArch's RAM engine
             if code.isEmpty, let addrStr = fields["address"], let valStr = fields["value"],
-               let addr = UInt(addrStr), let val = UInt(valStr) {
-                code = String(format: "%02X:%02X", addr, val)
+               let addr = UInt32(addrStr), let val = UInt32(valStr) {
+                // Pad the address to the width the per-system raw ADDRESS:VALUE validator expects.
+                let addressHexChars = Self.formatBAddressHexChars(for: systemIdentifier)
+                code = String(format: "%0\(addressHexChars)X:%02X", addr, val)
             }
 
             guard !code.isEmpty else { continue }
@@ -335,6 +342,18 @@ final class LibretroCheatProvider: CheatDatabaseProvider {
         }
 
         return cheats
+    }
+
+    /// Address hex-digit width the raw ADDRESS:VALUE validator expects per system (see CheatCodeValidator).
+    private static func formatBAddressHexChars(for systemIdentifier: String) -> Int {
+        switch systemIdentifier {
+        case OESystemIdentifierSNES, OESystemIdentifierGenesis, OESystemIdentifierSegaCD:
+            return 6
+        case OESystemIdentifierGBA:
+            return 8
+        default:
+            return 4
+        }
     }
 
     // Some CHT descriptions embed HTML entities (e.g. `&quot;`) instead of literal characters.
@@ -632,7 +651,10 @@ final class LibretroCheatProvider: CheatDatabaseProvider {
     }
 
     private func lookupGameName(md5: String, serial: String?, systemIdentifier: String) async throws -> (name: String, libretroSystem: String)? {
-        if let cached = datCache[systemIdentifier] {
+        datCacheLock.lock()
+        let cachedSnapshot = datCache[systemIdentifier]
+        datCacheLock.unlock()
+        if let cached = cachedSnapshot {
             // log.debug("DAT cache hit for \(systemIdentifier)")
             if let result = cached[md5.uppercased()] { return result }
             if let serial, let result = lookupBySerial(serial, in: cached) { return result }
@@ -661,7 +683,9 @@ final class LibretroCheatProvider: CheatDatabaseProvider {
                 }
             }
         }
+        datCacheLock.lock()
         datCache[systemIdentifier] = merged
+        datCacheLock.unlock()
         if let result = merged[md5.uppercased()] { return result }
         if let serial, let result = lookupBySerial(serial, in: merged) { return result }
         return nil
