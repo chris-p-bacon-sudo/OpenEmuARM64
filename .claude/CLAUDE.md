@@ -7,7 +7,7 @@ This file is read at the start of every Claude Code session. Keep it focused on 
 ## Read these first, in order
 
 1. **`AGENTS.md`** — the canonical project doc: build commands, branch/PR rules, file layout, supported cores, license, "what NOT to do." Authoritative. If something here ever conflicts with AGENTS.md, AGENTS.md wins and you should fix this file.
-2. **`CONTEXT.md`** — the shared vocabulary (core, plugin, helper, appcast, Sparkle, RA, libretro bridge, etc.). Use these terms precisely; don't invent synonyms.
+2. **`CONTEXT.md`** — the shared vocabulary (core, plugin, helper, appcast, Sparkle, RA, etc.). Use these terms precisely; don't invent synonyms.
 
 ---
 

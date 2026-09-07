@@ -157,7 +157,7 @@ There is currently no native C64 release metadata:
 - no `Appcasts/vice.xml`;
 - no VICE entry in `oecores.xml`.
 
-Current practical C64 support is through external RetroArch/VICE-libretro cores loaded by `OELibretroCoreTranslator`, not a shipped native VICE source tree.
+There is no C64 core at all: RetroArch core support was removed in v1.4, and no native VICE source tree has been ported yet (#546).
 
 ## Input and runtime risks
 
@@ -186,7 +186,7 @@ NSLog(@"keyUp: code=%03d, flags=%08x, mod=%08lx", ...)
 
 That should be removed or gated before shipping.
 
-Because C64 is keyboard-heavy, keyboard fidelity is likely the highest-risk runtime area. This is also relevant to existing C64 keyboard crash reports in the current RetroArch/VICE path.
+Because C64 is keyboard-heavy, keyboard fidelity is likely the highest-risk runtime area. This is also relevant to the C64 keyboard crash reports filed against the removed RetroArch/VICE path (#390), which a native port needs to avoid repeating.
 
 ## Release/update requirements if ported
 
@@ -205,7 +205,7 @@ A native VICE core would need the same release plumbing as other shipped cores:
 7. `Scripts/install-core.sh` / `Scripts/package-core.sh` compatibility.
 8. Runtime validation with C64 cartridge, disk, tape, and PRG samples if possible.
 
-Do **not** revive the old in-tree `VICE-Bridge/` libretro binary pattern. `docs/libretro-architecture.md` explicitly says those bridge directories were testing-only and removed.
+Do **not** revive the old in-tree `VICE-Bridge/` libretro binary pattern. Those bridge directories were testing-only and removed, as was the libretro bridge itself in v1.4.
 
 ## Recommendation
 

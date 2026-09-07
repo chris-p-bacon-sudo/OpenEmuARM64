@@ -103,7 +103,7 @@ cp OpenEmu/OEGoogleDriveSecrets.template.swift OpenEmu/OEGoogleDriveSecrets.swif
 | Atari Jaguar | VirtualJaguar |
 | Atari Lynx | Mednafen |
 | ColecoVision | JollyCV (default), CrabEmu, blueMSX |
-| Commodore 64 | (RetroArch / VICE only — no native core ships in this fork) |
+| Commodore 64 | (no core ships in this fork — native VICE port tracked in [#546](https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/issues/546)) |
 | Famicom Disk System | Nestopia |
 | Game Boy / GBC | Gambatte |
 | Game Boy Advance | mGBA |
@@ -144,12 +144,6 @@ For systems with multiple cores, OpenEmu uses the value at
 - `openemu.system.snes` → `org.openemu.SNES9x`
 
 For any other multi-core system (e.g. ColecoVision — JollyCV / CrabEmu / blueMSX), no default is seeded and the user picks from Preferences → Cores. Adding a default seed is a one-line change in `AppDelegate.swift` if a default is wanted; until that is done, behavior is whatever the picker chooses to surface first.
-
-### Libretro / RetroArch cores
-
-The native cores in the table above are the supported user-facing cores. In addition, users can install **RetroArch cores** through Preferences → Cores → [system] → RetroArch core. The picker scans `~/Library/Application Support/RetroArch/cores/` and wraps any compatible `.dylib` into a generated `.oecoreplugin` that the **libretro host** (`OELibretroCoreTranslator` in `OpenEmu-SDK/OpenEmuBase/`) loads at runtime. See `docs/libretro-architecture.md` for the full pathway.
-
-Any cross-cutting feature work that would otherwise touch every libretro core (RetroAchievements, save state plumbing, runahead) belongs in the libretro host, not in individual cores. There are no in-repo libretro cores; the host runtime exists solely to load externally-built RetroArch cores. (Earlier in development the tree contained `*-Bridge/` directories used to test the host against pre-compiled libretro binaries — those were removed in May 2026.) Each installed RetroArch stub is auto-refreshed on app launch from a bundled translator binary, so translator fixes reach users without reinstalling cores. Developers must bump `OELibretroBridgeVersion` whenever they change `OELibretroCoreTranslator` — see "Libretro Bridge Version Bumps" below.
 
 ---
 
@@ -266,20 +260,6 @@ The issue tracker at `OpenEmu-Silicon/OpenEmu-Silicon` is the primary place for 
 - Do not commit large binaries (`.zip`, `.tar.gz`, compiled executables) — these belong in GitHub Releases
 - Do not commit directly to `main` under any circumstances
 - Do not declare a core test result without running `./Scripts/verify-core-installed.sh <CoreName>` since the last build — testing against a stale installed plugin is the single most expensive failure mode in this repo
-
----
-
-## Libretro Bridge Version Bumps
-
-When you change `OpenEmu-SDK/OpenEmuBase/OELibretroCoreTranslator.{h,m}` in any way that affects runtime behavior, **bump `OELibretroBridgeVersion` in the same commit**. The constant lives at the top of `OELibretroCoreTranslator.m`.
-
-The version stamp is what drives the auto-refresh of installed RetroArch stub plugins on next launch (`refreshStaleRetroArchStubs()` in `AppDelegate.swift`). Forgetting to bump it means users keep running the old buggy bridge — a fix shipped in source never reaches the installed `*-RetroArch.oecoreplugin` bundles.
-
-Bump rules:
-
-- Behavioral change to the translator (input mapping, save state, audio, video, lifecycle) → bump.
-- Pure refactor with no observable change (renaming a private method, comment-only edit, formatting) → no bump needed.
-- When in doubt, bump. The cost of a needless refresh on launch is microseconds; the cost of a missed bump is users still hitting the bug.
 
 ---
 
