@@ -262,10 +262,16 @@ final class GameWindowController: NSWindowController {
             return
         }
         
-        if shouldSnapResize && fullScreenStatus != .entering {
+        // maximumIntegralScale floors to 1 when the core's native resolution already
+        // nearly fills (or exceeds) the screen at 1x — enhanced-resolution cores like
+        // some PSX cores are the common case. Locking contentMinSize == contentMaxSize
+        // in that case pins the window at exactly one size with no way to resize it at
+        // all, so fall back to free resizing instead, same as when snap resizing is off.
+        let maxScale = maximumIntegralScale
+        if shouldSnapResize && fullScreenStatus != .entering && maxScale > 1 {
             let minSize = gameDocument?.gameViewController.defaultScreenSize ?? .zero
-            let maxSize = NSSize(width: Int(minSize.width) * maximumIntegralScale,
-                                 height: Int(minSize.height) * maximumIntegralScale)
+            let maxSize = NSSize(width: Int(minSize.width) * maxScale,
+                                 height: Int(minSize.height) * maxScale)
             window?.contentMinSize = minSize
             window?.contentMaxSize = maxSize
         } else {
