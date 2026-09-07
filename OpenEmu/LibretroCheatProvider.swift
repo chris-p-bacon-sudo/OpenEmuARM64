@@ -133,7 +133,7 @@ final class LibretroCheatProvider: CheatDatabaseProvider, @unchecked Sendable {
 
         let lookup = try await lookupGameName(md5: lookupMD5, serial: serial, systemIdentifier: systemIdentifier)
 
-        if lookup == nil && (gameName == nil || !Self.redumpSystems.contains(systemIdentifier)) {
+        if lookup == nil && gameName == nil {
             // log.info("No game found for MD5 \(md5) / serial \(serial ?? "nil") in system \(systemIdentifier)")
             return []
         }
@@ -152,8 +152,10 @@ final class LibretroCheatProvider: CheatDatabaseProvider, @unchecked Sendable {
             if useRegionFallback { gameNames += regionVariants(for: name) }
         }
 
-        // Fallback for redump systems: try the library game name if DAT name didn't work or wasn't found
-        if let gameName, Self.redumpSystems.contains(systemIdentifier), !gameNames.contains(gameName) {
+        // Fallback: try the library game name if the DAT lookup didn't work or wasn't found.
+        // Not restricted to redump systems — cartridge dumps (NDS trim variance, N64 byte-order
+        // variance) can miss the MD5/serial DAT match too.
+        if let gameName, !gameNames.contains(gameName) {
             gameNames.append(gameName)
             if useRegionFallback { gameNames += regionVariants(for: gameName) }
         }
