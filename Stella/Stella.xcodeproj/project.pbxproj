@@ -106,6 +106,9 @@
 		94F0AE4A18AB07AB00505C0A /* TIATables.cxx in Sources */ = {isa = PBXBuildFile; fileRef = 94F0ADFD18AB07AB00505C0A /* TIATables.cxx */; };
 		94F0AE4B18AB07AB00505C0A /* TrackBall.cxx in Sources */ = {isa = PBXBuildFile; fileRef = 94F0ADFF18AB07AB00505C0A /* TrackBall.cxx */; };
 		94F0AE5118AC944500505C0A /* StellaGameCore.mm in Sources */ = {isa = PBXBuildFile; fileRef = 941DFB2615B6425200C6552F /* StellaGameCore.mm */; };
+		OE0STEL0BUILDFILE000000001 /* rcheevos_build.c in Sources */ = {isa = PBXBuildFile; fileRef = OE0STEL0FILEREF000000001 /* rcheevos_build.c */; settings = {COMPILER_FLAGS = "-DRC_NO_THREADS=1 -DRC_CLIENT_SUPPORTS_HASH=1"; }; };
+		OE0STEL0BUILDFILE000000002 /* OERetroAchievementsTransport.m in Sources */ = {isa = PBXBuildFile; fileRef = OE0STEL0FILEREF000000002 /* OERetroAchievementsTransport.m */; };
+		OE0STEL0BUILDFILE000000003 /* OERetroAchievementsBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = OE0STEL0FILEREF000000003 /* OERetroAchievementsBridge.m */; };
 		94F0AE8718AC9DB000505C0A /* Base.cxx in Sources */ = {isa = PBXBuildFile; fileRef = 94F0AE5518AC9DA600505C0A /* Base.cxx */; };
 		94F0AE8918AD3CB200505C0A /* PropsSet.cxx in Sources */ = {isa = PBXBuildFile; fileRef = 94F0ADE318AB07AB00505C0A /* PropsSet.cxx */; };
 		94F0AE8B18AEACB100505C0A /* SoundSDL.cxx in Sources */ = {isa = PBXBuildFile; fileRef = 94F0AE6D18AC9DA600505C0A /* SoundSDL.cxx */; };
@@ -150,6 +153,10 @@
 		8D5B49B6048680CD000E48DA /* Stella.oecoreplugin */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = Stella.oecoreplugin; sourceTree = BUILT_PRODUCTS_DIR; };
 		8D5B49B7048680CD000E48DA /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		941DFB2615B6425200C6552F /* StellaGameCore.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = StellaGameCore.mm; sourceTree = "<group>"; };
+		OE0STEL0FILEREF000000001 /* rcheevos_build.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = rcheevos_build.c; path = ../Vendor/rcheevos/rcheevos_build.c; sourceTree = SOURCE_ROOT; };
+		OE0STEL0FILEREF000000002 /* OERetroAchievementsTransport.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = OERetroAchievementsTransport.m; path = ../OpenEmuKit/Source/OERetroAchievementsTransport.m; sourceTree = SOURCE_ROOT; };
+		OE0STEL0FILEREF000000003 /* OERetroAchievementsBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = OERetroAchievementsBridge.m; path = ../OpenEmuKit/Source/OERetroAchievementsBridge.m; sourceTree = SOURCE_ROOT; };
+		OE0STEL0FILEREF000000004 /* OERetroAchievementsBridge.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = OERetroAchievementsBridge.h; path = ../OpenEmuKit/Source/OERetroAchievementsBridge.h; sourceTree = SOURCE_ROOT; };
 		941DFB4E15B7CEC200C6552F /* OE2600SystemResponderClient.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = OE2600SystemResponderClient.h; path = "../OpenEmu/SystemPlugins/Atari 2600/OE2600SystemResponderClient.h"; sourceTree = "<group>"; };
 		946C18A11713D32F00C64BF9 /* OpenEmuBase.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = OpenEmuBase.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		94F0AD6718AB07AA00505C0A /* AtariVox.cxx */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = AtariVox.cxx; sourceTree = "<group>"; };
@@ -418,6 +425,10 @@
 				941DFB4E15B7CEC200C6552F /* OE2600SystemResponderClient.h */,
 				B5008DAD0E8BFB3E005AECAF /* StellaGameCore.h */,
 				941DFB2615B6425200C6552F /* StellaGameCore.mm */,
+				OE0STEL0FILEREF000000001 /* rcheevos_build.c */,
+				OE0STEL0FILEREF000000002 /* OERetroAchievementsTransport.m */,
+				OE0STEL0FILEREF000000003 /* OERetroAchievementsBridge.m */,
+				OE0STEL0FILEREF000000004 /* OERetroAchievementsBridge.h */,
 			);
 			name = Classes;
 			sourceTree = "<group>";
@@ -808,6 +819,9 @@
 				94F0AE8918AD3CB200505C0A /* PropsSet.cxx in Sources */,
 				94F0AE8718AC9DB000505C0A /* Base.cxx in Sources */,
 				94F0AE5118AC944500505C0A /* StellaGameCore.mm in Sources */,
+				OE0STEL0BUILDFILE000000001 /* rcheevos_build.c in Sources */,
+				OE0STEL0BUILDFILE000000002 /* OERetroAchievementsTransport.m in Sources */,
+				OE0STEL0BUILDFILE000000003 /* OERetroAchievementsBridge.m in Sources */,
 				94F0AE3118AB07AB00505C0A /* KidVid.cxx in Sources */,
 				94F0AE0B18AB07AB00505C0A /* CartAR.cxx in Sources */,
 				94F0AE1D18AB07AB00505C0A /* CartF6SC.cxx in Sources */,
@@ -917,6 +931,9 @@
 					"\"$(SRCROOT)/Core/src/intl\"/**",
 					"\"$(SRCROOT)/Core/src/include\"/**",
 					"\"$(SRCROOT)/Core/src/hw_cpu\"/**",
+					"$(SRCROOT)/../Vendor/rcheevos/include",
+					"$(SRCROOT)/../Vendor/rcheevos/src",
+					"$(SRCROOT)/../OpenEmuKit/Source",
 				);
 				INFOPLIST_FILE = Info.plist;
 				INSTALL_PATH = "\"$(USER_LIBRARY_DIR)/Application Support/OpenEmu/Cores\"";
@@ -953,6 +970,9 @@
 					"\"$(SRCROOT)/Core/src/intl\"/**",
 					"\"$(SRCROOT)/Core/src/include\"/**",
 					"\"$(SRCROOT)/Core/src/hw_cpu\"/**",
+					"$(SRCROOT)/../Vendor/rcheevos/include",
+					"$(SRCROOT)/../Vendor/rcheevos/src",
+					"$(SRCROOT)/../OpenEmuKit/Source",
 				);
 				INFOPLIST_FILE = Info.plist;
 				INSTALL_PATH = "\"$(USER_LIBRARY_DIR)/Application Support/OpenEmu/Cores\"";

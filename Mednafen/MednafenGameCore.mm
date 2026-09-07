@@ -33,11 +33,12 @@
 #include "mednafen/psx/psx.h"
 #include "mednafen/pce/pce.h"
 #include "mednafen/mempatcher-driver.h"
+#include "mednafen/ss/ss.h"
 
 #import "MednafenGameCore.h"
 #import <OpenEmuBase/OERingBuffer.h>
-#import <OpenEmuBase/OEGameCoreDisplayModes.h>
 #import <OpenEmuBase/OEMemoryRegionDescriptor.h>
+#import <OpenEmuBase/OEGameCoreDisplayModes.h>
 #import <OpenGL/gl.h>
 #import "OELynxSystemResponderClient.h"
 #import "OENGPSystemResponderClient.h"
@@ -61,6 +62,18 @@ extern "C" uint8_t *MDFNNGP_GetRAMPointer(void);
 extern "C" uint8_t *MDFNPCE_GetCDRAMPointer(void);
 extern "C" uint8_t *MDFNPCE_GetSysCardRAMPointer(void);
 extern "C" uint8_t *MDFNPCE_GetSaveRAMPointer(void);
+extern "C" uint8_t *MDFNPCE_GetMainRAMPointer(void);
+extern "C" uint32_t MDFNPCE_GetMainRAMSize(void);
+extern "C" uint8_t *MDFNPCFX_GetRAMPointer(void);
+extern "C" uint8_t *MDFNPCFX_GetBackupRAMPointer(void);
+extern "C" uint8_t *MDFNPCFX_GetExBackupRAMPointer(void);
+extern "C" uint8_t *MDFNVB_GetWRAMPointer(void);
+extern "C" uint8_t *MDFNVB_GetGPRAMPointer(void);
+extern "C" uint32_t MDFNVB_GetGPRAMSize(void);
+extern "C" uint8_t *MDFNWS_GetRAMPointer(void);
+extern "C" uint32_t MDFNWS_GetRAMSize(void);
+extern "C" uint8_t *MDFNWS_GetSRAMPointer(void);
+extern "C" uint32_t MDFNWS_GetSRAMSize(void);
 
 #ifdef DEBUG
     #error "Cores should not be compiled in DEBUG! Follow the guide https://github.com/OpenEmu/OpenEmu/wiki/Compiling-From-Source-Guide"
@@ -84,6 +97,9 @@ namespace MDFN_IEN_VB
     extern void VIP_SetParallaxDisable(bool disabled);
     extern void VIP_SetAnaglyphColors(uint32 lcolor, uint32 rcolor);
 }
+
+// ~2 seconds at 75 fps — time for Lynx game code to clear 0xFF-initialized RAM before RA reads it
+static const uint32_t kLynxRAWarmupFrames = 150;
 
 @interface MednafenGameCore () <OELynxSystemResponderClient, OENGPSystemResponderClient, OEPCESystemResponderClient, OEPCECDSystemResponderClient, OEPCFXSystemResponderClient, OEPSXSystemResponderClient, OESaturnSystemResponderClient, OEVBSystemResponderClient, OEWSSystemResponderClient>
 {
@@ -115,6 +131,7 @@ namespace MDFN_IEN_VB
     int _rcConsole;
     NSMutableDictionary<NSString *, NSNumber *> *_cheatList;
     BOOL _isSystemPCECD;
+    uint32_t _lynxFrameCount;
     // Owned C-string copy of the active console module name (e.g. "psx", "pce").
     // Read from the RA memory-reader trampoline on the bridge's serial queue
     // without holding ObjC refs, so we can't use _mednafenCoreModule.UTF8String
@@ -126,6 +143,7 @@ namespace MDFN_IEN_VB
 - (NSString *)mednafenCoreModule;
 - (BOOL)isSystemPCECD;
 - (const char *)oeRACachedModule;
+- (BOOL)raLynxMemoryWarmingUp;
 
 - (void)initializeMednafen;
 - (void)loadDisplayModeOptions;
@@ -209,9 +227,32 @@ static uint32_t mednafen_rc_read_memory(uint32_t address, uint8_t *buffer,
     if (strcmp(mod, "lynx") == 0) {
         uint8_t *ram = MDFNLynx_GetRAMPointer();
         if (!ram) { return 0; }
+        if (c && [c raLynxMemoryWarmingUp]) {
+            // Mirror the post-warmup bounds so an out-of-range read short-reads consistently.
+            uint32_t n = (address >= 0x10000) ? 0 : MIN(num_bytes, 0x10000 - address);
+            memset(buffer, 0, n);
+            return n;
+        }
         for (uint32_t i = 0; i < num_bytes; i++) {
             if (address + i >= 0x10000) { return i; }
             buffer[i] = ram[address + i];
+        }
+        return num_bytes;
+    }
+    if (strcmp(mod, "wswan") == 0) {
+        uint8_t *ram = MDFNWS_GetRAMPointer();
+        if (!ram) { return 0; }
+        uint8_t *sram = MDFNWS_GetSRAMPointer();
+        uint32_t sramSize = MDFNWS_GetSRAMSize();
+        for (uint32_t i = 0; i < num_bytes; i++) {
+            uint32_t a = address + i;
+            if (a < 0x10000) {
+                buffer[i] = ram[a];
+            } else if (sram && sramSize > 0 && a < 0x10000 + sramSize) {
+                buffer[i] = sram[a - 0x10000];
+            } else {
+                return i;
+            }
         }
         return num_bytes;
     }
@@ -224,6 +265,61 @@ static uint32_t mednafen_rc_read_memory(uint32_t address, uint8_t *buffer,
         }
         return num_bytes;
     }
+    if (strcmp(mod, "pcfx") == 0) {
+        uint8_t *ram = MDFNPCFX_GetRAMPointer();
+        if (!ram) { return 0; }
+        uint8_t *bram = MDFNPCFX_GetBackupRAMPointer();
+        uint8_t *exbram = MDFNPCFX_GetExBackupRAMPointer();
+        for (uint32_t i = 0; i < num_bytes; i++) {
+            uint32_t a = address + i;
+            if (a < 0x200000) {
+                buffer[i] = ram[a];
+            } else if (a < 0x208000) {
+                buffer[i] = bram[a - 0x200000];
+            } else if (a < 0x210000) {
+                buffer[i] = exbram[a - 0x208000];
+            } else {
+                return i;
+            }
+        }
+        return num_bytes;
+    }
+    if (strcmp(mod, "vb") == 0) {
+        uint8_t *wram = MDFNVB_GetWRAMPointer();
+        if (!wram) { return 0; }
+        uint8_t *gpram = MDFNVB_GetGPRAMPointer();
+        uint32_t gpramSize = MDFNVB_GetGPRAMSize();
+        for (uint32_t i = 0; i < num_bytes; i++) {
+            uint32_t a = address + i;
+            if (a < 0x10000) {
+                buffer[i] = wram[a];
+            } else if (a < 0x20000) {
+                if (!gpram || gpramSize == 0) { return i; }
+                buffer[i] = gpram[(a - 0x10000) & (gpramSize - 1)];
+            } else {
+                return i;
+            }
+        }
+        return num_bytes;
+    }
+    if (strcmp(mod, "ss") == 0) {
+        // Expose raw ne16 buffer layout — matches how Beetle Saturn (libretro)
+        // exposes memory, which is what achievement sets are authored against.
+        const uint8_t *workL = MDFN_IEN_SS::SS_GetWorkRAML();
+        const uint8_t *workH = MDFN_IEN_SS::SS_GetWorkRAMH();
+        if (!workL || !workH) { return 0; }
+        for (uint32_t i = 0; i < num_bytes; i++) {
+            uint32_t a = address + i;
+            if (a < 0x100000) {
+                buffer[i] = workL[a & 0xFFFFF];
+            } else if (a < 0x200000) {
+                buffer[i] = workH[(a - 0x100000) & 0xFFFFF];
+            } else {
+                return i;
+            }
+        }
+        return num_bytes;
+    }
     return 0;
 }
 
@@ -232,6 +328,10 @@ static uint32_t mednafen_rc_read_memory(uint32_t address, uint8_t *buffer,
 - (NSString *)mednafenCoreModule { return _mednafenCoreModule; }
 - (BOOL)isSystemPCECD { return _isSystemPCECD; }
 - (const char *)oeRACachedModule { return _cachedModule; }
+- (BOOL)raLynxMemoryWarmingUp {
+    // Lynx RAM inits to 0xFF; wait for game code to run before exposing memory to RA.
+    return _lynxFrameCount < kLynxRAWarmupFrames;
+}
 
 - (void)initializeMednafen
 {
@@ -3591,18 +3691,21 @@ static uint32_t mednafen_rc_read_memory(uint32_t address, uint8_t *buffer,
         [self loadDisplayModeOptions];
     }
 
-    // RetroAchievements: only enabled for Phase 2 systems (PSX, PCE/PCECD, Lynx, NGP).
-    // Saturn / VB / WSwan / PCFX are intentionally skipped here so Phase 3 (#261)
-    // can drop them in cleanly.
+    // RetroAchievements: only verified systems are enabled.
     _rcConsole = -1;
-    if ([_mednafenCoreModule isEqualToString:@"psx"])  _rcConsole = RC_CONSOLE_PLAYSTATION;
-    else if (_isSystemPCECD)                           _rcConsole = RC_CONSOLE_PC_ENGINE_CD;
-    else if ([_mednafenCoreModule isEqualToString:@"pce"])   _rcConsole = RC_CONSOLE_PC_ENGINE;
-    else if ([_mednafenCoreModule isEqualToString:@"lynx"])  _rcConsole = RC_CONSOLE_ATARI_LYNX;
-    else if ([_mednafenCoreModule isEqualToString:@"ngp"])   _rcConsole = RC_CONSOLE_NEOGEO_POCKET;
+    if ([_mednafenCoreModule isEqualToString:@"psx"])   _rcConsole = RC_CONSOLE_PLAYSTATION;
+    else if ([_mednafenCoreModule isEqualToString:@"ss"])     _rcConsole = RC_CONSOLE_SATURN;
+    else if ([_mednafenCoreModule isEqualToString:@"lynx"])   _rcConsole = RC_CONSOLE_ATARI_LYNX;
+    else if ([_mednafenCoreModule isEqualToString:@"ngp"])    _rcConsole = RC_CONSOLE_NEOGEO_POCKET;
+    else if ([_mednafenCoreModule isEqualToString:@"pce"] && !_isSystemPCECD)  _rcConsole = RC_CONSOLE_PC_ENGINE;
+    else if ([_mednafenCoreModule isEqualToString:@"pce"] && _isSystemPCECD)   _rcConsole = RC_CONSOLE_PC_ENGINE_CD;
+    else if ([_mednafenCoreModule isEqualToString:@"pcfx"])   _rcConsole = RC_CONSOLE_PCFX;
+    else if ([_mednafenCoreModule isEqualToString:@"vb"])     _rcConsole = RC_CONSOLE_VIRTUAL_BOY;
+    else if ([_mednafenCoreModule isEqualToString:@"wswan"])  _rcConsole = RC_CONSOLE_WONDERSWAN;
 
     if (_rcConsole > 0) {
         _romPath = path;
+        _lynxFrameCount = 0;
         const char *modCStr = _mednafenCoreModule.UTF8String;
         if (modCStr) { _cachedModule = strdup(modCStr); }
         _raBridge = [[OERetroAchievementsBridge alloc] initWithGameCore:self
@@ -3642,6 +3745,8 @@ static uint32_t mednafen_rc_read_memory(uint32_t address, uint8_t *buffer,
 
     MDFNI_Emulate(&spec);
 
+    if (_rcConsole == RC_CONSOLE_ATARI_LYNX && _lynxFrameCount < kLynxRAWarmupFrames)
+        _lynxFrameCount++;
     [_raBridge doFrame];
 
     _mednafenCoreTiming = _masterClock / spec.MasterCycles;
@@ -4281,12 +4386,47 @@ namespace Mednafen { void MDFN_FlushGameCheats(int nosave); }
 
             NSRange colonRange = [singleCode rangeOfString:@":"];
             if (colonRange.location != NSNotFound) {
+                NSString *addrPart = [singleCode substringToIndex:colonRange.location];
                 unsigned int addr = 0, val = 0;
-                if (![[NSScanner scannerWithString:[singleCode substringToIndex:colonRange.location]] scanHexInt:&addr]) continue;
+
+                if (![[NSScanner scannerWithString:addrPart] scanHexInt:&addr]) continue;
                 if (![[NSScanner scannerWithString:[singleCode substringFromIndex:colonRange.location + 1]] scanHexInt:&val]) continue;
+
+                // NGP RAM is registered at 0x4000 in Mednafen's mempatcher
+                if ([_mednafenCoreModule isEqualToString:@"ngp"]) {
+                    addr += 0x4000;
+                }
+
+                // PCE Physical Address format (e.g. F82DB1 = page F8, offset 0xDB1).
+                // Convert to 21-bit physical address for the mempatcher.
+                if ([_mednafenCoreModule isEqualToString:@"pce"] && addr > 0x1FFFFF) {
+                    uint32_t page = (addr >> 16) & 0xFF;
+                    uint32_t offset = addr & 0x1FFF;
+                    addr = (page << 13) | offset;
+                }
+
                 patch.addr = addr;
                 patch.val = val;
                 patch.length = 1;
+
+                Mednafen::MDFNI_AddCheat(patch);
+            } else if (singleCode.length == 12 && [_mednafenCoreModule isEqualToString:@"ss"]) {
+                // Saturn AR format: TAAAAAAA VVVV (T=1 word, T=3 byte)
+                unsigned int fullCode = 0;
+                if (![[NSScanner scannerWithString:[singleCode substringToIndex:8]] scanHexInt:&fullCode]) continue;
+                uint8_t satType = (fullCode >> 28) & 0xF;
+                uint32_t addr = fullCode & 0x0FFFFFFF;
+                unsigned int val = 0;
+                if (![[NSScanner scannerWithString:[singleCode substringFromIndex:8]] scanHexInt:&val]) continue;
+                patch.addr = addr;
+                patch.bigendian = true;
+                if (satType == 3) {
+                    patch.val = val & 0xFF;
+                    patch.length = 1;
+                } else {
+                    patch.val = val & 0xFFFF;
+                    patch.length = 2;
+                }
                 Mednafen::MDFNI_AddCheat(patch);
             } else if (singleCode.length == 12) {
                 unsigned long long raw = strtoull(singleCode.UTF8String, NULL, 16);
@@ -4307,6 +4447,8 @@ namespace Mednafen { void MDFN_FlushGameCheats(int nosave); }
     }
 }
 
+#pragma mark - Cheat Search
+
 - (NSArray<OEMemoryRegionDescriptor *> *)readableMemoryRegions
 {
     if ([_mednafenCoreModule isEqualToString:@"psx"]) {
@@ -4316,6 +4458,157 @@ namespace Mednafen { void MDFN_FlushGameCheats(int nosave); }
                                                 addressBytes:4
                                                         data:data]];
     }
+
+    if ([_mednafenCoreModule isEqualToString:@"ss"]) {
+        const uint8 *workL = MDFN_IEN_SS::SS_GetWorkRAML();
+        const uint8 *workH = MDFN_IEN_SS::SS_GetWorkRAMH();
+        if (!workL || !workH) return @[];
+
+        NSData *dataL = [NSData dataWithBytes:workL length:1024 * 1024];
+        NSData *dataH = [NSData dataWithBytes:workH length:1024 * 1024];
+
+        return @[
+            [OEMemoryRegionDescriptor descriptorWithName:@"Low Work RAM"
+                                                address:0x00200000
+                                           addressBytes:4
+                                           minDataBytes:2
+                                                   data:dataL],
+            [OEMemoryRegionDescriptor descriptorWithName:@"High Work RAM"
+                                                address:0x06000000
+                                           addressBytes:4
+                                           minDataBytes:2
+                                                   data:dataH],
+        ];
+    }
+
+    if ([_mednafenCoreModule isEqualToString:@"lynx"]) {
+        uint8_t *ram = MDFNLynx_GetRAMPointer();
+        if (!ram) return @[];
+        NSData *data = [NSData dataWithBytes:ram length:0x10000];
+        return @[[OEMemoryRegionDescriptor descriptorWithName:@"System RAM"
+                                                     address:0x0000
+                                                addressBytes:2
+                                                        data:data]];
+    }
+
+    if ([_mednafenCoreModule isEqualToString:@"pcfx"]) {
+        uint8_t *ram = MDFNPCFX_GetRAMPointer();
+        if (!ram) return @[];
+        NSData *data = [NSData dataWithBytes:ram length:2 * 1024 * 1024];
+        return @[[OEMemoryRegionDescriptor descriptorWithName:@"Main RAM"
+                                                     address:0x00000000
+                                                addressBytes:4
+                                                        data:data]];
+    }
+
+    if ([_mednafenCoreModule isEqualToString:@"vb"]) {
+        uint8_t *wram = MDFNVB_GetWRAMPointer();
+        if (!wram) return @[];
+        NSMutableArray *regions = [NSMutableArray array];
+        NSData *wramData = [NSData dataWithBytes:wram length:65536];
+        [regions addObject:[OEMemoryRegionDescriptor descriptorWithName:@"System RAM"
+                                                               address:0x05000000
+                                                          addressBytes:4
+                                                                  data:wramData]];
+        uint8_t *gpram = MDFNVB_GetGPRAMPointer();
+        uint32_t gpramSize = MDFNVB_GetGPRAMSize();
+        if (gpram && gpramSize > 0) {
+            NSData *gpData = [NSData dataWithBytes:gpram length:gpramSize];
+            [regions addObject:[OEMemoryRegionDescriptor descriptorWithName:@"Cartridge RAM"
+                                                                   address:0x06000000
+                                                              addressBytes:4
+                                                                      data:gpData]];
+        }
+        return regions;
+    }
+
+    if ([_mednafenCoreModule isEqualToString:@"ngp"]) {
+        uint8_t *ram = MDFNNGP_GetRAMPointer();
+        if (!ram) return @[];
+        NSData *data = [NSData dataWithBytes:ram length:0x4000];
+        return @[[OEMemoryRegionDescriptor descriptorWithName:@"System RAM"
+                                                     address:0x0000
+                                                addressBytes:2
+                                                        data:data]];
+    }
+
+    if ([_mednafenCoreModule isEqualToString:@"wswan"]) {
+        uint8_t *ram = MDFNWS_GetRAMPointer();
+        if (!ram) return @[];
+        uint32_t size = MDFNWS_GetRAMSize();
+        NSData *data = [NSData dataWithBytes:ram length:size];
+        return @[[OEMemoryRegionDescriptor descriptorWithName:@"System RAM"
+                                                     address:0x0000
+                                                addressBytes:2
+                                                        data:data]];
+    }
+
+    if ([_mednafenCoreModule isEqualToString:@"pce"] && !_isSystemPCECD) {
+        uint8_t *ram = MDFNPCE_GetMainRAMPointer();
+        if (!ram) return @[];
+        uint32_t size = MDFNPCE_GetMainRAMSize();
+        // Display using official PCE cheat format: page (F8+) + slot 1 base (0x2000)
+        if (size <= 8192) {
+            NSData *data = [NSData dataWithBytes:ram length:size];
+            return @[[OEMemoryRegionDescriptor descriptorWithName:@"System RAM"
+                                                         address:0xF82000
+                                                    addressBytes:3
+                                                            data:data]];
+        }
+        // SGX: 32KB split across pages F8-FB for correct address conversion
+        NSMutableArray *regions = [NSMutableArray array];
+        for (uint32_t i = 0; i < size / 8192; i++) {
+            NSData *pageData = [NSData dataWithBytes:ram + i * 8192 length:8192];
+            uint32_t pageAddr = ((0xF8 + i) << 16) | 0x2000;
+            [regions addObject:[OEMemoryRegionDescriptor descriptorWithName:[NSString stringWithFormat:@"RAM (page %02X)", 0xF8 + i]
+                                                                   address:pageAddr
+                                                              addressBytes:3
+                                                                      data:pageData]];
+        }
+        return regions;
+    }
+
+    if ([_mednafenCoreModule isEqualToString:@"pce"] && _isSystemPCECD) {
+        uint8_t *ram = MDFNPCE_GetMainRAMPointer();
+        if (!ram) return @[];
+        NSMutableArray *regions = [NSMutableArray array];
+
+        NSData *mainData = [NSData dataWithBytes:ram length:8192];
+        [regions addObject:[OEMemoryRegionDescriptor descriptorWithName:@"System RAM"
+                                                               address:0xF82000
+                                                          addressBytes:3
+                                                                  data:mainData]];
+
+        uint8_t *cdram = MDFNPCE_GetCDRAMPointer();
+        if (cdram) {
+            NSData *cdData = [NSData dataWithBytes:cdram length:64 * 1024];
+            [regions addObject:[OEMemoryRegionDescriptor descriptorWithName:@"CD RAM"
+                                                                   address:0x100000
+                                                              addressBytes:3
+                                                                      data:cdData]];
+        }
+
+        uint8_t *syscard = MDFNPCE_GetSysCardRAMPointer();
+        if (syscard) {
+            NSData *sysData = [NSData dataWithBytes:syscard length:192 * 1024];
+            [regions addObject:[OEMemoryRegionDescriptor descriptorWithName:@"Super System Card RAM"
+                                                                   address:0x0D0000
+                                                              addressBytes:3
+                                                                      data:sysData]];
+        }
+
+        uint8_t *saveram = MDFNPCE_GetSaveRAMPointer();
+        if (saveram) {
+            NSData *saveData = [NSData dataWithBytes:saveram length:2048];
+            [regions addObject:[OEMemoryRegionDescriptor descriptorWithName:@"Save RAM"
+                                                                   address:0x1EE000
+                                                              addressBytes:3
+                                                                      data:saveData]];
+        }
+
+        return regions;
+    }
+
     return @[];
 }
 

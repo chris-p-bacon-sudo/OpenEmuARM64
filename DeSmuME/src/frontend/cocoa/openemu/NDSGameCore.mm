@@ -39,6 +39,13 @@
 #include "../../NDSSystem.h"
 #include "../../GPU.h"
 #include "../../render3D.h"
+#include "../../MMU.h"
+
+#define RC_CLIENT_SUPPORTS_HASH 1
+#include <rc_client.h>
+#include <rc_consoles.h>
+#import "OERetroAchievementsTransport.h"
+#import "OERetroAchievementsBridge.h"
 
 #ifdef BOOL
 #undef BOOL
@@ -144,6 +151,32 @@ static uint64_t NormalizeOpenEmuDisplayModeStates(uint64_t displayModeStates)
 	displayModeStates |= (1LLU << NDSDisplayOptionID_Rotation_0);
 	
 	return displayModeStates;
+}
+
+// rcheevos NDS address map (from consoleinfo.c):
+//   0x000000–0x3FFFFF → Main RAM (4 MB at hardware 0x02000000)
+//   0x400000–0xFFFFFF → DSi padding (unused, return 0)
+//   0x1000000–0x1003FFF → ARM9 Data TCM (16 KB)
+static uint32_t desmume_rc_read_memory(uint32_t address, uint8_t *buffer,
+                                       uint32_t num_bytes, rc_client_t *client)
+{
+    for (uint32_t i = 0; i < num_bytes; i++) {
+        uint32_t a = address + i;
+
+        if (a < 0x400000) {
+            buffer[i] = MMU.MAIN_MEM[a & 0x3FFFFF];
+        }
+        else if (a < 0x1000000) {
+            buffer[i] = 0;
+        }
+        else if (a < 0x1004000) {
+            buffer[i] = MMU.ARM9_DTCM[(a - 0x1000000) & 0x3FFF];
+        }
+        else {
+            return i;
+        }
+    }
+    return num_bytes;
 }
 
 volatile bool execute = true;
@@ -329,6 +362,26 @@ volatile bool execute = true;
 								nil];
 	
 	return self;
+}
+
+- (void)retroAchievementsIdle
+{
+	[_raBridge idle];
+}
+
+- (BOOL)canPauseRetroAchievementsHardcoreWithFramesRemaining:(uint32_t *)framesRemaining
+{
+	return _raBridge ? [_raBridge canPauseWithFramesRemaining:framesRemaining] : YES;
+}
+
+- (NSData *)retroAchievementsSerializedProgress
+{
+	return [_raBridge serializeProgress];
+}
+
+- (void)retroAchievementsDeserializeProgress:(NSData *)data
+{
+	[_raBridge deserializeProgress:data];
 }
 
 - (void)dealloc
@@ -796,6 +849,14 @@ void UpdateDisplayPropertiesFromStates(uint64_t displayModeStates, ClientDisplay
 	
 	[self setNdsDisplayMode:NormalizeOpenEmuDisplayModeStates(s)];
 	
+	if (isRomLoaded) {
+		_raBridge = [[OERetroAchievementsBridge alloc] initWithGameCore:self
+		                                                    memoryReader:desmume_rc_read_memory
+		                                                       consoleID:RC_CONSOLE_NINTENDO_DS];
+		[_raBridge startWithROMPath:path];
+		[_raBridge markROMReady];
+	}
+	
 	return isRomLoaded;
 }
 
@@ -812,6 +873,13 @@ void UpdateDisplayPropertiesFromStates(uint64_t displayModeStates, ClientDisplay
  */
 //- (void)stopEmulation;
 //- (void)stopEmulationWithCompletionHandler:(void(^)(void))completionHandler;
+
+- (void)stopEmulation
+{
+	[_raBridge shutdown];
+	_raBridge = nil;
+	[super stopEmulation];
+}
 
 #pragma mark - Execution
 
@@ -885,6 +953,8 @@ void UpdateDisplayPropertiesFromStates(uint64_t displayModeStates, ClientDisplay
 	NDS_exec<false>();
 	pthread_rwlock_unlock(&rwlockCoreExecute);
 	
+	[_raBridge doFrame];
+	
 	apple_unfairlock_lock(_unfairlockReceivedFrameIndex);
 	_receivedFrameIndex++;
 	apple_unfairlock_unlock(_unfairlockReceivedFrameIndex);
@@ -926,6 +996,7 @@ void UpdateDisplayPropertiesFromStates(uint64_t displayModeStates, ClientDisplay
  */
 - (void)resetEmulation
 {
+	[_raBridge reset];
 	pthread_rwlock_wrlock(&rwlockCoreExecute);
 	NDS_Reset();
 	pthread_rwlock_unlock(&rwlockCoreExecute);

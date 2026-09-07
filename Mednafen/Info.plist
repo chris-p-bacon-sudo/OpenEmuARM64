@@ -36,6 +36,12 @@
 			<integer>60</integer>
 			<key>OEGameCoreRewindInterval</key>
 			<integer>0</integer>
+			<key>OEGameCoreSupportsCheatCode</key>
+			<true/>
+			<key>OEGameCoreSupportsCheatSearch</key>
+			<true/>
+			<key>OEGameCoreSupportsRetroAchievements</key>
+			<true/>
 			<key>OEGameCoreSupportsRewinding</key>
 			<true/>
 			<key>OERequiredFiles</key>
@@ -58,6 +64,12 @@
 			<integer>60</integer>
 			<key>OEGameCoreRewindInterval</key>
 			<integer>0</integer>
+			<key>OEGameCoreSupportsCheatCode</key>
+			<true/>
+			<key>OEGameCoreSupportsCheatSearch</key>
+			<true/>
+			<key>OEGameCoreSupportsRetroAchievements</key>
+			<true/>
 			<key>OEGameCoreSupportsRewinding</key>
 			<true/>
 		</dict>
@@ -67,6 +79,12 @@
 			<integer>60</integer>
 			<key>OEGameCoreRewindInterval</key>
 			<integer>0</integer>
+			<key>OEGameCoreSupportsCheatCode</key>
+			<true/>
+			<key>OEGameCoreSupportsCheatSearch</key>
+			<true/>
+			<key>OEGameCoreSupportsRetroAchievements</key>
+			<true/>
 			<key>OEGameCoreSupportsRewinding</key>
 			<true/>
 		</dict>
@@ -78,6 +96,12 @@
 			<integer>60</integer>
 			<key>OEGameCoreRewindInterval</key>
 			<integer>0</integer>
+			<key>OEGameCoreSupportsCheatCode</key>
+			<true/>
+			<key>OEGameCoreSupportsCheatSearch</key>
+			<true/>
+			<key>OEGameCoreSupportsRetroAchievements</key>
+			<true/>
 			<key>OEGameCoreSupportsRewinding</key>
 			<true/>
 			<key>OERequiredFiles</key>
@@ -98,7 +122,13 @@
 		<dict>
 			<key>OEGameCoreRequiresFiles</key>
 			<true/>
+			<key>OEGameCoreSupportsCheatCode</key>
+			<true/>
+			<key>OEGameCoreSupportsCheatSearch</key>
+			<true/>
 			<key>OEGameCoreSupportsMultipleDiscs</key>
+			<true/>
+			<key>OEGameCoreSupportsRetroAchievements</key>
 			<true/>
 			<key>OERequiredFiles</key>
 			<array>
@@ -164,6 +194,10 @@
 		<dict>
 			<key>OEGameCoreRequiresFiles</key>
 			<true/>
+			<key>OEGameCoreSupportsCheatCode</key>
+			<true/>
+			<key>OEGameCoreSupportsCheatSearch</key>
+			<true/>
 			<key>OEGameCoreSupportsMultipleDiscs</key>
 			<true/>
 			<key>OERequiredFiles</key>
@@ -189,6 +223,8 @@
 					<integer>524288</integer>
 				</dict>
 			</array>
+			<key>OEGameCoreSupportsRetroAchievements</key>
+			<true/>
 		</dict>
 		<key>openemu.system.vb</key>
 		<dict>
@@ -196,7 +232,13 @@
 			<integer>60</integer>
 			<key>OEGameCoreRewindInterval</key>
 			<integer>0</integer>
+			<key>OEGameCoreSupportsCheatCode</key>
+			<true/>
+			<key>OEGameCoreSupportsCheatSearch</key>
+			<true/>
 			<key>OEGameCoreSupportsDisplayModeChange</key>
+			<true/>
+			<key>OEGameCoreSupportsRetroAchievements</key>
 			<true/>
 			<key>OEGameCoreSupportsRewinding</key>
 			<true/>
@@ -207,6 +249,12 @@
 			<integer>60</integer>
 			<key>OEGameCoreRewindInterval</key>
 			<integer>0</integer>
+			<key>OEGameCoreSupportsCheatCode</key>
+			<true/>
+			<key>OEGameCoreSupportsCheatSearch</key>
+			<true/>
+			<key>OEGameCoreSupportsRetroAchievements</key>
+			<true/>
 			<key>OEGameCoreSupportsRewinding</key>
 			<true/>
 		</dict>

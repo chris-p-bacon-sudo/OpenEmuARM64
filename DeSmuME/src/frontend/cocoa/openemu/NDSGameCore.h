@@ -41,6 +41,7 @@ class OEAudioOutputEngine;
 
 @class CocoaDSCheatManager;
 @class CocoaDSFirmware;
+@class OERetroAchievementsBridge;
 	
 // NDS Display Mode Keys for OpenEmu Display Mode Options
 //
@@ -298,6 +299,7 @@ typedef struct OEMenuItemDesc OEMenuItemDesc;
 	NSMutableDictionary *addedCheatsDict;
 	CocoaDSCheatManager *cdsCheats;
 	CocoaDSFirmware *cdsFirmware;
+	OERetroAchievementsBridge *_raBridge;
 	
 	MacInputHandler *_inputHandler;
 	OEIntPoint _lastTouchLocation;

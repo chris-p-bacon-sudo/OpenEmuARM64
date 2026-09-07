@@ -70,3 +70,7 @@ build.log
 *-Bridge/**/*.dylib
 *-Bridge/**/MacOS/*-Bridge
 
+Flycast/flycast/core/deps/rcheevos/.build/
+
+# RA review DMG build output
+Scripts/retro-achievements/build/
