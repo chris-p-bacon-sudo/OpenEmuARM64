@@ -85,6 +85,8 @@ final class ControlsButtonSetupView: NSView {
         sections = parser.sections
         keyToButtonMap = parser.keyToButtonMap
         orderedKeys = parser.orderedKeys
+        cachedSectionHeights = []
+        cachedSectionHeightsWidth = -1
         for (key, button) in keyToButtonMap {
             button.bind(
                 .title,
@@ -158,7 +160,8 @@ final class ControlsButtonSetupView: NSView {
     
     func layoutSubviews() {
         let width = width
-        
+        updateSectionHeightCacheIfNeeded(width: width)
+
         // determine required height
         var frame = frame
         let viewHeight = viewHeight
@@ -213,7 +216,7 @@ final class ControlsButtonSetupView: NSView {
                     button.frame = buttonRect.integral
                     
                     var labelRect = NSRect(x: leftGap, y: buttonRect.origin.y + buttonRect.size.height / 2 + 1, width: width - leftGap - labelButtonSpacing - buttonWidth, height: 100000).integral
-                    
+
                     var labelFitSize = label.cell?.cellSize(forBounds: labelRect) ?? .zero
                     if labelFitSize.height > 30 {
                         // If the label size returned is too tall, enlarge the
@@ -224,10 +227,10 @@ final class ControlsButtonSetupView: NSView {
                     }
                     labelRect.origin.y -= labelFitSize.height / 2
                     labelRect.size.height = labelFitSize.height
-                    
+
                     label.frame = labelRect
-                    
-                    y -= itemHeight + verticalItemSpacing
+
+                    y -= rowHeight(forLabel: label) + verticalItemSpacing
                 }
             }
             
@@ -239,20 +242,69 @@ final class ControlsButtonSetupView: NSView {
     }
     
     private var viewHeight: CGFloat {
-        var height: CGFloat = 0
-        for section in sections {
-            height += heightOfSection(section)
-        }
-        return height
+        cachedSectionHeights.reduce(0, +)
     }
-    
+
+    // heightOfSection does real NSCell text measurement per row (for labels
+    // that may wrap). layoutSectionHeadings re-derives section positions on
+    // every scroll bounds-change notification, so recomputing this on every
+    // call turned scrolling into an O(sections^2 * rows) text-layout cost
+    // per frame. Cache it here and only recompute when the row content or
+    // available width actually changes.
+    private var cachedSectionHeights: [CGFloat] = []
+    private var cachedSectionHeightsWidth: CGFloat = -1
+
+    private func updateSectionHeightCacheIfNeeded(width: CGFloat) {
+        guard cachedSectionHeights.count != sections.count || cachedSectionHeightsWidth != width else { return }
+        cachedSectionHeights = sections.map { heightOfSection($0) }
+        cachedSectionHeightsWidth = width
+    }
+
+    private func cachedHeightOfSection(at index: Int) -> CGFloat {
+        updateSectionHeightCacheIfNeeded(width: width)
+        guard index >= 0, index < cachedSectionHeights.count else { return 0 }
+        return cachedSectionHeights[index]
+    }
+
+    /// Computes a row's vertical extent, accounting for labels that wrap to
+    /// more than one line so height-calculation and layout never drift apart.
+    private func rowHeight(forLabel label: ControlsKeyLabel?) -> CGFloat {
+        guard let label = label else { return itemHeight }
+        // .integral matches the rounding layoutSubviews applies to the real
+        // label rect before measuring it — without it, a fractional width
+        // (common on Retina/resizable panes) can make this predict a
+        // different wrapped line count than layoutSubviews actually renders.
+        var labelRect = NSRect(x: 0, y: 0,
+                                width: width - leftGap - labelButtonSpacing - buttonWidth,
+                                height: 100000).integral
+        var fitSize = label.cell?.cellSize(forBounds: labelRect) ?? .zero
+        if fitSize.height > 30 {
+            labelRect.size.width += 5
+            fitSize = label.cell?.cellSize(forBounds: labelRect) ?? .zero
+        }
+        return max(itemHeight, fitSize.height)
+    }
+
     private func heightOfSection(_ section: Section) -> CGFloat {
         var height = sectionTitleHeight
-        
+
         height += topGap + bottomGap
-        let numberOfRows = CGFloat(section.numberOfRows)
-        height += (numberOfRows - 1) * verticalItemSpacing + numberOfRows * itemHeight
-        
+
+        var rowHeights: [CGFloat] = []
+        for group in section.groups {
+            for row in group {
+                if row.0 is ControlsKeyButton, let label = row.1 as? ControlsKeyLabel {
+                    rowHeights.append(rowHeight(forLabel: label))
+                } else {
+                    rowHeights.append(itemHeight)
+                }
+            }
+        }
+
+        guard !rowHeights.isEmpty else { return height }
+        let numberOfRows = CGFloat(rowHeights.count)
+        height += (numberOfRows - 1) * verticalItemSpacing + rowHeights.reduce(0, +)
+
         return height
     }
     
@@ -282,7 +334,7 @@ final class ControlsButtonSetupView: NSView {
             let sectionHeader = section.header
             
             let sectionStart = headerPositionOfSection(at: i)
-            let sectionHeight = heightOfSection(section)
+            let sectionHeight = cachedHeightOfSection(at: i)
             
             let sectionRect = NSRect(x: 0, y: sectionStart - sectionHeight, width: width, height: sectionHeight)
             let visibleSectionRect = visibleRect.intersection(sectionRect)
@@ -306,7 +358,7 @@ final class ControlsButtonSetupView: NSView {
     private func headerPositionOfSection(at index: Int) -> CGFloat {
         var y = bounds.height
         for i in 0..<index {
-            y -= heightOfSection(sections[i])
+            y -= cachedHeightOfSection(at: i)
         }
         return y
     }

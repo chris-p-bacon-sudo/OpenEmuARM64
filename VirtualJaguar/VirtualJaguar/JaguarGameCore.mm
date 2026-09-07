@@ -124,6 +124,11 @@ static JaguarGameCore *current;
     return OEIntSizeMake(videoWidth, videoHeight);
 }
 
+- (OEIntSize)aspectSize
+{
+    return OEIntSizeMake(4, 3);
+}
+
 - (const void *)getVideoBufferWithHint:(void *)hint
 {
     if (hint && hint != buffer) {
