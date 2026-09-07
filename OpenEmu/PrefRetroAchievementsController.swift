@@ -61,7 +61,7 @@ final class PrefRetroAchievementsController: NSViewController {
 
     private let supportedDivider = NSBox()
     private let supportedLabel   = NSTextField(labelWithString: "")
-    private let supportedGrid    = NSStackView()
+    private let supportedGrid    = NSGridView()
 
     private var hardcoreObserver: Any?
 
@@ -257,9 +257,8 @@ final class PrefRetroAchievementsController: NSViewController {
         supportedLabel.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(supportedLabel)
 
-        supportedGrid.orientation = .vertical
-        supportedGrid.alignment = .leading
-        supportedGrid.spacing = 4
+        supportedGrid.rowSpacing = 6
+        supportedGrid.columnSpacing = 16
         supportedGrid.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(supportedGrid)
 
@@ -297,18 +296,21 @@ final class PrefRetroAchievementsController: NSViewController {
                 // OpenEmu models Game Boy and Game Boy Color as one system (openemu.system.gb);
                 // Gambatte detects the cartridge type and earns GBC achievements. Show both.
                 if id == "openemu.system.gb" { name = "Game Boy / Game Boy Color" }
+                // "Nintendo (NES)" loses its only distinguishing part once the parenthetical
+                // is stripped, leaving a bare, misleading "Nintendo" — unlike "Super Nintendo
+                // (SNES)", which reads fine as "Super Nintendo" on its own.
+                if id == "openemu.system.nes" { name = "Nintendo Entertainment System" }
                 return (name, sys.systemIcon)
             }
             .sorted { $0.0 < $1.0 }
 
+        // NSGridView keeps column widths consistent across every row — unlike the previous
+        // approach of one independent, equally-distributed NSStackView per row, where each
+        // row's column widths were sized from that row's own content alone, so columns drifted
+        // out of alignment from one row to the next.
         let columns = 3
         for rowStart in stride(from: 0, to: systems.count, by: columns) {
-            let rowStack = NSStackView()
-            rowStack.orientation = .horizontal
-            rowStack.spacing = 8
-            rowStack.distribution = .fillEqually
-            rowStack.translatesAutoresizingMaskIntoConstraints = false
-
+            var cells: [NSView] = []
             for i in rowStart ..< min(rowStart + columns, systems.count) {
                 let (name, icon) = systems[i]
 
@@ -324,7 +326,6 @@ final class PrefRetroAchievementsController: NSViewController {
                 let nameLabel = NSTextField(labelWithString: name)
                 nameLabel.font = .systemFont(ofSize: 12)
                 nameLabel.lineBreakMode = .byTruncatingTail
-                nameLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
 
                 let cell = NSStackView(views: [imageView, nameLabel])
                 cell.orientation = .horizontal
@@ -332,15 +333,17 @@ final class PrefRetroAchievementsController: NSViewController {
                 cell.alignment = .centerY
                 cell.translatesAutoresizingMaskIntoConstraints = false
 
-                rowStack.addArrangedSubview(cell)
+                cells.append(cell)
             }
-            // Pad partial last row so fillEqually keeps columns consistent
-            if rowStart + columns > systems.count {
-                for _ in systems.count ..< rowStart + columns {
-                    rowStack.addArrangedSubview(NSView())
-                }
+            // Pad a partial last row so NSGridView's column count stays consistent.
+            for _ in cells.count ..< columns {
+                cells.append(NSView())
             }
-            supportedGrid.addArrangedSubview(rowStack)
+            supportedGrid.addRow(with: cells)
+        }
+
+        for column in 0 ..< columns where column < supportedGrid.numberOfColumns {
+            supportedGrid.column(at: column).xPlacement = .leading
         }
     }
 
