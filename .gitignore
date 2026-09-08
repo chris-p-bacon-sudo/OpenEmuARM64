@@ -29,7 +29,7 @@ build_*.log
 build_*.txt
 build_log*.txt
 *.tar.gz
-Releases/
+Releases/*
 !Releases/*.md
 OpenEmu/OEGoogleDriveSecrets.swift
 OpenEmu/ScreenScraperDevCredentials.swift
