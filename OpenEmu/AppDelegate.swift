@@ -170,7 +170,12 @@ class AppDelegate: NSObject, UNUserNotificationCenterDelegate {
 
         // Trigger Objective-C +initialize methods in these classes.
         _ = OEControllerDescription.self
-        
+
+        // Must precede registerClass(): that call enumerates the Cores folder and
+        // caches the result for the rest of the launch, so a stub deleted after it
+        // would stay in the in-memory plugin list until the next restart.
+        removeOrphanedRetroArchPlugins()
+
         OECorePlugin.registerClass()
         OESystemPlugin.registerClass()
         
@@ -1205,12 +1210,6 @@ extension AppDelegate: NSMenuDelegate {
 @objc extension AppDelegate: OpenEmuApplicationDelegateProtocol {
     
     func applicationWillFinishLaunching(_ notification: Notification) {
-        // Delete leftover RetroArch bridge stubs before any plugin enumeration:
-        // their principal class no longer exists, so enumerating one and then
-        // touching its controller crashes. This also has to run before the feed
-        // URL sweep, which would otherwise rewrite and re-sign a bundle that is
-        // about to be deleted.
-        removeOrphanedRetroArchPlugins()
         refreshStaleCoreFeedURLs()
 
         atexit {
