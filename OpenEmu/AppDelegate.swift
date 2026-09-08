@@ -442,7 +442,7 @@ class AppDelegate: NSObject, UNUserNotificationCenterDelegate {
                     try fm.removeItem(at: plugin)
                     removed.append(name)
                     removedBundleIDs.insert(bundleID)
-                    os_log(.info, log: .default, "Removed orphaned RetroArch core plugin: %{public}@ (libretro bridge support was removed in OpenEmu 1.4)", plugin.lastPathComponent)
+                    os_log(.info, log: .default, "Removed orphaned RetroArch core plugin: %{public}@ (libretro bridge support was removed in OpenEmu 1.3.1)", plugin.lastPathComponent)
                 } catch {
                     failed.append((plugin.lastPathComponent, error.localizedDescription))
                     os_log(.error, log: .default, "Failed to remove orphaned RetroArch core plugin %{public}@: %{public}@", plugin.lastPathComponent, error.localizedDescription)
