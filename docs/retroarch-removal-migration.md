@@ -56,9 +56,14 @@ Two things worth stating plainly to anyone who reports this:
 - **Battery saves are not affected.** In-game saves (the ones the game itself
   writes to its cartridge or memory card) are core-independent and survive. Only
   save states are lost.
-- **Auto save states are not loaded automatically.** They only appear in the save
-  state picker, so a user has to deliberately choose one to hit this. Launching a
-  game normally is unaffected.
+- **Auto save states are not loaded automatically, and are easy to miss.** A game's
+  right-click → "Play Save State" menu is built from `OEDBRom.normalSaveStates`,
+  which filters out every state whose name begins with `OESpecialState_`. Auto save
+  states are therefore *never* listed there — a game whose only state is the auto
+  save shows "No Save States available", and always has, independent of this change.
+  They are visible in the **Save States** section of the library sidebar (controlled
+  by the `showsAutoSaves` preference, on by default). So reaching an affected auto
+  state takes deliberate action; launching a game normally never hits it.
 
 Affected states can be identified by reading the `Core Identifier` key:
 
@@ -67,9 +72,15 @@ find ~/Library/Application\ Support/OpenEmu/Save\ States \
   -name Info.plist -path '*.oesavestate*' -exec grep -l -i retroarch {} \;
 ```
 
-They can be deleted from the Save States section of the library. Nothing deletes
-them automatically — the cleanup only touches core plugin bundles and preferences,
-never user data.
+They can be deleted from the **Save States** section of the library sidebar (not
+from the game's right-click menu, which hides auto saves). Nothing deletes them
+automatically — the cleanup only touches core plugin bundles and preferences, never
+user data. `AppDelegate.removeIncompatibleSaveStates()` does prune states for
+deprecated cores, but its list is explicit and contains no RetroArch identifiers,
+so it leaves these alone.
+
+To exercise this path, open the Save States section of the library and pick an
+affected state there.
 
 ## Features that share the name and were NOT removed
 
