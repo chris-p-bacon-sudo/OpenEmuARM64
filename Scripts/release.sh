@@ -10,7 +10,7 @@
 #   2. Calls notarize.sh (re-sign, notarize, DMG, staple)
 #   3. Runs sign_update to get the EdDSA signature
 #   4. Prepends a new entry to appcast.xml
-#   5. Commits and pushes the updated appcast, cask, notes, and version files
+#   5. Commits and pushes the updated appcast, cask, and version files
 #   6. Tags that exact release commit
 #   7. Creates a draft GitHub Release and uploads the DMG
 #
@@ -252,7 +252,10 @@ git -C "$REPO_ROOT" add "$APPCAST" "$CASK_FILE" \
 if [ ! -f "$REPO_ROOT/Releases/notes-${VERSION}.md" ]; then
   die "Release notes not found: Releases/notes-${VERSION}.md — run prep-release first."
 fi
-git -C "$REPO_ROOT" add -f "Releases/notes-${VERSION}.md"
+# The notes file is a build input only — it feeds update_appcast.py, the GitHub
+# draft release body, and this release's PR description. All three keep their own
+# durable copy, so the file itself is deliberately left untracked and stays in the
+# ignored Releases/ directory.
 if git -C "$REPO_ROOT" diff --cached --quiet; then
   echo "No release metadata changes to commit; using current HEAD."
 else

@@ -888,10 +888,8 @@ final class OEGameDocument: NSDocument {
                let core = OECorePlugin.corePlugin(bundleIdentifier: coreIdentifier) {
                 return core
             } else {
-                let isRA: (OECorePlugin) -> Bool = { $0.bundleIdentifier.hasSuffix("-RetroArch") }
                 validPlugins.sort {
-                    if isRA($0) != isRA($1) { return !isRA($0) }
-                    return $0.displayName.caseInsensitiveCompare($1.displayName) == .orderedAscending
+                    $0.displayName.caseInsensitiveCompare($1.displayName) == .orderedAscending
                 }
                 return validPlugins.first!
             }
@@ -2754,6 +2752,41 @@ final class OEGameDocument: NSDocument {
             }
         }
         
+        // Cores that can never resolve again: the RetroArch stubs and the older
+        // *-Bridge test cores. Both were generated on this machine and appear in no
+        // core feed, so "switch to that core?" can only ever fail for them.
+        //
+        // Deliberately narrow. A core that is merely *not installed yet* may still be
+        // downloadable once the core list finishes loading — that list arrives two
+        // async network hops after launch, so treating "not in coresDict right now"
+        // as "gone forever" would turn a recoverable prompt into a dead end for
+        // ordinary users who open a save state early in launch or while offline.
+        let identifier = state.coreIdentifier
+        let isRetiredCore = identifier.hasSuffix("-RetroArch")
+            || identifier.hasSuffix("-Bridge")
+            || identifier.hasPrefix("retroarch.")
+        
+        if isRetiredCore, !CoreUpdater.shared.canProvideCore(withIdentifier: identifier) {
+            let unavailable = OEAlert()
+            unavailable.messageText = NSLocalizedString("This save state can't be loaded.", comment: "")
+            unavailable.informativeText = String(
+                format: NSLocalizedString("It was created with “%@”, a core OpenEmu no longer includes. The game will start without it.", comment: ""),
+                identifier)
+            unavailable.defaultButtonTitle = NSLocalizedString("Continue", comment: "")
+            // Not startEmulation(): that only acts on a document still in .setup. When
+            // the state was picked mid-game the document is already .paused, and only
+            // isEmulationPaused knows how to resume from there.
+            if let win = gameWindowController?.window {
+                unavailable.beginSheetModal(for: win) { [weak self] _ in
+                    self?.isEmulationPaused = false
+                }
+            } else {
+                unavailable.runModal()
+                isEmulationPaused = false
+            }
+            return
+        }
+        
         let alert = OEAlert()
         alert.messageText = NSLocalizedString("This save state was created with a different core. Do you want to switch to that core now?", comment: "")
         alert.defaultButtonTitle = NSLocalizedString("Change Core", comment: "")
@@ -2767,7 +2800,9 @@ final class OEGameDocument: NSDocument {
                 CoreUpdater.shared.installCore(for: state, withCompletionHandler: runWithCore)
             }
         } else {
-            startEmulation()
+            // Same reasoning as above: startEmulation() is a no-op once the document
+            // is .paused, which it is whenever the state was chosen mid-game.
+            isEmulationPaused = false
         }
     }
     

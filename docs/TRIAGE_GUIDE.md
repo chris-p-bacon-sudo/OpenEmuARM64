@@ -54,7 +54,6 @@ Three principles:
 | `core: C64` | VirtualC64 / VICE |
 | `core: other` | mGBA (GBA/GB/GBC), Gambatte (GB/GBC), Mednafen (PSX/PCE/Lynx/NGP), Flycast (Dreamcast), Dolphin (GC/Wii), PPSSPP (PSP), long-tail cores |
 | `core: arcade` | Arcade cores |
-| `libretro` | Libretro core or translator-related |
 
 ### Priority / Workflow Labels
 

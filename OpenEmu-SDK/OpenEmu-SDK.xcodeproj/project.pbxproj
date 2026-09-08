@@ -44,8 +44,6 @@
 		8F7909962A1A07C200E98FE8 /* OpenEmuSystemPrivate.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F7909932A1A07C200E98FE8 /* OpenEmuSystemPrivate.h */; };
 		94FDE6AE1AC35BA60003D247 /* OECloneCD.h in Headers */ = {isa = PBXBuildFile; fileRef = 94FDE6AC1AC35BA60003D247 /* OECloneCD.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		94FDE6AF1AC35BA60003D247 /* OECloneCD.m in Sources */ = {isa = PBXBuildFile; fileRef = 94FDE6AD1AC35BA60003D247 /* OECloneCD.m */; };
-		B5AE7A121710BD6200ED5801 /* OELibretroCoreTranslator.m in Sources */ = {isa = PBXBuildFile; fileRef = B5AE7A111710BD6200ED5801 /* OELibretroCoreTranslator.m */; };
-		B5AE7A141710BD6200ED5801 /* OELibretroCoreTranslator.h in Headers */ = {isa = PBXBuildFile; fileRef = B5AE7A131710BD6200ED5801 /* OELibretroCoreTranslator.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		B8296619452A248C4B234493 /* OESystemConstants.m in Sources */ = {isa = PBXBuildFile; fileRef = DCAFB56D006087C1FE9C74D0 /* OESystemConstants.m */; };
 		C6206C0E1C08EB80008E0106 /* OEBindingDescription_Internal.h in Headers */ = {isa = PBXBuildFile; fileRef = C6206C0D1C08EB80008E0106 /* OEBindingDescription_Internal.h */; };
 		C6605B841D725B0D009C7E91 /* OEM3UFile.h in Headers */ = {isa = PBXBuildFile; fileRef = C6605B821D725B0D009C7E91 /* OEM3UFile.h */; };
@@ -191,9 +189,6 @@
 		8F7909952A1A07C200E98FE8 /* OpenEmuSystem.private.modulemap */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = "sourcecode.module-map"; name = OpenEmuSystem.private.modulemap; path = OpenEmuSystem/OpenEmuSystem.private.modulemap; sourceTree = SOURCE_ROOT; };
 		94FDE6AC1AC35BA60003D247 /* OECloneCD.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OECloneCD.h; sourceTree = "<group>"; };
 		94FDE6AD1AC35BA60003D247 /* OECloneCD.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = OECloneCD.m; sourceTree = "<group>"; };
-		B5AE7A111710BD6200ED5801 /* OELibretroCoreTranslator.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = OELibretroCoreTranslator.m; sourceTree = "<group>"; };
-		B5AE7A131710BD6200ED5801 /* OELibretroCoreTranslator.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OELibretroCoreTranslator.h; sourceTree = "<group>"; };
-		B5AE7A151710BD6200ED5801 /* libretro.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = libretro.h; sourceTree = "<group>"; };
 		C6206C0D1C08EB80008E0106 /* OEBindingDescription_Internal.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OEBindingDescription_Internal.h; sourceTree = "<group>"; };
 		C6605B821D725B0D009C7E91 /* OEM3UFile.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OEM3UFile.h; sourceTree = "<group>"; };
 		C6605B831D725B0D009C7E91 /* OEM3UFile.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = OEM3UFile.m; sourceTree = "<group>"; };
@@ -374,9 +369,6 @@
 				C6772A611710BD6200ED580A /* OESystemResponderClient.h */,
 				C6772A621710BD6200ED580A /* OEGameCore.h */,
 				C6772A631710BD6200ED580A /* OEGameCore.m */,
-				B5AE7A131710BD6200ED5801 /* OELibretroCoreTranslator.h */,
-				B5AE7A111710BD6200ED5801 /* OELibretroCoreTranslator.m */,
-				B5AE7A151710BD6200ED5801 /* libretro.h */,
 				013D75CC23BD25CB00D74AD3 /* OEGameCoreDisplayModes.h */,
 				C6772A641710BD6200ED580A /* OEAbstractAdditions.h */,
 				C6772A651710BD6200ED580A /* OEAbstractAdditions.m */,
@@ -557,7 +549,6 @@
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				B5AE7A141710BD6200ED5801 /* OELibretroCoreTranslator.h in Headers */,
 				C6772A6E1710BD6200ED580A /* OpenEmuBase.h in Headers */,
 				C6772A721710BD6200ED580A /* OEAbstractAdditions.h in Headers */,
 				C6772A701710BD6200ED580A /* OEGameCore.h in Headers */,
@@ -802,7 +793,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				C6772A711710BD6200ED580A /* OEGameCore.m in Sources */,
-				B5AE7A121710BD6200ED5801 /* OELibretroCoreTranslator.m in Sources */,
 				C6772A731710BD6200ED580A /* OEAbstractAdditions.m in Sources */,
 				27FC95191A92F12700CF1DC6 /* OEDiffQueue.mm in Sources */,
 				C6772A751710BD6200ED580A /* OEGameCoreController.m in Sources */,

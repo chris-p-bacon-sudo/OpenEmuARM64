@@ -139,7 +139,7 @@ xcodebuild -workspace OpenEmu-metal.xcworkspace -scheme OpenEmu \
 
 If the build fails, stop and report the errors. Do not continue.
 
-Do NOT commit the version bump yet. The version bump files (plist, pbxproj, SECURITY.md, notes) stay as working-tree changes and are picked up by the release script's final commit in Step 7.
+Do NOT commit the version bump yet. The version bump files (plist, pbxproj, SECURITY.md) stay as working-tree changes and are picked up by the release script's final commit in Step 7. The notes file is not committed at all — it is a build input that feeds the appcast entry, the GitHub draft release, and the release PR body, each of which keeps its own copy.
 
 ## Step 6 — Pre-flight checklist
 

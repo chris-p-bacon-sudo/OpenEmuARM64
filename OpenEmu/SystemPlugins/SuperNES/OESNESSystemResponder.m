@@ -26,10 +26,8 @@
 
 #import "OESNESSystemResponder.h"
 #import "OESNESSystemResponderClient.h"
-#import <OpenEmuBase/OELibretroCoreTranslator.h>
 
 @implementation OESNESSystemResponder
-static const uint8_t kSNESLibretroMap[] = { 4, 5, 6, 7, 8, 0, 9, 1, 10, 11, 3, 2 };
 @dynamic client;
 
 + (Protocol *)gameSystemResponderClientProtocol;
@@ -41,11 +39,6 @@ static const uint8_t kSNESLibretroMap[] = { 4, 5, 6, 7, 8, 0, 9, 1, 10, 11, 3, 2
 {
     id client = (id)self.client;
     NSUInteger k = aKey.key;
-    if ([client conformsToProtocol:@protocol(OEBridgeInputTranslation)]) {
-        uint8_t btn = (k < sizeof(kSNESLibretroMap)) ? kSNESLibretroMap[k] : 0xFF;
-        [(id<OEBridgeInputTranslation>)client receiveLibretroButton:btn forPort:aKey.player - 1 pressed:YES];
-        return;
-    }
     [client didPushSNESButton:(OESNESButton)k forPlayer:aKey.player];
 }
 
@@ -53,11 +46,6 @@ static const uint8_t kSNESLibretroMap[] = { 4, 5, 6, 7, 8, 0, 9, 1, 10, 11, 3, 2
 {
     id client = (id)self.client;
     NSUInteger k = aKey.key;
-    if ([client conformsToProtocol:@protocol(OEBridgeInputTranslation)]) {
-        uint8_t btn = (k < sizeof(kSNESLibretroMap)) ? kSNESLibretroMap[k] : 0xFF;
-        [(id<OEBridgeInputTranslation>)client receiveLibretroButton:btn forPort:aKey.player - 1 pressed:NO];
-        return;
-    }
     [client didReleaseSNESButton:(OESNESButton)k forPlayer:aKey.player];
 }
 

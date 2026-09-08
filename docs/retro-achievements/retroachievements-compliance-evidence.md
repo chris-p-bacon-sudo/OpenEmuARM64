@@ -8,7 +8,7 @@ Keep only three RA docs current:
 - [`retroachievements-implementation-guide.md`](retroachievements-implementation-guide.md) — developer integration pattern and known rc_client pitfalls.
 - **This file** — compliance evidence, verification results, submission notes, and follow-up tracking.
 
-Scope: native RetroAchievements cores only. Libretro/RetroArch RA compliance is tracked separately in #360.
+Scope: all RetroAchievements cores. Every core this fork ships integrates rcheevos directly.
 
 ---
 
@@ -38,7 +38,6 @@ Follow-up work split from #438:
 | #537 | Softcore save-state rcheevos progress serialization. |
 | #538 | Close-while-offline queued unlock/session-purge edge case. |
 | #539 | Final RA submission package: license matrix completion, public-availability framing, screenshots/video bundle, User-Agent sample, and RA client approval question. |
-| #360 | Libretro/RetroArch RA host compliance. |
 
 ---
 

@@ -26,10 +26,8 @@
 
 #import "OEGenesisSystemResponder.h"
 #import "OEGenesisSystemResponderClient.h"
-#import <OpenEmuBase/OELibretroCoreTranslator.h>
 
 @implementation OEGenesisSystemResponder
-static const uint8_t kGenesisLibretroMap[] = { 4, 5, 6, 7, 1, 0, 8, 10, 9, 11, 3, 2 };
 @dynamic client;
 
 + (Protocol *)gameSystemResponderClientProtocol;
@@ -41,11 +39,6 @@ static const uint8_t kGenesisLibretroMap[] = { 4, 5, 6, 7, 1, 0, 8, 10, 9, 11, 3
 {
     id client = (id)self.client;
     NSUInteger k = aKey.key;
-    if ([client conformsToProtocol:@protocol(OEBridgeInputTranslation)]) {
-        uint8_t btn = (k < sizeof(kGenesisLibretroMap)) ? kGenesisLibretroMap[k] : 0xFF;
-        [(id<OEBridgeInputTranslation>)client receiveLibretroButton:btn forPort:aKey.player - 1 pressed:YES];
-        return;
-    }
     [client didPushGenesisButton:(OEGenesisButton)k forPlayer:aKey.player];
 }
 
@@ -53,11 +46,6 @@ static const uint8_t kGenesisLibretroMap[] = { 4, 5, 6, 7, 1, 0, 8, 10, 9, 11, 3
 {
     id client = (id)self.client;
     NSUInteger k = aKey.key;
-    if ([client conformsToProtocol:@protocol(OEBridgeInputTranslation)]) {
-        uint8_t btn = (k < sizeof(kGenesisLibretroMap)) ? kGenesisLibretroMap[k] : 0xFF;
-        [(id<OEBridgeInputTranslation>)client receiveLibretroButton:btn forPort:aKey.player - 1 pressed:NO];
-        return;
-    }
     [client didReleaseGenesisButton:(OEGenesisButton)k forPlayer:aKey.player];
 }
 

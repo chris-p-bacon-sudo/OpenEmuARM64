@@ -19,7 +19,7 @@ OpenEmu-Silicon is **not missing many classic OpenEmu cores**. Most of the old O
 The important gaps are narrower:
 
 1. **Arcade / MAME** — user-provided Apple Silicon port exists and has been tested, but it still needs first-class repo/release integration.
-2. **Commodore 64** — UI/system plugin exists, but this fork currently relies on RetroArch/VICE rather than a native core; `OpenEmu/VICE-Core` is the best native lead to investigate.
+2. **Commodore 64** — UI/system plugin exists, but no core ships at all since RetroArch core support was removed in v1.3.1; `OpenEmu/VICE-Core` is the best native lead to investigate (#546).
 3. **PlayStation 2 / VMU** — system plugins exist, but these should not be treated as near-term native-core work.
 4. **Metadata drift** — a few appcast / plist / `oecores.xml` mismatches should be cleaned up or intentionally documented.
 
@@ -41,7 +41,7 @@ For example:
 |---|---:|---:|---:|---|
 | Nintendo DS | Yes | Yes, DeSmuME | Yes | Released through the native DeSmuME appcast/update path. |
 | Arcade | Yes | Yes, local MAME project from user-provided OpenEmu/UME-Core guidance | Not yet | Tested as working; needs repo/release integration and remaining fixes. |
-| Commodore 64 | Yes | Not yet | No | Currently external/RetroArch path only; investigate native `VICE-Core`. |
+| Commodore 64 | Yes | Not yet | No | No core ships; investigate native `VICE-Core` (#546). |
 | PlayStation 2 | Yes | No local release-ready core | No | Research/out-of-scope for now. |
 
 ## Current support state
@@ -92,7 +92,7 @@ These systems have local native core coverage and appcast/update metadata:
 
 | System | Current interpretation |
 |---|---|
-| Commodore 64 | System plugin exists. No native core ships in this fork. RetroArch/VICE is the current practical path. |
+| Commodore 64 | System plugin exists. No core ships in this fork at all; native VICE port tracked in #546. |
 | PlayStation 2 | System plugin exists. Upstream OpenEmu has experimental/research repos, but no local release-ready native core. Keep out of release planning unless explicitly prioritized. |
 | VMU | System plugin exists. Treat as Dreamcast peripheral / not expected as standalone native core unless a specific product decision changes this. |
 

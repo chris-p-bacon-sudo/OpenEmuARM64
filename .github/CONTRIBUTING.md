@@ -84,6 +84,7 @@ If you're working in a git worktree, use `./Scripts/build-for-worktree.sh` and `
 3. **Keep PRs focused.** One logical change per PR. If your fix touches three systems, open three PRs.
 4. **Fill out the PR template completely.** It asks what changed, how you tested it, and whether AI tools were used.
 5. **Expect a 1–2 week review window.** This project is maintained by one person. A polite ping after two weeks is welcome.
+6. **Coordinate before touching `OpenEmu-SDK/OpenEmuBase/OEGameCore.h/.m`.** That file is the base class for every core and the highest-conflict file in the repo. Rebase on `main` immediately before pushing a change to it.
 
 ### PR Checklist
 
@@ -126,14 +127,6 @@ Comment on an issue before you start work to avoid duplicates.
 RA core integration is tracked in [issue #258](https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/issues/258). The implementation pattern and known pitfalls are documented in [docs/retro-achievements/retroachievements-implementation-guide.md](../docs/retro-achievements/retroachievements-implementation-guide.md). Read that before wiring up a new core.
 
 For testing RA as a user or tester rather than as a developer, see [docs/retro-achievements/retroachievements-community-guide.md](../docs/retro-achievements/retroachievements-community-guide.md).
-
----
-
-## Working on the Libretro Bridge
-
-The libretro bridge loads some emulator cores from pre-built libretro binaries instead of building them from source. See [The Libretro Bridge](https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/wiki/The-Libretro-Bridge) on the wiki for context.
-
-Bridge work branches from `main`. The integration branch (`feat/libretro-bridge`) has merged. Coordinate before touching `OpenEmu-SDK/OpenEmuBase/OEGameCore.h/.m` — that file is the base class for every core and is the highest-conflict file in the repo.
 
 ---
 

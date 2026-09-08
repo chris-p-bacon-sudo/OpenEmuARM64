@@ -335,6 +335,15 @@ final class CoreUpdater: NSObject {
         }
     }
     
+    /// Whether a core with this bundle identifier could still be obtained — either
+    /// it is installed, or it is offered by the core feed. False means there is no
+    /// route to it at all, so offering the user a "switch to that core" action would
+    /// be offering something that cannot succeed.
+    func canProvideCore(withIdentifier identifier: String) -> Bool {
+        OECorePlugin.corePlugin(bundleIdentifier: identifier) != nil
+            || coresDict[identifier.lowercased()] != nil
+    }
+    
     func installCore(for state: OEDBSaveState, withCompletionHandler handler: @escaping (_ plugin: OECorePlugin?, _ error: Error?) -> Void) {
         
         let coreID = state.coreIdentifier.lowercased()
@@ -343,7 +352,6 @@ final class CoreUpdater: NSObject {
             let message = String(format: NSLocalizedString("To launch the save state %@ you will need to install the '%@' Core", comment: ""), state.displayName, coreName)
             installCore(with: download, message: message, completionHandler: handler)
         } else {
-            // TODO: create proper error saying that no core is available for the state
             handler(nil, Errors.noDownloadableCoreForIdentifierError)
         }
     }
@@ -668,4 +676,23 @@ struct CoreAppcastItem {
         let osVersion = ProcessInfo.processInfo.operatingSystemVersion
         return "\(osVersion.majorVersion).\(osVersion.minorVersion).\(osVersion.patchVersion)"
     }()
+}
+
+// MARK: - Error messages
+
+extension CoreUpdater.Errors: LocalizedError {
+    
+    var errorDescription: String? {
+        switch self {
+        case .noDownloadableCoreForIdentifierError:
+            // Raised both when opening a game whose system has no core and when a save
+            // state names one, so the wording has to fit either. It also fires when the
+            // core list simply has not loaded yet, so it must not assert permanence.
+            return NSLocalizedString("OpenEmu couldn't find a core to use. One may not be available for this system yet, or you may not be connected to the internet.",
+                                     comment: "Error shown when no core is installed or downloadable for a game or save state")
+        case .newCoreCheckAlreadyPendingError:
+            return NSLocalizedString("A check for new cores is already in progress.",
+                                     comment: "Error shown when a core check is requested while one is already running")
+        }
+    }
 }

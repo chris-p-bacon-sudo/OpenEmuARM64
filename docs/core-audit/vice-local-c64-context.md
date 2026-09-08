@@ -8,18 +8,16 @@
 5. `OpenEmu/SystemPlugins/Commodore 64/Controller-Mappings.plist` (lines 1-290) - default controller mappings for C64 controls.
 6. `OpenEmu/SystemPlugins/Commodore 64/Controller-Preferences.plist` (lines 1-29) - controller UI uses generic computer artwork and placeholder `{0, 0}` key positions.
 7. `OpenEmu/SystemPlugins/Commodore 64/Keyboard-Mappings.plist` (lines 1-5) - empty keyboard mapping file.
-8. `OpenEmu/PrefCoresController.swift` (lines 45-107, 552-780) - RetroArch core discovery, C64 systemid mapping, and generated `.oecoreplugin` shape.
-9. `docs/libretro-architecture.md` (lines 1-118) - current RetroArch/libretro support path and warning not to reintroduce bridge-core binaries.
-10. `docs/core-audit/core-support-audit.md` (lines 1-224) - current audit state for C64 and native VICE-Core recommendation.
-11. `docs/core-audit/local-inventory.md` (lines 1-84) - local inventory noting C64 as system-plugin-only with no source/workspace/appcast.
-12. `.gitmodules` (lines 1-96) - stale historical C64 entries for Frodo-Core and VirtualC64-Core; no VICE-Core entry.
-13. `oecores.xml` (lines 1-343) - downloadable core registry; contains no C64/VICE/Frodo/VirtualC64 entry.
-14. `Appcasts/` listing - no VICE/Frodo/VirtualC64 appcast file exists; appcasts are only for current native cores.
-15. `OpenEmu-metal.xcworkspace/contents.xcworkspacedata` (lines 1-97) - workspace project list; no VICE/Frodo/VirtualC64 project reference.
-16. `OpenEmu/OpenEmu.xcodeproj/project.pbxproj` (grep around lines 351, 361, 1479-1483, 2656, 3323-3339, 4202) - C64 system plugin is wired into app build, but only as a system plugin.
-17. `Scripts/check-core-feed-urls.sh` (lines 1-89) - any future native core plist with `OEGameCoreClass` must include a valid local `SUFeedURL`.
-18. `Scripts/package-core.sh` (lines 1-125), `Scripts/install-core.sh` (lines 1-140), `Scripts/update_core_appcast.py` (lines 1-180) - native-core release/install mechanics and appcast version/signing checks.
-19. `README.md` (lines 50-59) and root `appcast.xml` (grep lines 141-143, 176, 310-312) - public release notes say C64 currently works via VICE-libretro, not native VICE.
+8. `docs/core-audit/core-support-audit.md` (lines 1-224) - current audit state for C64 and native VICE-Core recommendation.
+9. `docs/core-audit/local-inventory.md` (lines 1-84) - local inventory noting C64 as system-plugin-only with no source/workspace/appcast.
+10. `.gitmodules` (lines 1-96) - stale historical C64 entries for Frodo-Core and VirtualC64-Core; no VICE-Core entry.
+11. `oecores.xml` (lines 1-343) - downloadable core registry; contains no C64/VICE/Frodo/VirtualC64 entry.
+12. `Appcasts/` listing - no VICE/Frodo/VirtualC64 appcast file exists; appcasts are only for current native cores.
+13. `OpenEmu-metal.xcworkspace/contents.xcworkspacedata` (lines 1-97) - workspace project list; no VICE/Frodo/VirtualC64 project reference.
+14. `OpenEmu/OpenEmu.xcodeproj/project.pbxproj` (grep around lines 351, 361, 1479-1483, 2656, 3323-3339, 4202) - C64 system plugin is wired into app build, but only as a system plugin.
+15. `Scripts/check-core-feed-urls.sh` (lines 1-89) - any future native core plist with `OEGameCoreClass` must include a valid local `SUFeedURL`.
+16. `Scripts/package-core.sh` (lines 1-125), `Scripts/install-core.sh` (lines 1-140), `Scripts/update_core_appcast.py` (lines 1-180) - native-core release/install mechanics and appcast version/signing checks.
+17. `README.md` (lines 50-59) and root `appcast.xml` (grep lines 141-143, 176, 310-312) - public release notes from before v1.3.1 describe C64 working via VICE-libretro; that path has since been removed.
 
 ## Key Code
 
@@ -75,27 +73,12 @@ typedef enum
 
 `Keyboard-Mappings.plist` is empty, so a future native VICE core should expect raw keyboard keycodes from the responder rather than a populated OE keyboard mapping table.
 
-### Current support path: RetroArch / VICE-libretro
-`PrefCoresController.swift` maps RetroArch `.info` system IDs to OpenEmu C64:
+### Current support path: none
 
-```swift
-"commodore_c64":   ["openemu.system.c64"],
-"commodore_c64sc": ["openemu.system.c64"], // VICE x64sc
-"commodore_64":    ["openemu.system.c64"], // alternate spelling
-```
-
-The RetroArch picker scans `~/Library/Application Support/RetroArch/cores` for `*_libretro.dylib`, parses matching `.info` files, and creates a generated plugin with:
-
-```swift
-"OEGameCoreClass":    "OELibretroCoreTranslator",
-"OELibretroCorePath": core.dylibURL.path,
-"OEGameCoreName":     core.displayName,
-"OESystemIdentifiers": core.systemIDs,
-"OEGameCorePlayerCount": "2",
-"OEBridgeVersion": OELibretroBridgeVersion,
-```
-
-So local C64 play today is not a shipped VICE source tree. It is an external RetroArch `vice*_libretro.dylib` wrapped into `VICE-RetroArch.oecoreplugin`/similar and run by `OELibretroCoreTranslator`.
+RetroArch core support was removed in v1.3.1. Until a native VICE core lands (#546),
+Commodore 64 ships as a system plugin with no core, the same as PlayStation 2 and
+Sega VMU: the system appears in the library and its controls are configurable, but
+no core is available to run a game.
 
 ### Release metadata absence
 Confirmed absent locally:
@@ -123,9 +106,9 @@ OpenEmu separates:
 1. **System plugin** (`OpenEmu/SystemPlugins/Commodore 64`) - makes C64 visible in the UI and defines controls/file types.
 2. **Native core plugin** (missing for C64) - would subclass `OEGameCore`, implement `OEC64SystemResponderClient`, ship as `<Core>.oecoreplugin`, and carry `Info.plist` metadata including `OEGameCoreClass`, `OESystemIdentifiers`, and `SUFeedURL`.
 3. **Updater/install metadata** (missing for C64 native) - native cores need `oecores.xml` registry entry plus matching `Appcasts/<core>.xml` and per-core `SUFeedURL`.
-4. **RetroArch/libretro bridge** (current working path) - user-installed VICE-libretro dylib is wrapped at runtime by Preferences → Cores and loaded by `OELibretroCoreTranslator`.
+4. **Core** (missing entirely) - RetroArch core support was removed in v1.3.1, so there is no interim path. A native port is the only route (#546).
 
-`docs/libretro-architecture.md` is explicit: there are no in-repo libretro cores; historical `VICE-Bridge/` was testing-only and removed; do not reintroduce in-tree libretro binaries. Cross-cutting libretro fixes belong in `OELibretroCoreTranslator`, not a per-core bridge.
+Do not reintroduce in-tree libretro binaries or a per-core bridge directory. A native VICE core should be a real source tree like every other core this fork ships.
 
 ## Integration constraints for future native VICE-Core
 

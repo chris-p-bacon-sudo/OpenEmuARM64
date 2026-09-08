@@ -13,12 +13,7 @@ This file is the source of truth for what each term means *in this codebase*. If
 | **core** | An emulator backend for one or more game systems. There is one core per top-level directory (e.g. `Dolphin/`, `Flycast/`, `Mednafen/`). Some cores cover multiple systems (Mednafen covers PSX, Saturn, WonderSwan, Lynx). |
 | **plugin** / **`.oecoreplugin`** | The packaged build of a core — a macOS bundle that the host app loads at runtime. Lives at `~/Library/Application Support/OpenEmu/Cores/<Name>.oecoreplugin` once installed. |
 | **system** | A console or platform (NES, SNES, Genesis, etc.). Multiple cores can support the same system; a core can support multiple systems. |
-| **native core** | A core that subclasses `OEGameCore` directly, with no libretro ABI between it and the host app (Mednafen, Mupen64Plus, BSNES, Snes9x, Genesis Plus GX, etc.). Owns its own frame loop and integrates cross-cutting services in-tree. |
-| **libretro core** | A `.dylib` implementing the libretro ABI (`retro_run`, `retro_get_memory_data`, etc.). Authored externally (libretro/RetroArch ecosystem); this repo does not develop them. |
-| **libretro host** | `OELibretroCoreTranslator` (`OpenEmu-SDK/OpenEmuBase/OELibretroCoreTranslator.m`). The shared runtime that loads any libretro `.dylib` and translates the libretro ABI into `OEGameCore` calls. The single integration point for cross-cutting libretro concerns (RetroAchievements, save states, future runahead). Anything that would otherwise need per-core libretro work belongs here. See `docs/libretro-architecture.md`. |
-| **RetroArch core** | A libretro core installed by the user via Preferences → Cores → [system] → RetroArch core. The picker in `PrefCoresController.swift` scans the user's RetroArch install at `~/Library/Application Support/RetroArch/cores/`, parses the matching `.info` metadata, and generates an `.oecoreplugin` bundle that points to the chosen `.dylib` via the `OELibretroCorePath` Info.plist key. The "RetroArch" name comes from where the `.dylib` lives on disk — the RetroArch app itself is not running. |
-| **bundled libretro bridge** / **bridge bundle** (`OpenEmuLibretroBridge.oecoreplugin`) | A loadable bundle built by the `OpenEmuLibretroBridge` Xcode target and shipped inside `OpenEmu.app/Contents/PlugIns/`. Carries the OE-side libretro translator binary (`OELibretroCoreTranslator`) so that fixes to the translator propagate into every installed `*-RetroArch.oecoreplugin` stub on the next app launch via `AppDelegate.refreshStaleRetroArchStubs()`. The version constant `OELibretroBridgeVersion` (in `OELibretroCoreTranslator.m`) drives the comparison. See `docs/libretro-architecture.md` and the "Libretro Bridge Version Bumps" section in `AGENTS.md`. |
-| **bridge core** (`*-Bridge/`) — historical | Testing-only directories (`Flycast-Bridge/`, `Gambatte-Bridge/`, `VICE-Bridge/`) used during development of the libretro host. Removed in May 2026; mentioned only because older commits and PRs still reference the names. Do not add new ones — for libretro work, use the host runtime directly. |
+| **native core** | A core that subclasses `OEGameCore` directly (Mednafen, Mupen64Plus, BSNES, Snes9x, Genesis Plus GX, etc.). Owns its own frame loop and integrates cross-cutting services in-tree. Every core this fork ships is a native core. |
 
 ## Process and runtime
 
@@ -26,7 +21,7 @@ This file is the source of truth for what each term means *in this codebase*. If
 |---|---|
 | **host app** | The main `OpenEmu.app` — the library, preferences, controllers UI, save state browser. |
 | **helper / broker / `OpenEmuHelperApp`** | The sandboxed XPC process that actually runs an emulator core. Lives in `OpenEmu/broker/`. The host app and helper communicate via XPC; the helper isolates crashes so a bad core can't take down the library. |
-| **rcheevos** | The vendored C library that talks to the RetroAchievements service. Built into the helper. Native cores integrate it directly; libretro cores receive it through the libretro host (in progress — see [#360](https://github.com/OpenEmu-Silicon/OpenEmu-Silicon/issues/360)). |
+| **rcheevos** | The vendored C library that talks to the RetroAchievements service. Built into the helper. Cores integrate it directly. |
 
 ## Update / distribution
 
