@@ -634,7 +634,7 @@ class AppDelegate: NSObject, UNUserNotificationCenterDelegate {
 
         let r = orphanedRACleanupReport
         out += "--- Orphaned RetroArch plugin cleanup ---\n"
-        out += "removed this launch:   \(r.removed)\n"
+        out += "removed or disabled:   \(r.removed)\n"
         out += "cleared defaults:      \(r.clearedDefaults)\n"
         if r.failed.isEmpty {
             out += "failed this launch:    []\n\n"
