@@ -444,8 +444,28 @@ class AppDelegate: NSObject, UNUserNotificationCenterDelegate {
                     removedBundleIDs.insert(bundleID)
                     os_log(.info, log: .default, "Removed orphaned RetroArch core plugin: %{public}@ (libretro bridge support was removed in OpenEmu 1.3.1)", plugin.lastPathComponent)
                 } catch {
-                    failed.append((plugin.lastPathComponent, error.localizedDescription))
-                    os_log(.error, log: .default, "Failed to remove orphaned RetroArch core plugin %{public}@: %{public}@", plugin.lastPathComponent, error.localizedDescription)
+                    // Deleting can fail on a read-only volume, a locked bundle, or
+                    // odd permissions. Leaving the bundle in place is the one
+                    // genuinely bad outcome: it stays a `.oecoreplugin`, so
+                    // `registerClass()` below still enumerates it, it still shows up
+                    // under "Play With…", and picking it force-unwraps a nil
+                    // controller in OpenEmuHelperApp and takes down the helper.
+                    // Renaming the extension is enough to make it invisible to
+                    // enumeration, and is a cheaper filesystem operation than the
+                    // delete that just failed, so it can succeed where that didn't.
+                    let disabled = plugin.deletingPathExtension()
+                        .appendingPathExtension("oecoreplugin-disabled")
+                    do {
+                        try fm.moveItem(at: plugin, to: disabled)
+                        removed.append("\(name) (disabled in place)")
+                        removedBundleIDs.insert(bundleID)
+                        os_log(.error, log: .default,
+                               "Could not delete orphaned RetroArch core plugin %{public}@ (%{public}@); renamed it to %{public}@ so it is no longer loaded.",
+                               plugin.lastPathComponent, error.localizedDescription, disabled.lastPathComponent)
+                    } catch {
+                        failed.append((plugin.lastPathComponent, error.localizedDescription))
+                        os_log(.error, log: .default, "Failed to remove or disable orphaned RetroArch core plugin %{public}@: %{public}@", plugin.lastPathComponent, error.localizedDescription)
+                    }
                 }
             }
         }

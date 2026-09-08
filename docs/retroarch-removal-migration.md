@@ -42,14 +42,25 @@ A save state is a snapshot of an emulator's internal memory, so it is only valid
 the core that wrote it. There is no way to convert one between cores. Save states
 written by a RetroArch core therefore cannot be restored after the upgrade.
 
-What a user sees when they pick one:
+What a user actually sees when they pick one, tracing `loadState(state:)`
+(`OEGameDocument.swift:2709` onward):
 
-| Situation | Behavior |
+The stored `coreIdentifier` no longer matches the resolved core, so OpenEmu shows
+**"This save state was created with a different core. Do you want to switch to that
+core now?"** with *Change Core* and *Cancel*.
+
+| Choice | Behavior |
 |---|---|
-| System has a native core (Genesis, N64, PSX, …) | `OECorePlugin.corePlugin(bundleIdentifier:)` returns nil, `setUpDocument` falls back to `core(forSystem:)`, and the game opens on the native core and starts from the beginning instead of restoring. |
-| Commodore 64 (no core at all) | `core(forSystem:)` throws `noCore`, and OpenEmu reports that no core is available. |
+| **Cancel** | `startEmulation()` — the game runs on the native core from the beginning. The state is not restored. |
+| **Change Core** | `OECorePlugin.corePlugin(bundleIdentifier:)` returns nil, so `CoreUpdater.installCore(for: state,…)` runs, finds no downloadable core for a `-RetroArch` identifier, and reports `noDownloadableCoreForIdentifierError`. A dead end — the core can never be reinstalled. |
+| Commodore 64 | Same alert; both paths end without a playable core, since C64 has none at all. |
 
-Neither case crashes — the lookup is a failable optional, not a force unwrap.
+Neither path crashes — the lookup is a failable optional, not a force unwrap. But
+note the alert is misleading here: *Change Core* offers something that cannot
+succeed, because the core it names no longer exists in any form. If users report
+this as a bug, that is the explanation. Users who previously ticked the alert's
+"do not ask again" suppression box (`OEAutoSwitchCoreAlertSuppressionKey`) go
+straight down the *Change Core* path and see only the error.
 
 Two things worth stating plainly to anyone who reports this:
 

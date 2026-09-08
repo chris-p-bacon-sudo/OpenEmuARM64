@@ -159,7 +159,6 @@
 		1E0E90051A8932BB72161909 /* PrefCloudSyncController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EF37C00BE9099269AB29467 /* PrefCloudSyncController.swift */; };
 		1E2F3DBB10DEAB4C0019AA84 /* OEVersionMigrationController.m in Sources */ = {isa = PBXBuildFile; fileRef = 1E2F3DBA10DEAB4C0019AA84 /* OEVersionMigrationController.m */; };
 		1E4B7FC710DE4156A46DAB79 /* OEWiiSystemController.m in Sources */ = {isa = PBXBuildFile; fileRef = 60C6AA00A0A44B609186B94D /* OEWiiSystemController.m */; };
-		22041F6779860DD69DB04FDD /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 38F89E810430637386DA95E8 /* Cocoa.framework */; };
 		22477F282F81F85500C2A0BD /* Sentry in Frameworks */ = {isa = PBXBuildFile; productRef = 22477F272F81F85500C2A0BD /* Sentry */; };
 		22477F2A2F81F99300C2A0BD /* SentryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22477F292F81F99300C2A0BD /* SentryService.swift */; };
 		22477F2B2F82A00000C2A0BD /* Sentry in Frameworks */ = {isa = PBXBuildFile; productRef = 22477F2C2F82A00000C2A0BD /* Sentry */; };
@@ -673,7 +672,6 @@
 		E8D9112BFB38FBCEEA8B22DD /* CheatSearchWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED2D0AB7012BE11642E384A3 /* CheatSearchWindowController.swift */; };
 		E8D9112BFB38FBCEEA8B22DE /* BrowseOnlineCheatsWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED2D0AB7012BE11642E384A4 /* BrowseOnlineCheatsWindowController.swift */; };
 		E8D9112BFB38FBCEEA8B22DF /* BrowseOnlineCheatsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED2D0AB7012BE11642E384A5 /* BrowseOnlineCheatsViewController.swift */; };
-		E96D97FB8B2AA2119A472430 /* OpenEmuBase.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C6D120C317112E1300E868A8 /* OpenEmuBase.framework */; };
 		EB3D03D02A24B3C100EBABCD /* 3DO.oesystemplugin in Copy System Plugins to App Plugins */ = {isa = PBXBuildFile; fileRef = 943F99B31707DF3700270E89 /* 3DO.oesystemplugin */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		EF2FDBEB14CFFE06002A64F2 /* ControlsKeyButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8396CC5514068DA90096F791 /* ControlsKeyButton.swift */; };
 		EF2FDBED14CFFE1B002A64F2 /* ControlsKeySeparatorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83D9991E146F40DA004409DC /* ControlsKeySeparatorView.swift */; };
